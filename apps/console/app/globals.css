@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 0 84% 60%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 0 84% 60%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom FireLine styles */
+.fire-gradient {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}
+
+.fire-glow {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.smoke-overlay {
+  background: linear-gradient(45deg, rgba(148, 163, 184, 0.1) 0%, rgba(71, 85, 105, 0.2) 100%);
+}
+
+/* Map styles */
+.maplibregl-popup-content {
+  @apply bg-card text-card-foreground border border-border rounded-lg;
+}
+
+.maplibregl-popup-tip {
+  @apply border-t-card;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-foreground;
+}
+
+/* Animation utilities */
+.animate-pulse-fire {
+  animation: pulse-fire 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-glow-fire {
+  animation: glow-fire 2s ease-in-out infinite;
+}
+
+@keyframes pulse-fire {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes glow-fire {
+  0%, 100% {
+    box-shadow: 0 0 5px #ef4444;
+  }
+  50% {
+    box-shadow: 0 0 20px #ef4444, 0 0 30px #ef4444;
+  }
+}
