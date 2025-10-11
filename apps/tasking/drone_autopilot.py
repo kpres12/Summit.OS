@@ -1,7 +1,7 @@
 """
-Enhanced Drone Autopilot Integration for Summit.OS
+Enhanced FireFly Autopilot Integration for Summit.OS
 
-Provides MAVLink/PX4 integration for autonomous drone operations,
+Provides MAVLink/PX4 integration for autonomous FireFly operations,
 mission planning, and emergency procedures.
 """
 
@@ -79,12 +79,12 @@ class DroneStatus:
     timestamp: float
 
 
-class DroneAutopilot:
+class FireFlyAutopilot:
     """
-    Enhanced drone autopilot integration with MAVLink/PX4 support.
+    Enhanced FireFly autopilot integration with MAVLink/PX4 support.
     
     Provides autonomous mission execution, emergency procedures,
-    and real-time telemetry for Summit.OS drone operations.
+    and real-time telemetry for Summit.OS FireFly operations.
     """
     
     def __init__(self, device_id: str, connection_string: str = "udp:localhost:14550"):
@@ -481,46 +481,46 @@ class DroneAutopilot:
         }
 
 
-class DroneFleetManager:
+class FireFlyFleetManager:
     """
-    Manages multiple drones for coordinated operations.
+    Manages multiple FireFlies for coordinated operations.
     """
     
     def __init__(self):
-        self.drones: Dict[str, DroneAutopilot] = {}
+        self.fireflies: Dict[str, FireFlyAutopilot] = {}
         self.mission_coordinator = None
         
-    async def add_drone(self, device_id: str, connection_string: str) -> bool:
-        """Add drone to fleet"""
-        drone = DroneAutopilot(device_id, connection_string)
-        if await drone.connect():
-            self.drones[device_id] = drone
-            logger.info(f"Added drone {device_id} to fleet")
+    async def add_firefly(self, device_id: str, connection_string: str) -> bool:
+        """Add FireFly to fleet"""
+        firefly = FireFlyAutopilot(device_id, connection_string)
+        if await firefly.connect():
+            self.fireflies[device_id] = firefly
+            logger.info(f"Added FireFly {device_id} to fleet")
             return True
         return False
     
-    async def remove_drone(self, device_id: str):
-        """Remove drone from fleet"""
-        if device_id in self.drones:
-            await self.drones[device_id].disconnect()
-            del self.drones[device_id]
-            logger.info(f"Removed drone {device_id} from fleet")
+    async def remove_firefly(self, device_id: str):
+        """Remove FireFly from fleet"""
+        if device_id in self.fireflies:
+            await self.fireflies[device_id].disconnect()
+            del self.fireflies[device_id]
+            logger.info(f"Removed FireFly {device_id} from fleet")
     
     async def coordinate_mission(self, mission_plan: Dict[str, Any]) -> bool:
-        """Coordinate mission across multiple drones"""
+        """Coordinate mission across multiple FireFlies"""
         try:
-            # Assign waypoints to drones
-            for drone_id, waypoints in mission_plan.get('assignments', {}).items():
-                if drone_id in self.drones:
+            # Assign waypoints to FireFlies
+            for firefly_id, waypoints in mission_plan.get('assignments', {}).items():
+                if firefly_id in self.fireflies:
                     waypoint_objects = [Waypoint(**wp) for wp in waypoints]
-                    await self.drones[drone_id].set_mission(waypoint_objects)
+                    await self.fireflies[firefly_id].set_mission(waypoint_objects)
             
             # Start missions simultaneously
-            for drone_id in mission_plan.get('assignments', {}).keys():
-                if drone_id in self.drones:
-                    await self.drones[drone_id].start_mission()
+            for firefly_id in mission_plan.get('assignments', {}).keys():
+                if firefly_id in self.fireflies:
+                    await self.fireflies[firefly_id].start_mission()
             
-            logger.info("Coordinated mission started across fleet")
+            logger.info("Coordinated mission started across FireFly fleet")
             return True
             
         except Exception as e:
@@ -528,7 +528,7 @@ class DroneFleetManager:
             return False
     
     def get_fleet_status(self) -> Dict[str, Any]:
-        """Get status of all drones in fleet"""
+        """Get status of all FireFlies in fleet"""
         return {
-            drone_id: drone.get_status() for drone_id, drone in self.drones.items()
+            firefly_id: firefly.get_status() for firefly_id, firefly in self.fireflies.items()
         }

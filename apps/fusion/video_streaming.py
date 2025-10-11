@@ -1,7 +1,7 @@
 """
 Video Streaming Service for Summit.OS
 
-Provides real-time video streaming capabilities for sentry towers, drones,
+Provides real-time video streaming capabilities for FireWatch towers, FireFlies,
 and other edge devices with RTSP, WebRTC, and video analytics support.
 """
 

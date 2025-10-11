@@ -2,7 +2,7 @@
 Fire Detection and Analysis Models for Summit.OS
 
 Provides specialized AI models for fire detection, smoke analysis,
-and fire spread prediction for sentry towers and drone operations.
+and fire spread prediction for FireWatch towers and FireFly operations.
 """
 
 import torch

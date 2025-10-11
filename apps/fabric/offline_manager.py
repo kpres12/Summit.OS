@@ -2,7 +2,7 @@
 Enhanced Offline Operation Manager for Summit.OS
 
 Provides robust offline capabilities with local AI inference,
-mission execution, and data synchronization for edge devices.
+mission execution, and data synchronization for FireWatch towers and FireFlies.
 """
 
 import asyncio

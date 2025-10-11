@@ -77,7 +77,7 @@ Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
 // VideoRecording
 {
   "recording_id": "VID-001",
-  "device_id": "sentry-tower-001",
+  "device_id": "firewatch-001",
   "start_time": 1712345678.12,
   "end_time": 1712345978.12,
   "duration": 300.0,
@@ -89,7 +89,7 @@ Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
 
 // DroneStatus
 {
-  "device_id": "drone-001",
+  "device_id": "firefly-001",
   "connected": true,
   "armed": true,
   "mode": "GUIDED",
@@ -112,12 +112,12 @@ Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
   "size": 15.5,
   "temperature": 125.0,
   "timestamp": 1712345678.12,
-  "device_id": "sentry-tower-001"
+  "device_id": "firewatch-001"
 }
 
 // OfflineStatus
 {
-  "device_id": "sentry-tower-001",
+  "device_id": "firewatch-001",
   "offline_mode": "ONLINE",
   "storage_used_mb": 45.2,
   "storage_limit_mb": 1000,
