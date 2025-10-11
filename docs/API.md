@@ -22,6 +22,16 @@ Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
 - `GET  /api/v1/tasks/active` → `Task[]`
 - `POST /api/v1/task/assign` (body: `TaskRequest`) → `Task`
 - `POST /api/v1/predict/scenario` (body: `ScenarioRequest`) → **GeoJSON** FeatureCollection
+- `GET  /api/v1/video/stream/{device_id}` → **WebSocket** video stream
+- `GET  /api/v1/video/recordings?device_id={id}&since={ts}` → `VideoRecording[]`
+- `POST /api/v1/video/analyze` (body: `VideoAnalysisRequest`) → `VideoAnalysisResult`
+- `GET  /api/v1/drones/{id}/status` → `DroneStatus`
+- `POST /api/v1/drones/{id}/mission` (body: `MissionRequest`) → `MissionResponse`
+- `POST /api/v1/drones/{id}/emergency` → `EmergencyResponse`
+- `GET  /api/v1/fire/detections?since={ts}` → `FireDetection[]`
+- `POST /api/v1/fire/analyze` (body: `FireAnalysisRequest`) → `FireAnalysisResult`
+- `GET  /api/v1/offline/status/{device_id}` → `OfflineStatus`
+- `POST /api/v1/offline/sync/{device_id}` → `SyncResponse`
 
 ### Canonical Schemas (JSON)
 ```jsonc
@@ -59,11 +69,62 @@ Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
   "device_id": "UGV-Alpha",
   "ts": 1712345678.12,
   "lat": 34.1229,
-  "lon": -117.4551,
-  "batt": 91.0,
-  "rssi": -60,
-  "speed": 2.1,
-  "sensors": { "temp_c": 31.2, "wind_mps": 8.9, "smoke_prob": 0.12 }
+  "lon": -117.4567,
+  "alt": 120.5,
+  "sensors": { "battery": 85.0, "temperature": 25.3 }
+}
+
+// VideoRecording
+{
+  "recording_id": "VID-001",
+  "device_id": "sentry-tower-001",
+  "start_time": 1712345678.12,
+  "end_time": 1712345978.12,
+  "duration": 300.0,
+  "file_size_mb": 45.2,
+  "resolution": "1920x1080",
+  "fps": 30,
+  "url": "https://api.summit-os.bigmt.ai/v1/video/recordings/VID-001/download"
+}
+
+// DroneStatus
+{
+  "device_id": "drone-001",
+  "connected": true,
+  "armed": true,
+  "mode": "GUIDED",
+  "battery": 85.0,
+  "gps_fix": 3,
+  "position": { "lat": 34.123, "lon": -117.456, "alt": 120.5 },
+  "heading": 45.0,
+  "speed": 5.2,
+  "mission_state": "MISSION",
+  "last_heartbeat": 1712345678.12
+}
+
+// FireDetection
+{
+  "detection_id": "FIRE-001",
+  "fire_type": "SMOKE",
+  "confidence": 0.87,
+  "bbox": [100, 150, 200, 250],
+  "center": { "lat": 34.123, "lon": -117.456 },
+  "size": 15.5,
+  "temperature": 125.0,
+  "timestamp": 1712345678.12,
+  "device_id": "sentry-tower-001"
+}
+
+// OfflineStatus
+{
+  "device_id": "sentry-tower-001",
+  "offline_mode": "ONLINE",
+  "storage_used_mb": 45.2,
+  "storage_limit_mb": 1000,
+  "messages_pending": 12,
+  "messages_synced": 1247,
+  "last_sync": 1712345678.12,
+  "active_missions": 2
 }
 
 // ScenarioRequest (example)
