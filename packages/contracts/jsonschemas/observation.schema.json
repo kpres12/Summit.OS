@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.summit-os.local/observation.schema.json",
+  "title": "Observation",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "class": { "type": "string" },
+    "ts_iso": { "type": "string", "format": "date-time" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "lat": { "type": "number" },
+    "lon": { "type": "number" },
+    "source": { "type": "string" },
+    "attributes": { "type": "object", "additionalProperties": true }
+  },
+  "required": ["class", "ts_iso", "confidence"],
+  "additionalProperties": true
+}

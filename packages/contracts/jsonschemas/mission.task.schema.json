@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.summit-os.local/mission.task.schema.json",
+  "title": "MissionTask",
+  "type": "object",
+  "properties": {
+    "task_id": { "type": "string" },
+    "asset_id": { "type": "string" },
+    "action": { "type": "string" },
+    "waypoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": { "type": "number" },
+          "lon": { "type": "number" },
+          "alt": { "type": "number" }
+        },
+        "required": ["lat", "lon"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["task_id", "asset_id", "action"],
+  "additionalProperties": false
+}

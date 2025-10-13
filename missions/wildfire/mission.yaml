@@ -1,0 +1,13 @@
+# Wildfire mission configuration (example)
+mission: wildfire
+classes:
+  - name: fire.smoke
+    description: Smoke observations from edge detectors
+  - name: fire.ignition
+    description: Estimated ignition points from triangulation
+routes:
+  - api: /v1/wildfire/ignitions
+    maps_to: observations?cls=fire.ignition
+plugins:
+  - name: wildfire-api
+    module: apps.api-gateway.plugins.wildfire

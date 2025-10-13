@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.summit-os.local/status.heartbeat.schema.json",
+  "title": "AssetHeartbeat",
+  "type": "object",
+  "properties": {
+    "asset_id": { "type": "string" },
+    "ts_iso": { "type": "string", "format": "date-time" },
+    "status": { "type": "string" }
+  },
+  "required": ["asset_id", "ts_iso", "status"],
+  "additionalProperties": false
+}

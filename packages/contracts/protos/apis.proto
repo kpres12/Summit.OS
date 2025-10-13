@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package summit;
+
+service ApiGateway {
+  rpc ListAlerts (ListAlertsRequest) returns (ListAlertsResponse);
+  rpc ApproveTask (ApproveTaskRequest) returns (ApproveTaskResponse);
+  rpc GetMissionStatus (GetMissionStatusRequest) returns (GetMissionStatusResponse);
+  rpc GetWorldState (GetWorldStateRequest) returns (GetWorldStateResponse);
+}
+
+message ListAlertsRequest {}
+
+message Alert {
+  string id = 1;
+  string type = 2;
+  string message = 3;
+  string ts_iso = 4;
+}
+
+message ListAlertsResponse {
+  repeated Alert alerts = 1;
+}
+
+message ApproveTaskRequest {
+  string task_id = 1;
+}
+
+message ApproveTaskResponse {
+  string task_id = 1;
+  bool approved = 2;
+  string ts_iso = 3;
+}
+
+message GetMissionStatusRequest {
+  string asset_id = 1;
+}
+
+message GetMissionStatusResponse {
+  string asset_id = 1;
+  string status = 2;
+  string ts_iso = 3;
+}
+
+message GetWorldStateRequest {}
+
+message WorldEntity {
+  string id = 1;
+  string type = 2;
+  double lat = 3;
+  double lon = 4;
+}
+
+message GetWorldStateResponse {
+  repeated WorldEntity entities = 1;
+}

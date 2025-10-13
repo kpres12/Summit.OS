@@ -9,16 +9,17 @@ help:
 	@echo "=============================="
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev          - Start full development environment"
-	@echo "  make dev-services - Start infrastructure services only"
+	@echo "  make dev           - Start full development environment"
+	@echo "  make dev-services  - Start infrastructure services only"
 	@echo "  make dev-apps      - Start Summit.OS applications"
 	@echo "  make dev-console   - Start FireLine Console only"
-	@echo "  make dev-backend  - Start backend services only"
+	@echo "  make dev-backend   - Start backend services only"
+	@echo "  make sim           - Launch SITL/HITL sim executor (local)"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  make clean        - Clean up containers and volumes"
-	@echo "  make test         - Run all tests"
-	@echo "  make lint         - Run linting"
+	@echo "  make clean         - Clean up containers and volumes"
+	@echo "  make test          - Run all tests"
+	@echo "  make lint          - Run linting"
 	@echo "  make format        - Format code"
 	@echo "  make install-deps  - Install all dependencies"
 	@echo ""
@@ -82,6 +83,11 @@ install-deps:
 	@cd apps/console && npm install
 	@echo "Dependencies installed!"
 
+# Local simulation helper (SITL/HITL)
+sim:
+	@echo "Starting local simulation executor..."
+	@python apps/tasking/sim_executor.py --asset drone-001=udp:127.0.0.1:14550 --register-assets --arm --takeoff-alt 20 --loiter-center 37.422,-122.084 --loiter-radius 150 --speed 5 --start
+
 # Run tests
 test:
 	@echo "Running tests..."
@@ -129,6 +135,18 @@ demo:
 	@echo "Starting demo mission..."
 	@python scripts/demo_mission.py
 	@echo "Demo mission started!"
+
+# Comprehensive demo (full P0/P1 feature showcase)
+demo-full:
+	@echo "Starting comprehensive Summit.OS demonstration..."
+	@python scripts/demo_full.py
+	@echo "Demo complete!"
+
+# Publish sample smoke observation to MQTT
+smoke-detection:
+	@echo "Publishing sample smoke observation to MQTT..."
+	@python scripts/publish_smoke_detection.py
+	@echo "Published sample smoke observation."
 
 # Health check
 health:

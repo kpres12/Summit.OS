@@ -80,6 +80,11 @@ async def lifespan(app: FastAPI):
     # WebSocket manager
     websocket_manager = WebSocketManager()
     
+    # Subscribe to observations topics
+    await mqtt_client.subscribe("observations/#", _handle_observation)
+    await mqtt_client.subscribe("detections/#", _handle_observation)  # legacy
+    await mqtt_client.subscribe("missions/#", _handle_mission)
+    
     # Start background tasks
     asyncio.create_task(telemetry_processor())
     asyncio.create_task(alert_processor())
@@ -238,6 +243,59 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_text(f"Echo: {data}")
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
+
+# MQTT message handlers
+async def _handle_observation(topic: str, data: Dict[str, Any]):
+    """Handle incoming observation from MQTT and publish to Redis Stream."""
+    try:
+        # Derive class from topic if not present
+        if "class" not in data:
+            if topic.startswith("observations/"):
+                data["class"] = topic.split("/", 1)[1]
+            elif topic.startswith("detections/"):
+                data["class"] = topic.split("/", 1)[1]
+        
+        # Add to Redis Stream for Fusion to consume
+        if redis_client and redis_client.redis:
+            stream_data = {
+                "topic": topic,
+                "payload": json.dumps(data),
+                "ts": datetime.now(timezone.utc).isoformat()
+            }
+            await redis_client.redis.xadd("observations_stream", stream_data)
+            logger.info(f"Forwarded observation to stream", topic=topic, cls=data.get("class"))
+    except Exception as e:
+        logger.error(f"Failed to handle observation: {e}")
+
+
+async def _handle_mission(topic: str, data: Dict[str, Any]):
+    """Handle incoming mission events from MQTT and broadcast via WebSocket and Redis."""
+    try:
+        # Derive mission_id if not present
+        mission_id = data.get("mission_id")
+        if not mission_id and topic.startswith("missions/"):
+            parts = topic.split("/", 1)
+            if len(parts) == 2:
+                mission_id = parts[1]
+        if not mission_id:
+            mission_id = "unknown"
+        # Normalize to MissionData
+        mission = MissionData(
+            mission_id=mission_id,
+            timestamp=datetime.now(timezone.utc),
+            status=str(data.get("status") or data.get("event") or "UPDATE"),
+            assets=data.get("assets") or [],
+            objectives=data.get("objectives") or [],
+        )
+        # Store in Redis Streams for consumers
+        if redis_client:
+            await redis_client.add_mission_update(mission)
+        # Broadcast to UI subscribers
+        if websocket_manager:
+            await websocket_manager.broadcast_mission_update(mission)
+        logger.info("Forwarded mission to ws/redis", mission_id=mission.mission_id, status=mission.status)
+    except Exception as e:
+        logger.error(f"Failed to handle mission: {e}")
 
 # Background processors
 async def telemetry_processor():

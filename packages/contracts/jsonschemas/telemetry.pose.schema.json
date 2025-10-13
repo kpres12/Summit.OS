@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.summit-os.local/telemetry.pose.schema.json",
+  "title": "PoseTelemetry",
+  "type": "object",
+  "properties": {
+    "asset_id": { "type": "string" },
+    "ts_iso": { "type": "string", "format": "date-time" },
+    "lat": { "type": "number" },
+    "lon": { "type": "number" },
+    "alt": { "type": "number" },
+    "roll": { "type": "number" },
+    "pitch": { "type": "number" },
+    "yaw": { "type": "number" }
+  },
+  "required": ["asset_id", "ts_iso", "lat", "lon"],
+  "additionalProperties": false
+}

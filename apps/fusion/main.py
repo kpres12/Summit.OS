@@ -1,303 +1,330 @@
 """
-Summit.OS Sensor Fusion Service
+Summit.OS Sensor Fusion Service (thin-slice)
 
-Normalizes and fuses multi-modal data (video, weather, IR, lightning, soil) 
-into a unified world model for situational awareness.
+Consumes smoke detections from MQTT, validates against JSON Schema,
+triangulates (stub), persists ignition estimates to Postgres, and exposes APIs.
 """
 
-import asyncio
-import logging
-from contextlib import asynccontextmanager
-from typing import Dict, Any, List, Optional
-import numpy as np
-import structlog
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+import os
 import json
+import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from queue import Queue
+from typing import Any, Dict, List, Optional
+
+import base64
+import io
+
+import redis.asyncio as aioredis
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from jsonschema import Draft202012Validator
+from pydantic import BaseModel
+from sqlalchemy import Column, DateTime, Float, Integer, MetaData, Table, text, String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+import paho.mqtt.client as mqtt
+import numpy as np
 import cv2
-from sklearn.cluster import DBSCAN
-from shapely.geometry import Point, Polygon
-import geopandas as gpd
+from .vision_inference import VisionInference
 
-from .config import Settings
-from .fusion_engine import FusionEngine
-from .world_model import WorldModel
-from .detection_service import DetectionService
-from .triangulation import TriangulationService
+# Globals initialized in lifespan
+engine: Optional[AsyncEngine] = None
+SessionLocal: Optional[sessionmaker] = None
+redis_client: Optional[aioredis.Redis] = None
+detection_queue: Queue = Queue(maxsize=1000)
+smoke_schema: Optional[Dict[str, Any]] = None
+validator: Optional[Draft202012Validator] = None
 
-# Configure structured logging
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
+# Optional vision AI
+mqtt_client: Optional[mqtt.Client] = None
+vision: Optional[VisionInference] = None
+
+
+def _to_asyncpg_url(url: str) -> str:
+    if url.startswith("postgresql+asyncpg://"):
+        return url
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
+# Define table using SQLAlchemy Core
+metadata = MetaData()
+observations = Table(
+    "observations",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("class", String(128), nullable=False),
+    Column("lat", Float),
+    Column("lon", Float),
+    Column("confidence", Float, nullable=False),
+    Column("ts", DateTime(timezone=True), nullable=False),
+    Column("source", String(128)),
+    Column("attributes", JSONB)
 )
 
-logger = structlog.get_logger(__name__)
-
-# Global services
-fusion_engine: Optional[FusionEngine] = None
-world_model: Optional[WorldModel] = None
-detection_service: Optional[DetectionService] = None
-triangulation_service: Optional[TriangulationService] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager for startup/shutdown."""
-    global fusion_engine, world_model, detection_service, triangulation_service
-    
-    settings = Settings()
-    
-    # Initialize services
-    logger.info("Starting Summit.OS Sensor Fusion Service")
-    
-    # World model
-    world_model = WorldModel(settings)
-    await world_model.initialize()
-    logger.info("World model initialized")
-    
-    # Detection service
-    detection_service = DetectionService(settings)
-    await detection_service.initialize()
-    logger.info("Detection service initialized")
-    
-    # Triangulation service
-    triangulation_service = TriangulationService(settings)
-    await triangulation_service.initialize()
-    logger.info("Triangulation service initialized")
-    
-    # Fusion engine
-    fusion_engine = FusionEngine(
-        world_model=world_model,
-        detection_service=detection_service,
-        triangulation_service=triangulation_service,
-        settings=settings
-    )
-    await fusion_engine.initialize()
-    logger.info("Fusion engine initialized")
-    
-    # Start background tasks
-    asyncio.create_task(fusion_processor())
-    asyncio.create_task(world_model_updater())
-    
-    yield
-    
-    # Cleanup
-    if fusion_engine:
-        await fusion_engine.cleanup()
-    if world_model:
-        await world_model.cleanup()
-    if detection_service:
-        await detection_service.cleanup()
-    if triangulation_service:
-        await triangulation_service.cleanup()
-    logger.info("Shutting down Summit.OS Sensor Fusion Service")
+    global engine, SessionLocal, redis_client, smoke_schema, validator
+
+    # Allow disabling startup for unit tests
+    if os.getenv("FUSION_DISABLE_STARTUP") == "1":
+        yield
+        return
+
+    # Database setup
+    pg_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
+    engine = create_async_engine(pg_url, echo=False, future=True)
+    SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(metadata.create_all)
+
+    # Load JSON schema for generic Observation
+    schema_path = os.getenv("OBSERVATION_SCHEMA_PATH", "/contracts/jsonschemas/observation.schema.json")
+    try:
+        with open(schema_path, "r") as f:
+            smoke_schema = json.load(f)
+        validator = Draft202012Validator(smoke_schema)
+    except Exception:
+        # Fallback minimal schema if contracts not mounted
+        smoke_schema = {
+            "type": "object",
+            "properties": {
+                "class": {"type": "string"},
+                "ts_iso": {"type": "string"},
+                "confidence": {"type": "number"},
+                "lat": {"type": "number"},
+                "lon": {"type": "number"}
+            },
+            "required": ["class", "ts_iso", "confidence"],
+        }
+        validator = Draft202012Validator(smoke_schema)
+
+    # Redis setup (consume from Fabric's streams)
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    redis_client = await aioredis.from_url(redis_url, decode_responses=True)
+
+    # Optional: start vision AI if enabled
+    enable_vision = os.getenv("FUSION_ENABLE_VISION_AI", "false").lower() == "true"
+    tasks: list[asyncio.Task] = []
+    if enable_vision:
+        model_path = os.getenv("FUSION_MODEL_PATH") or None
+        conf = float(os.getenv("FUSION_CONF_THRESHOLD", "0.6"))
+        # Lazy create inference
+        globals()['vision'] = VisionInference(model_path=model_path, conf_threshold=conf)
+        # MQTT client to receive images
+        broker = os.getenv("MQTT_BROKER", "localhost")
+        port = int(os.getenv("MQTT_PORT", "1883"))
+        globals()['mqtt_client'] = mqtt.Client()
+        mqtt_client.connect(broker, port, 60)
+        mqtt_client.on_message = _on_mqtt_image
+        mqtt_client.subscribe("images/#", qos=0)
+        mqtt_client.loop_start()
+
+    # Start async consumer from Redis Stream
+    task = asyncio.create_task(_redis_stream_consumer())
+    tasks.append(task)
+
+    try:
+        yield
+    finally:
+        for t in tasks:
+            t.cancel()
+        for t in tasks:
+            try:
+                await t
+            except asyncio.CancelledError:
+                pass
+        if mqtt_client:
+            mqtt_client.loop_stop()
+            mqtt_client.disconnect()
+        if redis_client:
+            await redis_client.close()
+        if engine:
+            await engine.dispose()
+
 
 app = FastAPI(
-    title="Summit.OS Sensor Fusion",
-    description="Multi-modal sensor data fusion and world model generation",
-    version="1.0.0",
-    lifespan=lifespan
+    title="Summit.OS Fusion (Thin Slice)",
+    version="0.2.0",
+    lifespan=lifespan,
 )
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pydantic models
-class SensorData(BaseModel):
-    device_id: str
-    timestamp: datetime
-    sensor_type: str  # camera, lidar, thermal, weather, etc.
-    location: Dict[str, float]  # lat, lon, alt
-    data: Dict[str, Any]
-    confidence: float = Field(ge=0.0, le=1.0)
 
-class DetectionResult(BaseModel):
-    detection_id: str
-    timestamp: datetime
-    location: Dict[str, float]
-    object_type: str  # fire, smoke, person, vehicle, etc.
-    confidence: float = Field(ge=0.0, le=1.0)
-    bounding_box: Optional[Dict[str, float]] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+class Observation(BaseModel):
+    id: int
+    cls: str
+    lat: float | None = None
+    lon: float | None = None
+    confidence: float
+    ts: datetime
+    source: str | None = None
+    attributes: dict | None = None
 
-class FusedData(BaseModel):
-    fusion_id: str
-    timestamp: datetime
-    location: Dict[str, float]
-    data_type: str
-    confidence: float = Field(ge=0.0, le=1.0)
-    sources: List[str]
-    metadata: Dict[str, Any] = Field(default_factory=dict)
 
-class WorldModelState(BaseModel):
-    timestamp: datetime
-    entities: List[Dict[str, Any]]
-    relationships: List[Dict[str, Any]]
-    confidence: float = Field(ge=0.0, le=1.0)
-
-# API Endpoints
 @app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "service": "sensor-fusion",
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+async def health():
+    return {"status": "ok", "service": "fusion"}
 
-@app.post("/sensor-data")
-async def process_sensor_data(sensor_data: SensorData):
-    """Process incoming sensor data."""
-    if not fusion_engine:
-        raise HTTPException(status_code=503, detail="Fusion engine not initialized")
-    
-    try:
-        # Process sensor data through fusion engine
-        result = await fusion_engine.process_sensor_data(sensor_data)
-        
-        logger.info("Processed sensor data", 
-                   device_id=sensor_data.device_id, 
-                   sensor_type=sensor_data.sensor_type)
-        
-        return {"status": "processed", "fusion_id": result.get("fusion_id")}
-        
-    except Exception as e:
-        logger.error("Failed to process sensor data", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to process sensor data")
 
-@app.post("/detections")
-async def process_detection(detection: DetectionResult):
-    """Process detection results."""
-    if not fusion_engine:
-        raise HTTPException(status_code=503, detail="Fusion engine not initialized")
-    
-    try:
-        # Process detection through fusion engine
-        result = await fusion_engine.process_detection(detection)
-        
-        logger.info("Processed detection", 
-                   detection_id=detection.detection_id, 
-                   object_type=detection.object_type)
-        
-        return {"status": "processed", "fusion_id": result.get("fusion_id")}
-        
-    except Exception as e:
-        logger.error("Failed to process detection", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to process detection")
+@app.get("/observations", response_model=List[Observation])
+async def list_observations(cls: Optional[str] = None, limit: int = 50):
+    assert SessionLocal is not None
+    async with SessionLocal() as session:
+        if cls:
+            rows = (await session.execute(
+                text("SELECT id, class as cls, lat, lon, confidence, ts, source, attributes FROM observations WHERE class = :cls ORDER BY id DESC LIMIT :lim"),
+                {"cls": cls, "lim": limit}
+            )).all()
+        else:
+            rows = (await session.execute(
+                text("SELECT id, class as cls, lat, lon, confidence, ts, source, attributes FROM observations ORDER BY id DESC LIMIT :lim"),
+                {"lim": limit}
+            )).all()
+        return [Observation(**dict(r._mapping)) for r in rows]
 
-@app.get("/world-model")
-async def get_world_model():
-    """Get current world model state."""
-    if not world_model:
-        raise HTTPException(status_code=503, detail="World model not initialized")
-    
-    try:
-        state = await world_model.get_current_state()
-        return state
-        
-    except Exception as e:
-        logger.error("Failed to get world model", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to get world model")
 
-@app.get("/detections")
-async def get_detections(
-    object_type: Optional[str] = None,
-    confidence_threshold: float = 0.5,
-    time_range: Optional[int] = None
-):
-    """Get recent detections."""
-    if not detection_service:
-        raise HTTPException(status_code=503, detail="Detection service not initialized")
-    
+# MQTT image handler and vision inference path
+def _on_mqtt_image(client, userdata, msg):
     try:
-        detections = await detection_service.get_detections(
-            object_type=object_type,
-            confidence_threshold=confidence_threshold,
-            time_range=time_range
-        )
-        return {"detections": detections}
-        
-    except Exception as e:
-        logger.error("Failed to get detections", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to get detections")
-
-@app.post("/triangulate")
-async def triangulate_sources(sources: List[Dict[str, Any]]):
-    """Triangulate position from multiple sources."""
-    if not triangulation_service:
-        raise HTTPException(status_code=503, detail="Triangulation service not initialized")
-    
-    try:
-        result = await triangulation_service.triangulate(sources)
-        return result
-        
-    except Exception as e:
-        logger.error("Failed to triangulate", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to triangulate")
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time fusion updates."""
-    await websocket.accept()
-    try:
-        while True:
-            # Keep connection alive and handle incoming messages
-            data = await websocket.receive_text()
-            # Echo back for now - could handle commands here
-            await websocket.send_text(f"Echo: {data}")
-    except WebSocketDisconnect:
+        payload = msg.payload
+        data = None
+        try:
+            # JSON with base64 image: {"image_b64": "...", "device_id":"...", "ts_iso":"..."}
+            data = json.loads(payload.decode("utf-8"))
+        except Exception:
+            data = None
+        if data and "image_b64" in data:
+            img_bytes = base64.b64decode(data["image_b64"])  # type: ignore
+            np_arr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            _process_vision_image(img, data)
+    except Exception:
         pass
 
-# Background processors
-async def fusion_processor():
-    """Background processor for sensor fusion."""
+
+def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
+    try:
+        if not vision:
+            return
+        detections = vision.detect(img)
+        if not detections:
+            return
+        # Persist detections as observations
+        loop = asyncio.get_event_loop()
+        loop.create_task(_persist_observations_from_detections(detections, meta))
+    except Exception:
+        pass
+
+
+async def _persist_observations_from_detections(detections: List[Dict[str, Any]], meta: Dict[str, Any]):
+    assert SessionLocal is not None
+    assert redis_client is not None
+    from datetime import datetime, timezone
+    ts = datetime.now(timezone.utc)
+    async with SessionLocal() as session:
+        for det in detections:
+            cls = det.get("class", "object")
+            conf = float(det.get("confidence", 0.0))
+            lat = float(meta.get("lat")) if meta.get("lat") is not None else None
+            lon = float(meta.get("lon")) if meta.get("lon") is not None else None
+            attrs = det
+            await session.execute(
+                observations.insert().values(
+                    class=cls,
+                    lat=lat,
+                    lon=lon,
+                    confidence=conf,
+                    ts=ts,
+                    source=str(meta.get("device_id") or "vision"),
+                    attributes=attrs,
+                )
+            )
+        await session.commit()
+    # Also push to Redis Stream for downstream consumers (Intelligence)
+    for det in detections:
+        try:
+            record = {
+                "topic": "vision/detection",
+                "payload": json.dumps({**det, "ts_iso": ts.isoformat()}),
+                "ts": ts.isoformat(),
+            }
+            await redis_client.xadd("observations_stream", record)
+        except Exception:
+            pass
+
+
+async def _redis_stream_consumer():
+    """Consume observations from Fabric's Redis Stream."""
+    assert SessionLocal is not None
+    assert redis_client is not None
+    
+    last_id = "$"  # Start from latest
+    
     while True:
         try:
-            if fusion_engine:
-                await fusion_engine.process_pending_data()
-            await asyncio.sleep(0.1)  # High frequency for real-time processing
+            # Block for 1 second waiting for new messages
+            messages = await redis_client.xread({"observations_stream": last_id}, block=1000, count=10)
+            
+            if not messages:
+                continue
+            
+            for stream_name, stream_messages in messages:
+                for msg_id, fields in stream_messages:
+                    last_id = msg_id
+                    
+                    try:
+                        # Parse payload from Fabric
+                        payload = fields.get("payload")
+                        if not payload:
+                            continue
+                        
+                        data = json.loads(payload)
+                        
+                        # Validate
+                        assert validator is not None
+                        validator.validate(data)
+                        
+                        # Extract fields
+                        lat = float(data.get("lat")) if data.get("lat") is not None else None
+                        lon = float(data.get("lon")) if data.get("lon") is not None else None
+                        conf = float(data.get("confidence", 0.0))
+                        ts_str = data.get("ts_iso")
+                        try:
+                            ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00")) if ts_str else datetime.now(timezone.utc)
+                        except Exception:
+                            ts = datetime.now(timezone.utc)
+                        
+                        source = data.get("source")
+                        attributes = {k: v for k, v in data.items() if k not in {"class", "lat", "lon", "confidence", "ts_iso", "source"}}
+                        
+                        # Persist
+                        async with SessionLocal() as session:
+                            await session.execute(
+                                observations.insert().values(
+                                    **{"class": data["class"], "lat": lat, "lon": lon, "confidence": conf, "ts": ts, "source": source, "attributes": attributes}
+                                )
+                            )
+                            await session.commit()
+                    
+                    except Exception as e:
+                        print(f"Failed to process observation: {e}")
+                        continue
+        
         except Exception as e:
-            logger.error("Fusion processor error", error=str(e))
+            print(f"Redis stream consumer error: {e}")
             await asyncio.sleep(1)
-
-async def world_model_updater():
-    """Background processor for world model updates."""
-    while True:
-        try:
-            if world_model:
-                await world_model.update_entities()
-                await world_model.update_relationships()
-            await asyncio.sleep(1)  # Update every second
-        except Exception as e:
-            logger.error("World model updater error", error=str(e))
-            await asyncio.sleep(5)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8002,
-        reload=True,
-        log_level="info"
-    )
