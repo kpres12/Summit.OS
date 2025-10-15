@@ -42,7 +42,7 @@ Summit.OS has been transformed from incomplete scaffolding to a **runnable, doma
 
 ### ✅ Mission Plugin Pattern
 - API Gateway loads plugins from MISSIONS env var
-- Example: `plugins/wildfire.py` adds /v1/wildfire/ignitions → proxies to /observations?cls=fire.ignition
+- Example: `plugins/sentinel.py` adds /v1/sentinel/ignitions → proxies to /observations?cls=fire.ignition
 - missions/wildfire/mission.yaml documents class mappings
 
 ### ✅ Developer Experience
@@ -118,7 +118,7 @@ Summit.OS has been transformed from incomplete scaffolding to a **runnable, doma
 - `apps/intelligence/main.py` ⚠️ (stub only)
 - `apps/tasking/main.py` ⚠️ (stub only)
 - `apps/api-gateway/main.py` ✅ (proxies + plugin loader)
-- `apps/api-gateway/plugins/wildfire.py` ✅ (example plugin)
+- `apps/api-gateway/plugins/sentinel.py` ✅ (example plugin)
 
 ### Config
 - `infra/docker/docker-compose.yml` ✅ (all services defined; contracts mounted)
@@ -203,7 +203,7 @@ make clean
 ### If upgrading from earlier thin-slice
 - **ignitions table → observations table**: Data schema changed; old data not migrated.
 - **MQTT topics**: Use `observations/<class>` instead of `detections/smoke` (legacy still works).
-- **API routes**: `/v1/ignitions` removed from core; use `/v1/observations?cls=fire.ignition` or enable wildfire plugin.
+- **API routes**: `/v1/ignitions` removed from core; use `/v1/observations?cls=fire.ignition` or enable sentinel plugin.
 
 ---
 

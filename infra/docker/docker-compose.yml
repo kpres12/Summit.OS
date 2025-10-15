@@ -41,8 +41,10 @@ services:
       - "9001:9001"
     volumes:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
     healthcheck:
-      test: ["CMD", "mosquitto_pub", "-h", "localhost", "-t", "test", "-m", "test"]
+      test: ["CMD-SHELL", "mosquitto -h >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -59,10 +61,14 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
+      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
+      - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET-dev_secret}
     depends_on:
       redis:
         condition: service_healthy
       mqtt:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     volumes:
       - ../../apps/fabric:/app
@@ -164,11 +170,19 @@ services:
       - FUSION_URL=http://fusion:8002
       - INTELLIGENCE_URL=http://intelligence:8003
       - TASKING_URL=http://tasking:8004
+      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
+      - MISSIONS=sentinel
     depends_on:
-      - fabric
-      - fusion
-      - intelligence
-      - tasking
+      fabric:
+        condition: service_started
+      fusion:
+        condition: service_started
+      intelligence:
+        condition: service_started
+      tasking:
+        condition: service_started
+      postgres:
+        condition: service_healthy
     volumes:
       - ../../apps/api-gateway:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -221,3 +235,5 @@ volumes:
   redis_data:
   postgres_data:
   grafana_data:
+  mosquitto_data:
+  mosquitto_log:

@@ -1,4 +1,4 @@
-# Summit.OS ↔ WildFire Ops — Single Integration Standard (v1.1)
+# Summit.OS ↔ Sentinel — Single Integration Standard (v1.1)
 
 You are in the **Summit.OS** repo. Do NOT change repo structure.
 Enforce ONE interface only:
@@ -11,7 +11,7 @@ Enforce ONE interface only:
 
 ## 0) Non-Goals
 ❌ No gRPC, no ROS2 bindings, no extra SDKs, no cloud-specific integrations in this contract.  
-❌ Do not generate multi-language client libs here. WildFire Ops consumes raw REST + MQTT.
+❌ Do not generate multi-language client libs here. Sentinel consumes raw REST + MQTT.
 
 ## 1) REST Endpoints (MUST)
 Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
@@ -161,7 +161,7 @@ LWT: devices/{id}/status → "offline".
 
 ## 5) Acceptance (Contract Tests)
 
-WildFire Ops must, against a vanilla Summit.OS dev instance:
+Sentinel must, against a vanilla Summit.OS dev instance:
 - Health: GET /api/v1/system/health → "ok"
 - Alerts list renders; POST /api/v1/alerts/{id}/ack flips acknowledged
 - Active tasks render; POST /api/v1/task/assign adds a task and emits on missions/updates
@@ -180,7 +180,7 @@ SUMMIT_API_KEY=dev_key_placeholder
 MQTT_WS_URL=ws://localhost:1883
 ```
 
-Client (WildFire Ops):
+Client (Sentinel):
 ```
 SUMMIT_API_URL=http://localhost:8000/api
 SUMMIT_MQTT_URL=ws://localhost:1883

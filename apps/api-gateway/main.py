@@ -59,10 +59,13 @@ FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
 FUSION_URL = os.getenv("FUSION_URL", "http://fusion:8002")
 TASKING_URL = os.getenv("TASKING_URL", "http://tasking:8004")
 
-# Optional mission plugins (e.g., wildfire)
+# Optional mission plugins (e.g., sentinel)
 MISSIONS = os.getenv("MISSIONS", "").split(",") if os.getenv("MISSIONS") else []
 try:
-    if any(m.strip().lower() == "wildfire" for m in MISSIONS):
+    if any(m.strip().lower() == "sentinel" for m in MISSIONS):
+        from .plugins.sentinel import register as register_sentinel
+        register_sentinel(app, FUSION_URL)
+    elif any(m.strip().lower() == "wildfire" for m in MISSIONS):  # backward-compatible
         from .plugins.wildfire import register as register_wildfire
         register_wildfire(app, FUSION_URL)
 except Exception:

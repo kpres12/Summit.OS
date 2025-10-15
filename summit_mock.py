@@ -3,7 +3,7 @@
 Summit.OS Mock Server - Single Integration Standard (v1.1)
 
 One-file FastAPI mock + MQTT feeder that implements the exact contract
-for Summit.OS ↔ WildFire Ops integration.
+for Summit.OS ↔ Sentinel integration.
 
 Usage:
     python summit_mock.py
@@ -262,7 +262,7 @@ mqtt_publisher = MQTTPublisher()
 # Create FastAPI app
 app = FastAPI(
     title="Summit.OS Mock API",
-    description="Single Integration Standard (v1.1) for Summit.OS ↔ WildFire Ops",
+description="Single Integration Standard (v1.1) for Summit.OS ↔ Sentinel",
     version="1.1.0",
     docs_url="/docs",
     openapi_url="/openapi.json"

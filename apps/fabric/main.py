@@ -22,6 +22,7 @@ from .config import Settings
 from .mqtt_client import MQTTClient
 from .redis_client import RedisClient
 from .websocket_manager import WebSocketManager
+from .models import TelemetryMessage, AlertMessage, MissionUpdate, Location, SeverityLevel, MissionStatus
 
 # SQLAlchemy (async) for registry persistence
 from sqlalchemy import (
@@ -29,6 +30,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from jose import jwt
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
 
 # Configure structured logging
 structlog.configure(
@@ -92,6 +96,8 @@ coverages = Table(
 # Settings
 HEARTBEAT_STALE_SECS = 120  # 2 minutes
 HEARTBEAT_OFFLINE_SECS = 600  # 10 minutes
+FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
+FABRIC_TEST_MODE = os.getenv("FABRIC_TEST_MODE", "false").lower() == "true"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -102,44 +108,51 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting Summit.OS Data Fabric Service")
 
-    # DB connection (asyncpg)
-    pg_url = os.getenv("POSTGRES_URL", "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os")
-    # Normalize URL if needed
-    if pg_url.startswith("postgresql://"):
-        pg_url = pg_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # DB connection
+    if FABRIC_TEST_MODE:
+        pg_url = "sqlite+aiosqlite://"
+    else:
+        pg_url = os.getenv("POSTGRES_URL", "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os")
+        if pg_url.startswith("postgresql://"):
+            pg_url = pg_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     engine = create_async_engine(pg_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    async with engine.begin() as conn:
-        await conn.run_sync(metadata.create_all)
 
-    # Redis connection
-    redis_client = RedisClient(settings.redis_url)
-    await redis_client.connect()
-    logger.info("Connected to Redis")
-
-    # MQTT client
-    mqtt_client = MQTTClient(
-        broker=settings.mqtt_broker,
-        port=settings.mqtt_port,
-        username=settings.mqtt_username,
-        password=settings.mqtt_password,
-    )
-    await mqtt_client.connect()
-    logger.info("Connected to MQTT broker")
+    if FABRIC_TEST_MODE:
+        async with engine.begin() as conn:
+            await conn.run_sync(metadata.create_all)
+    else:
+        _run_migrations()
 
     # WebSocket manager
     websocket_manager = WebSocketManager()
 
-    # Subscribe to topics
-    await mqtt_client.subscribe("observations/#", _handle_observation)
-    await mqtt_client.subscribe("detections/#", _handle_observation)  # legacy
-    await mqtt_client.subscribe("missions/#", _handle_mission)
-    await mqtt_client.subscribe("health/+/heartbeat", _handle_heartbeat)
+    if not FABRIC_TEST_MODE:
+        # Redis connection
+        redis_client = RedisClient(settings.redis_url)
+        await redis_client.connect()
+        logger.info("Connected to Redis")
 
-    # Start background tasks
-    asyncio.create_task(telemetry_processor())
-    asyncio.create_task(alert_processor())
-    asyncio.create_task(heartbeat_watcher())
+        # MQTT client
+        mqtt_client = MQTTClient(
+            broker=settings.mqtt_broker,
+            port=settings.mqtt_port,
+            username=settings.mqtt_username,
+            password=settings.mqtt_password,
+        )
+        await mqtt_client.connect()
+        logger.info("Connected to MQTT broker")
+
+        # Subscribe to topics
+        await mqtt_client.subscribe("observations/#", _handle_observation)
+        await mqtt_client.subscribe("detections/#", _handle_observation)  # legacy
+        await mqtt_client.subscribe("missions/#", _handle_mission)
+        await mqtt_client.subscribe("health/+/heartbeat", _handle_heartbeat)
+
+        # Start background tasks
+        asyncio.create_task(telemetry_processor())
+        asyncio.create_task(alert_processor())
+        asyncio.create_task(heartbeat_watcher())
 
     yield
 
@@ -219,9 +232,21 @@ async def publish_telemetry(telemetry: "TelemetryData"):
     try:
         topic = f"telemetry/{telemetry.device_id}"
         await mqtt_client.publish(topic, telemetry.model_dump_json())
-        await redis_client.add_telemetry(telemetry)  # type: ignore[arg-type]
+        # Convert to internal model for Redis
+        loc = Location(
+            latitude=float(telemetry.location.get("lat")),
+            longitude=float(telemetry.location.get("lon")),
+            altitude=telemetry.location.get("alt"),
+        )
+        tm = TelemetryMessage(
+            device_id=telemetry.device_id,
+            timestamp=telemetry.timestamp,
+            location=loc,
+            sensors=telemetry.sensors,
+        )
+        await redis_client.add_telemetry(tm)
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "telemetry", "data": telemetry.model_dump()}))
+            await websocket_manager.broadcast(json.dumps({"type": "telemetry", "data": tm.model_dump()}))
         return {"status": "published", "device_id": telemetry.device_id}
     except Exception as e:
         logger.error("Failed to publish telemetry", error=str(e))
@@ -234,9 +259,20 @@ async def publish_alert(alert: "AlertData"):
     try:
         topic = f"alerts/{alert.alert_id}"
         await mqtt_client.publish(topic, alert.model_dump_json())
-        await redis_client.add_alert(alert)  # type: ignore[arg-type]
+        # Convert to internal model for Redis
+        aloc = Location(latitude=float(alert.location.get("lat")), longitude=float(alert.location.get("lon")))
+        sev = SeverityLevel(alert.severity.lower()) if isinstance(alert.severity, str) else alert.severity
+        am = AlertMessage(
+            alert_id=alert.alert_id,
+            timestamp=alert.timestamp,
+            severity=sev,
+            location=aloc,
+            description=alert.description,
+            source=alert.source,
+        )
+        await redis_client.add_alert(am)
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "alert", "data": alert.model_dump()}))
+            await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
         return {"status": "published", "alert_id": alert.alert_id}
     except Exception as e:
         logger.error("Failed to publish alert", error=str(e))
@@ -249,9 +285,22 @@ async def publish_mission_update(mission: "MissionData"):
     try:
         topic = f"missions/{mission.mission_id}"
         await mqtt_client.publish(topic, mission.model_dump_json())
-        await redis_client.add_mission_update(mission)  # type: ignore[arg-type]
+        # Convert to internal model for Redis
+        mstatus = mission.status.lower() if isinstance(mission.status, str) else str(mission.status)
+        try:
+            ms = MissionStatus(mstatus)
+        except Exception:
+            ms = MissionStatus.ACTIVE
+        mu = MissionUpdate(
+            mission_id=mission.mission_id,
+            timestamp=mission.timestamp,
+            status=ms,
+            assets=mission.assets,
+            objectives=mission.objectives,
+        )
+        await redis_client.add_mission_update(mu)
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "mission", "data": mission.model_dump()}))
+            await websocket_manager.broadcast(json.dumps({"type": "mission", "data": mu.model_dump()}))
         return {"status": "published", "mission_id": mission.mission_id}
     except Exception as e:
         logger.error("Failed to publish mission update", error=str(e))
@@ -276,11 +325,12 @@ async def register_node(req: NodeRegisterRequest):
     if req.type.upper() == "TOWER":
         asyncio.create_task(_compute_viewshed_stub(req.id))
 
+    token = _issue_token(req.id, topics, policy, ttl_seconds=600)
     return NodeRegisterResponse(
         status="accepted",
         mqtt_topics=topics,
         policy=policy,
-        token="JWT...",  # TODO: integrate real issuance
+        token=token,
     )
 
 @app.delete("/api/v1/nodes/{node_id}")
@@ -351,6 +401,30 @@ async def list_coverages():
         res = await session.execute(text("SELECT node_id, viewshed_geojson, version, updated_at FROM coverages ORDER BY updated_at DESC"))
         rows = [dict(r) for r in res.mappings().all()]
         return {"coverages": rows}
+
+@app.get("/api/v1/coverage/union")
+async def coverage_union():
+    """Return union of all viewshed polygons as GeoJSON (or null if none)."""
+    assert SessionLocal is not None
+    # Shapely is optional; return null union if not available
+    try:
+        import shapely.geometry as sgeom
+        from shapely.ops import unary_union
+        from shapely.geometry import mapping
+    except Exception:
+        return {"union": None, "count": 0}
+    async with SessionLocal() as session:
+        res = await session.execute(text("SELECT viewshed_geojson FROM coverages WHERE viewshed_geojson IS NOT NULL"))
+        geoms = []
+        for r in res.mappings().all():
+            try:
+                geoms.append(sgeom.shape(r["viewshed_geojson"]))
+            except Exception:
+                continue
+        if not geoms:
+            return {"union": None, "count": 0}
+        u = unary_union(geoms)
+        return {"union": mapping(u), "count": len(geoms)}
 
 # Handlers
 async def _handle_observation(topic: str, data: Dict[str, Any]):
@@ -471,6 +545,45 @@ async def _compute_viewshed_stub(node_id: str):
             await websocket_manager.broadcast(json.dumps({"type": "coverage_updated", "node_id": node_id}))
     except Exception as e:
         logger.error(f"Viewshed stub failed: {e}")
+
+# JWT helper and token refresh
+def _issue_token(node_id: str, topics: Dict[str, List[str]], policy: Dict[str, Any], ttl_seconds: int = 600) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": node_id,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(seconds=ttl_seconds)).timestamp()),
+        "topics": topics,
+        "policy": policy,
+    }
+    return jwt.encode(payload, FABRIC_JWT_SECRET, algorithm="HS256")
+
+class TokenResponse(BaseModel):
+    token: str
+    expires_in: int
+
+@app.post("/api/v1/nodes/{node_id}/token", response_model=TokenResponse)
+async def refresh_token(node_id: str):
+    topics = {
+        "pub": [f"devices/{node_id}/telemetry", f"alerts/{node_id}"],
+        "sub": [f"tasks/{node_id}/#", f"control/{node_id}/#"],
+    }
+    policy = {"max_bitrate_kbps": 600, "retention_hours": 48}
+    token = _issue_token(node_id, topics, policy, ttl_seconds=600)
+    return TokenResponse(token=token, expires_in=600)
+
+def _run_migrations():
+    try:
+        ini_path = os.path.join(os.path.dirname(__file__), 'alembic.ini')
+        cfg = AlembicConfig(ini_path)
+        # Ensure env picks up the DB URL
+        if not os.getenv('POSTGRES_URL'):
+            os.environ['POSTGRES_URL'] = 'postgresql://summit:summit_password@localhost:5432/summit_os'
+        alembic_command.upgrade(cfg, 'head')
+        logger.info("Alembic migrations applied")
+    except Exception as e:
+        logger.error(f"Failed to run migrations: {e}")
+        raise
 
 if __name__ == "__main__":
     import uvicorn
