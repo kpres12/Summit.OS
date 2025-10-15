@@ -54,7 +54,8 @@ async def lifespan(app: FastAPI):
     if engine:
         await engine.dispose()
 
-app = FastAPI(title="Summit API Gateway", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Summit API Gateway", version="0.3.0", lifespan=lifespan)
+FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
 FUSION_URL = os.getenv("FUSION_URL", "http://fusion:8002")
 TASKING_URL = os.getenv("TASKING_URL", "http://tasking:8004")
 
@@ -232,6 +233,38 @@ async def get_mission_status(asset_id: str):
 @app.get("/v1/worldstate")
 async def get_world_state():
     return {"entities": []}
+
+# -------------------------
+# Node registry proxy to Fabric
+# -------------------------
+class NodeRegisterRequest(BaseModel):
+    id: str
+    type: str
+    pubkey: str | None = None
+    fw_version: str | None = None
+    location: dict | None = None
+    capabilities: list[str] = []
+    comm: list[str] = []
+
+@app.post("/api/v1/nodes/register")
+async def proxy_register_node(req: NodeRegisterRequest):
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(f"{FABRIC_URL}/api/v1/nodes/register", json=req.model_dump())
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+@app.delete("/api/v1/nodes/{node_id}")
+async def proxy_retire_node(node_id: str):
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.delete(f"{FABRIC_URL}/api/v1/nodes/{node_id}")
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
 
 
 @app.get("/v1/observations")
