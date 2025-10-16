@@ -2,7 +2,9 @@
 
 ## Overview
 
-Summit.OS is a distributed intelligence fabric designed to unify sensors, drones, and ground robots into a shared, real-time world model for decision-making and coordinated action. It functions as an AI-driven "operating system for the physical world," purpose-built for wildfire management, disaster resilience, and critical infrastructure protection.
+Summit.OS is a distributed intelligence kernel that serves as the foundational operating system for autonomous defense and security systems. Like Anduril's LatticeOS, Summit.OS provides the core infrastructure, communication protocols, and AI reasoning capabilities that applications can build upon.
+
+Summit.OS unifies sensors, drones, and ground robots into a shared, real-time world model for decision-making and coordinated action. It functions as an AI-driven "kernel for the physical world," providing the essential services that specialized applications like Sentinel (wildfire management) require for autonomous operation.
 
 ## System Architecture
 

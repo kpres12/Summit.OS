@@ -22,8 +22,12 @@ The Summit.OS Edge Protocol defines the communication standards and data formats
 │           (mTLS, JWT, OAuth)            │
 └─────────────────────────────────────────┘
 ┌─────────────────────────────────────────┐
+│          Multi-Link Layer               │
+│    (Link Selection, Failover, QoS)      │
+└─────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
 │            Network Layer                │
-│         (TCP/IP, UDP, 5G, WiFi)         │
+│ (Radio Mesh, Cellular, Satellite, WiFi) │
 └─────────────────────────────────────────┘
 ```
 
@@ -397,7 +401,32 @@ def resolve_conflict(local_msg, remote_msg):
   "capabilities": {
     "sensors": ["thermal_camera", "rgb_camera", "lidar", "gps"],
     "actuators": ["propellers", "gimbal", "landing_gear"],
-    "communication": ["wifi", "cellular", "radio"],
+    "communication": {
+      "radio_mesh": {
+        "enabled": true,
+        "frequency_bands": ["2.4GHz", "5GHz", "900MHz"],
+        "mesh_protocol": "802.11s",
+        "max_hops": 5,
+        "power_level": "high"
+      },
+      "cellular": {
+        "enabled": true,
+        "networks": ["LTE", "5G"],
+        "carriers": ["primary", "secondary"],
+        "data_limit_mb": 10000
+      },
+      "satellite": {
+        "enabled": false,
+        "provider": "starlink",
+        "dish_type": "mobile",
+        "backup_only": true
+      },
+      "wifi": {
+        "enabled": true,
+        "bands": ["2.4GHz", "5GHz"],
+        "infrastructure_only": false
+      }
+    },
     "processing": {
       "cpu": "ARM Cortex-A78",
       "memory": "8GB",
@@ -429,6 +458,37 @@ def resolve_conflict(local_msg, remote_msg):
       "compression": true
     },
     "communication": {
+      "multi_link": {
+        "enabled": true,
+        "primary_link": "radio_mesh",
+        "failover_order": ["radio_mesh", "cellular", "satellite", "wifi"],
+        "link_selection_criteria": {
+          "latency_weight": 0.4,
+          "bandwidth_weight": 0.3,
+          "reliability_weight": 0.3
+        },
+        "autonomous_mode": {
+          "enabled": true,
+          "sync_interval": 300,
+          "buffer_size_mb": 100
+        }
+      },
+      "radio_mesh": {
+        "frequency": "900MHz",
+        "power_level": "high",
+        "mesh_id": "summit-mesh",
+        "encryption": "wpa3"
+      },
+      "cellular": {
+        "apn": "iot.carrier.com",
+        "bands": ["B1", "B3", "B7", "B20"],
+        "fallback_2g": false
+      },
+      "satellite": {
+        "provider": "starlink",
+        "backup_only": true,
+        "data_priority": "critical_only"
+      },
       "mqtt": {
         "broker": "mqtt.summit-os.bigmt.ai",
         "port": 1883,
