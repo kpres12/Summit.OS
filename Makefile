@@ -167,3 +167,14 @@ stop:
 	@echo "Stopping Summit.OS services..."
 	@docker-compose -f infra/docker/docker-compose.yml down
 	@echo "Services stopped!"
+
+# Toggle direct autopilot fallback (TASKING service)
+tasking-direct-on:
+	@echo "Enabling TASKING_DIRECT_AUTOPILOT and restarting tasking service..."
+	@TASKING_DIRECT_AUTOPILOT=true docker-compose -f infra/docker/docker-compose.yml up -d --no-deps --build tasking
+	@echo "Direct autopilot enabled."
+
+tasking-direct-off:
+	@echo "Disabling TASKING_DIRECT_AUTOPILOT and restarting tasking service..."
+	@TASKING_DIRECT_AUTOPILOT=false docker-compose -f infra/docker/docker-compose.yml up -d --no-deps --build tasking
+	@echo "Direct autopilot disabled."
