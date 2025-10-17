@@ -39,6 +39,10 @@ class VisionInference:
                  conf_threshold: float = 0.6,
                  labels: Optional[List[str]] = None):
         self.conf_threshold = conf_threshold
+        # Allow labels via env FUSION_LABELS="smoke,flame,human,..."
+        env_labels = os.getenv("FUSION_LABELS")
+        if env_labels and not labels:
+            labels = [s.strip() for s in env_labels.split(",") if s.strip()]
         self.labels = labels or ["object"]
         self.model_path = model_path or os.path.join(
             os.getenv("MODEL_REGISTRY", "/models"), "default_vision.onnx"
@@ -102,12 +106,82 @@ class VisionInference:
             return []
 
     def _postprocess(self, outputs: List[np.ndarray]) -> List[Dict[str, Any]]:
-        # Expecting a generic YOLO-like output or adapt your own.
-        # For safety, treat any output as empty without a specific format.
-        # Users should replace with their postprocess matching their model.
+        """Postprocess model outputs into a common detection dict format.
+        Supported patterns (best-effort):
+        - YOLOv8 ONNX with NMS: (N, >=6) rows = [x1,y1,x2,y2,score,class]
+        - RT-DETR / DETR-like: boxes (N,4), scores (N,num_classes) or (N,)
+        - Fallback: empty list
+        """
         detections: List[Dict[str, Any]] = []
-        # Placeholder: no-op; encourage users to implement per-model mapping.
-        return detections
+        try:
+            if not outputs:
+                return []
+            out0 = outputs[0]
+            # Normalize to numpy
+            try:
+                out0 = np.array(out0)
+            except Exception:
+                pass
+
+            # Case 1: Single array with [x1,y1,x2,y2,score,cls]
+            if hasattr(out0, "ndim") and out0.ndim == 2 and out0.shape[1] >= 6:
+                for row in out0:
+                    try:
+                        x1, y1, x2, y2, score, cls_idx = row[:6]
+                        score = float(score)
+                        if score < self.conf_threshold:
+                            continue
+                        w = max(0.0, float(x2) - float(x1))
+                        h = max(0.0, float(y2) - float(y1))
+                        cid = int(cls_idx)
+                        detections.append({
+                            "class": self._label_from_idx(cid),
+                            "class_id": cid,
+                            "confidence": score,
+                            "bbox": [float(x1), float(y1), w, h],  # xywh
+                        })
+                    except Exception:
+                        continue
+                return detections
+
+            # Case 2: Two arrays: boxes and scores (N,4) and (N,C) or (N,)
+            if len(outputs) >= 2:
+                boxes = np.array(outputs[0])
+                scores = np.array(outputs[1])
+                if boxes.ndim != 2 or boxes.shape[1] < 4:
+                    return []
+                if scores.ndim == 2:  # class scores
+                    cls_idx = np.argmax(scores, axis=1)
+                    conf = scores[np.arange(scores.shape[0]), cls_idx]
+                else:  # (N,)
+                    cls_idx = np.zeros((boxes.shape[0],), dtype=int)
+                    conf = scores
+                for i in range(min(boxes.shape[0], len(conf))):
+                    try:
+                        score = float(conf[i])
+                        if score < self.conf_threshold:
+                            continue
+                        x1, y1, x2, y2 = boxes[i][:4]
+                        w = max(0.0, float(x2) - float(x1))
+                        h = max(0.0, float(y2) - float(y1))
+                        cid = int(cls_idx[i])
+                        detections.append({
+                            "class": self._label_from_idx(cid),
+                            "class_id": cid,
+                            "confidence": score,
+                            "bbox": [float(x1), float(y1), w, h],
+                        })
+                    except Exception:
+                        continue
+                return detections
+        except Exception:
+            return []
+        return []
+
+    def _label_from_idx(self, idx: int) -> str:
+        if 0 <= idx < len(self.labels):
+            return self.labels[idx]
+        return self.labels[0] if self.labels else str(idx)
 
     def _detect_heuristic(self, image: np.ndarray) -> List[Dict[str, Any]]:
         # Very simple motion/contrast heuristic to produce low-confidence detection

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.summit-os.local/planner.to.actuation.schema.json",
+  "title": "PlannerToActuation",
+  "type": "object",
+  "properties": {
+    "mode": { "type": "string", "enum": ["SCRAPE", "BLOW", "HYBRID"] },
+    "blade": {
+      "type": "object",
+      "properties": {
+        "depth_cm": { "type": "number" },
+        "angle_deg": { "type": "number" }
+      },
+      "required": ["depth_cm", "angle_deg"],
+      "additionalProperties": false
+    },
+    "velocity_mps": { "type": "number", "minimum": 0 },
+    "path": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "type": "number" },
+        "minItems": 2,
+        "maxItems": 2
+      }
+    }
+  },
+  "required": ["mode", "blade", "velocity_mps", "path"],
+  "additionalProperties": false
+}

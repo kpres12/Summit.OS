@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.summit-os.local/perception.to.planner.schema.json",
+  "title": "PerceptionToPlanner",
+  "type": "object",
+  "properties": {
+    "timestamp": { "type": "number" },
+    "detections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "class": { "type": "string" },
+          "bbox": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+          "conf": { "type": "number", "minimum": 0, "maximum": 1 },
+          "track_id": { "type": "integer" },
+          "velocity_mps": { "type": "number" }
+        },
+        "required": ["class", "bbox", "conf"],
+        "additionalProperties": true
+      }
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "class": { "type": "string" },
+          "polygon": {
+            "type": "array",
+            "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+          }
+        },
+        "required": ["class", "polygon"],
+        "additionalProperties": false
+      }
+    },
+    "depth": { "anyOf": [ {"type": "string"}, {"type": "object"} ] },
+    "robot_pose": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "yaw": { "type": "number" }
+      },
+      "required": ["x", "y", "yaw"],
+      "additionalProperties": false
+    },
+    "thermal": {
+      "type": "object",
+      "properties": {
+        "max_track_temp_c": { "type": "number" }
+      },
+      "required": ["max_track_temp_c"],
+      "additionalProperties": true
+    }
+  },
+  "required": ["timestamp", "detections"],
+  "additionalProperties": true
+}

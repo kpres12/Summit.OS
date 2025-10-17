@@ -43,6 +43,13 @@ validator: Optional[Draft202012Validator] = None
 mqtt_client: Optional[mqtt.Client] = None
 vision: Optional[VisionInference] = None
 
+# Optional tracking
+try:
+    from .tracking import SimpleTracker  # lightweight local tracker
+except Exception:
+    SimpleTracker = None  # type: ignore
+tracker: Optional["SimpleTracker"] = None  # type: ignore
+
 
 def _to_asyncpg_url(url: str) -> str:
     if url.startswith("postgresql+asyncpg://"):
@@ -118,6 +125,11 @@ async def lifespan(app: FastAPI):
         conf = float(os.getenv("FUSION_CONF_THRESHOLD", "0.6"))
         # Lazy create inference
         globals()['vision'] = VisionInference(model_path=model_path, conf_threshold=conf)
+        # Optional tracking
+        enable_tracking = os.getenv("FUSION_ENABLE_TRACKING", "false").lower() == "true"
+        if enable_tracking and SimpleTracker is not None:
+            globals()['tracker'] = SimpleTracker(iou_threshold=float(os.getenv("FUSION_TRACK_IOU", "0.3")),
+                                                max_age_s=float(os.getenv("FUSION_TRACK_MAX_AGE_S", "1.0")))
         # MQTT client to receive images
         broker = os.getenv("MQTT_BROKER", "localhost")
         port = int(os.getenv("MQTT_PORT", "1883"))
@@ -224,6 +236,17 @@ def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
         detections = vision.detect(img)
         if not detections:
             return
+        # Optional tracking
+        if tracker is not None:
+            ts = None
+            try:
+                ts_iso = meta.get("ts_iso")
+                if ts_iso:
+                    from datetime import datetime
+                    ts = datetime.fromisoformat(str(ts_iso).replace("Z", "+00:00")).timestamp()
+            except Exception:
+                ts = None
+            detections = tracker.update(detections, timestamp=ts)
         # Persist detections as observations
         loop = asyncio.get_event_loop()
         loop.create_task(_persist_observations_from_detections(detections, meta))
