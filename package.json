@@ -1,0 +1,22 @@
+{
+  "name": "summit-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Summit.OS monorepo convenience scripts",
+  "scripts": {
+    "start": "make dev",
+    "dev": "make dev",
+    "dev:services": "make dev-services",
+    "dev:apps": "make dev-apps",
+    "dev:console": "make dev-console",
+    "dev:backend": "make dev-backend",
+    "stop": "make stop",
+    "clean": "make clean",
+    "logs": "make logs",
+    "health": "make health",
+    "lint": "make lint",
+    "format": "make format",
+    "test": "make test",
+    "install-deps": "make install-deps"
+  }
+}
