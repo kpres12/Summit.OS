@@ -62,6 +62,13 @@ websocket_manager: Optional[WebSocketManager] = None
 engine: Optional[AsyncEngine] = None
 SessionLocal: Optional[sessionmaker] = None
 
+# In-memory world state cache (thin-slice)
+world_state: Dict[str, Any] = {
+    "devices": {},  # device_id -> {lat, lon, alt, ts_iso, status, sensors}
+    "alerts": [],   # recent alerts (most recent first)
+}
+MAX_ALERTS = int(os.getenv("FABRIC_MAX_ALERTS", "200"))
+
 # Database metadata and tables (registry)
 metadata = MetaData()
 
@@ -225,6 +232,35 @@ class NodeRegisterResponse(BaseModel):
 async def health_check():
     return {"status": "ok", "service": "fabric"}
 
+# WebSocket endpoint for real-time multiplexed events
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    global websocket_manager
+    if websocket_manager is None:
+        websocket_manager = WebSocketManager()
+    await websocket_manager.connect(websocket)
+    try:
+        # Keep the connection alive; ignore incoming messages for now
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket)
+
+# Simple COP/world-state endpoint (thin-slice)
+@app.get("/api/v1/worldstate")
+async def get_world_state():
+    try:
+        devices = list(world_state.get("devices", {}).values())
+        alerts = world_state.get("alerts", [])
+    except Exception:
+        devices, alerts = [], []
+    return {
+        "devices": devices,
+        "alerts": alerts,
+        "counts": {"devices": len(devices), "alerts": len(alerts)},
+        "ts_iso": datetime.now(timezone.utc).isoformat(),
+    }
+
 @app.post("/telemetry")
 async def publish_telemetry(telemetry: "TelemetryData"):
     if not mqtt_client or not redis_client:
@@ -245,6 +281,19 @@ async def publish_telemetry(telemetry: "TelemetryData"):
             sensors=telemetry.sensors,
         )
         await redis_client.add_telemetry(tm)
+        # Update in-memory world state
+        try:
+            world_state["devices"][telemetry.device_id] = {
+                "device_id": telemetry.device_id,
+                "lat": float(loc.latitude),
+                "lon": float(loc.longitude),
+                "alt": loc.altitude,
+                "ts_iso": telemetry.timestamp.isoformat(),
+                "status": telemetry.status,
+                "sensors": telemetry.sensors,
+            }
+        except Exception:
+            pass
         if websocket_manager:
             await websocket_manager.broadcast(json.dumps({"type": "telemetry", "data": tm.model_dump()}))
         return {"status": "published", "device_id": telemetry.device_id}
@@ -271,6 +320,20 @@ async def publish_alert(alert: "AlertData"):
             source=alert.source,
         )
         await redis_client.add_alert(am)
+        # Update in-memory world state (alerts ring buffer)
+        try:
+            world_state["alerts"].insert(0, {
+                "alert_id": alert.alert_id,
+                "severity": str(sev.value if hasattr(sev, "value") else sev),
+                "lat": float(aloc.latitude),
+                "lon": float(aloc.longitude),
+                "description": alert.description,
+                "source": alert.source,
+                "ts_iso": alert.timestamp.isoformat(),
+            })
+            del world_state["alerts"][MAX_ALERTS:]
+        except Exception:
+            pass
         if websocket_manager:
             await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
         return {"status": "published", "alert_id": alert.alert_id}

@@ -58,6 +58,7 @@ app = FastAPI(title="Summit API Gateway", version="0.3.0", lifespan=lifespan)
 FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
 FUSION_URL = os.getenv("FUSION_URL", "http://fusion:8002")
 TASKING_URL = os.getenv("TASKING_URL", "http://tasking:8004")
+INTELLIGENCE_URL = os.getenv("INTELLIGENCE_URL", "http://intelligence:8003")
 
 # Optional mission plugins (e.g., sentinel)
 MISSIONS = os.getenv("MISSIONS", "").split(",") if os.getenv("MISSIONS") else []
@@ -283,6 +284,21 @@ async def get_observations(cls: str | None = None, limit: int = 50):
             return {"observations": r.json()}
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Fusion upstream error: {e}")
+
+
+@app.get("/v1/advisories")
+async def get_advisories(risk_level: str | None = None, limit: int = 50):
+    params = {"limit": str(limit)}
+    if risk_level:
+        params["risk_level"] = risk_level
+    url = f"{INTELLIGENCE_URL}/advisories"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, params=params)
+            r.raise_for_status()
+            return {"advisories": r.json()}
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Intelligence upstream error: {e}")
 
 
 # Proxy missions to tasking (authoritative)

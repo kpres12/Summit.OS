@@ -1,10 +1,9 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { io, Socket } from 'socket.io-client'
 
 interface SummitContextType {
-  socket: Socket | null
+  ws: WebSocket | null
   isConnected: boolean
   alerts: any[]
   telemetry: any[]
@@ -12,7 +11,7 @@ interface SummitContextType {
 }
 
 const SummitContext = createContext<SummitContextType>({
-  socket: null,
+  ws: null,
   isConnected: false,
   alerts: [],
   telemetry: [],
@@ -20,56 +19,52 @@ const SummitContext = createContext<SummitContextType>({
 })
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [socket, setSocket] = useState<Socket | null>(null)
+  const [ws, setWs] = useState<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [alerts, setAlerts] = useState<any[]>([])
   const [telemetry, setTelemetry] = useState<any[]>([])
   const [missions, setMissions] = useState<any[]>([])
 
   useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io('ws://localhost:8001', {
-      transports: ['websocket']
-    })
+    const base = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001'
+    const url = base.endsWith('/ws') ? base : `${base}/ws`
+    const socket = new WebSocket(url)
 
-    newSocket.on('connect', () => {
-      console.log('Connected to Summit.OS')
+    socket.onopen = () => {
       setIsConnected(true)
-    })
-
-    newSocket.on('disconnect', () => {
-      console.log('Disconnected from Summit.OS')
+    }
+    socket.onclose = () => {
       setIsConnected(false)
-    })
-
-    newSocket.on('telemetry', (data) => {
-      setTelemetry(prev => [...prev.slice(-99), data])
-    })
-
-    newSocket.on('alert', (data) => {
-      setAlerts(prev => [data, ...prev.slice(0, 99)])
-    })
-
-    newSocket.on('mission', (data) => {
-      setMissions(prev => {
-        const existing = prev.find(m => m.mission_id === data.mission_id)
-        if (existing) {
-          return prev.map(m => m.mission_id === data.mission_id ? data : m)
+    }
+    socket.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        if (msg?.type === 'telemetry') {
+          setTelemetry(prev => [...prev.slice(-99), msg.data])
+        } else if (msg?.type === 'alert') {
+          setAlerts(prev => [msg.data, ...prev.slice(0, 99)])
+        } else if (msg?.type === 'mission' || msg?.type === 'mission_event') {
+          const data = msg.data
+          setMissions(prev => {
+            const existing = prev.find((m: any) => m.mission_id === data.mission_id)
+            if (existing) {
+              return prev.map((m: any) => m.mission_id === data.mission_id ? data : m)
+            }
+            return [data, ...prev.slice(0, 99)]
+          })
         }
-        return [data, ...prev.slice(0, 99)]
-      })
-    })
+      } catch {}
+    }
 
-    setSocket(newSocket)
-
+    setWs(socket)
     return () => {
-      newSocket.close()
+      try { socket.close() } catch {}
     }
   }, [])
 
   return (
     <SummitContext.Provider value={{
-      socket,
+      ws,
       isConnected,
       alerts,
       telemetry,
