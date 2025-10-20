@@ -1,28 +1,30 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Providers } from './providers'
+import type { Metadata } from "next";
+import { IBM_Plex_Mono } from "next/font/google";
+import "./globals.css";
 
-const inter = Inter({ subsets: ['latin'] })
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+});
 
 export const metadata: Metadata = {
-  title: 'FireLine Console - Summit.OS',
-  description: 'Real-time wildfire intelligence and autonomous coordination platform',
-  keywords: ['wildfire', 'AI', 'autonomous', 'robotics', 'emergency response'],
-}
+  title: "Summit.OS Command Interface",
+  description: "Tactical operations control center for autonomous systems coordination",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en" className="dark">
-      <body className={inter.className}>
-        <Providers>
-          {children}
-        </Providers>
+    <html lang="en">
+      <body
+        className={`${ibmPlexMono.variable} antialiased`}
+      >
+        {children}
       </body>
     </html>
-  )
+  );
 }

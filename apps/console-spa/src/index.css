@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  --soviet-green: #00FF91;
+  --soviet-green-dim: #00CC74;
+  --soviet-green-dark: #00AA5E;
+  --alert-amber: #FF9933;
+  --alert-red: #FF3333;
+  --background: #0A0A0A;
+  --background-panel: #0F0F0F;
+  --text-primary: #00FF91;
+  --text-secondary: #00CC74;
+  --text-dim: #006644;
+  --grid-line: rgba(0, 255, 145, 0.15);
+  --scanline: rgba(0, 255, 145, 0.05);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+}
+
+html, body {
+  overflow: hidden;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
+
+body { position: relative; }
+
+/* CRT Scanline effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: linear-gradient(to bottom, transparent 50%, var(--scanline) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 9999;
+  animation: scanline-drift 10s linear infinite;
+}
+
+/* CRT Flicker */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--background);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9998;
+  animation: crt-flicker 0.15s infinite;
+}
+
+@keyframes scanline-drift { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }
+@keyframes crt-flicker {
+  0% { opacity: 0.027; }
+  5% { opacity: 0.034; }
+  10% { opacity: 0.043; }
+  15% { opacity: 0.037; }
+  20% { opacity: 0.031; }
+  25% { opacity: 0.029; }
+  30% { opacity: 0.038; }
+  35% { opacity: 0.032; }
+  40% { opacity: 0.035; }
+  45% { opacity: 0.028; }
+  50% { opacity: 0.041; }
+  55% { opacity: 0.033; }
+  60% { opacity: 0.036; }
+  65% { opacity: 0.030; }
+  70% { opacity: 0.039; }
+  75% { opacity: 0.034; }
+  80% { opacity: 0.031; }
+  85% { opacity: 0.037; }
+  90% { opacity: 0.029; }
+  95% { opacity: 0.042; }
+  100% { opacity: 0.027; }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--background-panel); border-left: 1px solid var(--grid-line); }
+::-webkit-scrollbar-thumb { background: var(--text-dim); border: 1px solid var(--soviet-green-dark); }
+::-webkit-scrollbar-thumb:hover { background: var(--soviet-green-dark); }
+
+/* Text glow helpers */
+.text-glow { text-shadow: 0 0 2px var(--soviet-green), 0 0 4px var(--soviet-green), 0 0 6px var(--soviet-green-dim); }
+.text-glow-amber { text-shadow: 0 0 2px var(--alert-amber), 0 0 4px var(--alert-amber); }
+
+::selection { background: var(--soviet-green-dark); color: var(--background); }

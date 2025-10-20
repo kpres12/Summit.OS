@@ -5,6 +5,12 @@ from .alerts import AlertSchema, SeverityLevel
 from .missions import MissionSchema, MissionStatus
 from .devices import DeviceSchema, DeviceStatus
 from .intelligence import IntelligenceSchema, RiskAssessment
+from .drones import (
+    DroneType, DroneRole, PayloadType, MissionTier,
+    DroneCapabilities, PayloadConfig, InterventionPlan,
+    SwarmCoordination, FireThreshold, TieredMissionRequest,
+    TieredMissionStatus, DroneBoxConfig, TieredAsset
+)
 
 __all__ = [
     "TelemetrySchema",
@@ -16,5 +22,19 @@ __all__ = [
     "DeviceSchema",
     "DeviceStatus",
     "IntelligenceSchema",
-    "RiskAssessment"
+    "RiskAssessment",
+    # Tiered drone response
+    "DroneType",
+    "DroneRole", 
+    "PayloadType",
+    "MissionTier",
+    "DroneCapabilities",
+    "PayloadConfig",
+    "InterventionPlan",
+    "SwarmCoordination",
+    "FireThreshold",
+    "TieredMissionRequest",
+    "TieredMissionStatus",
+    "DroneBoxConfig",
+    "TieredAsset"
 ]
