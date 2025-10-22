@@ -291,6 +291,10 @@ async def _persist_observations_from_detections(detections: List[Dict[str, Any]]
             pass
 
 
+# Simple debounce registry to avoid spamming Sentinel with repeated nearby detections
+_last_simulation_ts: float | None = None
+_last_simulation_point: tuple[float, float] | None = None
+
 async def _redis_stream_consumer():
     """Consume observations from Fabric's Redis Stream."""
     assert SessionLocal is not None
@@ -343,6 +347,51 @@ async def _redis_stream_consumer():
                                 )
                             )
                             await session.commit()
+
+                        # Trigger Sentinel simulation on confirmed smoke/ignition with location
+                        try:
+                            cls_lower = str(data.get("class", "")).lower()
+                            is_smoke = cls_lower in {"smoke", "fire.smoke", "fire"}
+                            conf_thr = float(os.getenv("SENTINEL_TRIGGER_CONF_THRESHOLD", "0.7"))
+                            debounce_s = float(os.getenv("SENTINEL_TRIGGER_DEBOUNCE_S", "60"))
+                            radius_m = float(os.getenv("SENTINEL_TRIGGER_DEBOUNCE_RADIUS_M", "200"))
+
+                            if is_smoke and lat is not None and lon is not None and conf >= conf_thr:
+                                # Debounce: skip if last call was very recent and nearby
+                                from time import time as _now
+                                global _last_simulation_ts, _last_simulation_point
+                                now_s = _now()
+                                should_call = True
+                                if _last_simulation_ts is not None and _last_simulation_point is not None:
+                                    dt = now_s - _last_simulation_ts
+                                    if dt < debounce_s:
+                                        # compute haversine distance
+                                        from math import radians, sin, cos, sqrt, atan2
+                                        R = 6371000.0
+                                        lat1, lon1 = map(radians, [lat, lon])
+                                        lat2, lon2 = map(radians, _last_simulation_point)
+                                        dlat = lat2 - lat1
+                                        dlon = lon2 - lon1
+                                        a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
+                                        dist = 2*R*atan2(sqrt(a), sqrt(1-a))
+                                        if dist < radius_m:
+                                            should_call = False
+                                if should_call:
+                                    _last_simulation_ts = now_s
+                                    _last_simulation_point = (lat, lon)
+                                    # Build basic conditions from attributes if present
+                                    cond = {
+                                        "temperature_c": attributes.get("temperature") if isinstance(attributes, dict) else None,
+                                        "relative_humidity": attributes.get("humidity") if isinstance(attributes, dict) else None,
+                                        "wind_speed_mps": attributes.get("wind_speed") if isinstance(attributes, dict) else None,
+                                        "wind_direction_deg": attributes.get("wind_direction") if isinstance(attributes, dict) else None,
+                                        "elevation_m": attributes.get("elevation") if isinstance(attributes, dict) else None,
+                                    }
+                                    from .sentinel_client import simulate_spread as _sentinel_sim
+                                    asyncio.create_task(_sentinel_sim(lat, lon, cond))
+                        except Exception as _e:
+                            # Non-fatal; continue stream processing
+                            pass
                     
                     except Exception as e:
                         print(f"Failed to process observation: {e}")
