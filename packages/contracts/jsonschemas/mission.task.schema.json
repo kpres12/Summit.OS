@@ -14,7 +14,10 @@
         "properties": {
           "lat": { "type": "number" },
           "lon": { "type": "number" },
-          "alt": { "type": "number" }
+          "alt": { "type": "number" },
+          "speed": { "type": "number" },
+          "action": { "type": "string" },
+          "params": { "type": "object" }
         },
         "required": ["lat", "lon"],
         "additionalProperties": false

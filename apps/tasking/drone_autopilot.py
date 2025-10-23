@@ -288,7 +288,7 @@ class FireFlyAutopilot:
             return False
     
     async def set_mission(self, waypoints: List[Waypoint]) -> bool:
-        """Set mission waypoints"""
+        """Set mission waypoints with optional action steps (e.g., DEPLOY_PAYLOAD, LATCH)."""
         if not self.connected:
             return False
             
@@ -301,29 +301,57 @@ class FireFlyAutopilot:
                 self.master.target_component
             )
             
-            # Send waypoints
-            for i, waypoint in enumerate(waypoints):
+            # Build expanded mission items: each nav WP may be followed by action commands
+            mission_items: List[Dict[str, Any]] = []
+            for wp in waypoints:
+                # Navigate to waypoint
+                mission_items.append({
+                    "frame": mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                    "command": mavlink.MAV_CMD_NAV_WAYPOINT,
+                    "params": (0, 0, 0, 0, wp.lat, wp.lon, wp.alt),
+                })
+                action = (wp.action or "").upper()
+                params = wp.params or {}
+                if action in ("DEPLOY_PAYLOAD", "LATCH", "ATTACH", "UNLATCH", "RELEASE"):
+                    channel = int(params.get("servo_channel", params.get("channel", 9)))
+                    # default PWM values if not provided
+                    if action in ("LATCH", "ATTACH", "DEPLOY_PAYLOAD"):
+                        pwm = int(params.get("pwm_close", params.get("pwm", 1900)))
+                    else:
+                        pwm = int(params.get("pwm_open", params.get("pwm", 1100)))
+                    mission_items.append({
+                        "frame": mavlink.MAV_FRAME_MISSION,
+                        "command": mavlink.MAV_CMD_DO_SET_SERVO,
+                        "params": (float(channel), float(pwm), 0, 0, 0, 0, 0),
+                    })
+                    hold_ms = int(params.get("hold_ms", params.get("activation_ms", 0)) or 0)
+                    if hold_ms > 0:
+                        mission_items.append({
+                            "frame": mavlink.MAV_FRAME_MISSION,
+                            "command": mavlink.MAV_CMD_CONDITION_DELAY,
+                            "params": (hold_ms / 1000.0, 0, 0, 0, 0, 0, 0),
+                        })
+            
+            # Send mission items (simple push; assumes autopilot accepts this order)
+            for i, item in enumerate(mission_items):
                 self.master.mav.mission_item_send(
                     self.master.target_system,
                     self.master.target_component,
                     i,  # Sequence
-                    mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
-                    mavlink.MAV_CMD_NAV_WAYPOINT,
+                    item["frame"],
+                    item["command"],
                     0, 0,  # Current, autocontinue
-                    0, 0, 0, 0,  # Parameters
-                    waypoint.lat,
-                    waypoint.lon,
-                    waypoint.alt
+                    *item["params"]
                 )
             
             # Set mission count
             self.master.mav.mission_count_send(
                 self.master.target_system,
                 self.master.target_component,
-                len(waypoints)
+                len(mission_items)
             )
             
-            logger.info(f"Set mission with {len(waypoints)} waypoints for drone {self.device_id}")
+            logger.info(f"Set mission with {len(mission_items)} items ({len(waypoints)} nav points) for drone {self.device_id}")
             return True
             
         except Exception as e:

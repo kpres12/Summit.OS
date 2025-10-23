@@ -397,7 +397,7 @@ async def _direct_autopilot_worker():
                             alt=float(wp.get("alt") or wp.get("altitude") or 50.0),
                             speed=float(wp.get("speed") or 5.0),
                             action=str(wp.get("action") or "WAYPOINT"),
-                            params=None,
+                            params=wp.get("params") if isinstance(wp.get("params"), dict) else None,
                         )
                     )
                 except Exception:

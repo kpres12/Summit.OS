@@ -37,6 +37,7 @@ class PayloadType(str, Enum):
     SENSOR_PACKAGE = "sensor_package"
     TOOL_KIT = "tool_kit"
     SAMPLE_CONTAINER = "sample_container"
+    LATCHING_DEVICE = "latching_device"  # Electromechanical latch/gripper for attaching objects
 
 
 class MissionTier(str, Enum):
@@ -77,6 +78,11 @@ class PayloadConfig(BaseModel):
     deployment_pattern: str = Field(default="single", description="Deployment pattern")
     effective_radius: float = Field(..., description="Effective radius in meters")
     preparation_time: float = Field(default=0, description="Preparation time in seconds")
+    # Optional actuator control for latching/gripper payloads
+    actuator_channel: Optional[int] = Field(default=None, description="PWM servo channel for latch/gripper")
+    pwm_open: Optional[int] = Field(default=None, description="PWM value to open/release latch")
+    pwm_close: Optional[int] = Field(default=None, description="PWM value to close/engage latch")
+    activation_ms: Optional[int] = Field(default=None, description="Time in milliseconds to hold actuator state")
 
 
 class InterventionPlan(BaseModel):
