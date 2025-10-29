@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Override app services to use external infra via env and drop local depends_on
+  fabric:
+    profiles: ["external"]
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - POSTGRES_URL=${POSTGRES_URL}
+    depends_on: []
+
+  fusion:
+    profiles: ["external"]
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - POSTGRES_URL=${POSTGRES_URL}
+    depends_on: []
+
+  intelligence:
+    profiles: ["external"]
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - POSTGRES_URL=${POSTGRES_URL}
+    depends_on: []
+
+  tasking:
+    profiles: ["external"]
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - MQTT_BROKER=${MQTT_BROKER}
+      - MQTT_PORT=${MQTT_PORT}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - OIDC_ENFORCE=${OIDC_ENFORCE}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_AUDIENCE=${OIDC_AUDIENCE}
+    depends_on: []
+
+  api-gateway:
+    profiles: ["external"]
+    environment:
+      - FABRIC_URL=${FABRIC_URL}
+      - FUSION_URL=${FUSION_URL}
+      - INTELLIGENCE_URL=${INTELLIGENCE_URL}
+      - TASKING_URL=${TASKING_URL}
+      - POSTGRES_URL=${POSTGRES_URL}
+      - OIDC_ENFORCE=${OIDC_ENFORCE}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_AUDIENCE=${OIDC_AUDIENCE}
+      - OIDC_JWKS_URL=${OIDC_JWKS_URL}
+      - OPA_URL=${OPA_URL}
+    depends_on: []
+
+  console:
+    profiles: ["external"]
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+      - NEXT_PUBLIC_OIDC_ISSUER=${NEXT_PUBLIC_OIDC_ISSUER}
+      - NEXT_PUBLIC_OIDC_CLIENT_ID=${NEXT_PUBLIC_OIDC_CLIENT_ID}
+      - NEXT_PUBLIC_OIDC_REDIRECT_URI=${NEXT_PUBLIC_OIDC_REDIRECT_URI}
+    depends_on: []

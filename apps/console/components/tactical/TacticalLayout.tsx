@@ -4,8 +4,8 @@ import React from 'react';
 import TopOverlay from './TopOverlay';
 import AssetLog from './AssetLog';
 import TacticalMap from './TacticalMap';
-import MissionFeed from './MissionFeed';
 import CommandBar from './CommandBar';
+import RightSidebar from './RightSidebar';
 
 export default function TacticalLayout() {
   return (
@@ -21,8 +21,8 @@ export default function TacticalLayout() {
         {/* Center - Tactical Map */}
         <TacticalMap />
 
-        {/* Right Sidebar - Mission Feed */}
-        <MissionFeed />
+        {/* Right Sidebar - Feed + Timeline */}
+        <RightSidebar />
       </div>
 
       {/* Bottom Command Bar */}

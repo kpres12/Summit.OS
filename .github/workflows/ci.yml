@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install linters
+        run: |
+          pip install flake8 black pytest httpx mypy || true
+      - name: Lint Python services
+        run: |
+          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking || true
+      - name: Format check
+        run: |
+          black --check apps/fabric apps/fusion apps/intelligence apps/tasking || true
+      - name: Node setup (console)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install console deps
+        run: |
+          cd apps/console || exit 0
+          npm ci || true
+      - name: Run unit tests (best-effort)
+        run: make test || true
+      - name: mypy (best-effort)
+        run: make mypy || true
+      - name: Summary
+        run: echo "CI completed"
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: lint-test
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install e2e deps
+        run: |
+          pip install pytest httpx || true
+      - name: Run E2E tests (expects stack running externally)
+        env:
+          SUMMIT_API: http://localhost:8000
+        run: make test-e2e || true

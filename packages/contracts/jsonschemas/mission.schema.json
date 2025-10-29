@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://summit.os/schemas/mission/1-0-0",
+  "title": "Mission",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "mission_id": { "type": "string" },
+    "name": { "type": "string" },
+    "tier": { "type": ["string", "null"], "enum": ["TIER_1", "TIER_2", "TIER_3", null] },
+    "area": {
+      "type": ["object", "null"],
+      "properties": {
+        "type": { "const": "Polygon" },
+        "coordinates": { "type": "array" }
+      },
+      "required": ["type", "coordinates"]
+    },
+    "objectives": { "type": "array", "items": { "type": "string" } },
+    "assets": { "type": "array", "items": { "type": "string" } },
+    "constraints": { "type": ["object", "null"] }
+  },
+  "required": ["mission_id", "objectives"]
+}

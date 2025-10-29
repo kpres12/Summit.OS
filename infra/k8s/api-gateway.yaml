@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summit-api-gateway
+  labels:
+    app: summit-api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summit-api-gateway
+  template:
+    metadata:
+      labels:
+        app: summit-api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: ghcr.io/bigmt/summit-api-gateway:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: FABRIC_URL
+              value: http://summit-fabric:8001
+            - name: FUSION_URL
+              value: http://summit-fusion:8002
+            - name: INTELLIGENCE_URL
+              value: http://summit-intelligence:8003
+            - name: TASKING_URL
+              value: http://summit-tasking:8004
+            - name: OIDC_ENFORCE
+              value: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summit-api-gateway
+spec:
+  selector:
+    app: summit-api-gateway
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

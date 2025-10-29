@@ -41,7 +41,8 @@ advisories = Table(
     Column("risk_level", String(32)),
     Column("message", String(512)),
     Column("confidence", Float),
-    Column("ts", DateTime(timezone=True))
+    Column("ts", DateTime(timezone=True)),
+    Column("org_id", String(128))
 )
 
 def _to_asyncpg_url(url: str) -> str:
@@ -62,10 +63,22 @@ async def lifespan(app: FastAPI):
     
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
+        # Optional Timescale hypertable setup
+        try:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
+            await conn.execute(text("SELECT create_hypertable('advisories','ts', if_not_exists => TRUE)"))
+        except Exception:
+            pass
     
     # Redis setup (consume observations from Fusion)
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     redis_client = await aioredis.from_url(redis_url, decode_responses=True)
+    # Ensure consumer group
+    try:
+        await redis_client.xgroup_create("observations_stream", "intelligence", id="$", mkstream=True)
+    except Exception as e:
+        if "BUSYGROUP" not in str(e):
+            pass
 
     # Optional: load XGBoost model
     if INTELLIGENCE_ENABLE_XGB and XGB_AVAILABLE:
@@ -106,22 +119,45 @@ class Advisory(BaseModel):
 async def health():
     return {"status": "ok", "service": "intelligence"}
 
+@app.get("/readyz")
+async def readyz():
+    try:
+        assert SessionLocal is not None
+        async with SessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        if redis_client:
+            await redis_client.ping()
+        return {"status": "ready"}
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail=f"Not ready: {e}")
+
+@app.get("/livez")
+async def livez():
+    return {"status": "alive"}
+
+from fastapi import Request as _Req
+
+async def _get_org_id(req: _Req) -> str | None:
+    return req.headers.get("X-Org-ID") or req.headers.get("x-org-id")
+
 @app.get("/advisories", response_model=List[Advisory])
-async def list_advisories(risk_level: Optional[str] = None, limit: int = 50):
+async def list_advisories(risk_level: Optional[str] = None, limit: int = 50, org_id: str | None = Depends(_get_org_id)):
     """List recent advisories, optionally filtered by risk level."""
     assert SessionLocal is not None
     
     async with SessionLocal() as session:
+        base = "SELECT advisory_id, observation_id, risk_level, message, confidence, ts FROM advisories"
+        where = []
+        params: dict = {"lim": limit}
         if risk_level:
-            rows = (await session.execute(
-                text("SELECT advisory_id, observation_id, risk_level, message, confidence, ts FROM advisories WHERE risk_level = :rl ORDER BY id DESC LIMIT :lim"),
-                {"rl": risk_level, "lim": limit}
-            )).all()
-        else:
-            rows = (await session.execute(
-                text("SELECT advisory_id, observation_id, risk_level, message, confidence, ts FROM advisories ORDER BY id DESC LIMIT :lim"),
-                {"lim": limit}
-            )).all()
+            where.append("risk_level = :rl")
+            params["rl"] = risk_level
+        if org_id:
+            where.append("org_id = :org_id")
+            params["org_id"] = org_id
+        sql = base + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT :lim"
+        rows = (await session.execute(text(sql), params)).all()
         
         return [Advisory(**dict(r._mapping)) for r in rows]
 
@@ -130,20 +166,19 @@ async def _risk_scoring_processor():
     assert SessionLocal is not None
     assert redis_client is not None
     
-    # Subscribe to observations stream (published by Fusion after persistence)
-    last_id = "$"
-    
+    import socket
+    consumer_name = f"intel-{socket.gethostname()}"
+
     while True:
         try:
-            # Read from observations_stream
-            messages = await redis_client.xread({"observations_stream": last_id}, block=1000, count=10)
+            # Read from observations_stream via consumer group
+            messages = await redis_client.xreadgroup("intelligence", consumer_name, {"observations_stream": ">"}, block=1000, count=10)
             
             if not messages:
                 continue
             
             for stream_name, stream_messages in messages:
                 for msg_id, fields in stream_messages:
-                    last_id = msg_id
                     
                     try:
                         payload = fields.get("payload")
@@ -169,20 +204,56 @@ async def _risk_scoring_processor():
                                     risk_level=risk_level,
                                     message=message,
                                     confidence=float(data.get("confidence", 0.0)),
-                                    ts=datetime.now(timezone.utc)
+                                    ts=datetime.now(timezone.utc),
+                                    org_id=None,
                                 )
                             )
                             await session.commit()
                         
                         # Optionally publish to MQTT for real-time alerts
                         # await mqtt_client.publish(f"advisories/{data.get('class')}", ...)
+                        # Ack after success
+                        try:
+                            await redis_client.xack("observations_stream", "intelligence", msg_id)
+                        except Exception:
+                            pass
                     
                     except Exception as e:
                         print(f"Failed to process observation for risk scoring: {e}")
+                        # DLQ: record failing payload
+                        try:
+                            if redis_client is not None:
+                                bad_payload = fields.get("payload") if isinstance(fields, dict) else None
+                                await redis_client.xadd(
+                                    "intelligence_dlq",
+                                    {
+                                        "error": str(e),
+                                        "payload": bad_payload or "",
+                                        "ts": datetime.now(timezone.utc).isoformat(),
+                                    },
+                                )
+                                try:
+                                    await redis_client.xack("observations_stream", "intelligence", msg_id)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
                         continue
         
         except Exception as e:
             print(f"Risk scoring processor error: {e}")
+            try:
+                if redis_client is not None:
+                    await redis_client.xadd(
+                        "intelligence_dlq",
+                        {
+                            "error": str(e),
+                            "payload": "<stream_error>",
+                            "ts": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
+            except Exception:
+                pass
             await asyncio.sleep(1)
 
 def _calculate_risk_level(data: dict) -> str:

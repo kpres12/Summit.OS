@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import MapLayerControls, { MapLayer } from './MapLayerControls';
+import GeofenceEditor, { Geofence } from './GeofenceEditor';
 
 interface MapNode {
   id: string;
@@ -34,6 +36,75 @@ const connections = [
 export default function TacticalMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Layer management
+  const [layers, setLayers] = useState<MapLayer[]>([
+    { id: 'terrain', name: 'Terrain', enabled: true, color: '#00FF91', icon: '🗻' },
+    { id: 'grid', name: 'Grid', enabled: true, color: '#00FF91', icon: '⊞' },
+    { id: 'nodes', name: 'Assets', enabled: true, color: '#00FF91', icon: '▲' },
+    { id: 'connections', name: 'Connections', enabled: true, color: '#00FF91', icon: '⚡' },
+    { id: 'geofences', name: 'Geofences', enabled: true, color: '#FF9933', icon: '⬢' },
+    { id: 'tracks', name: 'Tracks', enabled: false, color: '#00DDFF', icon: '〰' },
+    { id: 'weather', name: 'Weather', enabled: false, color: '#00DDFF', icon: '☁' },
+  ]);
+
+  // Geofence management
+  const [geofences, setGeofences] = useState<Geofence[]>([
+    {
+      id: 'gf1',
+      name: 'Airport Exclusion',
+      points: [
+        { lat: 34.05, lon: -118.24 },
+        { lat: 34.06, lon: -118.24 },
+        { lat: 34.06, lon: -118.22 },
+        { lat: 34.05, lon: -118.22 },
+      ],
+      type: 'exclusion',
+      altitude_min: 0,
+      altitude_max: 1000,
+      active: true,
+    },
+  ]);
+  const [editingGeofence, setEditingGeofence] = useState<Geofence | null>(null);
+
+  const handleToggleLayer = (layerId: string) => {
+    setLayers(prev =>
+      prev.map(layer =>
+        layer.id === layerId ? { ...layer, enabled: !layer.enabled } : layer
+      )
+    );
+  };
+
+  const handleCreateGeofence = () => {
+    setEditingGeofence({
+      id: 'new',
+      name: '',
+      points: [],
+      type: 'warning',
+      active: true,
+    });
+  };
+
+  const handleSaveGeofence = (geofence: Geofence) => {
+    if (geofence.id === 'new') {
+      setGeofences(prev => [...prev, { ...geofence, id: `gf${Date.now()}` }]);
+    } else {
+      setGeofences(prev =>
+        prev.map(g => (g.id === geofence.id ? geofence : g))
+      );
+    }
+    setEditingGeofence(null);
+  };
+
+  const handleDeleteGeofence = (id: string) => {
+    setGeofences(prev => prev.filter(g => g.id !== id));
+  };
+
+  const handleToggleGeofenceActive = (id: string) => {
+    setGeofences(prev =>
+      prev.map(g => (g.id === id ? { ...g, active: !g.active } : g))
+    );
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -57,62 +128,107 @@ export default function TacticalMap() {
       ctx.fillStyle = '#0A0A0A';
       ctx.fillRect(0, 0, w, h);
 
+      const gridLayer = layers.find(l => l.id === 'grid');
+      const terrainLayer = layers.find(l => l.id === 'terrain');
+      const connectionsLayer = layers.find(l => l.id === 'connections');
+      const geofencesLayer = layers.find(l => l.id === 'geofences');
+
       // Draw grid
-      ctx.strokeStyle = 'rgba(0, 255, 145, 0.15)';
-      ctx.lineWidth = 1;
+      if (gridLayer?.enabled) {
+        ctx.strokeStyle = 'rgba(0, 255, 145, 0.15)';
+        ctx.lineWidth = 1;
 
-      const gridSize = 50;
-      for (let x = 0; x <= w; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
+        const gridSize = 50;
+        for (let x = 0; x <= w; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
 
-      for (let y = 0; y <= h; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+        for (let y = 0; y <= h; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
       }
 
       // Draw connections
-      ctx.strokeStyle = 'rgba(0, 255, 145, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 5]);
+      if (connectionsLayer?.enabled) {
+        ctx.strokeStyle = 'rgba(0, 255, 145, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
 
-      connections.forEach(([from, to]) => {
-        const nodeFrom = mockNodes.find(n => n.id === from);
-        const nodeTo = mockNodes.find(n => n.id === to);
-        if (nodeFrom && nodeTo) {
-          ctx.beginPath();
-          ctx.moveTo((nodeFrom.x / 100) * w, (nodeFrom.y / 100) * h);
-          ctx.lineTo((nodeTo.x / 100) * w, (nodeTo.y / 100) * h);
-          ctx.stroke();
-        }
-      });
+        connections.forEach(([from, to]) => {
+          const nodeFrom = mockNodes.find(n => n.id === from);
+          const nodeTo = mockNodes.find(n => n.id === to);
+          if (nodeFrom && nodeTo) {
+            ctx.beginPath();
+            ctx.moveTo((nodeFrom.x / 100) * w, (nodeFrom.y / 100) * h);
+            ctx.lineTo((nodeTo.x / 100) * w, (nodeTo.y / 100) * h);
+            ctx.stroke();
+          }
+        });
 
-      ctx.setLineDash([]);
+        ctx.setLineDash([]);
+      }
 
       // Draw terrain contours (pseudo-3D effect)
-      ctx.strokeStyle = 'rgba(0, 255, 145, 0.1)';
-      ctx.lineWidth = 1;
-      
-      const contours = 8;
-      for (let i = 0; i < contours; i++) {
-        const offset = (i / contours) * 100;
-        const amplitude = 30 + Math.sin(i) * 20;
-        ctx.beginPath();
-        for (let x = 0; x <= w; x += 5) {
-          const y = h / 2 + Math.sin((x + offset) * 0.02) * amplitude + 
-                     Math.cos((x - offset) * 0.01) * (amplitude * 0.5);
-          if (x === 0) {
-            ctx.moveTo(x, y);
-          } else {
-            ctx.lineTo(x, y);
+      if (terrainLayer?.enabled) {
+        ctx.strokeStyle = 'rgba(0, 255, 145, 0.1)';
+        ctx.lineWidth = 1;
+        
+        const contours = 8;
+        for (let i = 0; i < contours; i++) {
+          const offset = (i / contours) * 100;
+          const amplitude = 30 + Math.sin(i) * 20;
+          ctx.beginPath();
+          for (let x = 0; x <= w; x += 5) {
+            const y = h / 2 + Math.sin((x + offset) * 0.02) * amplitude + 
+                       Math.cos((x - offset) * 0.01) * (amplitude * 0.5);
+            if (x === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
           }
+          ctx.stroke();
         }
-        ctx.stroke();
+      }
+
+      // Draw geofences
+      if (geofencesLayer?.enabled) {
+        geofences.forEach(geofence => {
+          if (!geofence.active || geofence.points.length < 3) return;
+
+          const getColor = () => {
+            switch (geofence.type) {
+              case 'exclusion': return 'rgba(255, 51, 51, 0.3)';
+              case 'inclusion': return 'rgba(0, 255, 145, 0.3)';
+              case 'warning': return 'rgba(255, 153, 51, 0.3)';
+              default: return 'rgba(0, 255, 145, 0.3)';
+            }
+          };
+
+          // Fill polygon
+          ctx.fillStyle = getColor();
+          ctx.beginPath();
+          geofence.points.forEach((pt, i) => {
+            // Simple projection: normalize coords to canvas
+            const x = ((pt.lon + 118.24) * 10000) % w;
+            const y = ((34.06 - pt.lat) * 10000) % h;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fill();
+
+          // Border
+          ctx.strokeStyle = getColor().replace('0.3', '0.8');
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        });
       }
     };
 
@@ -122,7 +238,9 @@ export default function TacticalMap() {
     return () => {
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, []);
+  }, [layers, geofences]);
+
+  const nodesLayer = layers.find(l => l.id === 'nodes');
 
   return (
     <div className="flex-1 relative overflow-hidden bg-[#0A0A0A]">
@@ -133,11 +251,13 @@ export default function TacticalMap() {
       />
 
       {/* Map Nodes Overlay */}
-      <div className="absolute inset-0 pointer-events-none">
-        {mockNodes.map((node) => (
-          <MapNode key={node.id} node={node} />
-        ))}
-      </div>
+      {nodesLayer?.enabled && (
+        <div className="absolute inset-0 pointer-events-none">
+          {mockNodes.map((node) => (
+            <MapNode key={node.id} node={node} />
+          ))}
+        </div>
+      )}
 
       {/* Grid Coordinates Overlay */}
       <div className="absolute top-4 left-4 text-[#006644] text-xs font-mono space-y-1 pointer-events-none">
@@ -153,6 +273,24 @@ export default function TacticalMap() {
           <div className="absolute w-0.5 h-6 bg-[#00FF91]/60 top-1 left-1/2 -translate-x-1/2" />
         </div>
       </div>
+
+      {/* Map Layer Controls */}
+      <MapLayerControls
+        layers={layers}
+        onToggleLayer={handleToggleLayer}
+      />
+
+      {/* Geofence Editor */}
+      <GeofenceEditor
+        geofences={geofences}
+        editingGeofence={editingGeofence}
+        onCreateNew={handleCreateGeofence}
+        onSelectGeofence={(id) => setEditingGeofence(geofences.find(g => g.id === id) || null)}
+        onDeleteGeofence={handleDeleteGeofence}
+        onSaveGeofence={handleSaveGeofence}
+        onCancelEdit={() => setEditingGeofence(null)}
+        onToggleActive={handleToggleGeofenceActive}
+      />
     </div>
   );
 }

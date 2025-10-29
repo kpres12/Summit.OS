@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "../components/AuthProvider";
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
@@ -23,7 +24,11 @@ export default function RootLayout({
       <body
         className={`${ibmPlexMono.variable} antialiased`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+          {/* Global policy notifications */}
+          {typeof window !== 'undefined' && require('../components/notifications/PolicyNotifications').default()}
+        </AuthProvider>
       </body>
     </html>
   );

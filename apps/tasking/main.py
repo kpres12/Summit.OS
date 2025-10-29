@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 import paho.mqtt.client as mqtt
 from packages.schemas.drones import (
@@ -222,7 +222,19 @@ async def lifespan(app: FastAPI):
             await engine.dispose()
 
 
-app = FastAPI(title="Summit Tasking", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="Summit Intelligence", version="0.2.1", lifespan=lifespan)
+
+# Unified error response shape
+from fastapi.responses import JSONResponse as _JSONResponse
+from fastapi.requests import Request as _FRequest
+
+class ErrorResponse(BaseModel):
+    error: str
+    detail: Any | None = None
+
+@app.exception_handler(HTTPException)
+async def http_exc_handler(_req: _FRequest, exc: HTTPException):
+    return _JSONResponse(status_code=exc.status_code, content=ErrorResponse(error="HTTPException", detail=exc.detail).model_dump())
 
 
 # -------------------------
@@ -412,10 +424,39 @@ async def _direct_autopilot_worker():
             pass
 
 
-async def _validate_policies(req: MissionCreateRequest) -> List[str]:
-    # TODO: integrate with real policy engines (airspace, geofence, weather, NOTAMs, operator gates)
-    # For now, always OK
-    return []
+async def _validate_policies(req: MissionCreateRequest, org_id: Optional[str] = None) -> List[str]:
+    """Validate mission against policy engine (OPA) and return violation reasons.
+
+    Fails open (no violations) if OPA is unreachable to avoid blocking local dev.
+    """
+    try:
+        from .opa import OPAClient
+    except Exception:
+        # If client not available, allow
+        return []
+
+    opa = OPAClient()
+    # Build minimal input; extend as schemas mature
+    input_data = {
+        "mission": req.model_dump(),
+        "org_id": org_id or "dev",
+        "context": {
+            "time": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+    try:
+        result = await opa.evaluate("missions/allow", input_data)
+        allow = bool(result.get("allow", True))
+        if allow:
+            return []
+        # Collect reasons if provided
+        reasons = result.get("deny_reasons") or result.get("reasons") or []
+        if isinstance(reasons, list):
+            return [str(r) for r in reasons]
+        return [str(reasons)] if reasons else ["Policy denied"]
+    except Exception:
+        # Fail open
+        return []
 
 
 async def _assess_threat(location: Dict[str, float], verification_data: Optional[Dict[str, Any]] = None, domain: str = "generic") -> ThreatAssessmentResult:
@@ -1205,8 +1246,9 @@ async def create_mission(req: MissionCreateRequest, request: Request):
     mission_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc)
 
-    # Policy validation
-    violations = await _validate_policies(req)
+    # Policy validation (org-scoped)
+    org_id = request.headers.get("X-Org-ID") or request.headers.get("x-org-id")
+    violations = await _validate_policies(req, org_id)
     policy_ok = len(violations) == 0
     if not policy_ok:
         raise HTTPException(status_code=400, detail={"policy_violations": violations})

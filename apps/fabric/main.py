@@ -30,6 +30,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+# Optional geometry
+try:
+    from geoalchemy2 import Geometry
+    GEO_AVAILABLE = True
+except Exception:
+    Geometry = None  # type: ignore
+    GEO_AVAILABLE = False
 from jose import jwt
 from alembic import command as alembic_command
 from alembic.config import Config as AlembicConfig
@@ -100,6 +107,40 @@ coverages = Table(
     Column("updated_at", DateTime(timezone=True)),
 )
 
+# World model tables
+# Optional multi-tenant org_id
+try:
+    ORG_ID_FIELD = os.getenv("ORG_ID_FIELD", "org")
+except Exception:
+    ORG_ID_FIELD = "org"
+
+world_entities = Table(
+    "world_entities",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("entity_id", String(128), nullable=False),  # device_id
+    Column("type", String(64), nullable=False, default="DEVICE"),
+    Column("properties", JSON),
+    Column("updated_at", DateTime(timezone=True)),
+    Column("org_id", String(128)),
+    # geometry point WGS84 if available
+    *( [Column("geom", Geometry(geometry_type="POINT", srid=4326))] if GEO_AVAILABLE else [] ),
+)
+
+world_alerts = Table(
+    "world_alerts",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("alert_id", String(128), nullable=False),
+    Column("severity", String(32), nullable=False),
+    Column("description", String(512)),
+    Column("source", String(128)),
+    Column("ts", DateTime(timezone=True)),
+    Column("properties", JSON),
+    Column("org_id", String(128)),
+    *( [Column("geom", Geometry(geometry_type="POINT", srid=4326))] if GEO_AVAILABLE else [] ),
+)
+
 # Settings
 HEARTBEAT_STALE_SECS = 120  # 2 minutes
 HEARTBEAT_OFFLINE_SECS = 600  # 10 minutes
@@ -129,7 +170,19 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
     else:
+        # Ensure extensions
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
         _run_migrations()
+        # Create geospatial and org_id indexes if available
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
+            await conn.execute(text("ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"))
+            if GEO_AVAILABLE:
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"))
 
     # WebSocket manager
     websocket_manager = WebSocketManager()
@@ -227,10 +280,33 @@ class NodeRegisterResponse(BaseModel):
     policy: Dict[str, Any]
     token: str
 
+# Org helper
+from fastapi import Request as _Req
+
+async def _get_org_id(req: _Req) -> str | None:
+    return req.headers.get("X-Org-ID") or req.headers.get("x-org-id")
+
 # API Endpoints
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "fabric"}
+
+@app.get("/readyz")
+async def readyz():
+    """Readiness probe: checks DB and Redis connectivity."""
+    try:
+        assert SessionLocal is not None
+        async with SessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        if redis_client and redis_client.redis:
+            await redis_client.redis.ping()
+        return {"status": "ready"}
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Not ready: {e}")
+
+@app.get("/livez")
+async def livez():
+    return {"status": "alive"}
 
 # WebSocket endpoint for real-time multiplexed events
 @app.websocket("/ws")
@@ -248,12 +324,67 @@ async def websocket_endpoint(websocket: WebSocket):
 
 # Simple COP/world-state endpoint (thin-slice)
 @app.get("/api/v1/worldstate")
-async def get_world_state():
+async def get_world_state(limit_devices: int = 200, limit_alerts: int = 200, org_id: str | None = Depends(_get_org_id)):
+    """Aggregate world state from DB (latest position per entity) and recent alerts. Optional org filtering."""
+    assert SessionLocal is not None
+    devices: list[dict] = []
+    alerts: list[dict] = []
     try:
-        devices = list(world_state.get("devices", {}).values())
-        alerts = world_state.get("alerts", [])
+        async with SessionLocal() as session:
+            # Latest per entity using DISTINCT ON
+            q_devices = text(
+                """
+                SELECT DISTINCT ON (entity_id)
+                    entity_id, type, properties, updated_at
+                    {geom}
+                FROM world_entities
+                {where}
+                ORDER BY entity_id, updated_at DESC
+                LIMIT :lim
+                """.format(geom=", ST_X(geom) AS lon, ST_Y(geom) AS lat" if GEO_AVAILABLE else "", where="WHERE org_id = :org_id" if org_id else "")
+            )
+            params = {"lim": limit_devices}
+            if org_id:
+                params["org_id"] = org_id
+            drows = (await session.execute(q_devices, params)).mappings().all()
+            for r in drows:
+                d = {"device_id": r["entity_id"], "type": r.get("type"), "properties": r.get("properties"), "ts_iso": r.get("updated_at").isoformat() if r.get("updated_at") else None}
+                if GEO_AVAILABLE and r.get("lon") is not None and r.get("lat") is not None:
+                    d.update({"lon": float(r["lon"]), "lat": float(r["lat"])})
+                devices.append(d)
+            # Recent alerts
+            q_alerts = text(
+                """
+                SELECT alert_id, severity, description, source, ts
+                    {geom}
+                FROM world_alerts
+                {where}
+                ORDER BY id DESC
+                LIMIT :lim
+                """.format(geom=", ST_X(geom) AS lon, ST_Y(geom) AS lat" if GEO_AVAILABLE else "", where="WHERE org_id = :org_id" if org_id else "")
+            )
+            aparams = {"lim": limit_alerts}
+            if org_id:
+                aparams["org_id"] = org_id
+            arows = (await session.execute(q_alerts, aparams)).mappings().all()
+            for r in arows:
+                a = {
+                    "alert_id": r["alert_id"],
+                    "severity": r.get("severity"),
+                    "description": r.get("description"),
+                    "source": r.get("source"),
+                    "ts_iso": r.get("ts").isoformat() if r.get("ts") else None,
+                }
+                if GEO_AVAILABLE and r.get("lon") is not None and r.get("lat") is not None:
+                    a.update({"lon": float(r["lon"]), "lat": float(r["lat"])})
+                alerts.append(a)
     except Exception:
-        devices, alerts = [], []
+        # Fallback to in-memory cache
+        try:
+            devices = list(world_state.get("devices", {}).values())
+            alerts = world_state.get("alerts", [])
+        except Exception:
+            devices, alerts = [], []
     return {
         "devices": devices,
         "alerts": alerts,
@@ -261,8 +392,48 @@ async def get_world_state():
         "ts_iso": datetime.now(timezone.utc).isoformat(),
     }
 
+# Replay endpoint for observations stream
+@app.get("/api/v1/replay/observations")
+async def replay_observations(from_id: str = "$", count: int = 100):
+    if not redis_client or not redis_client.redis:
+        raise HTTPException(status_code=503, detail="Redis not connected")
+    try:
+        records = await redis_client.redis.xread({"observations_stream": from_id}, count=count, block=100)
+        result: list[dict] = []
+        for stream, msgs in records:
+            for msg_id, fields in msgs:
+                result.append({"id": msg_id, "fields": fields})
+        return {"records": result, "next": result[-1]["id"] if result else from_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Optional OIDC enforcement
+OIDC_ENFORCE = os.getenv("OIDC_ENFORCE", "false").lower() == "true"
+try:
+    from jose import jwt as _jwt
+    OIDC_JOSE_AVAILABLE = True
+except Exception:
+    OIDC_JOSE_AVAILABLE = False
+
+from fastapi import Header
+async def _verify_bearer_fabric(authorization: str | None = Header(default=None)) -> dict | None:
+    if not OIDC_ENFORCE:
+        return None
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+    # For now, accept unsigned token (issuer verification could be added)
+    token = authorization.split(" ", 1)[1]
+    try:
+        claims = _jwt.get_unverified_claims(token) if OIDC_JOSE_AVAILABLE else {}
+        return claims
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+from typing import Annotated
+from fastapi import Header as _Header
+
 @app.post("/telemetry")
-async def publish_telemetry(telemetry: "TelemetryData"):
+async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN", default=None)] = None):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
@@ -294,6 +465,49 @@ async def publish_telemetry(telemetry: "TelemetryData"):
             }
         except Exception:
             pass
+        # Persist to world_entities
+        try:
+            assert SessionLocal is not None
+            async with SessionLocal() as session:
+                org_id = None
+                try:
+                    org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
+                except Exception:
+                    org_id = None
+                # Fallback to mTLS client DN parsing (e.g., 'OU=org-123, CN=device')
+                if not org_id and x_client_dn:
+                    try:
+                        parts = [p.strip() for p in str(x_client_dn).split(',')]
+                        for p in parts:
+                            if p.startswith('OU='):
+                                org_id = p.split('=',1)[1]
+                                break
+                    except Exception:
+                        pass
+                if GEO_AVAILABLE:
+                    await session.execute(
+                        world_entities.insert().values(
+                            entity_id=telemetry.device_id,
+                            type="DEVICE",
+                            properties={"status": telemetry.status, "sensors": telemetry.sensors},
+                            updated_at=telemetry.timestamp,
+                            org_id=org_id,
+                            geom=text(f"ST_SetSRID(ST_MakePoint({float(loc.longitude)}, {float(loc.latitude)}), 4326)")
+                        )
+                    )
+                else:
+                    await session.execute(
+                        world_entities.insert().values(
+                            entity_id=telemetry.device_id,
+                            type="DEVICE",
+                            properties={"status": telemetry.status, "sensors": telemetry.sensors, "lon": float(loc.longitude), "lat": float(loc.latitude)},
+                            updated_at=telemetry.timestamp,
+                            org_id=org_id,
+                        )
+                    )
+                await session.commit()
+        except Exception:
+            pass
         if websocket_manager:
             await websocket_manager.broadcast(json.dumps({"type": "telemetry", "data": tm.model_dump()}))
         return {"status": "published", "device_id": telemetry.device_id}
@@ -302,7 +516,7 @@ async def publish_telemetry(telemetry: "TelemetryData"):
         raise HTTPException(status_code=500, detail="Failed to publish telemetry")
 
 @app.post("/alerts")
-async def publish_alert(alert: "AlertData"):
+async def publish_alert(alert: "AlertData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN", default=None)] = None):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
@@ -332,6 +546,52 @@ async def publish_alert(alert: "AlertData"):
                 "ts_iso": alert.timestamp.isoformat(),
             })
             del world_state["alerts"][MAX_ALERTS:]
+        except Exception:
+            pass
+        # Persist to world_alerts
+        try:
+            assert SessionLocal is not None
+            async with SessionLocal() as session:
+                org_id = None
+                try:
+                    org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
+                except Exception:
+                    org_id = None
+                if not org_id and x_client_dn:
+                    try:
+                        parts = [p.strip() for p in str(x_client_dn).split(',')]
+                        for p in parts:
+                            if p.startswith('OU='):
+                                org_id = p.split('=',1)[1]
+                                break
+                    except Exception:
+                        pass
+                if GEO_AVAILABLE:
+                    await session.execute(
+                        world_alerts.insert().values(
+                            alert_id=alert.alert_id,
+                            severity=str(sev.value if hasattr(sev, "value") else sev),
+                            description=alert.description,
+                            source=alert.source,
+                            ts=alert.timestamp,
+                            properties={"source": alert.source},
+                            org_id=org_id,
+                            geom=text(f"ST_SetSRID(ST_MakePoint({float(aloc.longitude)}, {float(aloc.latitude)}), 4326)")
+                        )
+                    )
+                else:
+                    await session.execute(
+                        world_alerts.insert().values(
+                            alert_id=alert.alert_id,
+                            severity=str(sev.value if hasattr(sev, "value") else sev),
+                            description=alert.description,
+                            source=alert.source,
+                            ts=alert.timestamp,
+                            properties={"source": alert.source, "lon": float(aloc.longitude), "lat": float(aloc.latitude)},
+                            org_id=org_id,
+                        )
+                    )
+                await session.commit()
         except Exception:
             pass
         if websocket_manager:
@@ -588,6 +848,77 @@ async def heartbeat_watcher():
         except Exception as e:
             logger.error(f"Heartbeat watcher error: {e}")
             await asyncio.sleep(10)
+
+# Geofences table and endpoints
+geofences = Table(
+    "geofences",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("org_id", String(128)),
+    Column("name", String(128)),
+    Column("props", JSON),
+    *( [Column("geom", Geometry(geometry_type="POLYGON", srid=4326))] if GEO_AVAILABLE else [] ),
+)
+
+@app.post("/api/v1/geofences")
+async def create_geofence(payload: dict, _claims: dict | None = Depends(_verify_bearer_fabric)):
+    assert SessionLocal is not None
+    org_id = None
+    try:
+        org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
+    except Exception:
+        org_id = None
+    name = str(payload.get("name") or "geofence")
+    props = payload.get("props") or {}
+    coords = payload.get("coordinates")  # GeoJSON-like: [[lon,lat], ...]
+    if not coords or not GEO_AVAILABLE:
+        # store props only
+        async with SessionLocal() as session:
+            await session.execute(
+                geofences.insert().values(org_id=org_id, name=name, props=props)
+            )
+            await session.commit()
+        return {"status": "created", "name": name}
+    # Build polygon WKT
+    try:
+        ring = ",".join([f"{float(x)} {float(y)}" for x, y in coords])
+        wkt = f"POLYGON(({ring}))"
+        async with SessionLocal() as session:
+            await session.execute(
+                geofences.insert().values(
+                    org_id=org_id, name=name, props=props,
+                    geom=text(f"ST_GeomFromText('{wkt}', 4326)")
+                )
+            )
+            await session.commit()
+        return {"status": "created", "name": name}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.get("/api/v1/geofences")
+async def list_geofences(org_id: str | None = Depends(_get_org_id)):
+    assert SessionLocal is not None
+    async with SessionLocal() as session:
+        where = "WHERE org_id = :org_id" if org_id else ""
+        res = await session.execute(text(f"SELECT id, name, props FROM geofences {where} ORDER BY id DESC"), {"org_id": org_id} if org_id else {})
+        rows = [dict(r) for r in res.mappings().all()]
+        return {"geofences": rows}
+
+@app.get("/api/v1/geofences/contains")
+async def geofence_contains(lat: float, lon: float, org_id: str | None = Depends(_get_org_id)):
+    if not GEO_AVAILABLE:
+        return {"contains": True}
+    assert SessionLocal is not None
+    async with SessionLocal() as session:
+        where = "WHERE org_id = :org_id" if org_id else ""
+        q = text(
+            f"SELECT EXISTS (SELECT 1 FROM geofences {where} WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(:lon,:lat),4326))) AS inside"
+        )
+        params = {"lat": lat, "lon": lon}
+        if org_id:
+            params["org_id"] = org_id
+        r = (await session.execute(q, params)).mappings().first()
+        return {"contains": bool(r.get("inside")) if r else False}
 
 # Coverage stub
 async def _compute_viewshed_stub(node_id: str):

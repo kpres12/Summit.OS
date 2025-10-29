@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summit-fabric
+  labels:
+    app: summit-fabric
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summit-fabric
+  template:
+    metadata:
+      labels:
+        app: summit-fabric
+    spec:
+      containers:
+        - name: fabric
+          image: ghcr.io/bigmt/summit-fabric:latest
+          ports:
+            - containerPort: 8001
+          env:
+            - name: REDIS_URL
+              value: redis://summit-redis:6379
+            - name: POSTGRES_URL
+              value: postgresql://summit:summit_password@summit-postgres:5432/summit_os
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summit-fabric
+spec:
+  selector:
+    app: summit-fabric
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001

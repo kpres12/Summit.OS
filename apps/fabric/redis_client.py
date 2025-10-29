@@ -52,7 +52,12 @@ class RedisClient:
                 "metadata": json.dumps(telemetry.metadata)
             }
             
+            # Append to stream and trim for retention
             await self.redis.xadd("telemetry_stream", stream_data)
+            try:
+                await self.redis.xtrim("telemetry_stream", maxlen=100000, approximate=True)
+            except Exception:
+                pass
             
             # Update device status
             await self.redis.hset(
@@ -93,6 +98,10 @@ class RedisClient:
             }
             
             await self.redis.xadd("alert_stream", stream_data)
+            try:
+                await self.redis.xtrim("alert_stream", maxlen=200000, approximate=True)
+            except Exception:
+                pass
             
             # Store alert details
             await self.redis.hset(
@@ -126,6 +135,10 @@ class RedisClient:
             }
             
             await self.redis.xadd("mission_stream", stream_data)
+            try:
+                await self.redis.xtrim("mission_stream", maxlen=50000, approximate=True)
+            except Exception:
+                pass
             
             # Update mission status
             await self.redis.hset(

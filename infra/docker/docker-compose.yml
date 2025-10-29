@@ -88,6 +88,7 @@ services:
       - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
       - OBSERVATION_SCHEMA_PATH=/contracts/jsonschemas/observation.schema.json
       - FUSION_ENABLE_VISION_AI=${FUSION_ENABLE_VISION_AI-false}
+      - FUSION_ENABLE_TRACKING=${FUSION_ENABLE_TRACKING-true}
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
       - FUSION_MODEL_PATH=${FUSION_MODEL_PATH-}
       - FUSION_CONF_THRESHOLD=${FUSION_CONF_THRESHOLD-0.6}
@@ -205,6 +206,67 @@ services:
       - /app/node_modules
     command: npm run dev
 
+  # Optional mTLS front proxies (enable with: docker-compose ... --profile mtls up)
+  api-proxy:
+    image: nginx:1.25-alpine
+    container_name: summit-api-proxy
+    profiles: ["mtls"]
+    depends_on:
+      - api-gateway
+    ports:
+      - "8443:8443"
+    volumes:
+      - ../../infra/proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../../infra/proxy/certs:/certs:ro
+
+  fabric-proxy:
+    image: nginx:1.25-alpine
+    container_name: summit-fabric-proxy
+    profiles: ["mtls"]
+    depends_on:
+      - fabric
+    ports:
+      - "8451:8443"
+    volumes:
+      - ../../infra/proxy/nginx-fabric.conf:/etc/nginx/nginx.conf:ro
+      - ../../infra/proxy/certs:/certs:ro
+
+  fusion-proxy:
+    image: nginx:1.25-alpine
+    container_name: summit-fusion-proxy
+    profiles: ["mtls"]
+    depends_on:
+      - fusion
+    ports:
+      - "8452:8443"
+    volumes:
+      - ../../infra/proxy/nginx-fusion.conf:/etc/nginx/nginx.conf:ro
+      - ../../infra/proxy/certs:/certs:ro
+
+  intelligence-proxy:
+    image: nginx:1.25-alpine
+    container_name: summit-intelligence-proxy
+    profiles: ["mtls"]
+    depends_on:
+      - intelligence
+    ports:
+      - "8453:8443"
+    volumes:
+      - ../../infra/proxy/nginx-intelligence.conf:/etc/nginx/nginx.conf:ro
+      - ../../infra/proxy/certs:/certs:ro
+
+  tasking-proxy:
+    image: nginx:1.25-alpine
+    container_name: summit-tasking-proxy
+    profiles: ["mtls"]
+    depends_on:
+      - tasking
+    ports:
+      - "8454:8443"
+    volumes:
+      - ../../infra/proxy/nginx-tasking.conf:/etc/nginx/nginx.conf:ro
+      - ../../infra/proxy/certs:/certs:ro
+
   # Observability
   prometheus:
     image: prom/prometheus:latest
@@ -230,6 +292,15 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+
+  opa:
+    image: openpolicyagent/opa:latest-rootless
+    container_name: summit-opa
+    command: ["run", "--server", "/policy/policy.rego"]
+    ports:
+      - "8181:8181"
+    volumes:
+      - ../../infra/policy:/policy:ro
 
 volumes:
   redis_data:
