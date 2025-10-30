@@ -1,9 +1,5 @@
-import dynamic from 'next/dynamic';
-
-const TacticalLayout = dynamic(() => import('@/components/tactical/TacticalLayout'), {
-  ssr: false,
-});
+import TacticalLayoutClient from '@/components/tactical/TacticalLayoutClient';
 
 export default function Home() {
-  return <TacticalLayout />;
+  return <TacticalLayoutClient />;
 }
