@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 
 interface FeedEvent {
   id: string;
@@ -49,10 +50,8 @@ export default function RightSidebar() {
 
       {/* Mission Timeline */}
       <div className="h-64">
-        {/** dynamic import avoided; directly include to keep simple **/}
-        {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-        {/* @ts-expect-error: imported via next transpilation */}
-        {require('./MissionTimeline').default()}
+        {/* Client-only timeline to avoid SSR hydration mismatch */}
+        {dynamic(() => import('./MissionTimeline'), { ssr: false })({})}
       </div>
     </div>
   );

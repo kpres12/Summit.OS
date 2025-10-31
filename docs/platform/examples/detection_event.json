@@ -1,0 +1,14 @@
+{
+  "id": "11111111-1111-4111-8111-111111111111",
+  "type": "wildfire_hotspot",
+  "confidence": 0.92,
+  "bbox": { "x_min": 0.1, "y_min": 0.2, "x_max": 0.4, "y_max": 0.6, "normalized": true },
+  "lat": 37.7749,
+  "lon": -122.4194,
+  "alt": 15.0,
+  "timestamp": "2025-01-01T12:00:00Z",
+  "source_id": "sensor-tower-01",
+  "image_refs": [ { "uri": "https://example.com/img/1.jpg", "content_type": "image/jpeg" } ],
+  "heat_index": 0.8,
+  "wind_vector": { "speed_mps": 5.0, "direction_deg": 180 }
+}

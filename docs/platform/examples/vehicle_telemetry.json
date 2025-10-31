@@ -1,0 +1,9 @@
+{
+  "vehicle_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "position": { "lat": 37.7762, "lon": -122.4178, "alt": 55.0 },
+  "attitude": { "roll_deg": 1.0, "pitch_deg": -0.5, "yaw_deg": 270.0 },
+  "battery_pct": 78.5,
+  "payload_state": { "pump": "armed", "flow_lps": 0.0 },
+  "health_flags": ["OK"],
+  "timestamp": "2025-01-01T12:12:00Z"
+}

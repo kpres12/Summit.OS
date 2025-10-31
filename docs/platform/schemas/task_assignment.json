@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bigmt.dev/schemas/task_assignment.json",
+  "title": "Task Assignment",
+  "type": "object",
+  "properties": {
+    "task_id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "vehicle_id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "payload_requirements": { "type": "object", "additionalProperties": true },
+    "release_plan": { "type": "object", "additionalProperties": true },
+    "ruleset_id": { "type": "string" },
+    "start_time": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/iso_timestamp" },
+    "end_time": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/iso_timestamp" }
+  },
+  "required": ["task_id", "vehicle_id"],
+  "additionalProperties": false
+}

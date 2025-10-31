@@ -3,9 +3,12 @@ import { useEffect, useState } from 'react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
+type Device = { device_id: string; lat?: number; lon?: number; status?: string }
+type Alert = { severity?: string; description?: string; lat?: number; lon?: number }
+
 const CopPage: NextPage = () => {
-  const [devices, setDevices] = useState<any[]>([])
-  const [alerts, setAlerts] = useState<any[]>([])
+  const [devices, setDevices] = useState<Device[]>([])
+  const [alerts, setAlerts] = useState<Alert[]>([])
   const [ts, setTs] = useState<string>('')
 
   useEffect(() => {
@@ -29,13 +32,13 @@ const CopPage: NextPage = () => {
       <p>ts: {ts}</p>
       <h2>Devices ({devices.length})</h2>
       <ul>
-        {devices.map((d, i) => (
+        {devices.map((d: Device, i: number) => (
           <li key={i}>{d.device_id} {d.lat?.toFixed?.(4)},{d.lon?.toFixed?.(4)} {d.status}</li>
         ))}
       </ul>
       <h2>Alerts ({alerts.length})</h2>
       <ul>
-        {alerts.map((a, i) => (
+        {alerts.map((a: Alert, i: number) => (
           <li key={i}>{a.severity} {a.description} {a.lat?.toFixed?.(4)},{a.lon?.toFixed?.(4)}</li>
         ))}
       </ul>

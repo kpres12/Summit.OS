@@ -1,0 +1,9 @@
+{
+  "task_id": "44444444-4444-4444-8444-444444444444",
+  "vehicle_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  "payload_requirements": { "water_liters": 20 },
+  "release_plan": { "pattern": "grid", "spacing_m": 5 },
+  "ruleset_id": "wildfire_v1",
+  "start_time": "2025-01-01T12:10:00Z",
+  "end_time": "2025-01-01T12:30:00Z"
+}

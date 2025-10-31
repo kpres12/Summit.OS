@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Optional
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from .models import TelemetryMessage, AlertMessage, MissionUpdate, SystemMetrics
+from models import TelemetryMessage, AlertMessage, MissionUpdate, SystemMetrics
 
 
 class RedisClient:

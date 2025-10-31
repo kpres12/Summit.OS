@@ -4,7 +4,7 @@ Simple model registry helpers for Fusion.
 import os
 from typing import List
 
-from .vision_inference import VisionInference
+from vision_inference import VisionInference
 
 
 def list_models(root: str) -> List[str]:
@@ -21,7 +21,7 @@ def list_models(root: str) -> List[str]:
 
 def select_model(path: str) -> None:
     # Reinitialize global vision object if present
-    from . import main as fusion_main  # circular import safe for attribute access
+    import main as fusion_main  # circular import safe for attribute access
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     if fusion_main.vision is None:

@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from fastapi import WebSocket
 from datetime import datetime, timezone
 
-from .models import TelemetryMessage, AlertMessage, MissionUpdate
+from models import TelemetryMessage, AlertMessage, MissionUpdate
 
 
 class WebSocketManager:

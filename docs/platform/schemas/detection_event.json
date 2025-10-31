@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bigmt.dev/schemas/detection_event.json",
+  "title": "Detection Event",
+  "type": "object",
+  "properties": {
+    "id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "type": { "type": "string", "description": "e.g., wildfire_hotspot, smoke, person, vehicle" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "bbox": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/bbox" },
+    "lat": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/lat" },
+    "lon": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/lon" },
+    "alt": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/alt_m" },
+    "timestamp": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/iso_timestamp" },
+    "source_id": { "type": "string", "description": "Sensor or node ID" },
+    "image_refs": { "type": "array", "items": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/image_ref" } },
+    "heat_index": { "type": "number" },
+    "wind_vector": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/wind_vector" },
+    "quality": { "type": "object", "additionalProperties": true }
+  },
+  "required": ["id", "type", "confidence", "timestamp", "source_id"],
+  "additionalProperties": false
+}

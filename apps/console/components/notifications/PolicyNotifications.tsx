@@ -9,13 +9,19 @@ type Toast = {
   color?: string;
 };
 
+interface PolicyDeniedDetail {
+  status?: number;
+  message?: string;
+  violations?: string[];
+}
+
 export default function PolicyNotifications() {
   const [toasts, setToasts] = React.useState<Toast[]>([]);
 
   React.useEffect(() => {
     function onDenied(e: Event) {
-      const ce = e as CustomEvent;
-      const { status, message, violations } = (ce.detail || {}) as any;
+      const ce = e as CustomEvent<PolicyDeniedDetail>;
+      const { status, message, violations } = (ce.detail || {} as PolicyDeniedDetail);
       const id = `${Date.now()}`;
       const desc = Array.isArray(violations) && violations.length
         ? violations.join("; ")
@@ -34,8 +40,8 @@ export default function PolicyNotifications() {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 6000);
     }
-    window.addEventListener("policy-denied", onDenied as any);
-    return () => window.removeEventListener("policy-denied", onDenied as any);
+    window.addEventListener("policy-denied", onDenied as EventListener);
+    return () => window.removeEventListener("policy-denied", onDenied as EventListener);
   }, []);
 
   if (!toasts.length) return null;

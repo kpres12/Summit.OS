@@ -64,6 +64,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Summit API Gateway", version="0.4.1", lifespan=lifespan)
 
+# CORS for local dev (console at 3000)
+try:
+    from fastapi.middleware.cors import CORSMiddleware
+    ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[o.strip() for o in ORIGINS if o.strip()],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"]
+    )
+except Exception:
+    pass
+
 # Unified error response shape
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request as _Request
@@ -534,3 +548,84 @@ async def get_mission_proxy(mission_id: str, _claims: dict | None = Depends(veri
             return r.json()
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+# -------------------------
+# Contracts examples for UI/CI
+# -------------------------
+from fastapi.responses import JSONResponse
+
+_EXAMPLE_ALLOWED = {
+    "detection_event",
+    "track",
+    "mission_intent",
+    "task_assignment",
+    "vehicle_telemetry",
+    "action_ack",
+}
+
+
+def _repo_root() -> str:
+    # apps/api-gateway/main.py -> repo root is two levels up
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+@app.get("/contracts/example/{name}", response_class=JSONResponse)
+async def get_contract_example(name: str):
+    if name not in _EXAMPLE_ALLOWED:
+        raise HTTPException(status_code=404, detail="unknown contract example")
+    path = os.path.join(_repo_root(), "docs", "platform", "examples", f"{name}.json")
+    try:
+        import json
+        with open(path, "r") as f:
+            data = json.load(f)
+        return data
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"example not found: {name}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"failed to load example: {e}")
+
+
+# -------------------------
+# Feature flags (platform + domain packs)
+# -------------------------
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    out = dict(base)
+    for k, v in (override or {}).items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+@app.get("/feature_flags", response_class=JSONResponse)
+async def get_feature_flags(domain: str | None = None):
+    # Try to load YAML; gracefully degrade if not installed or file missing
+    try:
+        import yaml  # type: ignore
+        path = os.path.join(_repo_root(), "docs", "platform", "feature_flags.yaml")
+        with open(path, "r") as f:
+            cfg = yaml.safe_load(f) or {}
+        base = {
+            "features": cfg.get("features", {}),
+            "rbac": cfg.get("rbac", {}),
+            "maps": cfg.get("features", {}).get("maps", {}),
+        }
+        if domain:
+            d = (cfg.get("domains", {}) or {}).get(domain, {})
+            merged = _deep_merge(base, d)
+            merged["domain"] = domain
+            return merged
+        return base
+    except Exception:
+        # Fallback minimal flags so UI can render
+        minimal = {
+            "features": {
+                "ui": {"map3d": True, "timeline": True, "alerts": True},
+                "packs": {"wildfire": False, "agriculture": False, "oilgas": False},
+            }
+        }
+        if domain:
+            minimal["domain"] = domain
+        return minimal

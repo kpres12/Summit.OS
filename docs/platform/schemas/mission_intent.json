@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bigmt.dev/schemas/mission_intent.json",
+  "title": "Mission Intent",
+  "type": "object",
+  "properties": {
+    "mission_id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "priority": { "type": "integer", "minimum": 0 },
+    "objective_type": { "type": "string", "enum": ["asset_protect", "ember_damp", "recon", "surveillance", "resupply", "custom"] },
+    "polygon": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/polygon" },
+    "waypoint_list": { "type": "array", "items": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/waypoint" }, "minItems": 1 },
+    "constraints": { "type": "object", "additionalProperties": true },
+    "desired_effect": { "type": "string" },
+    "eta": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/iso_timestamp" }
+  },
+  "oneOf": [
+    { "required": ["polygon"] },
+    { "required": ["waypoint_list"] }
+  ],
+  "required": ["mission_id", "priority", "objective_type"],
+  "additionalProperties": false
+}
