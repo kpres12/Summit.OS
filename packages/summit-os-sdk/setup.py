@@ -47,6 +47,13 @@ setup(
         "mqtt": [
             "paho-mqtt>=1.6.0",
         ],
+        "adapters": [
+            "pymavlink>=2.4.40",
+            "onvif-zeep>=0.2.12",
+            "fastapi>=0.111.0",
+            "uvicorn[standard]>=0.30.0",
+            "httpx>=0.27.0",
+        ],
         "websocket": [
             "websocket-client>=1.6.0",
         ],
@@ -62,6 +69,7 @@ setup(
             "black>=22.0.0",
             "flake8>=5.0.0",
             "mypy>=0.991",
+            "jsonschema>=4.19.0",
         ],
     },
     entry_points={

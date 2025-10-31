@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bigmt.dev/schemas/vehicle_telemetry.json",
+  "title": "Vehicle Telemetry",
+  "type": "object",
+  "properties": {
+    "vehicle_id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "position": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/latLonAlt" },
+    "attitude": {
+      "type": "object",
+      "properties": {
+        "roll_deg": { "type": "number" },
+        "pitch_deg": { "type": "number" },
+        "yaw_deg": { "type": "number", "minimum": 0, "maximum": 360 }
+      },
+      "required": ["roll_deg", "pitch_deg", "yaw_deg"],
+      "additionalProperties": false
+    },
+    "battery_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+    "payload_state": { "type": "object", "additionalProperties": true },
+    "health_flags": { "type": "array", "items": { "type": "string" } },
+    "timestamp": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/iso_timestamp" }
+  },
+  "required": ["vehicle_id", "timestamp"],
+  "additionalProperties": false
+}

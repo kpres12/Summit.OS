@@ -12,17 +12,17 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional, List
 
 import structlog
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import json
 from datetime import datetime, timezone, timedelta
 
-from .config import Settings
-from .mqtt_client import MQTTClient
-from .redis_client import RedisClient
-from .websocket_manager import WebSocketManager
-from .models import TelemetryMessage, AlertMessage, MissionUpdate, Location, SeverityLevel, MissionStatus
+from config import Settings
+from mqtt_client import MQTTClient
+from redis_client import RedisClient
+from websocket_manager import WebSocketManager
+from models import TelemetryMessage, AlertMessage, MissionUpdate, Location, SeverityLevel, MissionStatus
 
 # SQLAlchemy (async) for registry persistence
 from sqlalchemy import (
@@ -433,7 +433,7 @@ from typing import Annotated
 from fastapi import Header as _Header
 
 @app.post("/telemetry")
-async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN", default=None)] = None):
+async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN")] = None):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
@@ -516,7 +516,7 @@ async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = D
         raise HTTPException(status_code=500, detail="Failed to publish telemetry")
 
 @app.post("/alerts")
-async def publish_alert(alert: "AlertData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN", default=None)] = None):
+async def publish_alert(alert: "AlertData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN")] = None):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:

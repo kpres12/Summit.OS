@@ -1,0 +1,12 @@
+{
+  "mission_id": "33333333-3333-4333-8333-333333333333",
+  "priority": 5,
+  "objective_type": "ember_damp",
+  "waypoint_list": [
+    { "lat": 37.7760, "lon": -122.4180, "alt": 50.0, "hold_seconds": 0 },
+    { "lat": 37.7765, "lon": -122.4175, "alt": 50.0, "hold_seconds": 0 }
+  ],
+  "constraints": { "no_fly": false },
+  "desired_effect": "reduce_ember_risk",
+  "eta": "2025-01-01T12:05:00Z"
+}

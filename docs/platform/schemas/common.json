@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bigmt.dev/schemas/common.json",
+  "title": "Common Types",
+  "type": "object",
+  "$defs": {
+    "uuid": { "type": "string", "format": "uuid" },
+    "iso_timestamp": { "type": "string", "format": "date-time" },
+    "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+    "lon": { "type": "number", "minimum": -180, "maximum": 180 },
+    "alt_m": { "type": "number", "description": "Altitude in meters AMSL" },
+    "latLonAlt": {
+      "type": "object",
+      "properties": {
+        "lat": { "$ref": "#/$defs/lat" },
+        "lon": { "$ref": "#/$defs/lon" },
+        "alt": { "$ref": "#/$defs/alt_m" }
+      },
+      "required": ["lat", "lon"],
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "lat": { "$ref": "#/$defs/lat" },
+        "lon": { "$ref": "#/$defs/lon" },
+        "alt": { "$ref": "#/$defs/alt_m" },
+        "timestamp": { "$ref": "#/$defs/iso_timestamp" }
+      },
+      "required": ["lat", "lon", "timestamp"],
+      "additionalProperties": false
+    },
+    "velocity": {
+      "type": "object",
+      "properties": {
+        "speed_mps": { "type": "number", "minimum": 0 },
+        "heading_deg": { "type": "number", "minimum": 0, "maximum": 360 }
+      },
+      "required": ["speed_mps"],
+      "additionalProperties": false
+    },
+    "bbox": {
+      "type": "object",
+      "description": "Axis-aligned box in source frame; normalized=true means [0,1] coords",
+      "properties": {
+        "x_min": { "type": "number" },
+        "y_min": { "type": "number" },
+        "x_max": { "type": "number" },
+        "y_max": { "type": "number" },
+        "normalized": { "type": "boolean", "default": true }
+      },
+      "required": ["x_min", "y_min", "x_max", "y_max"],
+      "additionalProperties": false
+    },
+    "wind_vector": {
+      "type": "object",
+      "properties": {
+        "speed_mps": { "type": "number", "minimum": 0 },
+        "direction_deg": { "type": "number", "minimum": 0, "maximum": 360 }
+      },
+      "required": ["speed_mps", "direction_deg"],
+      "additionalProperties": false
+    },
+    "image_ref": {
+      "type": "object",
+      "properties": {
+        "uri": { "type": "string", "format": "uri" },
+        "content_type": { "type": "string" },
+        "timestamp": { "$ref": "#/$defs/iso_timestamp" },
+        "notes": { "type": "string" }
+      },
+      "required": ["uri"],
+      "additionalProperties": false
+    },
+    "polygon": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lat": { "$ref": "#/$defs/lat" },
+          "lon": { "$ref": "#/$defs/lon" },
+          "alt": { "$ref": "#/$defs/alt_m" }
+        },
+        "required": ["lat", "lon"],
+        "additionalProperties": false
+      },
+      "minItems": 3
+    },
+    "waypoint": {
+      "type": "object",
+      "properties": {
+        "lat": { "$ref": "#/$defs/lat" },
+        "lon": { "$ref": "#/$defs/lon" },
+        "alt": { "$ref": "#/$defs/alt_m" },
+        "hold_seconds": { "type": "number", "minimum": 0 }
+      },
+      "required": ["lat", "lon"],
+      "additionalProperties": false
+    }
+  }
+}

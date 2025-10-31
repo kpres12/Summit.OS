@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react'
 
 const API = process.env.NEXT_PUBLIC_API_URL || ''
 
+type PendingTask = { task_id: string; asset_id: string; action: string; risk_level: string; created_at: string }
+
 const ApprovalsPage: NextPage = () => {
-  const [pending, setPending] = useState<any[]>([])
+  const [pending, setPending] = useState<PendingTask[]>([])
   const [msg, setMsg] = useState<string>('')
 
   const reload = async () => {
@@ -29,7 +31,7 @@ const ApprovalsPage: NextPage = () => {
       const j = await r.json()
       setMsg(`Approved ${j.task_id}`)
       reload()
-    } catch (e: any) {
+    } catch (e) {
       setMsg(`Error: ${e?.message || 'approve failed'}`)
     }
   }
@@ -39,7 +41,7 @@ const ApprovalsPage: NextPage = () => {
       <h1>Approvals</h1>
       {msg && <p>{msg}</p>}
       <ul>
-        {pending.map((p: any) => (
+        {pending.map((p: PendingTask) => (
           <li key={p.task_id}>
             <code>{p.task_id}</code> {p.asset_id} {p.action} [{p.risk_level}] {p.created_at}
             <button style={{ marginLeft: 8 }} onClick={() => approve(p.task_id)}>Approve</button>

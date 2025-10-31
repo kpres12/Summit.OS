@@ -8,6 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdal-dev \
     proj-bin \
     libproj-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxrender1 \
+    libxext6 \
  && rm -rf /var/lib/apt/lists/*
 
 ENV CPLUS_INCLUDE_PATH=/usr/include/gdal

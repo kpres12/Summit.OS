@@ -1,0 +1,77 @@
+version: 1
+metadata:
+  description: Feature-flag matrix for platform shell and domain packs
+  note: Toggle packs per-tenant via RBAC/feature flags; all call the same Summit.OS contracts
+
+features:
+  ui:
+    map3d: true
+    timeline: true
+    alerts: true
+    chat: true
+    mission_board: true
+    video: true
+  policies:
+    pack_id: default
+  packs:
+    wildfire: false
+    agriculture: false
+    oilgas: false
+  maps:
+    base_layers: [streets, satellite]
+
+rbac:
+  roles:
+    operator:
+      allowed_packs: ["*"]
+    supervisor:
+      allowed_packs: ["*"]
+
+# Domain-specific overrides
+domains:
+  wildfire:
+    packs:
+      wildfire: true
+    policies:
+      pack_id: wildfire_v1
+    detectors:
+      enabled: [smoke, thermal_hotspot]
+    missions:
+      enabled: [ember_damp, asset_wet, recon]
+    maps:
+      layers_enabled: [fire_perimeters, hotspots, wind, assets, airspace]
+    analytics:
+      widgets_enabled: [fire_behavior, hotspot_trend]
+
+  agriculture:
+    packs:
+      agriculture: true
+    policies:
+      pack_id: ag_v1
+    detectors:
+      enabled: [ndvi_stress, thermal_stress]
+    missions:
+      enabled: [field_spray, field_recon]
+    maps:
+      layers_enabled: [field_boundaries, ndvi, irrigation, airspace]
+    analytics:
+      widgets_enabled: [yield_estimator, stress_heatmap]
+
+  oilgas:
+    packs:
+      oilgas: true
+    policies:
+      pack_id: oilgas_v1
+    detectors:
+      enabled: [methane_plume, thermal_leak]
+    missions:
+      enabled: [pipeline_patrol, investigate_leak, site_recon]
+    maps:
+      layers_enabled: [pipelines, facilities, restricted_zones, airspace]
+    analytics:
+      widgets_enabled: [plume_spread, patrol_coverage]
+
+# Example tenant scoping
+tenants:
+  demo_agency:
+    enabled_domains: [wildfire]

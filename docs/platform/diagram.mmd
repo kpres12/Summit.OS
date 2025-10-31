@@ -1,0 +1,20 @@
+%% Mermaid diagram for Summit Sentinel Platform
+%% Save as .mmd and view on GitHub or Mermaid Live Editor
+
+graph TD
+  A["Summit.OS Core\n• Autonomy & swarm logic\n• Mission planner & scheduler\n• Safety / ROE enforcement\n• Vehicle / sensor drivers (SDK)\n• Telemetry & API (gRPC + REST)"]
+
+  subgraph Domain Apps (packs)
+    B["Sentinel (Wildfire)\n• Wildfire UI & tools\n• Fire detection logic\n• Fire vocab / workflows\n• Calls Summit APIs"]
+    C["AgriOps (Agriculture)\n• Crop/field UI & tools\n• NDVI / irrigation\n• Ag vocab / workflows\n• Calls Summit APIs"]
+    D["PetroGuard (Oil & Gas)\n• Pipeline UI & tools\n• Leak detection logic\n• O&G vocab / workflows\n• Calls Summit APIs"]
+  end
+
+  E["Shared Platform / Fabric (common repo)\n• Auth / Identity / RBAC\n• Shared database + schemas\n• API Gateway (routes → Summit.OS)\n• Message bus (Kafka / NATS / DDS bridge)\n• Design system / map / UI components\n• DevOps / logging / monitoring"]
+
+  B --> E
+  C --> E
+  D --> E
+
+  E -- "shared API / message bus" --> A
+  A -- events / telemetry --> E

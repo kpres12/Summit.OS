@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bigmt.dev/schemas/track.json",
+  "title": "Fused Track",
+  "type": "object",
+  "properties": {
+    "track_id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "positions": {
+      "type": "array",
+      "items": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/position" },
+      "minItems": 1
+    },
+    "velocity": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/velocity" },
+    "classification": { "type": "string", "description": "e.g., fire, vehicle, person, unknown" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "required": ["track_id", "positions"],
+  "additionalProperties": false
+}

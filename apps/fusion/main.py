@@ -17,7 +17,7 @@ import base64
 import io
 
 import redis.asyncio as aioredis
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from jsonschema import Draft202012Validator
 from pydantic import BaseModel
@@ -29,8 +29,8 @@ from sqlalchemy.orm import sessionmaker
 import paho.mqtt.client as mqtt
 import numpy as np
 import cv2
-from .vision_inference import VisionInference
-from .model_registry import list_models, select_model
+from vision_inference import VisionInference
+from model_registry import list_models, select_model
 
 # Globals initialized in lifespan
 engine: Optional[AsyncEngine] = None
@@ -46,14 +46,14 @@ vision: Optional[VisionInference] = None
 
 # Optional tracking
 try:
-    from .tracking import SimpleTracker  # lightweight local tracker
+    from tracking import SimpleTracker  # lightweight local tracker
 except Exception:
     SimpleTracker = None  # type: ignore
 tracker: Optional["SimpleTracker"] = None  # type: ignore
 
 # Simple triangulation
 try:
-    from .triangulation import bearing_intersection
+    from triangulation import bearing_intersection
 except Exception:
     bearing_intersection = None  # type: ignore
 
@@ -332,9 +332,9 @@ async def _persist_observations_from_detections(detections: List[Dict[str, Any]]
             lat = float(meta.get("lat")) if meta.get("lat") is not None else None
             lon = float(meta.get("lon")) if meta.get("lon") is not None else None
             attrs = det
-await session.execute(
+            await session.execute(
                 observations.insert().values(
-                    class=cls,
+                    **{"class": cls},
                     lat=lat,
                     lon=lon,
                     confidence=conf,
@@ -440,8 +440,8 @@ async def _redis_stream_consumer():
                         except Exception:
                             pass
                         
-                        # Persist
-                        async with SessionLocal() as session:
+                        # Check for duplicates
+                        try:
                             import hashlib
                             sig_src = {
                                 "class": data.get("class"),
@@ -466,7 +466,7 @@ async def _redis_stream_consumer():
 
                         # Persist
                         async with SessionLocal() as session:
-await session.execute(
+                            await session.execute(
                                 observations.insert().values(
                                     **{"class": data["class"], "lat": lat, "lon": lon, "confidence": conf, "ts": ts, "source": source, "attributes": attributes, "org_id": None}
                                 )
@@ -517,7 +517,7 @@ await session.execute(
                                         "wind_direction_deg": attributes.get("wind_direction") if isinstance(attributes, dict) else None,
                                         "elevation_m": attributes.get("elevation") if isinstance(attributes, dict) else None,
                                     }
-                                    from .sentinel_client import simulate_spread as _sentinel_sim
+                                    from sentinel_client import simulate_spread as _sentinel_sim
                                     asyncio.create_task(_sentinel_sim(lat, lon, cond))
                         except Exception as _e:
                             # Non-fatal; continue stream processing

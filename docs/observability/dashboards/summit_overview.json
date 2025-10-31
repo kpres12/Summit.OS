@@ -1,0 +1,32 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Summit.OS - System Overview",
+    "tags": ["summit", "overview"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "type": "stat",
+        "title": "Prometheus Up",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "targets": [{"expr": "up", "legendFormat": "{{job}}"}]
+      },
+      {
+        "type": "table",
+        "title": "Scrape Targets",
+        "gridPos": {"x": 6, "y": 0, "w": 18, "h": 8},
+        "targets": [{"expr": "up"}],
+        "transformations": [{"id": "labelsToFields", "options": {"mode": "columns"}}]
+      },
+      {
+        "type": "stat",
+        "title": "API Gateway Health (manual)",
+        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 4},
+        "targets": [{"expr": "up{job=\"api-gateway\"}"}]
+      }
+    ],
+    "schemaVersion": 38,
+    "version": 1
+  },
+  "overwrite": true
+}

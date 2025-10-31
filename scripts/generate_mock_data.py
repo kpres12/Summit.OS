@@ -274,6 +274,7 @@ class MockDataGenerator:
                 "pressure": 1013.25 + random.uniform(-10, 10),
                 "rain_rate": random.uniform(0, 5),
                 "visibility": random.uniform(1000, 10000)
+            }
             
             # Create telemetry with weather data
             telemetry = {
