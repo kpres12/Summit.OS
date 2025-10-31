@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
-import dynamic from "next/dynamic";
+import PolicyNotifications from "../components/notifications/PolicyNotifications";
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
@@ -28,7 +28,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           {/* Global policy notifications */}
-          {dynamic(() => import('../components/notifications/PolicyNotifications'), { ssr: false })({})}
+          <PolicyNotifications />
         </AuthProvider>
       </body>
     </html>
