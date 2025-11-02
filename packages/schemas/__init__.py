@@ -8,7 +8,7 @@ from .intelligence import IntelligenceSchema, RiskAssessment
 from .drones import (
     DroneType, DroneRole, PayloadType, MissionTier,
     DroneCapabilities, PayloadConfig, InterventionPlan,
-    SwarmCoordination, FireThreshold, TieredMissionRequest,
+    SwarmCoordination, ThreatThreshold, TieredMissionRequest,
     TieredMissionStatus, DroneBoxConfig, TieredAsset
 )
 
@@ -32,7 +32,7 @@ __all__ = [
     "PayloadConfig",
     "InterventionPlan",
     "SwarmCoordination",
-    "FireThreshold",
+    "ThreatThreshold",
     "TieredMissionRequest",
     "TieredMissionStatus",
     "DroneBoxConfig",

@@ -146,6 +146,9 @@ HEARTBEAT_STALE_SECS = 120  # 2 minutes
 HEARTBEAT_OFFLINE_SECS = 600  # 10 minutes
 FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
 FABRIC_TEST_MODE = os.getenv("FABRIC_TEST_MODE", "false").lower() == "true"
+# In test mode, disable geospatial columns to avoid SpatiaLite dependency
+if FABRIC_TEST_MODE:
+    GEO_AVAILABLE = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -173,16 +176,18 @@ async def lifespan(app: FastAPI):
         # Ensure extensions
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-        _run_migrations()
-        # Create geospatial and org_id indexes if available
-        async with engine.begin() as conn:
-            await conn.execute(text("ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
-            await conn.execute(text("ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"))
-            if GEO_AVAILABLE:
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"))
+        if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
+            _run_migrations()
+        # Create geospatial and org_id indexes if available (skip if migrations disabled)
+        if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
+            async with engine.begin() as conn:
+                await conn.execute(text("ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
+                await conn.execute(text("ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"))
+                if GEO_AVAILABLE:
+                    await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"))
+                    await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"))
 
     # WebSocket manager
     websocket_manager = WebSocketManager()
@@ -429,11 +434,9 @@ async def _verify_bearer_fabric(authorization: str | None = Header(default=None)
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-from typing import Annotated
-from fastapi import Header as _Header
 
 @app.post("/telemetry")
-async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN")] = None):
+async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: dict | None = Depends(_verify_bearer_fabric)):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
@@ -475,13 +478,15 @@ async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = D
                 except Exception:
                     org_id = None
                 # Fallback to mTLS client DN parsing (e.g., 'OU=org-123, CN=device')
-                if not org_id and x_client_dn:
+                if not org_id:
                     try:
-                        parts = [p.strip() for p in str(x_client_dn).split(',')]
-                        for p in parts:
-                            if p.startswith('OU='):
-                                org_id = p.split('=',1)[1]
-                                break
+                        x_client_dn = request.headers.get("X-Client-DN")
+                        if x_client_dn:
+                            parts = [p.strip() for p in str(x_client_dn).split(',')]
+                            for p in parts:
+                                if p.startswith('OU='):
+                                    org_id = p.split('=',1)[1]
+                                    break
                     except Exception:
                         pass
                 if GEO_AVAILABLE:
@@ -516,7 +521,7 @@ async def publish_telemetry(telemetry: "TelemetryData", _claims: dict | None = D
         raise HTTPException(status_code=500, detail="Failed to publish telemetry")
 
 @app.post("/alerts")
-async def publish_alert(alert: "AlertData", _claims: dict | None = Depends(_verify_bearer_fabric), x_client_dn: Annotated[str | None, _Header(alias="X-Client-DN")] = None):
+async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None = Depends(_verify_bearer_fabric)):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
@@ -557,13 +562,15 @@ async def publish_alert(alert: "AlertData", _claims: dict | None = Depends(_veri
                     org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
                 except Exception:
                     org_id = None
-                if not org_id and x_client_dn:
+                if not org_id:
                     try:
-                        parts = [p.strip() for p in str(x_client_dn).split(',')]
-                        for p in parts:
-                            if p.startswith('OU='):
-                                org_id = p.split('=',1)[1]
-                                break
+                        x_client_dn = request.headers.get("X-Client-DN")
+                        if x_client_dn:
+                            parts = [p.strip() for p in str(x_client_dn).split(',')]
+                            for p in parts:
+                                if p.startswith('OU='):
+                                    org_id = p.split('=',1)[1]
+                                    break
                     except Exception:
                         pass
                 if GEO_AVAILABLE:

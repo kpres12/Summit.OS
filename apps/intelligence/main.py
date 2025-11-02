@@ -5,7 +5,7 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 import redis.asyncio as aioredis
 from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, text

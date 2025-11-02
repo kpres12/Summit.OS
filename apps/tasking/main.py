@@ -4,6 +4,8 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
+import sys, os
+sys.path.insert(0, "/packages")
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel, Field

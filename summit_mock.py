@@ -48,7 +48,7 @@ class Location(BaseModel):
 class Alert(BaseModel):
     id: str
     ts: float
-    severity: str = Field(..., regex="^(LOW|MED|HIGH|CRITICAL)$")
+    severity: str = Field(..., pattern="^(LOW|MED|HIGH|CRITICAL)$")
     title: str
     message: str
     location: Location
@@ -58,13 +58,13 @@ class Alert(BaseModel):
 class Task(BaseModel):
     id: str
     asset: str
-    kind: str = Field(..., regex="^(PATROL|SURVEY_SMOKE|BUILD_LINE|SUPPRESS|RECON)$")
-    state: str = Field(..., regex="^(QUEUED|ENROUTE|ACTIVE|PAUSED|DONE|FAILED)$")
+    kind: str = Field(..., pattern="^(PATROL|SURVEY_SMOKE|BUILD_LINE|SUPPRESS|RECON)$")
+    state: str = Field(..., pattern="^(QUEUED|ENROUTE|ACTIVE|PAUSED|DONE|FAILED)$")
     eta_min: int
     params: Dict[str, Any] = {}
 
 class TaskRequest(BaseModel):
-    kind: str = Field(..., regex="^(PATROL|SURVEY_SMOKE|BUILD_LINE|SUPPRESS|RECON)$")
+    kind: str = Field(..., pattern="^(PATROL|SURVEY_SMOKE|BUILD_LINE|SUPPRESS|RECON)$")
     target: Location
     params: Dict[str, Any] = {}
 
