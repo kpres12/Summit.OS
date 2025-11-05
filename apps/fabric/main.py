@@ -213,6 +213,10 @@ async def lifespan(app: FastAPI):
         await mqtt_client.subscribe("detections/#", _handle_observation)  # legacy
         await mqtt_client.subscribe("missions/#", _handle_mission)
         await mqtt_client.subscribe("health/+/heartbeat", _handle_heartbeat)
+        # Plainview domain topics
+        await mqtt_client.subscribe("plainview/leaks", _handle_plainview_leak)
+        await mqtt_client.subscribe("valves/+/status", _handle_valve_status)
+        await mqtt_client.subscribe("pipeline/pressure/+", _handle_pipeline_pressure)
 
         # Start background tasks
         asyncio.create_task(telemetry_processor())
@@ -799,6 +803,105 @@ async def _handle_heartbeat(topic: str, data: Dict[str, Any]):
             await websocket_manager.broadcast(json.dumps({"type": "heartbeat", "node_id": node_id, "ts": data.get("ts")}))
     except Exception as e:
         logger.error(f"Failed to handle heartbeat: {e}")
+
+async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
+    """Handle Plainview leak/spill detection events and map to alert_stream + world_alerts."""
+    try:
+        if not redis_client:
+            return
+        # Parse fields
+        aid = str(data.get("id") or data.get("alert_id") or "")
+        sev_raw = str(data.get("severity") or "low").lower()
+        try:
+            sev = SeverityLevel(sev_raw)
+        except Exception:
+            sev = SeverityLevel.LOW
+        loc = data.get("location") or {}
+        latitude = float(loc.get("lat")) if loc.get("lat") is not None else None
+        longitude = float(loc.get("lon")) if loc.get("lon") is not None else None
+        if latitude is None or longitude is None:
+            return
+        aloc = Location(latitude=latitude, longitude=longitude)
+        am = AlertMessage(
+            alert_id=aid or f"LEAK-{int(datetime.now(timezone.utc).timestamp())}",
+            timestamp=datetime.now(timezone.utc),
+            severity=sev,
+            location=aloc,
+            description=str(data.get("class") or "Leak/Spill detected"),
+            source=str(data.get("source") or "plainview"),
+            category="plainview.leak",
+            tags=["plainview", "leak"],
+            metadata={k: v for k, v in data.items() if k not in {"id", "severity", "location"}},
+        )
+        await redis_client.add_alert(am)
+        # Persist minimal world_alerts row (reuse existing path via /alerts would be heavier)
+        try:
+            assert SessionLocal is not None
+            async with SessionLocal() as session:
+                if GEO_AVAILABLE:
+                    await session.execute(
+                        world_alerts.insert().values(
+                            alert_id=am.alert_id,
+                            severity=str(sev.value if hasattr(sev, "value") else sev),
+                            description=am.description,
+                            source=am.source,
+                            ts=am.timestamp,
+                            properties=am.metadata,
+                            org_id=None,
+                            geom=text(f"ST_SetSRID(ST_MakePoint({float(longitude)}, {float(latitude)}), 4326)")
+                        )
+                    )
+                else:
+                    await session.execute(
+                        world_alerts.insert().values(
+                            alert_id=am.alert_id,
+                            severity=str(sev.value if hasattr(sev, "value") else sev),
+                            description=am.description,
+                            source=am.source,
+                            ts=am.timestamp,
+                            properties={**am.metadata, "lon": float(longitude), "lat": float(latitude)},
+                            org_id=None,
+                        )
+                    )
+                await session.commit()
+        except Exception:
+            pass
+        if websocket_manager:
+            await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
+    except Exception as e:
+        logger.error(f"Failed to handle plainview leak: {e}")
+
+async def _handle_valve_status(topic: str, data: Dict[str, Any]):
+    """Handle valve status telemetry and forward to operations_stream and WS."""
+    try:
+        asset_id = topic.split("/")[1] if "/" in topic else None
+        record = {
+            "topic": topic,
+            "asset_id": asset_id or data.get("asset_id") or "unknown",
+            "payload": json.dumps(data),
+            "ts": datetime.now(timezone.utc).isoformat(),
+        }
+        if redis_client:
+            await redis_client.add_operation_event(record)
+        if websocket_manager:
+            await websocket_manager.broadcast(json.dumps({"type": "valve_status", "topic": topic, "data": data}))
+    except Exception as e:
+        logger.error(f"Failed to handle valve status: {e}")
+
+async def _handle_pipeline_pressure(topic: str, data: Dict[str, Any]):
+    """Handle pipeline pressure taps; forward as operations events."""
+    try:
+        segment_id = topic.split("/")[-1]
+        record = {
+            "topic": topic,
+            "segment_id": segment_id,
+            "payload": json.dumps(data),
+            "ts": datetime.now(timezone.utc).isoformat(),
+        }
+        if redis_client:
+            await redis_client.add_operation_event(record)
+    except Exception as e:
+        logger.error(f"Failed to handle pipeline pressure: {e}")
 
 # Background processors
 async def telemetry_processor():

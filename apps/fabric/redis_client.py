@@ -152,6 +152,22 @@ class RedisClient:
         except Exception as e:
             logging.error(f"Error adding mission update to Redis: {e}")
             raise
+
+    async def add_operation_event(self, event: Dict[str, Any]):
+        """Add a generic operational event to operations_stream (Plainview domain).
+        Expects a JSON-serializable dict; caller is responsible for shape.
+        """
+        if not self.redis:
+            raise ConnectionError("Not connected to Redis")
+        try:
+            await self.redis.xadd("operations_stream", event)
+            try:
+                await self.redis.xtrim("operations_stream", maxlen=50000, approximate=True)
+            except Exception:
+                pass
+        except Exception as e:
+            logging.error(f"Error adding operation event to Redis: {e}")
+            raise
     
     async def process_telemetry_stream(self):
         """Process telemetry from Redis Streams."""

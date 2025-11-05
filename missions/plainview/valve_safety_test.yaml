@@ -1,0 +1,31 @@
+# Valve Safety Test (Plainview)
+mission: plainview.valve_safety_test
+version: v1
+assets:
+  ugv:
+    id: UGV-R1
+plan:
+  steps:
+    - kind: VALVE_INDEX
+      params:
+        method: VISION_GUIDED
+        model: valve_locator_v1.onnx
+    - kind: VALVE_TORQUE_TEST
+      params:
+        max_nm: 60
+        step_nm: 5
+        hold_s: 1.0
+    - kind: VALVE_EXERCISE
+      params:
+        open_deg: 90
+        close_deg: 0
+        cycles: 2
+safety:
+  abort_on_over_torque: true
+  temperature_max_c: 80
+outputs:
+  topics:
+    - missions/updates
+    - valves/+/status
+  streams:
+    - operations_stream

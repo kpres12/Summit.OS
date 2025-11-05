@@ -1,0 +1,41 @@
+# Leak Verify + Isolate (Plainview)
+mission: plainview.leak_verify_isolate
+version: v1
+site:
+  name: example-segment-12
+trigger:
+  topic: plainview/leaks
+  selector:
+    severity: [HIGH, CRITICAL]
+assets:
+  drone:
+    id: UAV-E1
+  ugv:
+    id: UGV-R1
+plan:
+  steps:
+    - kind: DRONE_VERIFY
+      params:
+        orbit_radius_m: 50
+        photo_video: true
+        thermal_required: true
+    - kind: UGV_APPROACH_VALVE
+      params:
+        nearest_valve_from: trigger.asset_id
+        route_opt: SAFE_FAST
+    - kind: VALVE_CLOSE
+      params:
+        target_angle_deg: 0
+        torque_limit_nm: 55
+        verify_leak_drop: true
+safety:
+  interlocks:
+    pressure_ok: true
+    temp_ok: true
+    e_stop_clear: true
+outputs:
+  topics:
+    - missions/updates
+    - valves/+/status
+  streams:
+    - operations_stream

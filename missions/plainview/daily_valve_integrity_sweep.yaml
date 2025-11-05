@@ -1,0 +1,35 @@
+# Daily Valve Integrity Sweep (Plainview)
+mission: plainview.daily_valve_integrity_sweep
+version: v1
+site:
+  name: example-pad-001
+  aoi: [-102.5689, 31.1230, -102.5660, 31.1250]  # [minLon, minLat, maxLon, maxLat]
+assets:
+  ugvs:
+    - id: UGV-R1
+    - id: UGV-R2
+  sensors:
+    - id: WT-01  # WatchTower mast
+plan:
+  waypoints:
+    - { lat: 31.1235, lon: -102.5678 }
+    - { lat: 31.1240, lon: -102.5672 }
+    - { lat: 31.1245, lon: -102.5666 }
+  tasks:
+    - kind: VALVE_SWEEP
+      params:
+        detection_model: leak_valve_v1.onnx
+        torque_test: true
+        torque_limit_nm: 50
+        report_curve: true
+        photo_before_after: true
+safety:
+  pressure_window_kpa: [1500, 3500]
+  temperature_max_c: 80
+  abort_on_over_torque: true
+outputs:
+  topics:
+    - missions/updates
+    - valves/+/status
+  streams:
+    - operations_stream

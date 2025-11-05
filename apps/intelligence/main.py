@@ -138,6 +138,14 @@ async def livez():
 
 from fastapi import Request as _Req
 
+# Import Plainview models
+try:
+    from plainview_models import get_flow_detector, get_valve_predictor, get_pipeline_assessor
+    PLAINVIEW_MODELS_AVAILABLE = True
+except Exception as e:
+    print(f"Plainview models not available: {e}")
+    PLAINVIEW_MODELS_AVAILABLE = False
+
 async def _get_org_id(req: _Req) -> str | None:
     return req.headers.get("X-Org-ID") or req.headers.get("x-org-id")
 
@@ -160,6 +168,40 @@ async def list_advisories(risk_level: Optional[str] = None, limit: int = 50, org
         rows = (await session.execute(text(sql), params)).all()
         
         return [Advisory(**dict(r._mapping)) for r in rows]
+
+
+# Plainview-specific endpoints
+@app.post("/plainview/flow/analyze")
+async def analyze_flow(metrics: dict):
+    """Analyze flow metrics for anomalies (Plainview integration)."""
+    if not PLAINVIEW_MODELS_AVAILABLE:
+        return {"error": "Plainview models not available", "fallback": True}
+    
+    detector = get_flow_detector()
+    result = detector.detect(metrics)
+    return result
+
+
+@app.post("/plainview/valve/health")
+async def predict_valve_health(valve_data: dict):
+    """Predict valve health and maintenance window (Plainview integration)."""
+    if not PLAINVIEW_MODELS_AVAILABLE:
+        return {"error": "Plainview models not available", "fallback": True}
+    
+    predictor = get_valve_predictor()
+    result = predictor.predict_health(valve_data)
+    return result
+
+
+@app.post("/plainview/pipeline/assess")
+async def assess_pipeline(pipeline_data: dict):
+    """Assess pipeline integrity (Plainview integration)."""
+    if not PLAINVIEW_MODELS_AVAILABLE:
+        return {"error": "Plainview models not available", "fallback": True}
+    
+    assessor = get_pipeline_assessor()
+    result = assessor.assess(pipeline_data)
+    return result
 
 async def _risk_scoring_processor():
     """Background processor that consumes observations and generates risk-scored advisories."""

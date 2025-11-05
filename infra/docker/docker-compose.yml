@@ -161,6 +161,28 @@ services:
       - ../../apps/tasking:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8004
 
+  # Plainview Intelligence Adapter
+  plainview-adapter:
+    build:
+      context: ../../apps/plainview-adapter
+      dockerfile: Dockerfile
+    container_name: summit-plainview-adapter
+    ports:
+      - "8005:8005"
+    environment:
+      - INTELLIGENCE_URL=http://intelligence:8003
+      - PLAINVIEW_API_URL=http://host.docker.internal:4000
+      - REDIS_URL=redis://redis:6379
+      - MQTT_BROKER=mqtt://mqtt:1883
+    depends_on:
+      redis:
+        condition: service_healthy
+      intelligence:
+        condition: service_started
+    volumes:
+      - ../../apps/plainview-adapter:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8005 --reload
+
   # API Gateway
   api-gateway:
     build:
