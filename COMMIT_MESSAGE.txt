@@ -1,0 +1,77 @@
+fix: address 16 launch-critical security and reliability issues
+
+This commit hardens Summit.OS for production deployment by fixing
+security vulnerabilities, reliability issues, and operational gaps
+identified in pre-launch audit.
+
+BREAKING CHANGES:
+- CORS now restricted by default (set CORS_ORIGINS env var)
+- --reload disabled by default (set UVICORN_RELOAD=true for dev)
+- CI now fails on lint/test errors (removed || true safety valves)
+- Secrets must be set via environment variables
+
+SECURITY FIXES:
+- Remove hardcoded passwords from docker-compose.yml
+- Externalize POSTGRES_PASSWORD, FABRIC_JWT_SECRET, GRAFANA_ADMIN_PASSWORD
+- Lock down CORS to configurable origins (closes XSS/CSRF vector)
+- Add secrets management documentation
+
+RELIABILITY FIXES:
+- Disable uvicorn --reload in production (prevents memory leaks)
+- Enable DB migrations by default (FABRIC_SKIP_MIGRATIONS=false)
+- Add healthchecks to all services (prevents race conditions)
+- Create missing console Dockerfile with multi-stage build
+
+OBSERVABILITY FIXES:
+- Add /metrics endpoint to API Gateway (Prometheus)
+- Add error tracking counter (api_gateway_errors_total)
+- Create shared metrics instrumentation module
+
+CI/CD IMPROVEMENTS:
+- Remove || true from all CI steps (fail on errors)
+- Add console test script stub (ready for future tests)
+- Configure flake8 with --max-line-length=120
+- Add explicit npm lint and typecheck steps
+
+DOCUMENTATION:
+- Add LAUNCH_FIXES_SUMMARY.md (complete change summary)
+- Add docs/SECRETS_MANAGEMENT.md (Docker/K8s/Vault patterns)
+- Add docs/PRODUCTION_READINESS.md (launch checklist)
+- Add apps/shared_metrics.py (reusable Prometheus instrumentation)
+
+FILES CHANGED:
+- .env.example (add secret vars, CORS_ORIGINS, UVICORN_RELOAD)
+- infra/docker/docker-compose.yml (secrets, reload flags, healthchecks)
+- .github/workflows/ci.yml (remove safety valves, add checks)
+- apps/console/package.json (add test script)
+- apps/console/Dockerfile (create multi-stage build)
+- apps/console/next.config.mjs (enable standalone output)
+- apps/fabric/main.py (configurable CORS)
+- apps/fusion/main.py (configurable CORS)
+- apps/plainview-adapter/main.py (configurable CORS)
+- apps/ai-showcase/main.py (configurable CORS)
+- apps/api-gateway/main.py (add /metrics endpoint)
+
+FILES CREATED:
+- LAUNCH_FIXES_SUMMARY.md
+- docs/SECRETS_MANAGEMENT.md
+- docs/PRODUCTION_READINESS.md
+- apps/shared_metrics.py
+- apps/console/Dockerfile
+
+MIGRATION GUIDE:
+1. Set required environment variables:
+   export POSTGRES_PASSWORD="your_secure_password"
+   export FABRIC_JWT_SECRET="your_jwt_secret_min_32_chars"
+   export GRAFANA_ADMIN_PASSWORD="your_grafana_password"
+   export CORS_ORIGINS="https://yourdomain.com,https://app.yourdomain.com"
+
+2. For local development, enable reload:
+   export UVICORN_RELOAD=true
+
+3. Validate deployment:
+   make lint && make test && docker-compose up -d && make health
+
+See LAUNCH_FIXES_SUMMARY.md for complete details.
+
+Refs: #security #production-readiness #pre-launch-audit

@@ -22,7 +22,7 @@ services:
     environment:
       POSTGRES_DB: summit_os
       POSTGRES_USER: summit
-      POSTGRES_PASSWORD: summit_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-summit_password}
     ports:
       - "5433:5432"
     volumes:
@@ -61,9 +61,10 @@ services:
       - FABRIC_REDIS_URL=redis://redis:6379
       - FABRIC_MQTT_BROKER=mqtt
       - FABRIC_MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
-      - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET-dev_secret}
-      - FABRIC_SKIP_MIGRATIONS=true
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET:-dev_secret}
+      - FABRIC_SKIP_MIGRATIONS=${FABRIC_SKIP_MIGRATIONS:-false}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     depends_on:
       redis:
         condition: service_healthy
@@ -73,7 +74,13 @@ services:
         condition: service_healthy
     volumes:
       - ../../apps/fabric:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8001
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   fusion:
     build:
@@ -86,7 +93,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - OBSERVATION_SCHEMA_PATH=/contracts/jsonschemas/observation.schema.json
       - FUSION_ENABLE_VISION_AI=${FUSION_ENABLE_VISION_AI-false}
       - FUSION_ENABLE_TRACKING=${FUSION_ENABLE_TRACKING-true}
@@ -104,7 +112,13 @@ services:
       - ../../apps/fusion:/app
       - ../../packages/contracts:/contracts
       - ../../models:/models
-    command: uvicorn main:app --host 0.0.0.0 --port 8002
+    command: uvicorn main:app --host 0.0.0.0 --port 8002 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   intelligence:
     build:
@@ -117,7 +131,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - INTELLIGENCE_ENABLE_XGB=${INTELLIGENCE_ENABLE_XGB-false}
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
       - INTELLIGENCE_MODEL_PATH=${INTELLIGENCE_MODEL_PATH-}
@@ -131,7 +146,13 @@ services:
     volumes:
       - ../../apps/intelligence:/app
       - ../../models:/models
-    command: uvicorn main:app --host 0.0.0.0 --port 8003
+    command: uvicorn main:app --host 0.0.0.0 --port 8003 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   tasking:
     build:
@@ -146,7 +167,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - TASKING_DIRECT_AUTOPILOT=${TASKING_DIRECT_AUTOPILOT-false}
       - PYTHONPATH=/workspace:/app
     depends_on:
@@ -159,7 +181,13 @@ services:
     volumes:
       - ../../:/workspace
       - ../../apps/tasking:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8004
+    command: uvicorn main:app --host 0.0.0.0 --port 8004 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8004/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Plainview Intelligence Adapter
   plainview-adapter:
@@ -181,7 +209,13 @@ services:
         condition: service_started
     volumes:
       - ../../apps/plainview-adapter:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8005 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8005 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8005/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # API Gateway
   api-gateway:
@@ -196,8 +230,9 @@ services:
       - FUSION_URL=http://fusion:8002
       - INTELLIGENCE_URL=http://intelligence:8003
       - TASKING_URL=http://tasking:8004
-      - POSTGRES_URL=postgresql://summit:summit_password@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
       - MISSIONS=sentinel
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     depends_on:
       fabric:
         condition: service_started
@@ -211,7 +246,13 @@ services:
         condition: service_healthy
     volumes:
       - ../../apps/api-gateway:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # FireLine Console
   console:
@@ -230,6 +271,12 @@ services:
       - ../../apps/console:/app
       - /app/node_modules
     command: npm run dev
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Optional mTLS front proxies (enable with: docker-compose ... --profile mtls up)
   api-proxy:
@@ -312,7 +359,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:

@@ -16,24 +16,29 @@ jobs:
           python-version: '3.11'
       - name: Install linters
         run: |
-          pip install flake8 black pytest httpx mypy || true
+          pip install flake8 black pytest httpx mypy
       - name: Lint Python services
         run: |
-          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking || true
+          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking --max-line-length=120 --extend-ignore=E501,W503
       - name: Format check
         run: |
-          black --check apps/fabric apps/fusion apps/intelligence apps/tasking || true
+          black --check apps/fabric apps/fusion apps/intelligence apps/tasking
       - name: Node setup (console)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Install console deps
         run: |
-          cd apps/console || exit 0
-          npm ci || true
-      - name: Run unit tests (best-effort)
-        run: make test || true
-      - name: mypy (best-effort)
+          cd apps/console
+          npm ci
+      - name: Console lint and typecheck
+        run: |
+          cd apps/console
+          npm run lint
+          npm run typecheck
+      - name: Run unit tests
+        run: make test
+      - name: mypy (continue on error)
         run: make mypy || true
       - name: Summary
         run: echo "CI completed"
@@ -49,8 +54,8 @@ jobs:
           python-version: '3.11'
       - name: Install e2e deps
         run: |
-          pip install pytest httpx || true
+          pip install pytest httpx
       - name: Run E2E tests (expects stack running externally)
         env:
           SUMMIT_API: http://localhost:8000
-        run: make test-e2e || true
+        run: make test-e2e

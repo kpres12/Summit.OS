@@ -1,11 +1,16 @@
 import os
 import uuid
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel
 import httpx
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response as PrometheusResponse
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -134,6 +139,13 @@ async def readyz():
 @app.get("/livez")
 async def livez():
     return {"status": "alive"}
+
+# Prometheus metrics
+_http_errors = Counter('api_gateway_errors_total', 'Total errors by endpoint and status', ['endpoint', 'status'])
+
+@app.get("/metrics")
+async def metrics():
+    return PrometheusResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 # -------------------------
 # Org scoping and security helpers
