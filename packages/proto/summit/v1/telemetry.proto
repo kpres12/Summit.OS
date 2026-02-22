@@ -1,0 +1,54 @@
+syntax = "proto3";
+package summit.v1;
+
+import "summit/v1/common.proto";
+
+// A single sensor reading
+message SensorReading {
+  string sensor_id   = 1;
+  string modality    = 2;   // "temperature", "humidity", "smoke", "co2", "ir"
+  double value       = 3;
+  string unit        = 4;   // "°C", "%", "ppm"
+  Timestamp sampled_at = 5;
+}
+
+// Telemetry report from any entity (vehicle, sensor, infrastructure)
+message TelemetryReport {
+  string    entity_id    = 1;
+  string    org_id       = 2;
+  Timestamp timestamp    = 3;
+
+  // Position & motion
+  GeoPoint    position     = 10;
+  Vector3     velocity     = 11;
+  EulerAngles attitude     = 12;
+  double      heading_deg  = 13;
+  double      speed_mps    = 14;
+
+  // Power
+  double battery_pct       = 20;
+  double battery_voltage   = 21;
+  double power_watts       = 22;
+
+  // Comms
+  double signal_rssi_dbm   = 30;
+  double link_quality_pct  = 31;
+  string link_type         = 32;  // "mesh", "cellular", "satellite", "wifi"
+
+  // Sensor readings
+  repeated SensorReading sensors = 40;
+
+  // System
+  double cpu_pct           = 50;
+  double memory_pct        = 51;
+  double disk_pct          = 52;
+  double temperature_c     = 53;  // Internal system temp
+
+  // Free-form metadata
+  repeated KeyValue metadata = 60;
+}
+
+// Stream of telemetry reports
+message TelemetryStream {
+  repeated TelemetryReport reports = 1;
+}

@@ -1,0 +1,80 @@
+syntax = "proto3";
+package summit.v1;
+
+import "summit/v1/common.proto";
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  PENDING        = 1;
+  ASSIGNED       = 2;
+  IN_PROGRESS    = 3;
+  PAUSED         = 4;
+  COMPLETED      = 5;
+  FAILED         = 6;
+  CANCELLED      = 7;
+  PENDING_APPROVAL = 8;
+}
+
+enum TaskPriority {
+  PRIORITY_UNSPECIFIED = 0;
+  ROUTINE    = 1;
+  IMPORTANT  = 2;
+  URGENT     = 3;
+  CRITICAL   = 4;
+}
+
+// An objective that a task aims to achieve
+message Objective {
+  string    id          = 1;
+  string    description = 2;
+  string    type        = 3;  // "survey", "monitor", "intercept", "deliver", "inspect"
+  GeoPoint  location    = 4;  // Target location
+  GeoPolygon area       = 5;  // Target area
+  double    radius_m    = 6;
+  repeated KeyValue parameters = 7;
+}
+
+// Waypoint within a task plan
+message Waypoint {
+  GeoPoint position  = 1;
+  double   speed_mps = 2;
+  string   action    = 3;  // "WAYPOINT", "LOITER", "DEPLOY_PAYLOAD", "PHOTOGRAPH"
+  double   loiter_s  = 4;  // Seconds to loiter at this point
+  repeated KeyValue params = 5;
+}
+
+// Task: an assignable unit of work
+message Task {
+  string       id          = 1;
+  string       mission_id  = 2;  // Parent mission
+  string       asset_id    = 3;  // Assigned asset
+  string       org_id      = 4;
+  TaskStatus   status      = 5;
+  TaskPriority priority    = 6;
+
+  Objective    objective   = 10;
+  repeated Waypoint plan   = 11;
+
+  // Behavior tree to execute (reference by name)
+  string behavior_tree     = 12;  // e.g., "PatrolMission", "SearchAndRescue"
+
+  // Execution metadata
+  Timestamp created_at     = 20;
+  Timestamp started_at     = 21;
+  Timestamp completed_at   = 22;
+  string    failure_reason = 23;
+
+  // Policy
+  bool   policy_approved   = 30;
+  repeated string policy_violations = 31;
+
+  repeated KeyValue metadata = 40;
+}
+
+// Task assignment request
+message TaskAssignment {
+  string task_id   = 1;
+  string asset_id  = 2;
+  repeated Waypoint plan = 3;
+  string behavior_tree   = 4;
+}

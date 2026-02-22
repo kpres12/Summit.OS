@@ -1,0 +1,146 @@
+syntax = "proto3";
+package summit.v1;
+
+import "summit/v1/common.proto";
+import "summit/v1/entity.proto";
+import "summit/v1/track.proto";
+import "summit/v1/task.proto";
+import "summit/v1/telemetry.proto";
+
+// ─── Entity Service ─────────────────────────────────────────
+// Central entity store — the world model
+service EntityService {
+  // Publish an entity (create or update)
+  rpc PublishEntity(Entity) returns (Entity);
+
+  // Publish a batch of entities
+  rpc PublishEntities(EntityBatch) returns (EntityBatch);
+
+  // Get entity by ID
+  rpc GetEntity(GetEntityRequest) returns (Entity);
+
+  // Query entities
+  rpc QueryEntities(EntityQuery) returns (EntityBatch);
+
+  // Subscribe to entity updates (server-streaming)
+  rpc SubscribeEntities(EntitySubscription) returns (stream Entity);
+
+  // Delete entity
+  rpc DeleteEntity(DeleteEntityRequest) returns (DeleteEntityResponse);
+}
+
+message GetEntityRequest {
+  string id = 1;
+}
+
+message EntityQuery {
+  repeated EntityType types  = 1;  // Filter by type
+  repeated EntityDomain domains = 2;  // Filter by domain
+  string org_id              = 3;
+  GeoCircle within           = 4;  // Spatial filter
+  int32 limit                = 5;
+  string cursor              = 6;  // Pagination cursor
+}
+
+message EntitySubscription {
+  repeated EntityType types  = 1;
+  repeated EntityDomain domains = 2;
+  string org_id              = 3;
+  GeoCircle within           = 4;
+}
+
+message DeleteEntityRequest {
+  string id = 1;
+}
+
+message DeleteEntityResponse {
+  bool deleted = 1;
+}
+
+// ─── Track Service ──────────────────────────────────────────
+// Fusion engine: manages tracks from sensor observations
+service TrackService {
+  // Submit an observation for fusion
+  rpc SubmitObservation(TrackObservation) returns (Track);
+
+  // Get a specific track
+  rpc GetTrack(GetTrackRequest) returns (Track);
+
+  // Query tracks
+  rpc QueryTracks(TrackQuery) returns (TrackBatch);
+
+  // Subscribe to track updates (server-streaming)
+  rpc SubscribeTracks(TrackSubscription) returns (stream Track);
+}
+
+message GetTrackRequest {
+  string track_id = 1;
+}
+
+message TrackQuery {
+  repeated TrackState states = 1;
+  string org_id              = 2;
+  GeoCircle within           = 3;
+  int32 limit                = 4;
+}
+
+message TrackSubscription {
+  repeated TrackState states = 1;
+  string org_id              = 2;
+  GeoCircle within           = 3;
+}
+
+// ─── Task Service ───────────────────────────────────────────
+service TaskService {
+  // Create a task
+  rpc CreateTask(Task) returns (Task);
+
+  // Get task
+  rpc GetTask(GetTaskRequest) returns (Task);
+
+  // Update task status
+  rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (Task);
+
+  // Assign task to asset
+  rpc AssignTask(TaskAssignment) returns (Task);
+
+  // Subscribe to task updates
+  rpc SubscribeTasks(TaskSubscription) returns (stream Task);
+}
+
+message GetTaskRequest {
+  string id = 1;
+}
+
+message UpdateTaskStatusRequest {
+  string     id     = 1;
+  TaskStatus status = 2;
+  string     reason = 3;
+}
+
+message TaskSubscription {
+  string org_id   = 1;
+  string asset_id = 2;
+}
+
+// ─── Telemetry Service ──────────────────────────────────────
+service TelemetryService {
+  // Publish telemetry
+  rpc PublishTelemetry(TelemetryReport) returns (TelemetryAck);
+
+  // Stream telemetry (client-streaming: edge device sends continuous reports)
+  rpc StreamTelemetry(stream TelemetryReport) returns (TelemetryAck);
+
+  // Subscribe to telemetry for an entity
+  rpc SubscribeTelemetry(TelemetrySubscription) returns (stream TelemetryReport);
+}
+
+message TelemetryAck {
+  bool   ok      = 1;
+  string message = 2;
+}
+
+message TelemetrySubscription {
+  string entity_id = 1;
+  string org_id    = 2;
+}

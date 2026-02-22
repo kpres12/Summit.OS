@@ -1,0 +1,71 @@
+syntax = "proto3";
+package summit.v1;
+
+option python_package = "summit.v1";
+
+// Nanosecond-precision timestamp (matches google.protobuf.Timestamp semantics)
+message Timestamp {
+  int64 seconds = 1;
+  int32 nanos   = 2;
+}
+
+// WGS-84 geographic point
+message GeoPoint {
+  double latitude  = 1;  // degrees [-90, 90]
+  double longitude = 2;  // degrees [-180, 180]
+  double altitude_msl = 3;  // meters above mean sea level
+  double altitude_agl = 4;  // meters above ground level (optional)
+}
+
+// Closed polygon defined by ordered vertices (first == last implied)
+message GeoPolygon {
+  repeated GeoPoint vertices = 1;
+}
+
+// Circle region
+message GeoCircle {
+  GeoPoint center   = 1;
+  double   radius_m = 2;
+}
+
+// 3D vector (ENU or body frame depending on context)
+message Vector3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+// Orientation quaternion (Hamilton convention: w + xi + yj + zk)
+message Quaternion {
+  double w = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+// Euler angles (convenience, prefer Quaternion for computation)
+message EulerAngles {
+  double roll_deg  = 1;
+  double pitch_deg = 2;
+  double yaw_deg   = 3;
+}
+
+// Axis-aligned bounding box in pixel or world coords
+message BoundingBox {
+  double x      = 1;  // top-left x
+  double y      = 2;  // top-left y
+  double width  = 3;
+  double height = 4;
+}
+
+// 6x6 covariance matrix stored as upper-triangle (21 elements)
+// Order: [lat, lon, alt, vx, vy, vz]
+message CovarianceMatrix {
+  repeated double values = 1;  // row-major upper triangle
+}
+
+// Key-value metadata
+message KeyValue {
+  string key   = 1;
+  string value = 2;
+}

@@ -1,0 +1,154 @@
+syntax = "proto3";
+package summit.v1;
+
+import "summit/v1/common.proto";
+
+// Every object in Summit.OS is an Entity.
+// Drones, tracks, observations, alerts, geofences, missions — all entities.
+
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  ASSET          = 1;   // Controllable asset (drone, robot, vehicle)
+  TRACK          = 2;   // Fused track from sensor observations
+  OBSERVATION    = 3;   // Raw sensor observation (detection, measurement)
+  ALERT          = 4;   // Alert / notification
+  GEOFENCE       = 5;   // Geographic boundary
+  MISSION        = 6;   // Mission definition
+  OBJECTIVE      = 7;   // Mission objective / task
+  SENSOR         = 8;   // Sensor device
+  INFRASTRUCTURE = 9;   // Fixed infrastructure (tower, camera pole)
+  ZONE           = 10;  // Operational zone / sector
+}
+
+enum EntityDomain {
+  DOMAIN_UNSPECIFIED = 0;
+  AERIAL    = 1;  // UAV, aircraft, balloon
+  GROUND    = 2;  // UGV, vehicle, personnel
+  MARITIME  = 3;  // USV, UUV, vessel
+  FIXED     = 4;  // Towers, poles, buildings
+  CYBER     = 5;  // Virtual / software entities
+}
+
+enum LifecycleState {
+  LIFECYCLE_UNSPECIFIED = 0;
+  ACTIVE     = 1;
+  INACTIVE   = 2;
+  TENTATIVE  = 3;  // Track not yet confirmed
+  COASTING   = 4;  // Track prediction without new observations
+  COMPLETED  = 5;
+  DELETED    = 6;
+}
+
+// Provenance: where this entity data came from
+message Provenance {
+  string source_id     = 1;  // Sensor or system that produced this
+  string source_type   = 2;  // "camera", "radar", "adsb", "operator", "fusion"
+  string org_id        = 3;  // Multi-tenant organization ID
+  Timestamp created_at = 4;
+  Timestamp updated_at = 5;
+  uint64 version       = 6;  // Monotonic version for CRDT
+}
+
+// Kinematic state
+message Kinematics {
+  GeoPoint   position     = 1;
+  Vector3    velocity     = 2;  // m/s in ENU
+  Vector3    acceleration = 3;  // m/s² in ENU
+  double     heading_deg  = 4;  // [0, 360) true north
+  double     speed_mps    = 5;  // ground speed m/s
+  double     climb_rate   = 6;  // m/s positive = ascending
+  Quaternion orientation  = 7;
+  CovarianceMatrix position_covariance = 8;
+}
+
+// Relationship to another entity
+message Relationship {
+  string entity_id       = 1;
+  string relationship    = 2;  // "parent", "child", "correlated_with", "assigned_to", "observed_by"
+}
+
+// Domain-specific data carried as opaque bytes or structured sub-messages
+message AerialData {
+  double altitude_agl   = 1;
+  double altitude_msl   = 2;
+  double airspeed_mps   = 3;
+  string flight_mode    = 4;  // "GUIDED", "AUTO", "RTL", "LOITER", ...
+  double battery_pct    = 5;
+  string link_quality   = 6;
+}
+
+message GroundData {
+  string terrain_type   = 1;
+  double wheel_speed    = 2;
+  double obstacle_clearance_m = 3;
+}
+
+message MaritimeData {
+  double heading_deg    = 1;
+  double draft_m        = 2;
+  string sea_state      = 3;
+  string ais_mmsi       = 4;
+}
+
+message FixedData {
+  repeated string sensor_ids = 1;  // Sensors hosted on this infrastructure
+  string structure_type      = 2;  // "tower", "pole", "building"
+}
+
+message SensorData {
+  string modality       = 1;  // "camera", "radar", "thermal", "lidar", "adsb"
+  double fov_deg        = 2;  // Field of view
+  double range_m        = 3;  // Max detection range
+  double accuracy_m     = 4;  // Position accuracy
+  double refresh_hz     = 5;
+}
+
+// ─── The Entity ─────────────────────────────────────────────
+message Entity {
+  string          id             = 1;   // Globally unique ID (UUID)
+  EntityType      entity_type    = 2;
+  EntityDomain    domain         = 3;
+  LifecycleState  state          = 4;
+  string          name           = 5;   // Human-readable label
+  string          class_label    = 6;   // Classification: "DJI Mavic", "person", "fire", ...
+  double          confidence     = 7;   // [0, 1] confidence in this entity's existence/classification
+
+  Kinematics      kinematics     = 10;
+  Provenance      provenance     = 11;
+
+  repeated Relationship relationships = 12;
+  repeated KeyValue     metadata      = 13;
+
+  // Time-to-live: entity expires and transitions to DELETED after this
+  int64 ttl_seconds = 14;
+
+  // Domain-specific extensions
+  oneof domain_data {
+    AerialData   aerial   = 20;
+    GroundData   ground   = 21;
+    MaritimeData maritime = 22;
+    FixedData    fixed    = 23;
+    SensorData   sensor   = 24;
+  }
+
+  // Alert-specific fields (when entity_type == ALERT)
+  string severity    = 30;  // "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"
+  string description = 31;
+
+  // Geofence-specific fields (when entity_type == GEOFENCE)
+  GeoPolygon boundary     = 40;
+  GeoCircle  circle_bound = 41;
+
+  // Mission-specific fields (when entity_type == MISSION)
+  string mission_status = 50;  // "PLANNING", "ACTIVE", "COMPLETED", "FAILED"
+  repeated string assigned_asset_ids = 51;
+
+  // Raw payload for extensibility
+  bytes  raw_payload = 100;
+}
+
+// Batch of entities for bulk transfer
+message EntityBatch {
+  repeated Entity entities = 1;
+  Timestamp       as_of    = 2;
+}

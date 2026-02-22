@@ -1,0 +1,75 @@
+syntax = "proto3";
+package summit.v1;
+
+import "summit/v1/common.proto";
+import "summit/v1/entity.proto";
+
+enum TrackState {
+  TRACK_STATE_UNSPECIFIED = 0;
+  TENTATIVE  = 1;  // New, not yet confirmed (< M hits in N scans)
+  CONFIRMED  = 2;  // Confirmed track
+  COASTING   = 3;  // Predicting without new observations
+  DELETED    = 4;  // Track dropped
+}
+
+// A single observation contributing to a track
+message TrackObservation {
+  string    observation_id = 1;
+  string    sensor_id      = 2;
+  string    sensor_type    = 3;  // "camera", "radar", "adsb", "thermal"
+  GeoPoint  measured_position = 4;
+  double    bearing_deg    = 5;  // Bearing-only observation
+  double    range_m        = 6;  // Range measurement (radar)
+  double    confidence     = 7;
+  Timestamp observed_at    = 8;
+  BoundingBox detection_bbox = 9;  // If from camera
+  string    class_label    = 10;
+}
+
+// Track-to-track correlation record
+message TrackCorrelation {
+  string track_id_a         = 1;
+  string track_id_b         = 2;
+  double mahalanobis_dist   = 3;
+  double correlation_score  = 4;  // [0, 1]
+  bool   is_same_object     = 5;
+  Timestamp evaluated_at    = 6;
+}
+
+// Fused track: the output of the fusion engine
+message Track {
+  string      track_id     = 1;
+  TrackState  state        = 2;
+  string      class_label  = 3;
+  double      confidence   = 4;
+
+  // Fused kinematic state (from Kalman filter)
+  Kinematics  kinematics   = 5;
+
+  // Contributing observations
+  repeated TrackObservation observations = 6;
+
+  // Correlation info
+  repeated TrackCorrelation correlations = 7;
+
+  // Track management
+  int32  hits              = 10;  // Total observation count
+  int32  misses            = 11;  // Consecutive missed updates
+  int32  age_ticks         = 12;  // Number of fusion cycles since creation
+  Timestamp first_seen     = 13;
+  Timestamp last_seen      = 14;
+  Timestamp predicted_at   = 15;  // When kinematics were last predicted
+
+  // Source info
+  string org_id            = 20;
+  repeated string contributing_sensor_ids = 21;
+
+  // Parent entity ID (links track back to Entity model)
+  string entity_id         = 30;
+}
+
+// Batch of tracks
+message TrackBatch {
+  repeated Track tracks = 1;
+  Timestamp      as_of  = 2;
+}
