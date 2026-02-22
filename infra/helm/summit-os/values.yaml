@@ -1,0 +1,136 @@
+global:
+  image:
+    registry: ""
+    pullPolicy: IfNotPresent
+  env:
+    REDIS_URL: redis://redis:6379
+    POSTGRES_URL: postgresql://summit:summit@postgres:5432/summit
+    MQTT_BROKER: mqtt://mqtt:1883
+
+# ── API Gateway ─────────────────────────────────────────────
+apiGateway:
+  replicas: 2
+  image: summit-os/api-gateway:latest
+  port: 8000
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+
+# ── Fabric Service ──────────────────────────────────────────
+fabric:
+  replicas: 2
+  image: summit-os/fabric:latest
+  port: 8001
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits: { cpu: 1000m, memory: 1Gi }
+
+# ── Fusion Service ──────────────────────────────────────────
+fusion:
+  replicas: 2
+  image: summit-os/fusion:latest
+  port: 8002
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits: { cpu: 2000m, memory: 2Gi }
+
+# ── Intelligence Service ────────────────────────────────────
+intelligence:
+  replicas: 2
+  image: summit-os/intelligence:latest
+  port: 8003
+  resources:
+    requests: { cpu: 500m, memory: 512Mi }
+    limits: { cpu: 2000m, memory: 4Gi }
+  env:
+    MODEL_BACKEND: "auto"
+
+# ── Tasking Service ─────────────────────────────────────────
+tasking:
+  replicas: 2
+  image: summit-os/tasking:latest
+  port: 8004
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits: { cpu: 1000m, memory: 1Gi }
+
+# ── Console (Frontend) ─────────────────────────────────────
+console:
+  replicas: 2
+  image: summit-os/console:latest
+  port: 3000
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+# ── Infrastructure ──────────────────────────────────────────
+redis:
+  enabled: true
+  architecture: standalone
+  auth: { enabled: false }
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+
+postgres:
+  enabled: true
+  auth:
+    postgresPassword: summit
+    database: summit
+  primary:
+    resources:
+      requests: { cpu: 250m, memory: 256Mi }
+    persistence:
+      size: 10Gi
+
+mqtt:
+  enabled: true
+  image: eclipse-mosquitto:2
+  resources:
+    requests: { cpu: 100m, memory: 64Mi }
+
+# ── Observability ───────────────────────────────────────────
+prometheus:
+  enabled: true
+  server:
+    resources:
+      requests: { cpu: 200m, memory: 256Mi }
+    retention: 30d
+
+grafana:
+  enabled: true
+  adminPassword: summit
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+
+# ── Mesh Network ────────────────────────────────────────────
+mesh:
+  port: 9100
+  encryption: true
+
+# ── Security ────────────────────────────────────────────────
+security:
+  mtls:
+    enabled: true
+    certValidityDays: 365
+  jwt:
+    issuer: summit-os
+    tokenTTL: 3600
+
+# ── Ingress ─────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: summit.local
+      paths:
+        - path: /
+          service: console
+        - path: /api
+          service: apiGateway

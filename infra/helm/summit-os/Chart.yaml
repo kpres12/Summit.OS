@@ -1,0 +1,14 @@
+apiVersion: v2
+name: summit-os
+description: Summit.OS Distributed Intelligence Fabric
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - intelligence
+  - fusion
+  - mesh
+  - autonomy
+  - c2
+maintainers:
+  - name: Summit.OS Team

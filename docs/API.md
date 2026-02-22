@@ -171,6 +171,14 @@ Sentinel must, against a vanilla Summit.OS dev instance:
 - v1 is additive only (new fields optional, defaulted).
 - Any breaking change requires /api/v2 with parallel support window.
 
+## 6a) Deprecation Policy
+- **v0.x (current)**: No backwards-compat guarantees. Breaking changes are noted in `CHANGELOG.md`.
+- **v1.x (future)**: Once v1.0 ships, all changes within a major version are additive only.
+  - Deprecated fields/endpoints get a `Deprecation` response header with sunset date.
+  - Minimum **90-day deprecation window** before removal in the next major version.
+  - Deprecated Python SDK methods raise `DeprecationWarning` for at least one minor release.
+  - Breaking changes require a new major version (`/api/v2`, SDK `2.x`).
+
 ## 7) Dev ENV (reference)
 
 Server:

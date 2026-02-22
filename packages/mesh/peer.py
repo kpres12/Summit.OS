@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from enum import Enum
 
 from packages.mesh.crdt import CRDTStore, LWWRegister
+from packages.mesh.transport import TransportManager, MessageType
 
 logger = logging.getLogger("mesh.peer")
 
@@ -101,6 +102,96 @@ class MeshPeer:
 
         # Running state
         self._running = False
+
+        # Transport layer
+        self._transport_mgr: Optional[TransportManager] = None
+
+    # ── Lifecycle ───────────────────────────────────────────
+
+    async def start(self) -> None:
+        """Start the mesh peer with real UDP transport."""
+        if self._running:
+            return
+
+        self._transport_mgr = TransportManager(
+            bind_host=self.bind_host,
+            bind_port=self.bind_port,
+        )
+
+        # Register message handlers
+        self._transport_mgr.register_handler(
+            MessageType.HEARTBEAT, lambda data, addr: self.process_heartbeat(data)
+        )
+        self._transport_mgr.register_handler(
+            MessageType.SYNC_RESPONSE, lambda data, addr: self.process_sync(data)
+        )
+        self._transport_mgr.register_handler(
+            MessageType.PING, lambda data, addr: self._handle_ping(addr)
+        )
+
+        await self._transport_mgr.start()
+        self._running = True
+
+        # Schedule periodic tasks
+        self._transport_mgr.schedule_periodic(
+            self._heartbeat_loop, self.heartbeat_interval
+        )
+        self._transport_mgr.schedule_periodic(
+            self._sync_loop, self.sync_interval
+        )
+        self._transport_mgr.schedule_periodic(
+            self._liveness_loop, self.heartbeat_interval
+        )
+
+        # Connect to seed peers
+        for addr in self.seed_peers:
+            self._transport_mgr.send(
+                MessageType.JOIN, self._make_heartbeat(), addr
+            )
+
+        logger.info(f"MeshPeer {self.node_id} started on {self.bind_host}:{self.bind_port}")
+
+    async def stop(self) -> None:
+        """Stop the mesh peer."""
+        self._running = False
+
+        # Notify peers we're leaving
+        if self._transport_mgr:
+            leave_msg = {"type": "leave", "node_id": self.node_id}
+            for peer in self.alive_peers():
+                self._transport_mgr.send(MessageType.LEAVE, leave_msg, peer.address)
+            await self._transport_mgr.stop()
+
+        logger.info(f"MeshPeer {self.node_id} stopped")
+
+    async def _heartbeat_loop(self) -> None:
+        """Send heartbeats to all alive peers."""
+        msg = self._make_heartbeat()
+        for peer in self.alive_peers() + self.suspect_peers():
+            if self._transport_mgr:
+                self._transport_mgr.send(MessageType.HEARTBEAT, msg, peer.address)
+
+    async def _sync_loop(self) -> None:
+        """Trigger anti-entropy sync with a random alive peer."""
+        import random
+        alive = self.alive_peers()
+        if alive and self._transport_mgr:
+            target = random.choice(alive)
+            sync_req = self._make_sync_request(target.version_vector)
+            self._transport_mgr.send(MessageType.SYNC_REQUEST, sync_req, target.address)
+
+    async def _liveness_loop(self) -> None:
+        """Run failure detection."""
+        self.check_liveness()
+
+    def _handle_ping(self, addr: Tuple[str, int]) -> None:
+        """Respond to a ping."""
+        if self._transport_mgr:
+            self._transport_mgr.send(
+                MessageType.PING_ACK,
+                {"node_id": self.node_id, "timestamp": time.time()},
+                addr,
+            )
 
     # ── Event Registration ──────────────────────────────────
 

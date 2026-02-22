@@ -14,7 +14,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="summit-os-sdk",
-    version="1.0.0",
+    version="0.1.0a1",
     author="Big Mountain Technologies",
     author_email="sdk@bigmt.ai",
     description="Python SDK for Summit.OS distributed intelligence fabric",
@@ -23,7 +23,7 @@ setup(
     url="https://github.com/bigmt/summit-os-sdk",
     packages=find_packages(),
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
