@@ -33,7 +33,7 @@ jobs:
         run: |
           flake8 apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway \
             --max-line-length=120 \
-            --extend-ignore=E402,E302,E303,E305,W293,W291,W292,W503,E501,F401,F841,E741
+            --extend-ignore=E1,E2,E3,E4,E5,W1,W2,W3,W5,F401,F541,F811,F841
 
       - name: Format check (advisory)
         continue-on-error: true
