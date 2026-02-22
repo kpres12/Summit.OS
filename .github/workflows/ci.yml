@@ -77,7 +77,7 @@ jobs:
       - name: Validate SDK packaging
         run: |
           pip install -e packages/summit-sdk
-          python -c "import sys; sys.path.insert(0,'.'); from packages.summit_sdk import SummitClient, RetryPolicy, CircuitBreaker, SummitError; print('SDK import OK')"
+          python -c "from summit_sdk import SummitClient, RetryPolicy, CircuitBreaker, SummitError; print('SDK import OK')"
 
       - name: Run E2E gateway tests
         env:
