@@ -98,27 +98,29 @@ sim:
 # Run tests
 test:
 	@echo "Running tests..."
-	@cd apps/fabric && python -m pytest tests/ -v || true
-	@cd apps/fusion && python -m pytest tests/ -v || true
-	@cd apps/intelligence && python -m pytest tests/ -v || true
-	@cd apps/tasking && python -m pytest tests/ -v || true
+	@cd apps/fabric && python -m pytest tests/ -v
+	@cd apps/fusion && python -m pytest tests/ -v
+	@cd apps/intelligence && python -m pytest tests/ -v
+	@cd apps/tasking && python -m pytest tests/ -v
+	@cd apps/api-gateway && python -m pytest tests/ -v
 	@echo "Tests completed!"
 
-# End-to-end tests (optional)
+# End-to-end tests (requires running stack)
 .PHONY: test-e2e
 test-e2e:
 	@echo "Running E2E tests..."
-	@python -m pytest tests/e2e -v -m e2e || true
+	@python -m pytest tests/e2e -v -m e2e --tb=short
 	@echo "E2E tests completed!"
 
 # Linting
 lint:
 	@echo "Running linting..."
-	@cd apps/fabric && python -m flake8 . || true
-	@cd apps/fusion && python -m flake8 . || true
-	@cd apps/intelligence && python -m flake8 . || true
-	@cd apps/tasking && python -m flake8 . || true
-	@cd apps/console && npm run lint || true
+	@cd apps/fabric && python -m flake8 . --max-line-length=120 --extend-ignore=E501,W503
+	@cd apps/fusion && python -m flake8 . --max-line-length=120 --extend-ignore=E501,W503
+	@cd apps/intelligence && python -m flake8 . --max-line-length=120 --extend-ignore=E501,W503
+	@cd apps/tasking && python -m flake8 . --max-line-length=120 --extend-ignore=E501,W503
+	@cd apps/api-gateway && python -m flake8 . --max-line-length=120 --extend-ignore=E501,W503
+	@cd apps/console && npm run lint
 	@echo "Linting completed!"
 
 .PHONY: mypy

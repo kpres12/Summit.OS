@@ -41,6 +41,11 @@ from jose import jwt
 from alembic import command as alembic_command
 from alembic.config import Config as AlembicConfig
 
+# Test mode: disable geospatial columns BEFORE table definitions to avoid SpatiaLite
+FABRIC_TEST_MODE = os.getenv("FABRIC_TEST_MODE", "false").lower() == "true"
+if FABRIC_TEST_MODE:
+    GEO_AVAILABLE = False
+
 # Configure structured logging
 structlog.configure(
     processors=[
@@ -145,10 +150,6 @@ world_alerts = Table(
 HEARTBEAT_STALE_SECS = 120  # 2 minutes
 HEARTBEAT_OFFLINE_SECS = 600  # 10 minutes
 FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
-FABRIC_TEST_MODE = os.getenv("FABRIC_TEST_MODE", "false").lower() == "true"
-# In test mode, disable geospatial columns to avoid SpatiaLite dependency
-if FABRIC_TEST_MODE:
-    GEO_AVAILABLE = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -471,8 +472,8 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
                 "status": telemetry.status,
                 "sensors": telemetry.sensors,
             }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
         # Persist to world_entities
         try:
             assert SessionLocal is not None
@@ -492,8 +493,8 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
                                 if p.startswith('OU='):
                                     org_id = p.split('=',1)[1]
                                     break
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Suppressed error", exc_info=True)  # was: pass
                 if GEO_AVAILABLE:
                     await session.execute(
                         world_entities.insert().values(
@@ -516,8 +517,8 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
                         )
                     )
                 await session.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
             await websocket_manager.broadcast(json.dumps({"type": "telemetry", "data": tm.model_dump()}))
         return {"status": "published", "device_id": telemetry.device_id}
@@ -556,8 +557,8 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
                 "ts_iso": alert.timestamp.isoformat(),
             })
             del world_state["alerts"][MAX_ALERTS:]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
         # Persist to world_alerts
         try:
             assert SessionLocal is not None
@@ -576,8 +577,8 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
                                 if p.startswith('OU='):
                                     org_id = p.split('=',1)[1]
                                     break
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Suppressed error", exc_info=True)  # was: pass
                 if GEO_AVAILABLE:
                     await session.execute(
                         world_alerts.insert().values(
@@ -604,8 +605,8 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
                         )
                     )
                 await session.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
             await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
         return {"status": "published", "alert_id": alert.alert_id}
@@ -865,8 +866,8 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
                         )
                     )
                 await session.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
             await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
     except Exception as e:

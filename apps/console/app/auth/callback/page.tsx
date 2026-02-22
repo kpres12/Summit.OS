@@ -12,9 +12,9 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const code = searchParams.get('code');
-        const state = searchParams.get('state');
-        const errorParam = searchParams.get('error');
+        const code = searchParams?.get('code') ?? null;
+        const state = searchParams?.get('state') ?? null;
+        const errorParam = searchParams?.get('error') ?? null;
 
         if (errorParam) {
           setError(`Authentication error: ${errorParam}`);

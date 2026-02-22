@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { fetchMissions, MissionAPI, connectWebSocket } from '../../lib/api';
 
 interface TimelineEvent {
   id: string;
@@ -18,6 +19,30 @@ const mockTimeline: TimelineEvent[] = [
   { id: 'e5', ts: '03:44:10', phase: 'ACTIVE', label: 'UAV-02 on station', meta: 'alt 120m' },
 ];
 
+const STATUS_TO_PHASE: Record<string, TimelineEvent['phase']> = {
+  PLANNING: 'PLANNING',
+  PENDING_APPROVAL: 'APPROVAL',
+  APPROVED: 'DISPATCHED',
+  ACTIVE: 'ACTIVE',
+  RUNNING: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+};
+
+function missionToEvents(m: MissionAPI): TimelineEvent {
+  const phase = STATUS_TO_PHASE[m.status?.toUpperCase()] || 'PLANNING';
+  const ts = m.created_at
+    ? new Date(m.created_at).toLocaleTimeString('en-GB', { hour12: false })
+    : '—';
+  return {
+    id: m.mission_id,
+    ts,
+    phase,
+    label: m.name || `Mission ${m.mission_id.slice(0, 8)}`,
+    meta: m.objectives?.join(', ') || undefined,
+  };
+}
+
 function phaseColor(phase: TimelineEvent['phase']): string {
   switch (phase) {
     case 'PLANNING': return '#00CC74';
@@ -30,7 +55,64 @@ function phaseColor(phase: TimelineEvent['phase']): string {
   }
 }
 
+const PHASE_ORDER: TimelineEvent['phase'][] = ['PLANNING', 'APPROVAL', 'DISPATCHED', 'ACTIVE', 'COMPLETED'];
+
+function progressPct(events: TimelineEvent[]): number {
+  if (!events.length) return 0;
+  const latest = events.reduce((best, ev) => {
+    const idx = PHASE_ORDER.indexOf(ev.phase);
+    return idx > PHASE_ORDER.indexOf(best.phase) ? ev : best;
+  }, events[0]);
+  const idx = PHASE_ORDER.indexOf(latest.phase);
+  return idx < 0 ? 0 : ((idx + 1) / PHASE_ORDER.length) * 100;
+}
+
 export default function MissionTimeline() {
+  const [events, setEvents] = useState<TimelineEvent[]>(mockTimeline);
+  const [live, setLive] = useState(false);
+
+  // Fetch missions from backend on mount
+  useEffect(() => {
+    fetchMissions(20)
+      .then((missions) => {
+        const list = Array.isArray(missions) ? missions : [];
+        if (list.length > 0) {
+          setEvents(list.map(missionToEvents));
+          setLive(true);
+        }
+      })
+      .catch(() => { /* keep mock */ });
+  }, []);
+
+  // Subscribe to WebSocket for realtime mission updates
+  useEffect(() => {
+    const ws = connectWebSocket((data) => {
+      const msg = data as Record<string, unknown>;
+      if (msg.type === 'mission_update' && msg.mission_id) {
+        const phase = STATUS_TO_PHASE[String(msg.status || '').toUpperCase()] || 'ACTIVE';
+        setEvents((prev) => {
+          const exists = prev.find((e) => e.id === msg.mission_id);
+          if (exists) {
+            return prev.map((e) =>
+              e.id === msg.mission_id ? { ...e, phase, label: String(msg.name || e.label) } : e
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: String(msg.mission_id),
+              ts: new Date().toLocaleTimeString('en-GB', { hour12: false }),
+              phase,
+              label: String(msg.name || msg.mission_id),
+            },
+          ];
+        });
+        setLive(true);
+      }
+    });
+    return () => { ws?.close(); };
+  }, []);
+
   return (
     <div className="bg-[#0F0F0F] border-t-2 border-[#00FF91]/20 h-64 flex flex-col">
       {/* Header */}
@@ -38,7 +120,9 @@ export default function MissionTimeline() {
         <div className="text-[#00FF91] text-sm font-semibold tracking-wider uppercase">
           MISSION TIMELINE
         </div>
-        <div className="ml-auto text-[10px] text-[#006644] font-mono">[SIMULATED]</div>
+        <div className="ml-auto text-[10px] text-[#006644] font-mono">
+          {live ? '[LIVE]' : '[SIMULATED]'}
+        </div>
       </div>
 
       {/* Content */}
@@ -46,7 +130,7 @@ export default function MissionTimeline() {
         {/* Progress Bar */}
         <div className="w-full">
           <div className="h-2 bg-[#006644] relative">
-            <div className="absolute top-0 left-0 h-2 bg-[#00FF91]" style={{ width: '65%' }} />
+            <div className="absolute top-0 left-0 h-2 bg-[#00FF91] transition-all" style={{ width: `${progressPct(events)}%` }} />
           </div>
           <div className="flex justify-between text-[10px] text-[#006644] font-mono mt-1">
             <span>PLANNING</span>
@@ -59,7 +143,7 @@ export default function MissionTimeline() {
 
         {/* Events */}
         <div className="space-y-2">
-          {mockTimeline.map((ev) => (
+          {events.map((ev) => (
             <div key={ev.id} className="flex items-start gap-3">
               {/* Marker */}
               <div

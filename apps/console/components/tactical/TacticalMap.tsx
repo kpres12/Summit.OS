@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import MapLayerControls, { MapLayer } from './MapLayerControls';
 import GeofenceEditor, { Geofence } from './GeofenceEditor';
+import { fetchGeofences, createGeofence, deleteGeofence } from '../../lib/api';
 
 interface MapNode {
   id: string;
@@ -47,8 +48,8 @@ export default function TacticalMap() {
     { id: 'weather', name: 'Weather', enabled: false, color: '#00DDFF', icon: '☁' },
   ]);
 
-  // Geofence management
-  const [geofences, setGeofences] = useState<Geofence[]>([
+  // Geofence management — try to load from backend, fall back to local mock
+  const mockGeofences: Geofence[] = [
     {
       id: 'gf1',
       name: 'Airport Exclusion',
@@ -63,8 +64,31 @@ export default function TacticalMap() {
       altitude_max: 1000,
       active: true,
     },
-  ]);
+  ];
+
+  const [geofences, setGeofences] = useState<Geofence[]>(mockGeofences);
   const [editingGeofence, setEditingGeofence] = useState<Geofence | null>(null);
+
+  // Load geofences from backend on mount
+  useEffect(() => {
+    fetchGeofences()
+      .then(({ geofences: remote }) => {
+        if (remote && remote.length > 0) {
+          setGeofences(
+            remote.map((g) => ({
+              id: String(g.id ?? `gf${Date.now()}${Math.random()}`),
+              name: g.name,
+              points: (g.coordinates || []).map((c) => ({ lat: c.lat, lon: c.lon })),
+              type: (g.type as Geofence['type']) || 'warning',
+              altitude_min: g.altitude_min,
+              altitude_max: g.altitude_max,
+              active: g.active ?? true,
+            }))
+          );
+        }
+      })
+      .catch(() => { /* keep mock data */ });
+  }, []);
 
   const handleToggleLayer = (layerId: string) => {
     setLayers(prev =>
@@ -84,20 +108,41 @@ export default function TacticalMap() {
     });
   };
 
-  const handleSaveGeofence = (geofence: Geofence) => {
+  const handleSaveGeofence = useCallback(async (geofence: Geofence) => {
+    // Optimistic local update
+    const localId = geofence.id === 'new' ? `gf${Date.now()}` : geofence.id;
+    const saved = { ...geofence, id: localId };
     if (geofence.id === 'new') {
-      setGeofences(prev => [...prev, { ...geofence, id: `gf${Date.now()}` }]);
+      setGeofences(prev => [...prev, saved]);
     } else {
-      setGeofences(prev =>
-        prev.map(g => (g.id === geofence.id ? geofence : g))
-      );
+      setGeofences(prev => prev.map(g => (g.id === geofence.id ? saved : g)));
     }
     setEditingGeofence(null);
-  };
 
-  const handleDeleteGeofence = (id: string) => {
+    // Persist to backend
+    try {
+      await createGeofence({
+        name: geofence.name,
+        type: geofence.type,
+        coordinates: geofence.points.map(p => ({ lat: p.lat, lon: p.lon })),
+        altitude_min: geofence.altitude_min,
+        altitude_max: geofence.altitude_max,
+        active: geofence.active,
+      });
+    } catch {
+      // backend unavailable — local state still intact
+    }
+  }, []);
+
+  const handleDeleteGeofence = useCallback(async (id: string) => {
     setGeofences(prev => prev.filter(g => g.id !== id));
-  };
+    try {
+      const numId = parseInt(id.replace(/^gf/, ''), 10);
+      if (!isNaN(numId)) await deleteGeofence(numId);
+    } catch {
+      // backend unavailable
+    }
+  }, []);
 
   const handleToggleGeofenceActive = (id: string) => {
     setGeofences(prev =>

@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 import sys
@@ -7,6 +8,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, Request
+
+logger = logging.getLogger("api-gateway")
+logging.basicConfig(level=logging.INFO)
 from pydantic import BaseModel
 import httpx
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
@@ -50,13 +54,18 @@ def _to_asyncpg_url(url: str) -> str:
         return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
 
+GATEWAY_TEST_MODE = os.getenv("GATEWAY_TEST_MODE", "false").lower() == "true"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, SessionLocal
     
     # Setup DB for approvals
-    pg_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
-    engine = create_async_engine(pg_url, echo=False, future=True)
+    if GATEWAY_TEST_MODE:
+        db_url = "sqlite+aiosqlite://"
+    else:
+        db_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
+    engine = create_async_engine(db_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     
     async with engine.begin() as conn:
@@ -375,8 +384,8 @@ async def approve_task(task_id: str, req: TaskApproveRequest, _claims: dict | No
             raise HTTPException(status_code=403, detail="Policy denied dispatch")
     except HTTPException:
         raise
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Suppressed error", exc_info=True)  # was: pass
     
     # Dispatch to Tasking
     try:
@@ -419,7 +428,7 @@ async def list_pending_tasks(_claims: dict | None = Depends(verify_bearer)):
                     "asset_id": r.asset_id,
                     "action": r.action,
                     "risk_level": r.risk_level,
-                    "created_at": r.created_at.isoformat()
+                    "created_at": r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at or '')
                 }
                 for r in rows
             ]
@@ -539,8 +548,8 @@ async def create_mission_proxy(payload: dict, _claims: dict | None = Depends(ver
         with open(schema_path, 'r') as f:
             schema = json.load(f)
         validate(instance=payload, schema=schema)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Suppressed error", exc_info=True)  # was: pass
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
@@ -560,6 +569,60 @@ async def get_mission_proxy(mission_id: str, _claims: dict | None = Depends(veri
             return r.json()
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+@app.get("/v1/missions")
+async def list_missions_proxy(limit: int = 50, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+    """List missions from tasking service."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            headers = {"X-Org-ID": org_id} if org_id else None
+            r = await client.get(f"{TASKING_URL}/api/v1/missions", params={"limit": str(limit)}, headers=headers)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+# -------------------------
+# Geofence proxy to Fabric
+# -------------------------
+
+@app.get("/v1/geofences")
+async def list_geofences_proxy(_claims: dict | None = Depends(verify_bearer)):
+    """Proxy geofence list from fabric."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{FABRIC_URL}/api/v1/geofences")
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+@app.post("/v1/geofences")
+async def create_geofence_proxy(payload: dict, _claims: dict | None = Depends(verify_bearer)):
+    """Create a geofence via fabric."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(f"{FABRIC_URL}/api/v1/geofences", json=payload)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+@app.delete("/v1/geofences/{geofence_id}")
+async def delete_geofence_proxy(geofence_id: int, _claims: dict | None = Depends(verify_bearer)):
+    """Delete a geofence via fabric."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.delete(f"{FABRIC_URL}/api/v1/geofences/{geofence_id}")
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
 
 # -------------------------
 # Contracts examples for UI/CI

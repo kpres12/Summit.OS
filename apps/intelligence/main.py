@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import asyncio
@@ -8,6 +9,9 @@ from typing import Optional, List
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 import redis.asyncio as aioredis
+
+logger = logging.getLogger("intelligence")
+logging.basicConfig(level=logging.INFO)
 from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -18,6 +22,9 @@ try:
     XGB_AVAILABLE = True
 except Exception:
     XGB_AVAILABLE = False
+
+# Test mode
+INTELLIGENCE_TEST_MODE = os.getenv("INTELLIGENCE_TEST_MODE", "false").lower() == "true"
 
 # Globals
 engine: Optional[AsyncEngine] = None
@@ -55,30 +62,35 @@ def _to_asyncpg_url(url: str) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, SessionLocal, redis_client
-    
+
     # DB setup
-    pg_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
+    if INTELLIGENCE_TEST_MODE:
+        pg_url = "sqlite+aiosqlite://"
+    else:
+        pg_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
     engine = create_async_engine(pg_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
-        # Optional Timescale hypertable setup
+        if not INTELLIGENCE_TEST_MODE:
+            # Optional Timescale hypertable setup
+            try:
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
+                await conn.execute(text("SELECT create_hypertable('advisories','ts', if_not_exists => TRUE)"))
+            except Exception as e:
+                logger.debug("Suppressed error", exc_info=True)  # was: pass
+
+    if not INTELLIGENCE_TEST_MODE:
+        # Redis setup (consume observations from Fusion)
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        redis_client = await aioredis.from_url(redis_url, decode_responses=True)
+        # Ensure consumer group
         try:
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
-            await conn.execute(text("SELECT create_hypertable('advisories','ts', if_not_exists => TRUE)"))
-        except Exception:
-            pass
-    
-    # Redis setup (consume observations from Fusion)
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-    redis_client = await aioredis.from_url(redis_url, decode_responses=True)
-    # Ensure consumer group
-    try:
-        await redis_client.xgroup_create("observations_stream", "intelligence", id="$", mkstream=True)
-    except Exception as e:
-        if "BUSYGROUP" not in str(e):
-            pass
+            await redis_client.xgroup_create("observations_stream", "intelligence", id="$", mkstream=True)
+        except Exception as e:
+            if "BUSYGROUP" not in str(e):
+                pass
 
     # Optional: load XGBoost model
     if INTELLIGENCE_ENABLE_XGB and XGB_AVAILABLE:
@@ -88,18 +100,21 @@ async def lifespan(app: FastAPI):
             risk_model.load_model(model_path)  # type: ignore
         except Exception:
             globals()['risk_model'] = None
-    
-    # Start background risk scoring processor
-    task = asyncio.create_task(_risk_scoring_processor())
-    
+
+    # Start background risk scoring processor (skip in test mode)
+    task = None
+    if not INTELLIGENCE_TEST_MODE:
+        task = asyncio.create_task(_risk_scoring_processor())
+
     try:
         yield
     finally:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
         if redis_client:
             await redis_client.close()
         if engine:
@@ -143,7 +158,7 @@ try:
     from plainview_models import get_flow_detector, get_valve_predictor, get_pipeline_assessor
     PLAINVIEW_MODELS_AVAILABLE = True
 except Exception as e:
-    print(f"Plainview models not available: {e}")
+    logger.info(": %s", e)
     PLAINVIEW_MODELS_AVAILABLE = False
 
 async def _get_org_id(req: _Req) -> str | None:
@@ -257,11 +272,11 @@ async def _risk_scoring_processor():
                         # Ack after success
                         try:
                             await redis_client.xack("observations_stream", "intelligence", msg_id)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("Suppressed error", exc_info=True)  # was: pass
                     
                     except Exception as e:
-                        print(f"Failed to process observation for risk scoring: {e}")
+                        logger.warning("", exc_info=True)
                         # DLQ: record failing payload
                         try:
                             if redis_client is not None:
@@ -276,14 +291,14 @@ async def _risk_scoring_processor():
                                 )
                                 try:
                                     await redis_client.xack("observations_stream", "intelligence", msg_id)
-                                except Exception:
-                                    pass
-                        except Exception:
-                            pass
+                                except Exception as e:
+                                    logger.debug("Suppressed error", exc_info=True)  # was: pass
+                        except Exception as e:
+                            logger.debug("Suppressed error", exc_info=True)  # was: pass
                         continue
         
         except Exception as e:
-            print(f"Risk scoring processor error: {e}")
+            logger.error("", exc_info=True)
             try:
                 if redis_client is not None:
                     await redis_client.xadd(
@@ -294,8 +309,8 @@ async def _risk_scoring_processor():
                             "ts": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Suppressed error", exc_info=True)  # was: pass
             await asyncio.sleep(1)
 
 def _calculate_risk_level(data: dict) -> str:

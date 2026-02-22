@@ -1,16 +1,21 @@
 import os
 os.environ["FABRIC_TEST_MODE"] = "true"
 
+import pytest
 from fastapi.testclient import TestClient
 import sys
 import os as _os
 sys.path.append(_os.path.dirname(_os.path.dirname(__file__)))
 from main import app
 
-client = TestClient(app)
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
 
 
-def test_register_and_get_node():
+def test_register_and_get_node(client):
     payload = {
         "id": "tower-042",
         "type": "TOWER",
@@ -33,7 +38,7 @@ def test_register_and_get_node():
     assert node["status"] in ("ONLINE", "OFFLINE", "STALE", "RETIRED")
 
 
-def test_coverage_union_empty_ok():
+def test_coverage_union_empty_ok(client):
     r = client.get("/api/v1/coverage/union")
     assert r.status_code == 200
     body = r.json()
@@ -41,7 +46,7 @@ def test_coverage_union_empty_ok():
     assert "count" in body
 
 
-def test_refresh_token():
+def test_refresh_token(client):
     r = client.post("/api/v1/nodes/tower-042/token")
     assert r.status_code == 200
     body = r.json()

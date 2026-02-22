@@ -14,32 +14,56 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install linters
+
+      - name: Install common Python deps
         run: |
-          pip install flake8 black pytest httpx mypy
+          pip install flake8 black pytest pytest-cov pytest-asyncio httpx mypy
+
+      - name: Install per-service deps
+        run: |
+          for svc in fabric fusion intelligence tasking api-gateway; do
+            if [ -f "apps/$svc/requirements.txt" ]; then
+              pip install -r "apps/$svc/requirements.txt"
+            fi
+          done
+          # FastAPI / SQLAlchemy / Pydantic are required by all services
+          pip install fastapi uvicorn sqlalchemy aiosqlite pydantic httpx prometheus-client
+
       - name: Lint Python services
         run: |
-          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking --max-line-length=120 --extend-ignore=E501,W503
+          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway --max-line-length=120 --extend-ignore=E501,W503
+
       - name: Format check
         run: |
-          black --check apps/fabric apps/fusion apps/intelligence apps/tasking
+          black --check apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway
+
       - name: Node setup (console)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install console deps
         run: |
           cd apps/console
           npm ci
+
       - name: Console lint and typecheck
         run: |
           cd apps/console
           npm run lint
           npm run typecheck
-      - name: Run unit tests
-        run: make test
+
+      - name: Run unit tests with coverage
+        run: |
+          cd apps/fabric && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+          cd apps/fusion && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+          cd apps/intelligence && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+          cd apps/tasking && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+          cd apps/api-gateway && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+
       - name: mypy (continue on error)
         run: make mypy || true
+
       - name: Summary
         run: echo "CI completed"
 
@@ -58,4 +82,5 @@ jobs:
       - name: Run E2E tests (expects stack running externally)
         env:
           SUMMIT_API: http://localhost:8000
-        run: make test-e2e
+        run: |
+          python -m pytest tests/e2e -v -m e2e --tb=short

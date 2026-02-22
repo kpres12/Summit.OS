@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 import uuid
@@ -6,6 +7,9 @@ from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import sys, os
 sys.path.insert(0, "/packages")
+
+logger = logging.getLogger("tasking")
+logging.basicConfig(level=logging.INFO)
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
@@ -43,6 +47,9 @@ try:
     OIDC_AVAILABLE = True
 except Exception:
     OIDC_AVAILABLE = False
+
+# Test mode
+TASKING_TEST_MODE = os.getenv("TASKING_TEST_MODE", "false").lower() == "true"
 
 # Globals
 engine: Optional[AsyncEngine] = None
@@ -177,6 +184,27 @@ else:
     METRIC_ASSETS_REGISTERED = None
 
 
+def _safe_json(val):
+    """Parse JSON string to dict/list if needed (SQLite returns JSON columns as strings)."""
+    if val is None:
+        return None
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    return val
+
+
+def _safe_isoformat(val):
+    """Return ISO string from datetime or passthrough string."""
+    if val is None:
+        return None
+    if isinstance(val, str):
+        return val
+    return val.isoformat()
+
+
 def _to_asyncpg_url(url: str) -> str:
     if url.startswith("postgresql+asyncpg://"):
         return url
@@ -190,29 +218,33 @@ async def lifespan(app: FastAPI):
     global engine, SessionLocal, mqtt_client
 
     # DB setup
-    pg_url = _to_asyncpg_url(
-        os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os")
-    )
+    if TASKING_TEST_MODE:
+        pg_url = "sqlite+aiosqlite://"
+    else:
+        pg_url = _to_asyncpg_url(
+            os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os")
+        )
     engine = create_async_engine(pg_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
 
-    # MQTT setup
-    broker = os.getenv("MQTT_BROKER", "localhost")
-    port = int(os.getenv("MQTT_PORT", "1883"))
-    mqtt_client = mqtt.Client()
-    mqtt_user = os.getenv("MQTT_USERNAME")
-    mqtt_pass = os.getenv("MQTT_PASSWORD")
-    if mqtt_user and mqtt_pass:
-        mqtt_client.username_pw_set(mqtt_user, mqtt_pass)
-    mqtt_client.connect(broker, port, 60)
-    mqtt_client.loop_start()
+    if not TASKING_TEST_MODE:
+        # MQTT setup
+        broker = os.getenv("MQTT_BROKER", "localhost")
+        port = int(os.getenv("MQTT_PORT", "1883"))
+        mqtt_client = mqtt.Client()
+        mqtt_user = os.getenv("MQTT_USERNAME")
+        mqtt_pass = os.getenv("MQTT_PASSWORD")
+        if mqtt_user and mqtt_pass:
+            mqtt_client.username_pw_set(mqtt_user, mqtt_pass)
+        mqtt_client.connect(broker, port, 60)
+        mqtt_client.loop_start()
 
-    # Optional: direct autopilot worker subscribes to dispatches
-    if DIRECT_AUTOPILOT:
-        await _init_direct_autopilot()
+        # Optional: direct autopilot worker subscribes to dispatches
+        if DIRECT_AUTOPILOT:
+            await _init_direct_autopilot()
 
     try:
         yield
@@ -1228,10 +1260,10 @@ async def list_assets():
                 AssetOut(
                     asset_id=m["asset_id"],
                     type=m.get("type"),
-                    capabilities=m.get("capabilities"),
+                    capabilities=_safe_json(m.get("capabilities")),
                     battery=m.get("battery"),
                     link=m.get("link"),
-                    constraints=m.get("constraints"),
+                    constraints=_safe_json(m.get("constraints")),
                     updated_at=m.get("updated_at"),
                 )
             )
@@ -1255,10 +1287,10 @@ async def get_asset(asset_id: str):
         return AssetOut(
             asset_id=m["asset_id"],
             type=m.get("type"),
-            capabilities=m.get("capabilities"),
+            capabilities=_safe_json(m.get("capabilities")),
             battery=m.get("battery"),
             link=m.get("link"),
-            constraints=m.get("constraints"),
+            constraints=_safe_json(m.get("constraints")),
             updated_at=m.get("updated_at"),
         )
 
@@ -1394,7 +1426,7 @@ async def get_mission(mission_id: str):
         )
         assignments = [
             MissionAssignment(
-                asset_id=r.asset_id, plan=r.plan or {}, status=r.status
+                asset_id=r.asset_id, plan=_safe_json(r.plan) or {}, status=r.status
             )
             for r in ares.all()
         ]
@@ -1402,13 +1434,13 @@ async def get_mission(mission_id: str):
         return {
             "mission_id": m["mission_id"],
             "name": m.get("name"),
-            "objectives": m.get("objectives") or [],
+            "objectives": _safe_json(m.get("objectives")) or [],
             "status": m.get("status"),
             "policy_ok": bool(m.get("policy_ok")),
             "assignments": [a.model_dump() for a in assignments],
-            "created_at": (m.get("created_at") or datetime.now(timezone.utc)).isoformat(),
-            "started_at": (m.get("started_at") or datetime.now(timezone.utc)).isoformat() if m.get("started_at") else None,
-            "completed_at": m.get("completed_at").isoformat() if m.get("completed_at") else None,
+            "created_at": _safe_isoformat(m.get("created_at") or datetime.now(timezone.utc)),
+            "started_at": _safe_isoformat(m.get("started_at")) if m.get("started_at") else None,
+            "completed_at": _safe_isoformat(m.get("completed_at")),
         }
 
 
@@ -1430,11 +1462,11 @@ async def list_missions(limit: int = 50, status: Optional[str] = None):
             {
                 "mission_id": r.mission_id,
                 "name": r.name,
-                "objectives": r.objectives or [],
+                "objectives": _safe_json(r.objectives) or [],
                 "status": r.status,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-                "started_at": r.started_at.isoformat() if r.started_at else None,
-                "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+                "created_at": _safe_isoformat(r.created_at),
+                "started_at": _safe_isoformat(r.started_at),
+                "completed_at": _safe_isoformat(r.completed_at),
             }
             for r in rows
         ]

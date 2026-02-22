@@ -32,7 +32,7 @@ const ApprovalsPage: NextPage = () => {
       setMsg(`Approved ${j.task_id}`)
       reload()
     } catch (e) {
-      setMsg(`Error: ${e?.message || 'approve failed'}`)
+      setMsg(`Error: ${e instanceof Error ? e.message : 'approve failed'}`)
     }
   }
 

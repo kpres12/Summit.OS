@@ -28,8 +28,14 @@ from sqlalchemy.orm import sessionmaker
 
 import paho.mqtt.client as mqtt
 import numpy as np
-import cv2
-from vision_inference import VisionInference
+try:
+    import cv2
+except ImportError:
+    cv2 = None  # type: ignore
+try:
+    from vision_inference import VisionInference
+except ImportError:
+    VisionInference = None  # type: ignore
 from model_registry import list_models, select_model
 
 # Globals initialized in lifespan
@@ -106,8 +112,8 @@ async def lifespan(app: FastAPI):
         try:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
             await conn.execute(text("SELECT create_hypertable('observations','ts', if_not_exists => TRUE)"))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
 
     # Load JSON schema for generic Observation
     schema_path = os.getenv("OBSERVATION_SCHEMA_PATH", "/contracts/jsonschemas/observation.schema.json")
@@ -292,8 +298,8 @@ def _on_mqtt_image(client, userdata, msg):
             np_arr = np.frombuffer(img_bytes, np.uint8)
             img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             _process_vision_image(img, data)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
 def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
@@ -317,8 +323,8 @@ def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
         # Persist detections as observations
         loop = asyncio.get_event_loop()
         loop.create_task(_persist_observations_from_detections(detections, meta))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
 async def _persist_observations_from_detections(detections: List[Dict[str, Any]], meta: Dict[str, Any]):
@@ -355,8 +361,8 @@ async def _persist_observations_from_detections(detections: List[Dict[str, Any]]
                 "ts": ts.isoformat(),
             }
             await redis_client.xadd("observations_stream", record)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
 # Simple debounce registry to avoid spamming Sentinel with repeated nearby detections
@@ -436,10 +442,10 @@ async def _redis_stream_consumer():
                                             # Also notify downstream via stream
                                             try:
                                                 await redis_client.xadd("observations_stream", {"topic": "fusion/triangulation", "payload": json.dumps({"class":"ignition_estimate","lat": ilat, "lon": ilon, "confidence": max(conf,0.8), "ts_iso": ts.isoformat(), "source":"triangulation"}), "ts": ts.isoformat()})
-                                            except Exception:
-                                                pass
-                        except Exception:
-                            pass
+                                            except Exception as e:
+                                                logger.debug("Suppressed error", exc_info=True)  # was: pass
+                        except Exception as e:
+                            logger.debug("Suppressed error", exc_info=True)  # was: pass
                         
                         # Check for duplicates
                         try:
@@ -459,11 +465,11 @@ async def _redis_stream_consumer():
                                 # duplicate
                                 try:
                                     await redis_client.xack("observations_stream", "fusion", msg_id)
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    logger.debug("Suppressed error", exc_info=True)  # was: pass
                                 continue
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("Suppressed error", exc_info=True)  # was: pass
 
                         # Persist
                         async with SessionLocal() as session:
@@ -476,8 +482,8 @@ async def _redis_stream_consumer():
                         # Ack message
                         try:
                             await redis_client.xack("observations_stream", "fusion", msg_id)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("Suppressed error", exc_info=True)  # was: pass
 
                         # Trigger Sentinel simulation on confirmed smoke/ignition with location
                         try:
@@ -540,10 +546,10 @@ async def _redis_stream_consumer():
                                 )
                                 try:
                                     await redis_client.xack("observations_stream", "fusion", msg_id)
-                                except Exception:
-                                    pass
-                        except Exception:
-                            pass
+                                except Exception as e:
+                                    logger.debug("Suppressed error", exc_info=True)  # was: pass
+                        except Exception as e:
+                            logger.debug("Suppressed error", exc_info=True)  # was: pass
                         continue
         
         except Exception as e:
@@ -558,6 +564,6 @@ async def _redis_stream_consumer():
                             "ts": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Suppressed error", exc_info=True)  # was: pass
             await asyncio.sleep(1)
