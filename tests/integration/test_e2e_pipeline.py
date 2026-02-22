@@ -59,9 +59,10 @@ class TestAIDetection:
         assert 0.1 < iou < 0.3  # Partial overlap
 
     def test_create_detector_auto(self):
-        from packages.ai.detection import create_detector, MockDetector
+        from packages.ai.detection import create_detector, MockDetector, YOLODetector
         det = create_detector("auto")
-        assert isinstance(det, MockDetector)  # No YOLO installed
+        # Returns YOLODetector if ultralytics is installed, MockDetector otherwise
+        assert isinstance(det, (YOLODetector, MockDetector))
 
 
 class TestAIClassification:

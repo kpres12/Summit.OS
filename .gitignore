@@ -166,3 +166,7 @@ coverage/
 # Documentation build
 docs/_build/
 site/
+
+# Downloaded model weights and test images
+*.pt
+bus.jpg
