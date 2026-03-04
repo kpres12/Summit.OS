@@ -6,6 +6,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+### Added
+- **World Model** (`packages/world`): Unified WorldStore — in-memory + Postgres persistence + MQTT/WebSocket broadcast. Entity CRUD API with COP endpoint, nearby query, bulk upsert.
+- **Mesh Replication** (`packages/mesh/entity_crdt.py`): CRDT-based entity replication. EntityCRDTMap bridges Entity model with LWW registers for conflict-free merge.
+- **Mission State Machine** (`apps/tasking/state_machine.py`): Formal mission lifecycle — PLANNING → POLICY_CHECK → DISPATCHED → ACTIVE → COMPLETED, with DENIED/FAILED/CANCELLED branches.
+- **Assignment Engine** (`apps/tasking/assignment_engine.py`): Intent-based asset scoring by capability, proximity, battery, and availability.
+- **OPA Policy Enforcement** (`apps/tasking/opa.py`): Fail-closed by default, SQLite audit log, pre-dispatch enforcement, geofence checks.
+- **Inference Service** (`apps/inference`): FastAPI on port 8006 with `/detect`, `/classify`, model listing and hot-swap endpoints.
+- **Edge Inference** (`packages/ai/edge_inference.py`): ONNX edge detector with remote service + local fallback via InferenceClient.
+- **SDK Adapter** (`packages/summit-os-sdk/summit_os/adapter.py`): Unified SummitAdapter base class — 2 methods to implement, automatic MQTT + heartbeat + entity protocol.
+- **Conformance Tests** (`packages/summit-os-sdk/summit_os/conformance.py`): 5 conformance tests + CLI entry point.
+- **Integration Guide** (`INTEGRATION_GUIDE.md`): Single-page integration walkthrough.
+- **Quickstart Template** (`examples/quickstart_adapter.py`): Copy-paste adapter template.
+
+### Changed
+- **Fabric** (`apps/fabric/main.py`): Mounts WorldStore entity API, initializes mesh peer, wires MQTT into WorldStore.
+- **Fabric Offline** (`apps/fabric/offline_manager.py`): CRDT-backed entity buffering during offline, conflict-free merge on reconnect.
+- **Tasking** (`apps/tasking/main.py`): State machine lifecycle in create_mission, intent-based assignment, pre-dispatch OPA gate.
+- **README**: Rewritten as domain-agnostic platform description.
+- **Console UI**: Replaced Pip-Boy neon aesthetic with ops-grade muted design (zinc/slate palette, semantic color only).
 
 ## [0.1.0-alpha] - 2026-02-22
 ### Added

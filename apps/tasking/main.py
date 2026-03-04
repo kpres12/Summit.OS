@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import json
@@ -20,6 +21,36 @@ from packages.schemas.drones import (
     ThreatThreshold, TieredAsset
 )
 from packages.threat_assessment import threat_registry, ThreatAssessmentResult
+
+# State machine, assignment engine, coverage patterns
+try:
+    from apps.tasking.state_machine import MissionStateMachine, MissionStateMachineRegistry, MissionState
+    STATE_MACHINE_AVAILABLE = True
+except Exception:
+    STATE_MACHINE_AVAILABLE = False
+
+try:
+    from apps.tasking.assignment_engine import AssignmentEngine, resolve_pattern
+    ASSIGNMENT_ENGINE_AVAILABLE = True
+except Exception:
+    ASSIGNMENT_ENGINE_AVAILABLE = False
+
+try:
+    from apps.tasking.coverage_patterns import (
+        grid_coverage_pattern, spiral_coverage_pattern,
+        perimeter_patrol_pattern, orbit_pattern, expand_search_pattern,
+    )
+    COVERAGE_PATTERNS_AVAILABLE = True
+except Exception:
+    COVERAGE_PATTERNS_AVAILABLE = False
+
+# WorldStore (for creating mission entities)
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+    from packages.world.store import WorldStore
+    WORLD_STORE_AVAILABLE = True
+except Exception:
+    WORLD_STORE_AVAILABLE = False
 from sqlalchemy import (
     Column,
     DateTime,
@@ -55,6 +86,8 @@ TASKING_TEST_MODE = os.getenv("TASKING_TEST_MODE", "false").lower() == "true"
 engine: Optional[AsyncEngine] = None
 SessionLocal: Optional[sessionmaker] = None
 mqtt_client: Optional[mqtt.Client] = None
+mission_registry = MissionStateMachineRegistry() if STATE_MACHINE_AVAILABLE else None
+assignment_engine_instance = None  # initialized after lifespan
 
 # Optional direct autopilot control
 DIRECT_AUTOPILOT = os.getenv("TASKING_DIRECT_AUTOPILOT", "false").lower() == "true"
@@ -1306,11 +1339,23 @@ async def create_mission(req: MissionCreateRequest, request: Request):
     mission_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc)
 
+    # ── State machine: PLANNING ──
+    sm = None
+    if STATE_MACHINE_AVAILABLE and mission_registry:
+        sm = mission_registry.create(mission_id)
+        # Transitions: PLANNING → POLICY_CHECK
+
     # Policy validation (org-scoped)
     org_id = request.headers.get("X-Org-ID") or request.headers.get("x-org-id")
+
+    if sm:
+        sm.transition(MissionState.POLICY_CHECK)  # → POLICY_CHECK
+
     violations = await _validate_policies(req, org_id)
     policy_ok = len(violations) == 0
     if not policy_ok:
+        if sm:
+            sm.transition(MissionState.DENIED)  # → DENIED
         raise HTTPException(status_code=400, detail={"policy_violations": violations})
 
     # Fetch available assets
@@ -1329,10 +1374,36 @@ async def create_mission(req: MissionCreateRequest, request: Request):
         if (a.get("battery") or 0) >= 30 and (a.get("link") in ("OK", "GOOD", "CONNECTED", None))
     ]
     if not available_assets:
+        if sm:
+            sm.transition(MissionState.FAILED)  # → FAILED
         raise HTTPException(status_code=409, detail="No available assets to plan mission")
 
-    # Plan
+    # ── Intent-based assignment (if available) ──
+    if ASSIGNMENT_ENGINE_AVAILABLE and req.area and req.area.get("center"):
+        intent = (req.planning_params or {}).get("intent", "survey")
+        center = req.area.get("center", {})
+        ae = AssignmentEngine()
+        assignment_result = ae.assign(
+            intent=intent,
+            target_lat=float(center.get("lat", 0)),
+            target_lon=float(center.get("lon", 0)),
+            num_assets=req.num_drones or 1,
+            available_assets=available_assets,
+            org_id=org_id,
+        )
+        # Use scored assignments if we got results, otherwise fall back
+        if assignment_result.selected_assets:
+            # Rebuild available_assets in scored order
+            scored_ids = [s.asset_id for s in assignment_result.selected_assets]
+            scored_map = {a["asset_id"]: a for a in available_assets}
+            available_assets = [scored_map[aid] for aid in scored_ids if aid in scored_map]
+
+    # Plan (uses existing _plan_assignments with all its patterns)
     assignments_map = await _plan_assignments(req, available_assets)
+
+    # ── State machine: DISPATCHED ──
+    if sm:
+        sm.transition(MissionState.DISPATCHED)  # → DISPATCHED
 
     # Persist mission and assignments
     async with SessionLocal() as session:
@@ -1359,6 +1430,10 @@ async def create_mission(req: MissionCreateRequest, request: Request):
             )
         await session.commit()
 
+    # ── State machine: ACTIVE ──
+    if sm:
+        sm.transition(MissionState.ACTIVE)  # → ACTIVE
+
     # Emit MQTT events and dispatch to each asset
     await _publish_mission_update(
         mission_id,
@@ -1370,9 +1445,22 @@ async def create_mission(req: MissionCreateRequest, request: Request):
     if METRIC_MISSIONS_ACTIVE:
         METRIC_MISSIONS_ACTIVE.inc()
 
-    # Dispatch plans to per-asset task topics
+    # Dispatch plans to per-asset task topics (with pre-dispatch OPA check)
     if mqtt_client:
         for asset_id, plan in assignments_map.items():
+            # Pre-dispatch policy gate
+            try:
+                from apps.tasking.opa import OPAClient
+                opa = OPAClient()
+                dispatch_result = await opa.evaluate_pre_dispatch(
+                    mission_id=mission_id, asset_id=asset_id, plan=plan, org_id=org_id,
+                )
+                if not dispatch_result.get("allow", True):
+                    logger.warning(f"Pre-dispatch denied for {asset_id}: {dispatch_result.get('deny_reasons')}")
+                    continue
+            except Exception:
+                pass  # If OPA check fails, proceed (fail-open for dispatch)
+
             topic = f"tasks/{asset_id}/dispatch"
             message = {
                 "task_id": f"mission:{mission_id}",

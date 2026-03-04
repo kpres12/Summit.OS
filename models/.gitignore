@@ -1,0 +1,6 @@
+# Model binaries (download via scripts/download_model.py)
+*.onnx
+*.pt
+*.pb
+*.tflite
+!LICENSE

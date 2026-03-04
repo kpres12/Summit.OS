@@ -334,7 +334,146 @@ class MockDetector(ObjectDetector):
         return self.MOCK_CLASSES
 
 
-# ── NMS utility ─────────────────────────────────────────────
+# ── ONNX Detector (YOLOv8 format) ────────────────────────────
+
+class ONNXDetector(ObjectDetector):
+    """
+    ONNX Runtime detector for YOLOv8 exported models.
+
+    Requires: pip install onnxruntime numpy
+    Model: Export from ultralytics with `yolo export model=yolov8n.pt format=onnx`
+           or download from https://github.com/ultralytics/assets/releases
+    """
+
+    COCO_CLASSES = OpenCVDetector.COCO_CLASSES  # reuse 80-class list
+
+    def __init__(self, model_path: str = "", input_size: int = 640):
+        self.model_path = model_path or self._find_model()
+        self.input_size = input_size
+        self._session = None
+        self._load_model()
+
+    def _find_model(self) -> str:
+        """Search common locations for a YOLOv8n ONNX model."""
+        import os
+        candidates = [
+            os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n.onnx"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n", "yolov8n.onnx"),
+            "yolov8n.onnx",
+        ]
+        for c in candidates:
+            p = os.path.abspath(c)
+            if os.path.isfile(p):
+                return p
+        return ""
+
+    def _load_model(self):
+        try:
+            import onnxruntime as ort
+            if not self.model_path:
+                logger.warning("No ONNX model file found — run scripts/download_model.py")
+                return
+            self._session = ort.InferenceSession(
+                self.model_path,
+                providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+            )
+            logger.info(f"ONNX model loaded: {self.model_path}")
+        except ImportError:
+            logger.warning("onnxruntime not installed — ONNX detector unavailable")
+        except Exception as e:
+            logger.error(f"Failed to load ONNX model: {e}")
+
+    def detect(self, image: Any, confidence_threshold: float = 0.5) -> DetectionResult:
+        if self._session is None:
+            return DetectionResult(detections=[], model_name="onnx-unavailable")
+
+        import numpy as np
+
+        start = time.time()
+
+        # Pre-process: resize to input_size x input_size, normalize to [0,1], CHW
+        img = self._preprocess(image)
+        h_orig, w_orig = image.shape[:2] if hasattr(image, 'shape') else (640, 640)
+
+        # Run inference
+        input_name = self._session.get_inputs()[0].name
+        outputs = self._session.run(None, {input_name: img})
+        # YOLOv8 ONNX output shape: (1, 84, 8400) — transposed from (1, 8400, 84)
+        preds = outputs[0]  # (1, 84, 8400) or (1, 8400, 84)
+        if preds.shape[1] == 84:
+            preds = preds.transpose(0, 2, 1)  # → (1, 8400, 84)
+        preds = preds[0]  # (8400, 84)
+
+        # Post-process: cx, cy, w, h + 80 class scores
+        detections = []
+        boxes = preds[:, :4]       # (8400, 4) — cx, cy, w, h
+        scores = preds[:, 4:]      # (8400, 80)
+        class_ids = np.argmax(scores, axis=1)
+        max_scores = np.max(scores, axis=1)
+
+        # Filter by confidence
+        mask = max_scores >= confidence_threshold
+        for idx in np.where(mask)[0]:
+            cx, cy, bw, bh = boxes[idx]
+            # Scale back to original image
+            scale_x = w_orig / self.input_size
+            scale_y = h_orig / self.input_size
+            x1 = (cx - bw / 2) * scale_x
+            y1 = (cy - bh / 2) * scale_y
+            x2 = (cx + bw / 2) * scale_x
+            y2 = (cy + bh / 2) * scale_y
+
+            cls_id = int(class_ids[idx])
+            cls_name = self.COCO_CLASSES[cls_id] if cls_id < len(self.COCO_CLASSES) else f"class_{cls_id}"
+            detections.append(Detection(
+                class_id=cls_id,
+                class_name=cls_name,
+                confidence=float(max_scores[idx]),
+                bbox=BoundingBox(x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2)),
+                model_name="yolov8n-onnx",
+                timestamp=time.time(),
+            ))
+
+        elapsed_ms = (time.time() - start) * 1000
+        return DetectionResult(
+            detections=detections,
+            inference_ms=elapsed_ms,
+            model_name="yolov8n-onnx",
+            image_width=w_orig,
+            image_height=h_orig,
+        )
+
+    def _preprocess(self, image: Any):
+        """Resize, normalize, transpose to NCHW float32."""
+        import numpy as np
+        try:
+            import cv2
+            if isinstance(image, str):
+                image = cv2.imread(image)
+            img = cv2.resize(image, (self.input_size, self.input_size))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        except ImportError:
+            # Fallback: use PIL
+            from PIL import Image as PILImage
+            import io as _io
+            if isinstance(image, bytes):
+                pil_img = PILImage.open(_io.BytesIO(image))
+            elif isinstance(image, np.ndarray):
+                pil_img = PILImage.fromarray(image)
+            else:
+                pil_img = image
+            img = np.array(pil_img.resize((self.input_size, self.input_size)))
+
+        img = img.astype(np.float32) / 255.0
+        img = np.transpose(img, (2, 0, 1))  # HWC → CHW
+        img = np.expand_dims(img, axis=0)     # → NCHW
+        return img
+
+    def get_class_names(self) -> List[str]:
+        return self.COCO_CLASSES
+
+
+# ── NMS utility ───────────────────────────────────────────
 
 def non_max_suppression(detections: List[Detection],
                         iou_threshold: float = 0.5) -> List[Detection]:
@@ -368,15 +507,24 @@ def create_detector(backend: str = "auto", **kwargs) -> ObjectDetector:
     """
     if backend == "yolo":
         return YOLODetector(**kwargs)
+    if backend == "onnx":
+        return ONNXDetector(**kwargs)
     if backend == "opencv":
         return OpenCVDetector(**kwargs)
     if backend == "mock":
         return MockDetector(**kwargs)
 
-    # Auto: try YOLO first, then OpenCV, then mock
+    # Auto: try YOLO first, then ONNX, then mock
     try:
         det = YOLODetector(**kwargs)
         if det._model is not None:
+            return det
+    except Exception:
+        pass
+
+    try:
+        det = ONNXDetector(**kwargs)
+        if det._session is not None:
             return det
     except Exception:
         pass

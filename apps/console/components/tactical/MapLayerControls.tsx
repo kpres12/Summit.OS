@@ -28,10 +28,7 @@ export default function MapLayerControls({
       <div className="absolute top-20 right-4 z-10">
         <button
           onClick={() => setCollapsed(false)}
-          className="px-3 py-2 bg-[#0F0F0F]/90 border border-[#00FF91]/40 text-[#00FF91] text-xs font-mono hover:bg-[#00FF91]/10 transition-colors backdrop-blur-sm"
-          style={{
-            boxShadow: '0 0 8px rgba(0, 255, 145, 0.2)',
-          }}
+          className="px-3 py-2 bg-zinc-900/90 border border-zinc-700 text-zinc-300 text-xs font-mono hover:bg-zinc-800 transition-colors backdrop-blur-sm rounded"
         >
           ◂ LAYERS
         </button>
@@ -40,78 +37,60 @@ export default function MapLayerControls({
   }
 
   return (
-    <div className="absolute top-20 right-4 z-10 w-64">
-      <div
-        className="bg-[#0F0F0F]/95 border border-[#00FF91]/40 backdrop-blur-sm"
-        style={{
-          boxShadow: '0 0 12px rgba(0, 255, 145, 0.2)',
-        }}
-      >
+    <div className="absolute top-20 right-4 z-10 w-56">
+      <div className="bg-zinc-900/95 border border-zinc-700 backdrop-blur-sm rounded">
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-[#00FF91]/30">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-[#00FF91] animate-pulse" />
-            <span className="text-[#00FF91] text-xs font-mono font-bold tracking-wider">
-              MAP LAYERS
-            </span>
-          </div>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-700">
+          <span className="text-zinc-400 text-xs font-mono font-medium tracking-wider">
+            LAYERS
+          </span>
           <button
             onClick={() => setCollapsed(true)}
-            className="text-[#00FF91] hover:text-[#00CC74] text-xs"
+            className="text-zinc-500 hover:text-zinc-300 text-xs"
           >
             ▸
           </button>
         </div>
 
         {/* Layer List */}
-        <div className="p-2 space-y-1 max-h-96 overflow-y-auto">
+        <div className="p-1.5 space-y-0.5">
           {layers.map((layer) => (
             <div
               key={layer.id}
-              className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#00FF91]/5 transition-colors"
+              className="flex items-center gap-2 px-2 py-1.5 hover:bg-zinc-800 rounded transition-colors"
             >
-              {/* Toggle Checkbox */}
               <button
                 onClick={() => onToggleLayer(layer.id)}
-                className="flex-shrink-0 w-4 h-4 border border-[#00FF91]/60 flex items-center justify-center hover:border-[#00FF91] transition-colors"
-                style={{
-                  backgroundColor: layer.enabled
-                    ? 'rgba(0, 255, 145, 0.2)'
-                    : 'transparent',
-                }}
+                className={`flex-shrink-0 w-4 h-4 border rounded-sm flex items-center justify-center transition-colors ${
+                  layer.enabled
+                    ? 'border-emerald-500 bg-emerald-500/20'
+                    : 'border-zinc-600 bg-transparent'
+                }`}
               >
                 {layer.enabled && (
-                  <span className="text-[#00FF91] text-[10px]">✓</span>
+                  <span className="text-emerald-400 text-[10px]">✓</span>
                 )}
               </button>
 
-              {/* Layer Icon */}
               <div
-                className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-sm"
-                style={{
-                  color: layer.enabled ? layer.color : '#006644',
-                  filter: layer.enabled
-                    ? `drop-shadow(0 0 2px ${layer.color})`
-                    : 'none',
-                }}
+                className="flex-shrink-0 w-5 h-5 flex items-center justify-center text-xs"
+                style={{ color: layer.enabled ? layer.color : '#52525b' }}
               >
                 {layer.icon}
               </div>
 
-              {/* Layer Name */}
               <span
                 className={`flex-1 text-[11px] font-mono ${
-                  layer.enabled ? 'text-[#00FF91]' : 'text-[#006644]'
+                  layer.enabled ? 'text-zinc-300' : 'text-zinc-600'
                 }`}
               >
                 {layer.name}
               </span>
 
-              {/* Settings Button */}
               {onLayerSettings && (
                 <button
                   onClick={() => onLayerSettings(layer.id)}
-                  className="flex-shrink-0 text-[#006644] hover:text-[#00FF91] text-[10px] px-1"
+                  className="flex-shrink-0 text-zinc-600 hover:text-zinc-300 text-[10px] px-1"
                   title="Layer Settings"
                 >
                   ⚙
@@ -122,8 +101,8 @@ export default function MapLayerControls({
         </div>
 
         {/* Footer */}
-        <div className="px-3 py-2 border-t border-[#00FF91]/30 text-[10px] text-[#006644] font-mono">
-          {layers.filter((l) => l.enabled).length}/{layers.length} layers active
+        <div className="px-3 py-1.5 border-t border-zinc-700 text-[10px] text-zinc-500 font-mono">
+          {layers.filter((l) => l.enabled).length}/{layers.length} active
         </div>
       </div>
     </div>

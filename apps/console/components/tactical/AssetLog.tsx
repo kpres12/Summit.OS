@@ -1,121 +1,107 @@
 'use client';
 
 import React from 'react';
+import { useEntityStream, EntityData } from '../../hooks/useEntityStream';
 
-interface Asset {
-  id: string;
-  type: string;
-  battery: number;
-  temp: number;
-  signal: number;
-  status: 'ACTIVE' | 'IDLE' | 'WARNING' | 'OFFLINE';
+const DOMAIN_LABELS: Record<string, string> = {
+  aerial: 'UAV',
+  ground: 'GND',
+  maritime: 'MAR',
+  fixed: 'FIX',
+  sensor: 'SEN',
+};
+
+function deriveStatus(e: EntityData): 'ACTIVE' | 'IDLE' | 'WARNING' | 'OFFLINE' {
+  const ageSec = (Date.now() - e.last_seen * 1000) / 1000;
+  if (ageSec > 300) return 'OFFLINE';
+  if (e.track_state === 'coasting') return 'WARNING';
+  if ((e.battery_pct ?? 100) < 25) return 'WARNING';
+  if (e.speed_mps > 0.5 || e.mission_id) return 'ACTIVE';
+  return 'IDLE';
 }
 
-const mockAssets: Asset[] = [
-  { id: 'UAV-01', type: 'DRONE', battery: 87, temp: 42, signal: 95, status: 'ACTIVE' },
-  { id: 'UAV-02', type: 'DRONE', battery: 76, temp: 39, signal: 89, status: 'ACTIVE' },
-  { id: 'UAV-03', type: 'DRONE', battery: 92, temp: 38, signal: 94, status: 'IDLE' },
-  { id: 'GND-01', type: 'ROVER', battery: 45, temp: 51, signal: 78, status: 'WARNING' },
-  { id: 'GND-02', type: 'ROVER', battery: 68, temp: 44, signal: 82, status: 'ACTIVE' },
-  { id: 'TWR-01', type: 'RELAY', battery: 100, temp: 31, signal: 100, status: 'ACTIVE' },
-  { id: 'TWR-02', type: 'RELAY', battery: 98, temp: 33, signal: 98, status: 'ACTIVE' },
-  { id: 'SEN-01', type: 'SENSOR', battery: 62, temp: 35, signal: 91, status: 'ACTIVE' },
-  { id: 'UAV-04', type: 'DRONE', battery: 23, temp: 47, signal: 71, status: 'WARNING' },
-  { id: 'SEN-02', type: 'SENSOR', battery: 0, temp: 0, signal: 0, status: 'OFFLINE' },
-];
-
 export default function AssetLog() {
+  const { entityList, connected, entityCount } = useEntityStream();
+
   return (
-    <div className="w-80 bg-[#0F0F0F] border-r-2 border-[#00FF91]/20 flex flex-col overflow-hidden">
-      {/* Header */}
+    <div className="w-72 bg-[#0F0F0F] border-r-2 border-[#00FF91]/20 flex flex-col overflow-hidden">
       <div className="h-10 border-b border-[#00FF91]/20 flex items-center px-4 bg-[#0A0A0A]">
         <div className="text-[#00FF91] text-sm font-semibold tracking-wider uppercase">
-          ASSET LOG
+          ASSETS
         </div>
-        <div className="ml-auto text-[10px] text-[#006644] font-mono">
-          [{mockAssets.length} NODES]
+        <div className="ml-auto flex items-center gap-2">
+          <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-[#00FF91]' : 'bg-red-500'}`}
+               style={connected ? { boxShadow: '0 0 4px #00FF91' } : {}} />
+          <div className="text-[10px] text-[#006644] font-mono">
+            {entityCount > 0 ? entityCount : '—'}
+          </div>
         </div>
       </div>
-
-      {/* Asset List */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {mockAssets.map((asset, idx) => (
-          <AssetRow key={asset.id} asset={asset} index={idx} />
-        ))}
+        {entityList.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <div className="text-[11px] text-[#006644] font-mono">NO ASSETS</div>
+            <div className="text-[10px] text-[#004422] font-mono mt-1">
+              {connected ? 'Awaiting entity data…' : 'WS disconnected'}
+            </div>
+          </div>
+        ) : (
+          entityList.map((entity) => (
+            <AssetRow key={entity.entity_id} entity={entity} />
+          ))
+        )}
       </div>
     </div>
   );
 }
 
-interface AssetRowProps {
-  asset: Asset;
-  index: number;
-}
+function AssetRow({ entity }: { entity: EntityData }) {
+  const status = deriveStatus(entity);
+  const label = entity.callsign || entity.entity_id.slice(0, 12);
+  const domainTag = DOMAIN_LABELS[entity.domain] || entity.domain?.toUpperCase() || '?';
+  const battery = entity.battery_pct;
+  const conf = Math.round(entity.confidence * 100);
+  const speed = entity.speed_mps;
 
-function AssetRow({ asset, index }: AssetRowProps) {
-  const statusColors = {
+  const statusColor = {
     ACTIVE: '#00FF91',
-    IDLE: '#00CC74',
+    IDLE: '#006644',
     WARNING: '#FF9933',
     OFFLINE: '#FF3333',
   };
-
-  const statusColor = statusColors[asset.status];
+  const color = statusColor[status];
 
   return (
-    <div 
-      className="border-b border-[#00FF91]/10 p-3 hover:bg-[#00FF91]/5 transition-colors"
-      style={{ animationDelay: `${index * 0.05}s` }}
-    >
-      {/* Asset ID and Type */}
-      <div className="flex items-center justify-between mb-2">
+    <div className="border-b border-[#00FF91]/10 px-4 py-2 hover:bg-[#00FF91]/5 transition-colors cursor-pointer">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <div 
+          <div
             className="w-1.5 h-1.5 rounded-full"
-            style={{ 
-              backgroundColor: statusColor,
-              boxShadow: `0 0 4px ${statusColor}`
-            }}
+            style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}80` }}
           />
-          <div className="text-[#00FF91] text-sm font-mono font-semibold tracking-wide">
-            {asset.id}
-          </div>
+          <div className="text-[#00CC74] text-xs font-mono">{label}</div>
         </div>
-        <div className="text-[10px] text-[#006644] uppercase tracking-wider px-2 py-0.5 border border-[#006644]/50">
-          {asset.type}
+        <div
+          className="text-[8px] px-1.5 py-0.5 font-semibold tracking-wider border"
+          style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}
+        >
+          {domainTag}
         </div>
       </div>
-
-      {/* Telemetry Grid */}
-      <div className="grid grid-cols-3 gap-2 text-[10px]">
-        <TelemetryItem label="BAT" value={`${asset.battery}%`} warning={asset.battery < 30} />
-        <TelemetryItem label="TMP" value={`${asset.temp}°C`} warning={asset.temp > 50} />
-        <TelemetryItem label="SIG" value={`${asset.signal}%`} warning={asset.signal < 75} />
-      </div>
-
-      {/* Status */}
-      <div className="mt-2 text-[10px]">
-        <span className="text-[#006644]">STATUS: </span>
-        <span style={{ color: statusColor }} className="font-semibold">
-          {asset.status}
+      <div className="flex gap-3 text-[10px] font-mono">
+        {battery !== undefined && battery !== null && (
+          <span className={battery < 30 ? 'text-[#FF9933]' : 'text-[#006644]'}>
+            {Math.round(battery)}%
+          </span>
+        )}
+        <span className={conf < 70 ? 'text-[#FF9933]' : 'text-[#006644]'}>
+          {conf}% conf
         </span>
-      </div>
-    </div>
-  );
-}
-
-interface TelemetryItemProps {
-  label: string;
-  value: string;
-  warning?: boolean;
-}
-
-function TelemetryItem({ label, value, warning }: TelemetryItemProps) {
-  return (
-    <div className="flex flex-col">
-      <div className="text-[#006644] uppercase tracking-wider">{label}</div>
-      <div className={`font-mono ${warning ? 'text-[#FF9933]' : 'text-[#00CC74]'}`}>
-        {value}
+        {speed > 0.1 && (
+          <span className="text-[#006644]">
+            {speed.toFixed(1)} m/s
+          </span>
+        )}
       </div>
     </div>
   );

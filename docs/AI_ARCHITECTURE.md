@@ -2,7 +2,7 @@
 
 ## Overview
 
-Summit.OS is the distributed intelligence fabric that serves as the **sense-making and autonomy brain** for all BigMT robotics systems. AI is not an add-on feature—it's the connective tissue that enables every robot, drone, and sensor to understand, decide, and act in the physical world.
+Summit.OS is the distributed intelligence fabric that serves as the **sense-making and autonomy brain** for all Summit.OS robotics systems. AI is not an add-on feature—it's the connective tissue that enables every robot, drone, and sensor to understand, decide, and act in the physical world.
 
 ## 🧠 AI Integration by Layer
 
@@ -36,7 +36,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 - **Temporal Reasoning**: Predict object motion or environmental changes
 
 #### Cross-Domain Applications:
-- **FireLine**: Track smoke plumes, vehicle paths, suppression progress
+- **Summit.OS**: Track smoke plumes, vehicle paths, suppression progress
 - **Farm DitchBot**: Track water flow, debris motion
 - **Oilfield**: Track hose coupling alignment, valve positions
 - **GreaseBot**: Track clog progression, fluid dynamics
@@ -53,7 +53,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 - **Contextual Advisory**: Generate human-readable summaries for ops consoles
 
 #### Cross-Domain Applications:
-- **FireLine** → fire spread prediction + suppression tasking
+- **Summit.OS** → fire spread prediction + suppression tasking
 - **Farm DitchBot** → route optimization for culvert clearing
 - **Oilfield** → valve sequence automation
 - **GreaseBot** → dynamic route scheduling
@@ -73,7 +73,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                FireLine / DitchBot / OilfieldBot            │
+│                Summit.OS / DitchBot / OilfieldBot            │
 │              (Applications & Consoles)                      │
 └─────────────────────▲───────────────────────────────────────┘
                       │ REST / gRPC / MQTT
@@ -114,7 +114,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
    ↓  (contextual alerts + recommendations)
 [Tasking Layer]
    ↓  (assign UGV Alpha to Sector 4, Drone Bravo to recon)
-[FireLine Console]
+[Console]
    ↓  (operator view: "Potential ignition detected, response underway")
 ```
 
@@ -155,21 +155,21 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 - False positive tracking
 - Continuous model tuning
 
-## 🔗 FireLine Integration
+## 🔗 Summit.OS Integration
 
-FireLine Console interacts with Summit.OS through:
+Console interacts with Summit.OS through:
 - **REST/gRPC APIs** for queries and commands
 - **WebSocket/MQTT Streams** for real-time updates
 - **Shared schemas** for alerts, telemetry, and missions
 - **AI visualization** of risk layers, recommendations, tasking states
 
-## 🧭 Extending to Future BigMT Products
+## 🧭 Extending to Future Summit.OS Products
 
-Each new BigMT robotics platform connects to Summit.OS via the same AI layers:
+Each new Summit.OS robotics platform connects to Summit.OS via the same AI layers:
 
 | Product | Shared AI Services | Unique Additions |
 |---------|-------------------|------------------|
-| **FireLine** | Fusion, Intelligence, Tasking, Predict | Fire behavior, smoke detection |
+| **Summit.OS** | Fusion, Intelligence, Tasking, Predict | Fire behavior, smoke detection |
 | **DitchBot** | Fusion, Tasking, Predict | Water flow, soil erosion |
 | **OilfieldBot** | Fusion, Tasking, Predict | Pressure anomalies, leak detection |
 | **GreaseBot** | Fusion, Tasking | Fill-level estimation, route scheduling |
@@ -179,7 +179,7 @@ Each new BigMT robotics platform connects to Summit.OS via the same AI layers:
 
 ### Reusability
 - All future robots share the same intelligence core
-- Consistent AI capabilities across all BigMT products
+- Consistent AI capabilities across all Summit.OS products
 - Shared training data and model improvements
 
 ### Consistency
@@ -193,7 +193,7 @@ Each new BigMT robotics platform connects to Summit.OS via the same AI layers:
 - Automatic scaling of AI workloads
 
 ### Defensibility
-- Proprietary fusion + autonomy stack becomes BigMT's competitive moat
+- Proprietary fusion + autonomy stack becomes Summit.OS's competitive moat
 - Continuous learning and improvement
 - Domain-specific AI expertise
 
@@ -245,5 +245,5 @@ def plan_mission(objectives, assets, constraints):
 
 - **Summit.OS uses AI for sensemaking, prediction, and coordination** — not chat or content
 - **Every robot and drone contributes to and benefits from** the shared intelligence fabric
-- **FireLine and future BigMT products** simply plug into this ecosystem via APIs and event streams
+- **Summit.OS and future Summit.OS products** simply plug into this ecosystem via APIs and event streams
 - **AI is the connective tissue** that enables autonomous operations across all domains

@@ -1,0 +1,18 @@
+Model Weights License Notice
+=============================
+
+YOLOv8n ONNX (yolov8n.onnx)
+----------------------------
+Source: Ultralytics (https://github.com/ultralytics/ultralytics)
+License: AGPL-3.0 (https://www.gnu.org/licenses/agpl-3.0.html)
+
+The YOLOv8n model weights are licensed under AGPL-3.0 by Ultralytics.
+This is separate from Summit.OS's MIT license.
+
+If you use these weights in a commercial product, you must either:
+  1. Open-source your entire application under AGPL-3.0, or
+  2. Purchase an Ultralytics Enterprise license
+
+For development, research, and open-source use, AGPL-3.0 applies.
+
+Download: Run `python scripts/download_model.py` to fetch the model.

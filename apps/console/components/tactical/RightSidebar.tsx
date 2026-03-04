@@ -11,14 +11,6 @@ interface FeedEvent {
   message: string;
 }
 
-const mockEvents: FeedEvent[] = [
-  { id: '001', timestamp: '03:42:15', type: 'TASK', message: 'UAV-01 DEPLOYED TO SECTOR B7' },
-  { id: '002', timestamp: '03:42:18', type: 'INFO', message: 'PERIMETER SCAN INITIATED' },
-  { id: '003', timestamp: '03:42:22', type: 'AI', message: 'PATTERN RECOGNITION: ANOMALY DETECTED' },
-  { id: '004', timestamp: '03:42:29', type: 'ALERT', message: 'GND-01 BATTERY THRESHOLD WARNING' },
-  { id: '005', timestamp: '03:42:35', type: 'INFO', message: 'MESH NETWORK OPTIMIZATION COMPLETE' },
-];
-
 function severityToType(severity: string): FeedEvent['type'] {
   switch (severity?.toUpperCase()) {
     case 'CRITICAL':
@@ -36,25 +28,29 @@ function alertToEvent(a: AlertAPI): FeedEvent {
     id: a.alert_id,
     timestamp: a.ts_iso
       ? new Date(a.ts_iso).toLocaleTimeString('en-GB', { hour12: false })
-      : '—',
+      : '\u2014',
     type: severityToType(a.severity),
     message: a.description || `[${a.source}] ${a.severity}`,
   };
 }
 
-function typeColor(type: FeedEvent['type']): string {
+function typeStyles(type: FeedEvent['type']): { color: string; icon: string } {
   switch (type) {
-    case 'THREAT': return '#FF3333';
-    case 'ALERT': return '#FF9933';
-    case 'AI': return '#00DDFF';
-    case 'TASK': return '#00FF91';
-    default: return '#00FF91';
+    case 'THREAT': return { color: '#FF3333', icon: '\u2B22' };
+    case 'ALERT':  return { color: '#FF9933', icon: '\u25B2' };
+    case 'AI':     return { color: '#00DDFF', icon: '\u25C6' };
+    case 'TASK':   return { color: '#00FF91', icon: '\u25B6' };
+    default:       return { color: '#00CC74', icon: '\u25CF' };
   }
+}
+
+function nowTs(): string {
+  return new Date().toLocaleTimeString('en-GB', { hour12: false });
 }
 
 export default function RightSidebar() {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [events, setEvents] = useState<FeedEvent[]>(mockEvents);
+  const [events, setEvents] = useState<FeedEvent[]>([]);
   const [live, setLive] = useState(false);
 
   // Fetch alerts from backend on mount
@@ -66,20 +62,50 @@ export default function RightSidebar() {
           setLive(true);
         }
       })
-      .catch(() => { /* keep mock */ });
+      .catch(() => { /* backend unreachable */ });
   }, []);
 
-  // Subscribe to WebSocket for realtime events
+  // Subscribe to WebSocket for realtime events (alerts, entities, missions)
   useEffect(() => {
     const ws = connectWebSocket((data) => {
       const msg = data as Record<string, unknown>;
+      let ev: FeedEvent | null = null;
+
       if (msg.alert_id || msg.type === 'alert') {
-        const ev: FeedEvent = {
+        ev = {
           id: String(msg.alert_id || Date.now()),
-          timestamp: new Date().toLocaleTimeString('en-GB', { hour12: false }),
+          timestamp: nowTs(),
           type: severityToType(String(msg.severity || 'INFO')),
-          message: String(msg.description || msg.message || 'New event'),
+          message: String(msg.description || msg.message || 'New alert'),
         };
+      } else if (msg.type === 'entity_update') {
+        const d = msg.data as Record<string, unknown> | undefined;
+        if (d) {
+          ev = {
+            id: `ent-${Date.now()}`,
+            timestamp: nowTs(),
+            type: 'INFO',
+            message: `ENTITY ${String(d.callsign || d.entity_id || '').slice(0, 16).toUpperCase()} UPDATED`,
+          };
+        }
+      } else if (msg.type === 'mission_update') {
+        ev = {
+          id: `msn-${Date.now()}`,
+          timestamp: nowTs(),
+          type: 'TASK',
+          message: `MISSION ${String(msg.name || msg.mission_id || '').slice(0, 20).toUpperCase()} \u2192 ${String(msg.status || '').toUpperCase()}`,
+        };
+      } else if (msg.type === 'entity_removed') {
+        const d = msg.data as Record<string, unknown> | undefined;
+        ev = {
+          id: `rem-${Date.now()}`,
+          timestamp: nowTs(),
+          type: 'ALERT',
+          message: `ENTITY ${String(d?.entity_id || '').slice(0, 16).toUpperCase()} REMOVED`,
+        };
+      }
+
+      if (ev) {
         setEvents((prev) => [...prev.slice(-99), ev]);
         setLive(true);
       }
@@ -96,35 +122,54 @@ export default function RightSidebar() {
 
   return (
     <div className="w-80 bg-[#0F0F0F] border-l-2 border-[#00FF91]/20 flex flex-col overflow-hidden">
-      {/* Mission Feed */}
       <div className="flex-1 flex flex-col">
         <div className="h-10 border-b border-[#00FF91]/20 flex items-center px-4 bg-[#0A0A0A]">
           <div className="text-[#00FF91] text-sm font-semibold tracking-wider uppercase">
             MISSION FEED
           </div>
           <div className="ml-auto text-[10px] text-[#006644] font-mono">
-            {live ? '[LIVE]' : '[SIMULATED]'}
+            {live ? '[LIVE]' : events.length > 0 ? '[CACHED]' : '[IDLE]'}
           </div>
         </div>
         <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1">
-          {events.map((e) => {
-            const color = typeColor(e.type);
-            return (
-              <div key={e.id} className="p-2 border-l-2 hover:bg-[#00FF91]/5 transition-colors" style={{ borderLeftColor: color }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="text-[10px] text-[#006644] font-mono tracking-wider">{e.timestamp}</div>
-                  <div className="text-[8px] px-1.5 py-0.5 font-semibold tracking-wider border" style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}>{e.type}</div>
+          {events.length === 0 ? (
+            <div className="px-4 py-8 text-center">
+              <div className="text-[11px] text-[#006644] font-mono">NO EVENTS</div>
+              <div className="text-[10px] text-[#004422] font-mono mt-1">Awaiting data\u2026</div>
+            </div>
+          ) : (
+            events.map((e, idx) => {
+              const { color, icon } = typeStyles(e.type);
+              return (
+                <div
+                  key={e.id}
+                  className="p-2 border-l-2 hover:bg-[#00FF91]/5 transition-colors"
+                  style={{ borderLeftColor: color, animationDelay: `${idx * 0.05}s` }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="text-[10px] text-[#006644] font-mono tracking-wider">
+                      {e.timestamp}
+                    </div>
+                    <div
+                      className="text-[8px] px-1.5 py-0.5 font-semibold tracking-wider border"
+                      style={{ color, borderColor: `${color}40`, backgroundColor: `${color}10` }}
+                    >
+                      {e.type}
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="text-xs mt-0.5" style={{ color }}>{icon}</div>
+                    <div className="text-xs text-[#00CC74] font-mono leading-relaxed">
+                      {e.message}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-[#00CC74] font-mono leading-relaxed">{e.message}</div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
-
-      {/* Mission Timeline */}
-      <div className="h-64">
-        {/* Client-only timeline to avoid SSR hydration mismatch */}
+      <div className="h-56 border-t border-[#00FF91]/20">
         <DynamicMissionTimeline />
       </div>
     </div>

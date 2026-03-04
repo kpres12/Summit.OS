@@ -1,5 +1,5 @@
 # Summit.OS Development Environment
-# Big Mountain Technologies - Distributed Intelligence Fabric
+# Big Mountain Technologies — Distributed Intelligence Fabric
 
 .PHONY: help dev dev-services dev-apps dev-console dev-backend clean test lint format install-deps
 
@@ -12,8 +12,9 @@ help:
 	@echo "  make dev           - Start full development environment"
 	@echo "  make dev-services  - Start infrastructure services only"
 	@echo "  make dev-apps      - Start Summit.OS applications"
-	@echo "  make dev-console   - Start FireLine Console only"
+	@echo "  make dev-console   - Start Console only"
 	@echo "  make dev-backend   - Start backend services only"
+	@echo "  make smoke         - Run end-to-end smoke test"
 	@echo "  make sim           - Launch SITL/HITL sim executor (local)"
 	@echo ""
 	@echo "Utilities:"
@@ -24,7 +25,7 @@ help:
 	@echo "  make install-deps  - Install all dependencies"
 	@echo ""
 	@echo "Services:"
-	@echo "  - FireLine Console: http://localhost:3000"
+	@echo "  - Console: http://localhost:3000"
 	@echo "  - API Gateway: http://localhost:8000"
 	@echo "  - Data Fabric: http://localhost:8001"
 	@echo "  - Sensor Fusion: http://localhost:8002"
@@ -37,7 +38,7 @@ help:
 dev: install-deps dev-services
 	@echo "Starting Summit.OS development environment..."
 	@echo "Services will be available at:"
-	@echo "  - FireLine Console: http://localhost:3000"
+	@echo "  - Console: http://localhost:3000"
 	@echo "  - API Gateway: http://localhost:8000"
 	@echo "  - Grafana: http://localhost:3001"
 	@echo ""
@@ -56,7 +57,7 @@ dev-services:
 # Summit.OS applications
 dev-apps:
 	@echo "Starting Summit.OS applications..."
-	@docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking api-gateway console
+	@docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking inference api-gateway adapters console
 	@echo "Applications started! Check logs with: docker-compose -f infra/docker/docker-compose.yml logs -f"
 
 # External infra (use .env with external endpoints)
@@ -66,16 +67,22 @@ dev-external:
 	@docker-compose --env-file .env -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.external.yml --profile external up -d fabric fusion intelligence tasking api-gateway console
 	@echo "External mode started!"
 
-# FireLine Console only
+# External data adapters only
+dev-adapters:
+	@echo "Starting external data adapters..."
+	@docker-compose -f infra/docker/docker-compose.yml up -d adapters
+	@echo "Adapters started (OpenSky + CelesTrak)"
+
+# Console only
 dev-console:
-	@echo "Starting FireLine Console..."
+	@echo "Starting Console..."
 	@cd apps/console && npm install
 	@cd apps/console && npm run dev
 
 # Backend services only
 dev-backend:
 	@echo "Starting backend services..."
-	@docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking api-gateway
+	@docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking inference api-gateway
 
 # Clean up
 clean:
@@ -183,7 +190,16 @@ health:
 	@curl -s http://localhost:8002/health | jq .
 	@curl -s http://localhost:8003/health | jq .
 	@curl -s http://localhost:8004/health | jq .
+	@curl -s http://localhost:8006/health | jq . || echo "inference: not running"
+	@echo "  adapters: running (check docker logs summit-adapters)"
 	@echo "Health check complete!"
+
+# End-to-end smoke test (requires running stack)
+.PHONY: smoke
+smoke:
+	@echo "Running smoke test..."
+	@python scripts/smoke_test.py
+	@echo "Smoke test complete!"
 
 # Logs
 logs:

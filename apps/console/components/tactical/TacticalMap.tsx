@@ -1,75 +1,38 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import Map, { Marker, NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import MapLayerControls, { MapLayer } from './MapLayerControls';
 import GeofenceEditor, { Geofence } from './GeofenceEditor';
+import EntityDetail from './EntityDetail';
+import { useEntityStream, EntityData } from '../../hooks/useEntityStream';
 import { fetchGeofences, createGeofence, deleteGeofence } from '../../lib/api';
+import ShaderPipeline, { ShaderMode } from './ShaderPipeline';
 
-interface MapNode {
-  id: string;
-  x: number;
-  y: number;
-  type: 'UAV' | 'GND' | 'TWR' | 'SEN';
-  active: boolean;
-}
+// Lazy-load CesiumMap to avoid SSR + large bundle in 2D mode
+const CesiumMap = lazy(() => import('./CesiumMap'));
 
-const mockNodes: MapNode[] = [
-  { id: 'UAV-01', x: 35, y: 25, type: 'UAV', active: true },
-  { id: 'UAV-02', x: 65, y: 40, type: 'UAV', active: true },
-  { id: 'UAV-03', x: 50, y: 60, type: 'UAV', active: false },
-  { id: 'GND-01', x: 25, y: 55, type: 'GND', active: true },
-  { id: 'GND-02', x: 70, y: 70, type: 'GND', active: true },
-  { id: 'TWR-01', x: 50, y: 50, type: 'TWR', active: true },
-  { id: 'TWR-02', x: 80, y: 30, type: 'TWR', active: true },
-  { id: 'SEN-01', x: 40, y: 75, type: 'SEN', active: true },
-];
+const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-const connections = [
-  ['UAV-01', 'TWR-01'],
-  ['UAV-02', 'TWR-02'],
-  ['UAV-03', 'TWR-01'],
-  ['GND-01', 'TWR-01'],
-  ['GND-02', 'TWR-02'],
-  ['SEN-01', 'TWR-01'],
-  ['TWR-01', 'TWR-02'],
-];
+export type ViewMode = '2d' | '3d';
 
 export default function TacticalMap() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { entityList, connected, entityCount, trackCount } = useEntityStream();
+  const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('3d');
+  const [shaderMode, setShaderMode] = useState<ShaderMode>('NORMAL');
 
-  // Layer management
   const [layers, setLayers] = useState<MapLayer[]>([
-    { id: 'terrain', name: 'Terrain', enabled: true, color: '#00FF91', icon: '🗻' },
-    { id: 'grid', name: 'Grid', enabled: true, color: '#00FF91', icon: '⊞' },
-    { id: 'nodes', name: 'Assets', enabled: true, color: '#00FF91', icon: '▲' },
-    { id: 'connections', name: 'Connections', enabled: true, color: '#00FF91', icon: '⚡' },
-    { id: 'geofences', name: 'Geofences', enabled: true, color: '#FF9933', icon: '⬢' },
-    { id: 'tracks', name: 'Tracks', enabled: false, color: '#00DDFF', icon: '〰' },
-    { id: 'weather', name: 'Weather', enabled: false, color: '#00DDFF', icon: '☁' },
+    { id: 'entities', name: 'Entities', enabled: true, color: '#34d399', icon: '●' },
+    { id: 'geofences', name: 'Geofences', enabled: true, color: '#f59e0b', icon: '⬢' },
+    { id: 'tracks', name: 'Tracks', enabled: false, color: '#60a5fa', icon: '〰' },
+    { id: 'orbits', name: 'Orbits', enabled: true, color: '#818cf8', icon: '◌' },
   ]);
 
-  // Geofence management — try to load from backend, fall back to local mock
-  const mockGeofences: Geofence[] = [
-    {
-      id: 'gf1',
-      name: 'Airport Exclusion',
-      points: [
-        { lat: 34.05, lon: -118.24 },
-        { lat: 34.06, lon: -118.24 },
-        { lat: 34.06, lon: -118.22 },
-        { lat: 34.05, lon: -118.22 },
-      ],
-      type: 'exclusion',
-      altitude_min: 0,
-      altitude_max: 1000,
-      active: true,
-    },
-  ];
-
-  const [geofences, setGeofences] = useState<Geofence[]>(mockGeofences);
+  const [geofences, setGeofences] = useState<Geofence[]>([]);
   const [editingGeofence, setEditingGeofence] = useState<Geofence | null>(null);
 
-  // Load geofences from backend on mount
   useEffect(() => {
     fetchGeofences()
       .then(({ geofences: remote }) => {
@@ -87,7 +50,24 @@ export default function TacticalMap() {
           );
         }
       })
-      .catch(() => { /* keep mock data */ });
+      .catch(() => {});
+  }, []);
+
+  // Keyboard shortcuts for shader modes + view toggle
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't capture if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.key) {
+        case '1': setShaderMode('NORMAL'); break;
+        case '2': setShaderMode('NVG'); break;
+        case '3': setShaderMode('FLIR'); break;
+        case '4': setShaderMode('CRT'); break;
+        case 'v': setViewMode(prev => prev === '2d' ? '3d' : '2d'); break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const handleToggleLayer = (layerId: string) => {
@@ -109,7 +89,6 @@ export default function TacticalMap() {
   };
 
   const handleSaveGeofence = useCallback(async (geofence: Geofence) => {
-    // Optimistic local update
     const localId = geofence.id === 'new' ? `gf${Date.now()}` : geofence.id;
     const saved = { ...geofence, id: localId };
     if (geofence.id === 'new') {
@@ -119,7 +98,6 @@ export default function TacticalMap() {
     }
     setEditingGeofence(null);
 
-    // Persist to backend
     try {
       await createGeofence({
         name: geofence.name,
@@ -130,7 +108,7 @@ export default function TacticalMap() {
         active: geofence.active,
       });
     } catch {
-      // backend unavailable — local state still intact
+      // backend unavailable
     }
   }, []);
 
@@ -150,176 +128,152 @@ export default function TacticalMap() {
     );
   };
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const markerColor = (e: EntityData) => {
+    switch (e.entity_type) {
+      case 'friendly': return '#34d399';
+      case 'hostile': return '#ef4444';
+      case 'neutral': return '#a1a1aa';
+      default: return '#fbbf24';
+    }
+  };
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const entitiesLayer = layers.find(l => l.id === 'entities');
+  const orbitsLayer = layers.find(l => l.id === 'orbits');
 
-    const resizeCanvas = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-      drawMap();
-    };
-
-    const drawMap = () => {
-      const w = canvas.width / window.devicePixelRatio;
-      const h = canvas.height / window.devicePixelRatio;
-
-      // Clear
-      ctx.fillStyle = '#0A0A0A';
-      ctx.fillRect(0, 0, w, h);
-
-      const gridLayer = layers.find(l => l.id === 'grid');
-      const terrainLayer = layers.find(l => l.id === 'terrain');
-      const connectionsLayer = layers.find(l => l.id === 'connections');
-      const geofencesLayer = layers.find(l => l.id === 'geofences');
-
-      // Draw grid
-      if (gridLayer?.enabled) {
-        ctx.strokeStyle = 'rgba(0, 255, 145, 0.15)';
-        ctx.lineWidth = 1;
-
-        const gridSize = 50;
-        for (let x = 0; x <= w; x += gridSize) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, h);
-          ctx.stroke();
-        }
-
-        for (let y = 0; y <= h; y += gridSize) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
-        }
-      }
-
-      // Draw connections
-      if (connectionsLayer?.enabled) {
-        ctx.strokeStyle = 'rgba(0, 255, 145, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 5]);
-
-        connections.forEach(([from, to]) => {
-          const nodeFrom = mockNodes.find(n => n.id === from);
-          const nodeTo = mockNodes.find(n => n.id === to);
-          if (nodeFrom && nodeTo) {
-            ctx.beginPath();
-            ctx.moveTo((nodeFrom.x / 100) * w, (nodeFrom.y / 100) * h);
-            ctx.lineTo((nodeTo.x / 100) * w, (nodeTo.y / 100) * h);
-            ctx.stroke();
-          }
-        });
-
-        ctx.setLineDash([]);
-      }
-
-      // Draw terrain contours (pseudo-3D effect)
-      if (terrainLayer?.enabled) {
-        ctx.strokeStyle = 'rgba(0, 255, 145, 0.1)';
-        ctx.lineWidth = 1;
-        
-        const contours = 8;
-        for (let i = 0; i < contours; i++) {
-          const offset = (i / contours) * 100;
-          const amplitude = 30 + Math.sin(i) * 20;
-          ctx.beginPath();
-          for (let x = 0; x <= w; x += 5) {
-            const y = h / 2 + Math.sin((x + offset) * 0.02) * amplitude + 
-                       Math.cos((x - offset) * 0.01) * (amplitude * 0.5);
-            if (x === 0) {
-              ctx.moveTo(x, y);
-            } else {
-              ctx.lineTo(x, y);
-            }
-          }
-          ctx.stroke();
-        }
-      }
-
-      // Draw geofences
-      if (geofencesLayer?.enabled) {
-        geofences.forEach(geofence => {
-          if (!geofence.active || geofence.points.length < 3) return;
-
-          const getColor = () => {
-            switch (geofence.type) {
-              case 'exclusion': return 'rgba(255, 51, 51, 0.3)';
-              case 'inclusion': return 'rgba(0, 255, 145, 0.3)';
-              case 'warning': return 'rgba(255, 153, 51, 0.3)';
-              default: return 'rgba(0, 255, 145, 0.3)';
-            }
-          };
-
-          // Fill polygon
-          ctx.fillStyle = getColor();
-          ctx.beginPath();
-          geofence.points.forEach((pt, i) => {
-            // Simple projection: normalize coords to canvas
-            const x = ((pt.lon + 118.24) * 10000) % w;
-            const y = ((34.06 - pt.lat) * 10000) % h;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-          });
-          ctx.closePath();
-          ctx.fill();
-
-          // Border
-          ctx.strokeStyle = getColor().replace('0.3', '0.8');
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        });
-      }
-    };
-
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-    };
-  }, [layers, geofences]);
-
-  const nodesLayer = layers.find(l => l.id === 'nodes');
+  // Count aircraft and satellites
+  const aircraftCount = entityList.filter(e => e.classification === 'aircraft').length;
+  const satelliteCount = entityList.filter(e => e.classification === 'satellite').length;
 
   return (
-    <div className="flex-1 relative overflow-hidden bg-[#0A0A0A]">
-      {/* Canvas */}
-      <canvas 
-        ref={canvasRef} 
-        className="absolute inset-0 w-full h-full"
-      />
+    <div className="flex-1 relative overflow-hidden">
+      <ShaderPipeline mode={shaderMode}>
+        {/* 3D Globe (CesiumJS) */}
+        {viewMode === '3d' && (
+          <Suspense fallback={
+            <div className="w-full h-full bg-[#0A0A0A] flex items-center justify-center">
+              <span className="text-zinc-600 font-mono text-xs">INITIALIZING 3D GLOBE...</span>
+            </div>
+          }>
+            <CesiumMap
+              entities={entityList}
+              onSelectEntity={setSelectedEntity}
+              showEntities={entitiesLayer?.enabled ?? true}
+              showOrbits={orbitsLayer?.enabled ?? true}
+            />
+          </Suspense>
+        )}
 
-      {/* Map Nodes Overlay */}
-      {nodesLayer?.enabled && (
-        <div className="absolute inset-0 pointer-events-none">
-          {mockNodes.map((node) => (
-            <MapNode key={node.id} node={node} />
-          ))}
-        </div>
-      )}
+        {/* 2D Map (MapLibre) */}
+        {viewMode === '2d' && (
+          <Map
+            initialViewState={{
+              longitude: -98.5,
+              latitude: 39.8,
+              zoom: 4,
+            }}
+            style={{ width: '100%', height: '100%' }}
+            mapStyle={DARK_STYLE}
+          >
+            <NavigationControl position="top-right" />
+            <ScaleControl position="bottom-left" />
 
-      {/* Grid Coordinates Overlay */}
-      <div className="absolute top-4 left-4 text-[#006644] text-xs font-mono space-y-1 pointer-events-none">
-        <div>GRID: 34.05°N 118.24°W</div>
-        <div>SCALE: 1:25000</div>
-        <div>ALT: 120M MSL</div>
+            {entitiesLayer?.enabled && entityList.map((entity) => (
+              entity.position && (
+                <Marker
+                  key={entity.entity_id}
+                  longitude={entity.position.lon}
+                  latitude={entity.position.lat}
+                  onClick={(e) => {
+                    e.originalEvent.stopPropagation();
+                    setSelectedEntity(entity);
+                  }}
+                >
+                  <div
+                    className="w-3 h-3 rounded-full border-2 border-zinc-900 cursor-pointer hover:scale-150 transition-transform"
+                    style={{ backgroundColor: markerColor(entity) }}
+                    title={entity.callsign || entity.entity_id}
+                  />
+                </Marker>
+              )
+            ))}
+          </Map>
+        )}
+      </ShaderPipeline>
+
+      {/* Status bar */}
+      <div className="absolute top-3 left-3 flex gap-2 text-[10px] font-mono z-10">
+        <span className={`px-2 py-1 rounded ${connected ? 'bg-zinc-800 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+          {connected ? 'CONNECTED' : 'DISCONNECTED'}
+        </span>
+        <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-400">
+          {entityCount} entities
+        </span>
+        {aircraftCount > 0 && (
+          <span className="px-2 py-1 rounded bg-zinc-800 text-emerald-400/80">
+            ✈ {aircraftCount}
+          </span>
+        )}
+        {satelliteCount > 0 && (
+          <span className="px-2 py-1 rounded bg-zinc-800 text-indigo-400/80">
+            ◉ {satelliteCount}
+          </span>
+        )}
+        <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-400">
+          {trackCount} tracks
+        </span>
+        {shaderMode !== 'NORMAL' && (
+          <span className="px-2 py-1 rounded bg-zinc-800 text-amber-400">
+            {shaderMode}
+          </span>
+        )}
       </div>
 
-      {/* Compass/Orientation */}
-      <div className="absolute top-4 right-4 pointer-events-none">
-        <div className="w-16 h-16 border-2 border-[#00FF91]/40 rounded-full flex items-center justify-center relative">
-          <div className="text-[#00FF91] text-xs font-bold">N</div>
-          <div className="absolute w-0.5 h-6 bg-[#00FF91]/60 top-1 left-1/2 -translate-x-1/2" />
-        </div>
+      {/* View mode toggle */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-0.5 text-[10px] font-mono z-10">
+        <button
+          onClick={() => setViewMode('3d')}
+          className={`px-3 py-1 rounded-l transition-colors ${
+            viewMode === '3d'
+              ? 'bg-zinc-700 text-zinc-100'
+              : 'bg-zinc-900/80 text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          3D GLOBE
+        </button>
+        <button
+          onClick={() => setViewMode('2d')}
+          className={`px-3 py-1 rounded-r transition-colors ${
+            viewMode === '2d'
+              ? 'bg-zinc-700 text-zinc-100'
+              : 'bg-zinc-900/80 text-zinc-500 hover:text-zinc-300'
+          }`}
+        >
+          2D MAP
+        </button>
       </div>
 
-      {/* Map Layer Controls */}
+      {/* Shader mode selector */}
+      <div className="absolute bottom-3 left-3 flex gap-0.5 text-[10px] font-mono z-10">
+        {(['NORMAL', 'NVG', 'FLIR', 'CRT'] as ShaderMode[]).map((mode, i) => (
+          <button
+            key={mode}
+            onClick={() => setShaderMode(mode)}
+            className={`px-2 py-1 transition-colors ${
+              shaderMode === mode
+                ? mode === 'NVG' ? 'bg-green-900/80 text-green-400'
+                  : mode === 'FLIR' ? 'bg-orange-900/80 text-orange-400'
+                  : mode === 'CRT' ? 'bg-cyan-900/80 text-cyan-400'
+                  : 'bg-zinc-700 text-zinc-100'
+                : 'bg-zinc-900/80 text-zinc-500 hover:text-zinc-300'
+            } ${i === 0 ? 'rounded-l' : ''} ${i === 3 ? 'rounded-r' : ''}`}
+            title={`${mode} (${i + 1})`}
+          >
+            {mode}
+          </button>
+        ))}
+      </div>
+
+      {/* Layer Controls */}
       <MapLayerControls
         layers={layers}
         onToggleLayer={handleToggleLayer}
@@ -336,71 +290,14 @@ export default function TacticalMap() {
         onCancelEdit={() => setEditingGeofence(null)}
         onToggleActive={handleToggleGeofenceActive}
       />
-    </div>
-  );
-}
 
-interface MapNodeProps {
-  node: MapNode;
-}
-
-function MapNode({ node }: MapNodeProps) {
-  const nodeStyles = {
-    UAV: { icon: '▲', color: '#00FF91', size: 16 },
-    GND: { icon: '■', color: '#00CC74', size: 14 },
-    TWR: { icon: '⬢', color: '#FF9933', size: 18 },
-    SEN: { icon: '●', color: '#00DDFF', size: 12 },
-  };
-
-  const style = nodeStyles[node.type];
-
-  return (
-    <div
-      className="absolute pointer-events-auto cursor-pointer transform -translate-x-1/2 -translate-y-1/2 group"
-      style={{
-        left: `${node.x}%`,
-        top: `${node.y}%`,
-      }}
-    >
-      {/* Pulsing ring for active nodes */}
-      {node.active && (
-        <div
-          className="absolute inset-0 rounded-full animate-ping opacity-75"
-          style={{
-            backgroundColor: style.color,
-            width: `${style.size + 8}px`,
-            height: `${style.size + 8}px`,
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-          }}
+      {/* Entity Detail Panel */}
+      {selectedEntity && (
+        <EntityDetail
+          entity={selectedEntity}
+          onClose={() => setSelectedEntity(null)}
         />
       )}
-
-      {/* Node marker */}
-      <div
-        className="relative z-10 flex items-center justify-center font-bold transition-transform group-hover:scale-125"
-        style={{
-          color: style.color,
-          fontSize: `${style.size}px`,
-          filter: `drop-shadow(0 0 4px ${style.color}) drop-shadow(0 0 8px ${style.color})`,
-        }}
-      >
-        {style.icon}
-      </div>
-
-      {/* Label */}
-      <div
-        className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-[10px] font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 border"
-        style={{
-          color: style.color,
-          borderColor: `${style.color}40`,
-          backgroundColor: '#0A0A0A',
-          boxShadow: `0 0 8px ${style.color}40`,
-        }}
-      >
-        {node.id}
-      </div>
     </div>
   );
 }

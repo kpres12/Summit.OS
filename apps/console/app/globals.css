@@ -52,11 +52,10 @@ body {
   padding-left: max(var(--app-inset), env(safe-area-inset-left));
 }
 
-/* CRT Scanline effect */
+/* CRT Scanline effect — disabled when GPU CRT shader is active */
 body::before {
   content: '';
   position: fixed;
-  /* Match the visual frame so overlay aligns with inset content */
   inset: max(var(--app-inset), 0px);
   background: linear-gradient(
     to bottom,
@@ -69,7 +68,7 @@ body::before {
   animation: scanline-drift 10s linear infinite;
 }
 
-/* CRT Flicker */
+/* CRT Flicker — disabled when GPU CRT shader is active */
 body::after {
   content: '';
   position: fixed;
@@ -79,6 +78,20 @@ body::after {
   pointer-events: none;
   z-index: 9998;
   animation: crt-flicker 0.15s infinite;
+}
+
+/* Hide CSS scanlines when GPU shader CRT is active (avoid double effect) */
+body:has([data-shader-mode="CRT"])::before,
+body:has([data-shader-mode="CRT"])::after {
+  display: none;
+}
+
+/* Cesium widget overrides — match dark theme */
+.cesium-viewer {
+  font-family: var(--font-ibm-plex-mono), 'Courier New', monospace !important;
+}
+.cesium-viewer .cesium-widget-credits {
+  display: none !important;
 }
 
 @keyframes scanline-drift {

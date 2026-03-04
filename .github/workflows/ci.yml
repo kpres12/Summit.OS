@@ -21,7 +21,7 @@ jobs:
 
       - name: Install per-service deps
         run: |
-          for svc in fabric fusion intelligence tasking api-gateway; do
+          for svc in fabric fusion intelligence tasking api-gateway inference; do
             if [ -f "apps/$svc/requirements.txt" ]; then
               pip install -r "apps/$svc/requirements.txt"
             fi
@@ -31,7 +31,7 @@ jobs:
 
       - name: Lint Python services (advisory)
         run: |
-          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway \
+          flake8 apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway apps/inference \
             --max-line-length=120 \
             --extend-ignore=E302,E303,E402,E501,W291,W292,W293,W391,F401 \
             --exit-zero
@@ -39,7 +39,7 @@ jobs:
       - name: Format check (advisory)
         continue-on-error: true
         run: |
-          black --check --diff apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway || echo 'Format drift detected — run make format to fix'
+          black --check --diff apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway apps/inference || echo 'Format drift detected — run make format to fix'
 
       - name: Node setup (console)
         uses: actions/setup-node@v4
@@ -58,12 +58,20 @@ jobs:
           npm run typecheck
 
       - name: Run unit tests with coverage
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           cd apps/fabric && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
           cd apps/fusion && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
           cd apps/intelligence && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
           cd apps/tasking && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
           cd apps/api-gateway && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+
+      - name: Run WorldStore and entity tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m pytest packages/ -v --tb=short --ignore=packages/summit-sdk --ignore=packages/summit-os-sdk || true
 
       - name: mypy (continue on error)
         run: make mypy || true

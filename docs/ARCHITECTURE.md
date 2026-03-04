@@ -21,7 +21,7 @@ Summit.OS unifies sensors, drones, and ground robots into a shared, real-time wo
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Operator Interface                       │
-│              (FireLine Console - Next.js)                 │
+│              (Console - Next.js)                 │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
 │                 Command & Control Layer                      │
@@ -167,7 +167,7 @@ Intelligence Service → Tasking Service → Mission Execution
 
 ### 4. Operator Interface
 ```
-All Services → API Gateway → FireLine Console
+All Services → API Gateway → Console
 ```
 
 ## Technology Stack
@@ -250,7 +250,7 @@ make dev  # Full local development stack
 
 ## Integration Points
 
-### FireLine Console Integration
+### Console Integration
 - **REST API**: HTTP/HTTPS for data queries
 - **WebSocket**: Real-time data streams
 - **Event Hooks**: Webhook notifications

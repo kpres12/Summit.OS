@@ -19,7 +19,7 @@ Summit.OS is designed as a **distributed intelligence fabric** that can integrat
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Your Application                         │
-│              (FireLine, DitchBot, OilfieldBot, etc.)       │
+│              (Summit.OS, DitchBot, OilfieldBot, etc.)       │
 └─────────────────────▲───────────────────────────────────────┘
                       │ REST/gRPC/WebSocket APIs
 ┌─────────────────────┴───────────────────────────────────────┐

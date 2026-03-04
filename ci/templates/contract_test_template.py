@@ -42,7 +42,7 @@ def resolver():
             data = json.load(f)
             if "$id" in data:
                 store[data["$id"]] = data
-    return RefResolver.from_schema(store.get("https://bigmt.dev/schemas/common.json", {}), store=store)
+    return RefResolver.from_schema(store.get("https://bigmt.ai/schemas/common.json", {}), store=store)
 
 
 def load_json(path: Path):

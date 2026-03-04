@@ -24,6 +24,24 @@ from redis_client import RedisClient
 from websocket_manager import WebSocketManager
 from models import TelemetryMessage, AlertMessage, MissionUpdate, Location, SeverityLevel, MissionStatus
 
+# WorldStore (unified entity store)
+try:
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+    from packages.world.store import WorldStore
+    from packages.world.api import create_world_router
+    WORLD_STORE_AVAILABLE = True
+except Exception:
+    WORLD_STORE_AVAILABLE = False
+
+# Mesh peer
+try:
+    from packages.mesh.peer import MeshPeer
+    from packages.mesh.entity_crdt import EntityCRDTMap
+    MESH_AVAILABLE = True
+except Exception:
+    MESH_AVAILABLE = False
+
 # SQLAlchemy (async) for registry persistence
 from sqlalchemy import (
     MetaData, Table, Column, Integer, String, DateTime, Boolean, JSON, text
@@ -73,6 +91,9 @@ redis_client: Optional[RedisClient] = None
 websocket_manager: Optional[WebSocketManager] = None
 engine: Optional[AsyncEngine] = None
 SessionLocal: Optional[sessionmaker] = None
+world_store: Optional["WorldStore"] = None
+mesh_peer = None
+entity_crdt = None
 
 # In-memory world state cache (thin-slice)
 world_state: Dict[str, Any] = {
@@ -154,7 +175,7 @@ FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup/shutdown."""
-    global mqtt_client, redis_client, websocket_manager, engine, SessionLocal
+    global mqtt_client, redis_client, websocket_manager, engine, SessionLocal, mesh_peer, entity_crdt, world_store
 
     settings = Settings()
 
@@ -193,6 +214,16 @@ async def lifespan(app: FastAPI):
     # WebSocket manager
     websocket_manager = WebSocketManager()
 
+    # Initialize WorldStore (unified entity store)
+    if WORLD_STORE_AVAILABLE:
+        world_store = WorldStore(org_id=os.getenv("FABRIC_ORG_ID", "default"))
+        await world_store.initialize(
+            engine=engine if not FABRIC_TEST_MODE else None,
+            session_factory=SessionLocal if not FABRIC_TEST_MODE else None,
+            ws_manager=websocket_manager,
+        )
+        logger.info("WorldStore initialized")
+
     if not FABRIC_TEST_MODE:
         # Redis connection
         redis_client = RedisClient(settings.redis_url)
@@ -219,14 +250,53 @@ async def lifespan(app: FastAPI):
         await mqtt_client.subscribe("valves/+/status", _handle_valve_status)
         await mqtt_client.subscribe("pipeline/pressure/+", _handle_pipeline_pressure)
 
+        # Wire MQTT into WorldStore
+        if WORLD_STORE_AVAILABLE and world_store:
+            world_store._mqtt_client = mqtt_client
+
+        # Start mesh peer for entity replication
+        if MESH_AVAILABLE and not FABRIC_TEST_MODE:
+            try:
+                mesh_bind = os.getenv("MESH_BIND", "0.0.0.0")
+                mesh_port = int(os.getenv("MESH_PORT", "7946"))
+                mesh_seeds = [s.strip() for s in os.getenv("MESH_SEEDS", "").split(",") if s.strip()]
+                mesh_peer = MeshPeer(
+                    node_id=os.getenv("FABRIC_NODE_ID", "fabric-primary"),
+                    bind_addr=mesh_bind,
+                    bind_port=mesh_port,
+                    seed_nodes=[(s.split(":")[0], int(s.split(":")[1])) for s in mesh_seeds if ":" in s],
+                )
+                entity_crdt = EntityCRDTMap(node_id=mesh_peer.node_id)
+                # When mesh receives remote entity state, merge into WorldStore
+                if world_store:
+                    def _on_mesh_merge(entity_id, entity_dict):
+                        asyncio.create_task(world_store.merge_remote(entity_id, entity_dict))
+                    entity_crdt.on_merge(_on_mesh_merge)
+                await mesh_peer.start()
+                logger.info(f"Mesh peer started on {mesh_bind}:{mesh_port}")
+            except Exception as e:
+                logger.warning(f"Mesh peer failed to start: {e}")
+
         # Start background tasks
         asyncio.create_task(telemetry_processor())
         asyncio.create_task(alert_processor())
         asyncio.create_task(heartbeat_watcher())
 
+        # Subscribe to entity update topics for WorldStore ingestion
+        if mqtt_client and WORLD_STORE_AVAILABLE and world_store:
+            await mqtt_client.subscribe("entities/+/update", _handle_entity_update)
+
+    # Mount entity REST routes now that world_store is ready
+    _mount_world_router()
+
     yield
 
     # Cleanup
+    if mesh_peer:
+        try:
+            await mesh_peer.stop()
+        except Exception:
+            pass
     if mqtt_client:
         await mqtt_client.disconnect()
     if redis_client:
@@ -241,6 +311,17 @@ app = FastAPI(
     version="1.1.0",
     lifespan=lifespan,
 )
+
+# Mount WorldStore entity API (deferred — router created once world_store exists)
+# The router is added inside lifespan; see _mount_world_router below.
+_world_router_mounted = False
+
+def _mount_world_router():
+    global _world_router_mounted
+    if WORLD_STORE_AVAILABLE and world_store and not _world_router_mounted:
+        router = create_world_router(world_store)
+        app.include_router(router, prefix="/api/v1", tags=["world"])
+        _world_router_mounted = True
 
 # CORS middleware
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
@@ -904,6 +985,23 @@ async def _handle_pipeline_pressure(topic: str, data: Dict[str, Any]):
             await redis_client.add_operation_event(record)
     except Exception as e:
         logger.error(f"Failed to handle pipeline pressure: {e}")
+
+async def _handle_entity_update(topic: str, data: Dict[str, Any]):
+    """Handle entities/{entity_id}/update from SDK adapters — ingest into WorldStore."""
+    try:
+        if not WORLD_STORE_AVAILABLE or not world_store:
+            return
+        from packages.entities.core import Entity
+        entity_id = data.get("entity_id") or topic.split("/")[1]
+        # Build Entity from MQTT dict and upsert into WorldStore
+        data["id"] = entity_id
+        entity = Entity.from_dict(data)
+        world_store.upsert(entity, source="mqtt")
+        # Also feed into mesh CRDT for replication
+        if entity_crdt:
+            entity_crdt.update(entity_id, data)
+    except Exception as e:
+        logger.error(f"Failed to handle entity update: {e}")
 
 # Background processors
 async def telemetry_processor():

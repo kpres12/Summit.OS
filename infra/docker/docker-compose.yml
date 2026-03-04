@@ -64,6 +64,7 @@ services:
       - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET:-dev_secret}
       - FABRIC_SKIP_MIGRATIONS=${FABRIC_SKIP_MIGRATIONS:-false}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - PYTHONPATH=/workspace:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -72,6 +73,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      - ../../:/workspace
       - ../../apps/fabric:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8001 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
     healthcheck:
@@ -100,6 +102,8 @@ services:
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
       - FUSION_MODEL_PATH=${FUSION_MODEL_PATH-}
       - FUSION_CONF_THRESHOLD=${FUSION_CONF_THRESHOLD-0.6}
+      - INFERENCE_URL=http://inference:8006
+      - PYTHONPATH=/workspace:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -108,6 +112,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      - ../../:/workspace
       - ../../apps/fusion:/app
       - ../../packages/contracts:/contracts
       - ../../models:/models
@@ -135,6 +140,7 @@ services:
       - INTELLIGENCE_ENABLE_XGB=${INTELLIGENCE_ENABLE_XGB-false}
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
       - INTELLIGENCE_MODEL_PATH=${INTELLIGENCE_MODEL_PATH-}
+      - PYTHONPATH=/workspace:/app
     depends_on:
       redis:
         condition: service_healthy
@@ -143,6 +149,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      - ../../:/workspace
       - ../../apps/intelligence:/app
       - ../../models:/models
     command: uvicorn main:app --host 0.0.0.0 --port 8003 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
@@ -216,6 +223,33 @@ services:
       retries: 3
       start_period: 10s
 
+  # Inference Service (AI model serving)
+  inference:
+    build:
+      context: ../../apps/inference
+      dockerfile: Dockerfile
+    container_name: summit-inference
+    ports:
+      - "8006:8006"
+    environment:
+      - MODEL_PATH=/models/yolov8n.onnx
+      - MODEL_REGISTRY=/models
+      - PYTHONPATH=/workspace:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../:/workspace
+      - ../../apps/inference:/app
+      - ../../models:/models
+    command: uvicorn main:app --host 0.0.0.0 --port 8006 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8006/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   # API Gateway
   api-gateway:
     build:
@@ -229,9 +263,11 @@ services:
       - FUSION_URL=http://fusion:8002
       - INTELLIGENCE_URL=http://intelligence:8003
       - TASKING_URL=http://tasking:8004
+      - INFERENCE_URL=http://inference:8006
       - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
       - MISSIONS=sentinel
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - PYTHONPATH=/workspace:/app
     depends_on:
       fabric:
         condition: service_started
@@ -244,6 +280,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
+      - ../../:/workspace
       - ../../apps/api-gateway:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
     healthcheck:
@@ -253,7 +290,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # FireLine Console
+  # Console
   console:
     build:
       context: ../../apps/console
@@ -337,6 +374,29 @@ services:
     volumes:
       - ../../infra/proxy/nginx-tasking.conf:/etc/nginx/nginx.conf:ro
       - ../../infra/proxy/certs:/certs:ro
+
+  # External Data Adapters (OpenSky, CelesTrak)
+  adapters:
+    build:
+      context: ../../adapters
+      dockerfile: Dockerfile
+    container_name: summit-adapters
+    environment:
+      - MQTT_HOST=mqtt
+      - MQTT_PORT=1883
+      - OPENSKY_ENABLED=${OPENSKY_ENABLED:-true}
+      - OPENSKY_POLL_INTERVAL=${OPENSKY_POLL_INTERVAL:-10}
+      - OPENSKY_BBOX=${OPENSKY_BBOX:-}
+      - OPENSKY_USERNAME=${OPENSKY_USERNAME:-}
+      - OPENSKY_PASSWORD=${OPENSKY_PASSWORD:-}
+      - CELESTRAK_ENABLED=${CELESTRAK_ENABLED:-true}
+      - CELESTRAK_MAX_SATS=${CELESTRAK_MAX_SATS:-200}
+      - CELESTRAK_PROPAGATE_INTERVAL=${CELESTRAK_PROPAGATE_INTERVAL:-30}
+      - CELESTRAK_GROUP=${CELESTRAK_GROUP:-active}
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    restart: unless-stopped
 
   # Observability
   prometheus:

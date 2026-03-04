@@ -5,6 +5,7 @@ Consumes smoke detections from MQTT, validates against JSON Schema,
 triangulates (stub), persists ignition estimates to Postgres, and exposes APIs.
 """
 
+import logging
 import os
 import json
 import asyncio
@@ -12,6 +13,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from queue import Queue
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("fusion")
 
 import base64
 import io
@@ -263,6 +266,87 @@ async def list_observations(cls: Optional[str] = None, limit: int = 50, org_id: 
         sql = base + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT :lim"
         rows = (await session.execute(text(sql), params)).all()
         return [Observation(**dict(r._mapping)) for r in rows]
+
+
+# ── Fusion → Inference → WorldStore pipeline ──────────────
+
+INFERENCE_URL = os.getenv("INFERENCE_URL", "http://inference:8005")
+FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
+
+
+@app.post("/api/v1/detect")
+async def detect_and_track(payload: dict):
+    """
+    Accept a base64 image with optional geo metadata, run detection
+    via the inference service, and create TRACK entities in WorldStore.
+
+    Payload:
+      image_b64: str (required)
+      lat: float (optional — geo-locate detections)
+      lon: float (optional)
+      device_id: str (optional)
+      confidence_threshold: float (default 0.5)
+    """
+    import httpx
+
+    image_b64 = payload.get("image_b64")
+    if not image_b64:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="image_b64 required")
+
+    conf_thr = float(payload.get("confidence_threshold", 0.5))
+    lat = payload.get("lat")
+    lon = payload.get("lon")
+    device_id = payload.get("device_id", "fusion")
+
+    # Call inference service
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            r = await client.post(f"{INFERENCE_URL}/detect", json={
+                "image_b64": image_b64,
+                "confidence_threshold": conf_thr,
+            })
+            r.raise_for_status()
+            result = r.json()
+        except Exception as e:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=502, detail=f"Inference error: {e}")
+
+    detections = result.get("detections", [])
+    entities_created = []
+
+    # Create TRACK entities in WorldStore for each detection
+    for det in detections:
+        entity_payload = {
+            "entity_type": "TRACK",
+            "domain": "AERIAL",
+            "name": det.get("class_name", "unknown"),
+            "class_label": det.get("class_name", "unknown"),
+            "confidence": det.get("confidence", 0.0),
+            "latitude": float(lat) if lat is not None else None,
+            "longitude": float(lon) if lon is not None else None,
+            "source_id": str(device_id),
+            "source_type": "inference",
+            "metadata": {
+                "model": result.get("model_name", ""),
+                "bbox": json.dumps(det.get("bbox", {})),
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                er = await client.post(f"{FABRIC_URL}/api/v1/entities", json=entity_payload)
+                if er.status_code == 200:
+                    entities_created.append(er.json().get("entity", {}).get("id"))
+        except Exception:
+            pass  # best-effort
+
+    return {
+        "detections": detections,
+        "count": len(detections),
+        "entities_created": entities_created,
+        "inference_ms": result.get("inference_ms", 0),
+        "model_name": result.get("model_name", ""),
+    }
 
 
 # Model registry endpoints

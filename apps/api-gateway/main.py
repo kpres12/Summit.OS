@@ -585,6 +585,75 @@ async def list_missions_proxy(limit: int = 50, _claims: dict | None = Depends(ve
 
 
 # -------------------------
+# Entity proxy to Fabric (WorldStore)
+# -------------------------
+
+@app.get("/api/v1/entities")
+async def list_entities_proxy(
+    entity_type: str | None = None,
+    domain: str | None = None,
+    state: str | None = None,
+    limit: int = 500,
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+):
+    """Proxy entity list from fabric WorldStore."""
+    try:
+        params: dict = {"limit": str(limit)}
+        if entity_type:
+            params["entity_type"] = entity_type
+        if domain:
+            params["domain"] = domain
+        if state:
+            params["state"] = state
+        if org_id:
+            params["org_id"] = org_id
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{FABRIC_URL}/api/v1/entities", params=params)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+@app.get("/api/v1/entities/{entity_id}")
+async def get_entity_proxy(entity_id: str, _claims: dict | None = Depends(verify_bearer)):
+    """Get a single entity from fabric WorldStore."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{FABRIC_URL}/api/v1/entities/{entity_id}")
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+@app.post("/api/v1/entities")
+async def create_entity_proxy(payload: dict, _claims: dict | None = Depends(verify_bearer)):
+    """Create an entity in fabric WorldStore."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(f"{FABRIC_URL}/api/v1/entities", json=payload)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+@app.get("/api/v1/cop")
+async def cop_proxy(_claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+    """Get the Common Operating Picture from fabric WorldStore."""
+    try:
+        params = {"org_id": org_id} if org_id else {}
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{FABRIC_URL}/api/v1/cop", params=params)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+# -------------------------
 # Geofence proxy to Fabric
 # -------------------------
 

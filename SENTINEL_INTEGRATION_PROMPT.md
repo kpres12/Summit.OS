@@ -176,7 +176,7 @@ When communication links are compromised:
 
 ```typescript
 // apps/summit-integration/src/SentryTowerAgent.ts
-import { MultiLinkManager, LinkType, LinkConfiguration } from '@summit-os/communication';
+import { MultiLinkManager, LinkType, LinkConfiguration } from '@bigmt/communication';
 
 class SentryTowerAgent {
   private multiLinkManager: MultiLinkManager;

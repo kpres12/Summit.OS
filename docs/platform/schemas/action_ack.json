@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bigmt.dev/schemas/action_ack.json",
+  "$id": "https://bigmt.ai/schemas/action_ack.json",
   "title": "Action Acknowledgement",
   "type": "object",
   "properties": {
-    "task_id": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/uuid" },
+    "task_id": { "$ref": "https://bigmt.ai/schemas/common.json#/$defs/uuid" },
     "status": { "type": "string", "enum": ["accepted", "in_progress", "completed", "failed", "aborted"] },
-    "timestamp": { "$ref": "https://bigmt.dev/schemas/common.json#/$defs/iso_timestamp" },
+    "timestamp": { "$ref": "https://bigmt.ai/schemas/common.json#/$defs/iso_timestamp" },
     "details": { "type": "string" }
   },
   "required": ["task_id", "status", "timestamp"],

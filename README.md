@@ -1,152 +1,168 @@
-# Summit.OS - Distributed Intelligence Fabric
+# Summit.OS
 
-Summit.OS is Big Mountain Technologies' flagship command layer — an open, AI-driven "operating system for the physical world," designed to unify sensors, drones, and ground robots into a shared, real-time world model for decision-making and coordinated action.
+An open-source operating system for coordinating autonomous systems and sensor networks.
 
-## 🌍 System Concept
+Summit.OS provides the middleware layer between your sensors, robots, and operators — a unified world model, real-time data fabric, mission tasking runtime, and operator console. It doesn't care if you're tracking drones, ground vehicles, maritime assets, or fixed sensors. Everything is an entity. Everything flows through one shared model.
 
-Summit.OS functions like Anduril's Lattice OS but is purpose-built for resilience, wildfire management, and critical-infrastructure protection. It sits above Linux, Mac, or Windows / ROS 2 and provides a unified intelligence fabric for data fusion, situational awareness, and autonomous tasking.
+## Architecture
 
-## 🧱 Core Architectural Layers
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Operator Console (3000)                     │
+│              MapLibre map + entity stream + mission feed        │
+├─────────────────────────────────────────────────────────────────┤
+│                      API Gateway (8000)                         │
+│               Routes to backend services, OIDC/RBAC             │
+├──────────┬──────────┬──────────────┬────────────┬───────────────┤
+│  Fabric  │  Fusion  │ Intelligence │  Tasking   │  Inference    │
+│  (8001)  │  (8002)  │   (8003)     │  (8004)    │   (8006)      │
+│ WorldStore│ Tracking │  Reasoning   │  Missions  │  Detection    │
+│ MQTT/gRPC│ Kalman   │  Advisory    │  State Mach│  YOLOv8/ONNX  │
+│ Mesh CRDT│ Correlate│  Anomaly     │  Assignment│  Hot-swap     │
+├──────────┴──────────┴──────────────┴────────────┴───────────────┤
+│                    Infrastructure                               │
+│       Redis · Postgres+PostGIS · MQTT · Prometheus · Grafana    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-| Layer | Description | Example Services |
-|-------|-------------|------------------|
-| Edge Layer | Agents on robots / drones collecting telemetry, video, and sensor data; run local inference | `/edge-agent`, `/ros-bridge`, `/edge-inference` |
-| Data Fabric Layer | Real-time message bus & synchronization (MQTT + gRPC + event mesh) | `/fabric`, `/topics`, `/telemetry` |
-| Perception & Fusion Layer | Normalizes & fuses multi-modal data (video, weather, IR, lightning, soil) into a world model | `/fusion`, `/classification`, `/tracking` |
-| Reasoning & Decision Layer | AI models generate contextual intelligence, predictions, & recommendations | `/intelligence`, `/risk`, `/advisory` |
-| Command & Control Layer | Assigns missions & coordinates autonomous behaviors | `/tasking`, `/autonomy`, `/swarm` |
-| Operator Interface | Real-time console for map, alerts, & mission management | `/console` (Next.js + MapLibre + 3D terrain) |
-| Integration Layer | External systems (ArcGIS, CAD, dispatch, cloud APIs) | `/integrations`, `/reports`, `/api` |
+## Core Concepts
 
-## 🧩 Technical Stack
+**Everything is an Entity.** Drones, ground robots, cameras, tracks, alerts, missions, geofences — they all share one data model (`packages/entities/core.py`) and live in one WorldStore.
 
-- **Backend**: FastAPI (Python 3.11) + gRPC microservices
-- **Data Fabric**: MQTT + Redis Streams + gRPC streaming
-- **Edge**: ROS 2 / micro-ROS, ONNX Runtime, SQLite store-and-forward
-- **Frontend**: Next.js 14 + TypeScript + MapLibre GL + shadcn/ui
-- **Database**: Postgres + PostGIS + TimescaleDB
-- **AI/ML**: PyTorch + Ray for distributed inference
-- **Infra**: Docker Compose (dev), k3s (edge), EKS (cloud), Terraform IaC
-- **Auth & Security**: Keycloak (OIDC RBAC), mTLS between agents
-- **Observability**: OpenTelemetry + Prometheus + Grafana dashboards
+**One World Model.** The WorldStore (`packages/world/store.py`) is the single source of truth. In-memory cache + Postgres persistence + MQTT/WebSocket broadcast. Every service reads from and writes to it.
 
-## 🧠 AI Intelligence Architecture
+**Mesh Replication.** CRDT-based entity replication across nodes (`packages/mesh/`). Nodes can disconnect, make conflicting updates, and merge correctly on reconnect.
 
-Summit.OS is the **distributed intelligence fabric** that serves as the sense-making and autonomy brain for all BigMT robotics systems. AI is not an add-on feature—it's the connective tissue that enables every robot, drone, and sensor to understand, decide, and act in the physical world.
+**Intent-Based Tasking.** Describe what you want done, not how. The assignment engine scores available assets by capability, proximity, battery, and availability, then dispatches through a formal state machine with policy enforcement.
 
-### AI Integration by Layer
+**Plugin AI.** The inference runtime (`apps/inference/`) loads any ONNX model. Ships with YOLOv8n for general object detection. Swap in your own domain-specific model at runtime.
 
-**1. Data Fusion & Sensemaking (Perception Layer)**
-- **Multimodal Sensor Fusion**: Weather, LiDAR, IR, visual data → spatial context
-- **Anomaly Detection**: Smoke, leaks, flooding, temperature spikes
-- **Terrain & Object Segmentation**: Brush vs. road vs. water from drone imagery
-- **Environmental State Estimation**: Dryness, wind vectors, fire spread rate
+**30-Minute Integration.** Subclass `SummitAdapter`, implement two methods (`get_telemetry`, `handle_command`), and your device appears in the world model. See `INTEGRATION_GUIDE.md`.
 
-**2. Object Detection, Classification & Tracking**
-- **Computer Vision Models** (ONNX/TensorRT): Detect smoke, tools, humans, vehicles
-- **Multisensor Tracking**: Maintain persistent IDs across video frames and sensor types
-- **State Recognition**: "valve open," "fireline constructed," "ditch cleared"
-- **Temporal Reasoning**: Predict object motion or environmental changes
-
-**3. Autonomous Operations & Decision Reasoning**
-- **Mission Planning**: Graph-based planners + reinforcement learning for optimal task assignment
-- **Multi-agent Coordination**: Decide which asset performs which subtask
-- **Predictive Modeling**: Physics + ML hybrid models forecasting outcomes
-- **Contextual Advisory**: Generate human-readable summaries for ops consoles
-
-**4. Learning & Continuous Improvement**
-- **Model Retraining Pipelines**: New sensor data improves detection accuracy
-- **Edge-to-Cloud Federated Learning**: Local models train on field data, sync gradients
-- **Simulation-to-Real (Sim2Real)**: Reinforcement learning environments for robotics tasks
-- **Anomaly Feedback Loops**: Operator confirmations fine-tune detection thresholds
-
-### Cross-Domain AI Applications
-
-| Product | Shared AI Services | Unique Additions |
-|---------|-------------------|------------------|
-| **FireLine** | Fusion, Intelligence, Tasking, Predict | Fire behavior, smoke detection |
-| **DitchBot** | Fusion, Tasking, Predict | Water flow, soil erosion |
-| **OilfieldBot** | Fusion, Tasking, Predict | Pressure anomalies, leak detection |
-| **GreaseBot** | Fusion, Tasking | Fill-level estimation, route scheduling |
-| **TriageBot** | Fusion, Intelligence, Tasking | Object/person recognition, triage prioritization |
-
-## 🎯 Functional Goals
-
-1. **Unified World Model** – fuse all sensor & asset data into a live geospatial graph of fires, terrain, weather, and movement.
-2. **Autonomous Coordination** – route multiple UGVs and UAVs dynamically; mission graphs (Patrol → Detect → Suppress → Verify).
-3. **Contextual Intelligence** – produce human-readable situational alerts and recommendations.
-4. **Edge Resilience** – operate offline with local buffering & sync on reconnect.
-5. **Operator Console** – professional dark UI with map layers, device panels, and AI insight feed.
-6. **Open Architecture** – allow third-party sensor / platform integration via standardized APIs.
-
-## 🔗 FireLine Console Integration
-
-FireLine Console (Next.js frontend) is the primary user-facing interface for the BigMT ecosystem. It connects to Summit.OS via API and real-time event channels to render live wildfire intelligence, mission status, and AI insights.
-
-### Integration Paths
-
-| Interface | Function | Example |
-|-----------|----------|---------|
-| REST/gRPC API Gateway | FireLine queries world model data, intelligence feeds, and mission status | `GET /api/v1/intelligence/alerts`, `POST /api/v1/tasks` |
-| WebSocket / MQTT Streams | FireLine subscribes to live telemetry, detections, and status updates | `ws://summit-os/fusion/stream` or `topic alerts/#` |
-| Event Hooks / Webhooks | Summit.OS pushes event-based updates to FireLine | `POST /fireline/events/alert` |
-
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
-# Clone and setup
 git clone <repo-url>
 cd Summit.OS
 
-# Start development environment
+# Start everything (infrastructure + services + console)
 make dev
 
-# Access services
-# - FireLine Console: http://localhost:3000
-# - API Gateway: http://localhost:8000
-# - Grafana: http://localhost:3001
+# Verify the stack is healthy
+make health
+
+# Run the end-to-end smoke test
+make smoke
+
+# Access
+# Console:     http://localhost:3000
+# API Gateway: http://localhost:8000
+# Grafana:     http://localhost:3001
 ```
 
-## 📂 Monorepo Structure
+## Monorepo Structure
 
 ```
-/apps
-  /console          # FireLine Console (Next.js frontend)
-  /fabric           # Data fabric microservice
-  /fusion           # Sensor fusion microservice
-  /intelligence     # AI reasoning microservice
-  /tasking          # Mission planning microservice
-  /edge-agent       # Edge agent for robots/drones
-  /integrations     # External system integrations
-/packages
-  /proto            # gRPC protocol definitions
-  /schemas          # Shared data schemas
-  /ui               # Shared UI components
-  /geo              # Geospatial utilities
-  /utils            # Common utilities
-/infra
-  /docker           # Docker configurations
-  /k8s              # Kubernetes manifests
-  /terraform        # Infrastructure as Code
-/docs
-  ARCHITECTURE.md
-  API.md
-  EDGE_PROTOCOL.md
-/tests              # Integration and E2E tests
+apps/
+  console/          # Operator console (Next.js + MapLibre)
+  fabric/           # Data fabric — WorldStore, MQTT, mesh, WebSocket
+  fusion/           # Sensor fusion — tracking, correlation, Kalman filters
+  intelligence/     # AI reasoning — advisory, anomaly detection
+  tasking/          # Mission planning — state machine, assignment engine, OPA
+  inference/        # AI inference runtime — ONNX model serving
+  api-gateway/      # Routes requests to backend services
+
+packages/
+  entities/         # Core Entity dataclass — the universal data type
+  world/            # WorldStore + Entity CRUD API
+  mesh/             # CRDT replication, mesh peer, transport
+  ai/               # Detection, classification, anomaly, edge inference
+  hal/              # Hardware abstraction — MAVLink, ONVIF, SITL drivers
+  security/         # mTLS, RBAC, auth, data classification
+  autonomy/         # Behavior trees, rules engine
+  schemas/          # Shared Pydantic schemas
+  observability/    # Metrics, tracing
+  summit-os-sdk/    # Integration SDK — adapter base class, conformance tests
+
+models/             # ONNX model files (YOLOv8n reference model)
+infra/docker/       # Docker Compose, Mosquitto config, Prometheus config
+scripts/            # Demo scripts, smoke tests, mock data generators
+tests/              # Integration and E2E tests
+examples/           # Quickstart adapter template
 ```
 
-## ✅ Development Requirements
+## Services
 
-- Type-safe, modular, well-tested code
-- Example data streams (robot telemetry + camera + weather)
-- `make dev` spins up MQTT broker, Postgres, API gateway, and Console
-- Unit tests for fusion, triangulation, and intelligence logic
-- Mock mission demo: simulated fire detection → alert → automatic dispatch
+| Service | Port | Purpose |
+|---------|------|---------|
+| Console | 3000 | Operator UI — map, entity list, mission feed, command bar |
+| API Gateway | 8000 | Unified REST API, request routing, OIDC enforcement |
+| Fabric | 8001 | WorldStore, MQTT bridge, mesh peer, WebSocket streaming |
+| Fusion | 8002 | Sensor fusion, multi-target tracking, correlation |
+| Intelligence | 8003 | AI reasoning, anomaly detection, advisory generation |
+| Tasking | 8004 | Mission lifecycle, assignment engine, OPA policy |
+| Inference | 8006 | ONNX model serving, object detection, model hot-swap |
 
-## 🎯 Acceptance Criteria
+## Development
 
-1. `make dev` launches the full system locally with mock data
-2. Console shows live telemetry and contextual AI alerts
-3. Triangulation + fusion produce ignition estimates
-4. Mission planner auto-tasks simulated UGVs & UAVs
-5. All microservices documented and passing tests
+```bash
+# Infrastructure only (Redis, Postgres, MQTT, Prometheus, Grafana)
+make dev-services
+
+# Backend Python services only
+make dev-backend
+
+# Console only (local Next.js dev server)
+make dev-console
+
+# Run all tests
+make test
+
+# Lint and format
+make lint
+make format
+
+# Stream logs
+make logs
+
+# Clean up containers and volumes
+make clean
+```
+
+## Integration
+
+See `INTEGRATION_GUIDE.md` for the full walkthrough. The short version:
+
+```python
+from summit_os.adapter import SummitAdapter
+
+class MyDrone(SummitAdapter):
+    ENTITY_TYPE = "ASSET"
+    DOMAIN = "AERIAL"
+    CAPABILITIES = ["camera", "thermal"]
+
+    async def get_telemetry(self):
+        return {"lat": 34.05, "lon": -118.24, "alt": 100, "battery_pct": 85}
+
+    async def handle_command(self, command):
+        if command["action"] == "goto":
+            self.fly_to(command["lat"], command["lon"])
+
+adapter = MyDrone(entity_id="drone-001", gateway_url="http://localhost:8000")
+adapter.run()
+```
+
+Run conformance tests against your adapter:
+```bash
+summit-os-conformance --adapter my_adapter:MyDrone --gateway http://localhost:8000
+```
+
+## Contributing
+
+See `CONTRIBUTING.md` for setup instructions, branching conventions, and PR process.
+
+## License
+
+MIT License — see `LICENSE`.
+
+Bundled AI models may have separate licenses — see `models/LICENSE`.

@@ -11,7 +11,7 @@ This guide covers deploying Summit.OS across different environments, from local 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Developer Machine                       │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
-│ │ FireLine      │ Next.js development server              │ │
+│ │ Summit.OS      │ Next.js development server              │ │
 │ │ Console       │ http://localhost:3000                   │ │
 │ └───────────────┴─────────────────────────────────────────┘ │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
@@ -80,7 +80,7 @@ This guide covers deploying Summit.OS across different environments, from local 
 
 #### Prerequisites
 - Docker and Docker Compose
-- Node.js 18+ (for FireLine Console)
+- Node.js 18+ (for Console)
 - Python 3.11+ (for Summit.OS services)
 - Git
 
@@ -94,7 +94,7 @@ cd summit-os
 make dev
 
 # Access services
-# - FireLine Console: http://localhost:3000
+# - Console: http://localhost:3000
 # - API Gateway: http://localhost:8000
 # - Grafana: http://localhost:3001
 ```
@@ -107,7 +107,7 @@ docker-compose -f infra/docker/docker-compose.yml up -d redis postgres mqtt
 # Start Summit.OS services
 docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking api-gateway
 
-# Start FireLine Console
+# Start Console
 cd apps/console
 npm install
 npm run dev
@@ -551,7 +551,7 @@ deploy:
 ### Deployment
 - [ ] **Infrastructure** - Deploy infrastructure components
 - [ ] **Summit.OS Services** - Deploy Summit.OS microservices
-- [ ] **FireLine Console** - Deploy FireLine Console frontend
+- [ ] **Console** - Deploy Console frontend
 - [ ] **AI Models** - Deploy AI models to edge/cloud
 - [ ] **Configuration** - Apply configuration settings
 - [ ] **Security** - Configure security settings
