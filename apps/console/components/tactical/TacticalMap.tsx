@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useCallback, useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import Map, { Marker, NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import MapLayerControls, { MapLayer } from './MapLayerControls';
-import GeofenceEditor, { Geofence } from './GeofenceEditor';
+import { MapLayer } from './MapLayerControls';
 import EntityDetail from './EntityDetail';
 import { useEntityStream, EntityData } from '../../hooks/useEntityStream';
-import { fetchGeofences, createGeofence, deleteGeofence } from '../../lib/api';
 import ShaderPipeline, { ShaderMode } from './ShaderPipeline';
 
 // Lazy-load CesiumMap to avoid SSR + large bundle in 2D mode
@@ -17,41 +15,15 @@ const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.
 
 export type ViewMode = '2d' | '3d';
 
-export default function TacticalMap() {
+interface TacticalMapProps {
+  layers: MapLayer[];
+}
+
+export default function TacticalMap({ layers }: TacticalMapProps) {
   const { entityList, connected, entityCount, trackCount } = useEntityStream();
   const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('3d');
+  const [viewMode, setViewMode] = useState<ViewMode>('2d');
   const [shaderMode, setShaderMode] = useState<ShaderMode>('NORMAL');
-
-  const [layers, setLayers] = useState<MapLayer[]>([
-    { id: 'entities', name: 'Entities', enabled: true, color: '#34d399', icon: '●' },
-    { id: 'geofences', name: 'Geofences', enabled: true, color: '#f59e0b', icon: '⬢' },
-    { id: 'tracks', name: 'Tracks', enabled: false, color: '#60a5fa', icon: '〰' },
-    { id: 'orbits', name: 'Orbits', enabled: true, color: '#818cf8', icon: '◌' },
-  ]);
-
-  const [geofences, setGeofences] = useState<Geofence[]>([]);
-  const [editingGeofence, setEditingGeofence] = useState<Geofence | null>(null);
-
-  useEffect(() => {
-    fetchGeofences()
-      .then(({ geofences: remote }) => {
-        if (remote && remote.length > 0) {
-          setGeofences(
-            remote.map((g) => ({
-              id: String(g.id ?? `gf${Date.now()}${Math.random()}`),
-              name: g.name,
-              points: (g.coordinates || []).map((c) => ({ lat: c.lat, lon: c.lon })),
-              type: (g.type as Geofence['type']) || 'warning',
-              altitude_min: g.altitude_min,
-              altitude_max: g.altitude_max,
-              active: g.active ?? true,
-            }))
-          );
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   // Keyboard shortcuts for shader modes + view toggle
   useEffect(() => {
@@ -69,64 +41,6 @@ export default function TacticalMap() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
-
-  const handleToggleLayer = (layerId: string) => {
-    setLayers(prev =>
-      prev.map(layer =>
-        layer.id === layerId ? { ...layer, enabled: !layer.enabled } : layer
-      )
-    );
-  };
-
-  const handleCreateGeofence = () => {
-    setEditingGeofence({
-      id: 'new',
-      name: '',
-      points: [],
-      type: 'warning',
-      active: true,
-    });
-  };
-
-  const handleSaveGeofence = useCallback(async (geofence: Geofence) => {
-    const localId = geofence.id === 'new' ? `gf${Date.now()}` : geofence.id;
-    const saved = { ...geofence, id: localId };
-    if (geofence.id === 'new') {
-      setGeofences(prev => [...prev, saved]);
-    } else {
-      setGeofences(prev => prev.map(g => (g.id === geofence.id ? saved : g)));
-    }
-    setEditingGeofence(null);
-
-    try {
-      await createGeofence({
-        name: geofence.name,
-        type: geofence.type,
-        coordinates: geofence.points.map(p => ({ lat: p.lat, lon: p.lon })),
-        altitude_min: geofence.altitude_min,
-        altitude_max: geofence.altitude_max,
-        active: geofence.active,
-      });
-    } catch {
-      // backend unavailable
-    }
-  }, []);
-
-  const handleDeleteGeofence = useCallback(async (id: string) => {
-    setGeofences(prev => prev.filter(g => g.id !== id));
-    try {
-      const numId = parseInt(id.replace(/^gf/, ''), 10);
-      if (!isNaN(numId)) await deleteGeofence(numId);
-    } catch {
-      // backend unavailable
-    }
-  }, []);
-
-  const handleToggleGeofenceActive = (id: string) => {
-    setGeofences(prev =>
-      prev.map(g => (g.id === id ? { ...g, active: !g.active } : g))
-    );
-  };
 
   const markerColor = (e: EntityData) => {
     switch (e.entity_type) {
@@ -202,9 +116,22 @@ export default function TacticalMap() {
 
       {/* Status bar */}
       <div className="absolute top-3 left-3 flex gap-2 text-[10px] font-mono z-10">
-        <span className={`px-2 py-1 rounded ${connected ? 'bg-zinc-800 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}>
+        <span
+          className={`px-2 py-1 rounded ${connected ? 'bg-zinc-800 text-emerald-400' : 'bg-red-900/50 text-red-400'}`}
+          style={!connected ? {
+            animation: 'disconnected-pulse 3s ease-in-out infinite',
+          } : undefined}
+        >
           {connected ? 'CONNECTED' : 'DISCONNECTED'}
         </span>
+        {!connected && (
+          <style>{`
+            @keyframes disconnected-pulse {
+              0%, 80%, 100% { opacity: 1; }
+              90% { opacity: 0.4; }
+            }
+          `}</style>
+        )}
         <span className="px-2 py-1 rounded bg-zinc-800 text-zinc-400">
           {entityCount} entities
         </span>
@@ -273,23 +200,6 @@ export default function TacticalMap() {
         ))}
       </div>
 
-      {/* Layer Controls */}
-      <MapLayerControls
-        layers={layers}
-        onToggleLayer={handleToggleLayer}
-      />
-
-      {/* Geofence Editor */}
-      <GeofenceEditor
-        geofences={geofences}
-        editingGeofence={editingGeofence}
-        onCreateNew={handleCreateGeofence}
-        onSelectGeofence={(id) => setEditingGeofence(geofences.find(g => g.id === id) || null)}
-        onDeleteGeofence={handleDeleteGeofence}
-        onSaveGeofence={handleSaveGeofence}
-        onCancelEdit={() => setEditingGeofence(null)}
-        onToggleActive={handleToggleGeofenceActive}
-      />
 
       {/* Entity Detail Panel */}
       {selectedEntity && (

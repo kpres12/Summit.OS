@@ -2,12 +2,21 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
+const EXAMPLE_COMMANDS = [
+  'patrol sector 4',
+  'return all assets',
+  'survey grid alpha',
+  'status drone-01',
+  'deploy sensor array bravo',
+];
+
 export default function CommandBar() {
   const [command, setCommand] = useState('');
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [cpuUsage, setCpuUsage] = useState(34);
   const [netThroughput, setNetThroughput] = useState(156);
 
@@ -16,6 +25,14 @@ export default function CommandBar() {
       setCpuUsage(prev => Math.max(10, Math.min(95, prev + (Math.random() - 0.5) * 10)));
       setNetThroughput(prev => Math.max(50, Math.min(500, prev + (Math.random() - 0.5) * 30)));
     }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Rotate placeholder examples
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIdx(prev => (prev + 1) % EXAMPLE_COMMANDS.length);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -71,7 +88,7 @@ export default function CommandBar() {
           value={command}
           onChange={(e) => setCommand(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="command..."
+          placeholder={EXAMPLE_COMMANDS[placeholderIdx]}
           className="flex-1 bg-transparent border-none outline-none text-[#00CC74] font-mono text-xs placeholder-[#004422] caret-[#00FF91]"
           autoFocus
         />

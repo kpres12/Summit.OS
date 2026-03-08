@@ -39,10 +39,35 @@ export default function AssetLog() {
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {entityList.length === 0 ? (
-          <div className="px-4 py-8 text-center">
-            <div className="text-[11px] text-[#006644] font-mono">NO ASSETS</div>
-            <div className="text-[10px] text-[#004422] font-mono mt-1">
-              {connected ? 'Awaiting entity data…' : 'WS disconnected'}
+          <div className="px-4 py-6">
+            <div className="text-[11px] text-[#00FF91] font-mono tracking-wider mb-4">
+              AWAITING CONNECTIONS
+            </div>
+            {!connected && (
+              <div className="mb-4 px-2 py-1.5 border border-red-500/30 bg-red-500/5">
+                <div className="text-[10px] text-red-400 font-mono">WS DISCONNECTED</div>
+              </div>
+            )}
+            <div className="mb-4">
+              <div className="text-[10px] text-[#006644] font-mono mb-2">Connect your first asset:</div>
+              <div className="bg-[#0A0A0A] border border-[#00FF91]/20 px-2 py-1.5">
+                <code className="text-[10px] text-[#00CC74] font-mono">$ pip install summit-os-sdk</code>
+              </div>
+            </div>
+            <div className="text-[10px] text-[#006644] font-mono mb-2">Expecting:</div>
+            <div className="space-y-1.5">
+              {[
+                { type: 'DRONE', icon: '○' },
+                { type: 'UGV', icon: '○' },
+                { type: 'TOWER', icon: '○' },
+                { type: 'SENSOR', icon: '○' },
+              ].map(({ type, icon }) => (
+                <div key={type} className="flex items-center gap-2 text-[10px] font-mono">
+                  <span className="text-[#006644]">{icon}</span>
+                  <span className="text-[#006644]">{type}</span>
+                  <span className="text-[#004422] ml-auto">— 0 connected</span>
+                </div>
+              ))}
             </div>
           </div>
         ) : (
