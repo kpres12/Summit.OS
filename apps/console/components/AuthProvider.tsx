@@ -1,99 +1,104 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  User,
-  authConfig,
-  generatePKCE,
-  buildAuthorizationUrl,
-  extractUser,
-  buildLogoutUrl,
-} from '../lib/auth';
+/**
+ * AuthProvider — tokens live exclusively in httpOnly cookies.
+ *
+ * Client-side code NEVER sees a JWT. The auth state is bootstrapped by
+ * fetching /api/auth/me on mount, which reads the httpOnly id_token
+ * server-side and returns only the sanitized user object.
+ *
+ * Login  → redirects to /api/auth/login  (OIDC + PKCE, server-side)
+ * Logout → POST /api/auth/logout (cookie clear) then OIDC SLO redirect
+ */
+
+import React, {
+  createContext, useContext, useState, useEffect, useCallback,
+} from 'react';
+
+export interface User {
+  id:     string;
+  email:  string;
+  name:   string;
+  org_id: string;
+  roles:  string[];
+}
 
 interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
+  user:            User | null;
+  isLoading:       boolean;
   isAuthenticated: boolean;
-  login: () => Promise<void>;
-  logout: () => void;
-  getAccessToken: () => string | null;
+  mfaPending:      boolean;
+  login:           () => void;
+  logout:          () => Promise<void>;
+  refreshAuth:     () => Promise<void>;
+  // Legacy compat — no longer returns a real token (tokens are httpOnly)
+  getAccessToken:  () => null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user,      setUser]      = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaPending, setMfaPending] = useState(false);
 
-  useEffect(() => {
-    // Check for existing session
-    const idToken = localStorage.getItem('id_token');
-    if (idToken) {
-      const userData = extractUser(idToken);
-      setUser(userData);
+  const refreshAuth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (res.ok) {
+        const data = await res.json() as { user: User | null; mfaPending?: boolean };
+        setUser(data.user);
+        setMfaPending(!!data.mfaPending);
+      } else {
+        setUser(null);
+        setMfaPending(false);
+      }
+    } catch {
+      setUser(null);
+      setMfaPending(false);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  const login = async () => {
+  useEffect(() => { refreshAuth(); }, [refreshAuth]);
+
+  const login = () => {
+    // Initiates OIDC + PKCE server-side — browser is redirected to IdP
+    window.location.href = '/api/auth/login';
+  };
+
+  const logout = async () => {
     try {
-      const pkce = await generatePKCE();
-      
-      // Store code verifier for callback
-      sessionStorage.setItem('oidc_code_verifier', pkce.codeVerifier);
-      
-      // Build authorization URL and redirect
-      const authUrl = buildAuthorizationUrl(authConfig, {
-        codeChallenge: pkce.codeChallenge,
-        codeChallengeMethod: pkce.codeChallengeMethod,
-      });
-      
-      window.location.href = authUrl;
-    } catch (error) {
-      console.error('Login failed:', error);
+      const res  = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      const data = await res.json() as { ok: boolean; logoutUrl?: string };
+      setUser(null);
+      setMfaPending(false);
+      // Complete OIDC single-logout so the provider also clears its session
+      window.location.href = data.logoutUrl ?? '/login';
+    } catch {
+      window.location.href = '/login';
     }
-  };
-
-  const logout = () => {
-    const idToken = localStorage.getItem('id_token');
-    
-    // Clear local storage
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('id_token');
-    localStorage.removeItem('refresh_token');
-    sessionStorage.clear();
-    
-    setUser(null);
-    
-    // Redirect to OIDC logout
-    const logoutUrl = buildLogoutUrl(authConfig, idToken || undefined);
-    window.location.href = logoutUrl;
-  };
-
-  const getAccessToken = () => {
-    return localStorage.getItem('access_token');
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        isAuthenticated: !!user,
-        login,
-        logout,
-        getAccessToken,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      isAuthenticated: !!user && !mfaPending,
+      mfaPending,
+      login,
+      logout,
+      refreshAuth,
+      getAccessToken: () => null,
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+export function useAuth(): AuthContextType {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }

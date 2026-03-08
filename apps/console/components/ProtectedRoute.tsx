@@ -1,41 +1,69 @@
 'use client';
 
+/**
+ * ProtectedRoute — auth is ALWAYS enforced, no env-var opt-out.
+ *
+ * Routing logic:
+ *   loading           → show authenticating screen (no flash)
+ *   mfaPending        → redirect to /mfa
+ *   not authenticated → redirect to /login
+ *   authenticated     → render children
+ */
+
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 
-/**
- * Opt-in route guard.
- *
- * When NEXT_PUBLIC_AUTH_ENABLED is "true", unauthenticated users are
- * redirected to /login.  When the flag is absent or "false" the children
- * render unconditionally (local-dev mode).
- */
-const AUTH_ENABLED = process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true';
-
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, mfaPending } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (AUTH_ENABLED && !isLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
+    if (isLoading) return;
+    if (mfaPending) { router.replace('/mfa');   return; }
+    if (!isAuthenticated) { router.replace('/login'); }
+  }, [isAuthenticated, isLoading, mfaPending, router]);
 
-  if (AUTH_ENABLED && isLoading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
-        <div className="text-[#00FF91] text-xl font-mono animate-pulse">
-          AUTHENTICATING...
+      <div
+        className="fixed inset-0 flex flex-col items-center justify-center gap-4"
+        style={{ background: '#080C0A' }}
+      >
+        <div
+          style={{
+            fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
+            color:         '#00FF9C',
+            fontSize:      '11px',
+            letterSpacing: '0.4em',
+            textShadow:    '0 0 8px rgba(0,255,156,0.5)',
+          }}
+        >
+          AUTHENTICATING
         </div>
+        {/* Animated progress bar */}
+        <div style={{ width: '120px', height: '1px', background: 'rgba(0,255,156,0.15)', position: 'relative', overflow: 'hidden' }}>
+          <div
+            style={{
+              position:        'absolute',
+              inset:           0,
+              background:      'linear-gradient(90deg, transparent 0%, #00FF9C 50%, transparent 100%)',
+              animation:       'auth-scan 1.4s ease-in-out infinite',
+              backgroundSize:  '200% 100%',
+            }}
+          />
+        </div>
+        <style>{`
+          @keyframes auth-scan {
+            0%   { background-position: -100% 0; }
+            100% { background-position:  200% 0; }
+          }
+        `}</style>
       </div>
     );
   }
 
-  if (AUTH_ENABLED && !isAuthenticated) {
-    return null; // will redirect
-  }
+  if (!isAuthenticated || mfaPending) return null;
 
   return <>{children}</>;
 }
