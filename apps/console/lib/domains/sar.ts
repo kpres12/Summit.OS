@@ -1,0 +1,75 @@
+import type { DomainConfig } from './types';
+
+const sarDomain: DomainConfig = {
+  id: 'sar',
+  name: 'Search & Rescue',
+  description: 'Search and rescue coordination and tracking',
+  palette: {
+    accent: '#FFD54F',
+    accentDim: '#C9A83B',
+    accentDark: '#8A7328',
+    warning: '#FFB300',
+    critical: '#FF3B3B',
+    nominal: '#4AEDC4',
+    active: '#4FC3F7',
+    backgroundTint: '#0C0B08',
+    panelBg: '#121110',
+    border: 'rgba(255, 213, 79, 0.15)',
+    scanline: 'rgba(255, 213, 79, 0.02)',
+  },
+  entityLabels: {
+    subject: { displayName: 'Subject Located', icon: '◉', color: '#4AEDC4' },
+    clue: { displayName: 'Clue Found', icon: '◆', color: '#FFD54F' },
+    team: { displayName: 'Search Team', icon: '●', color: '#4FC3F7' },
+    aircraft: { displayName: 'Air Asset', icon: '✈', color: '#4FC3F7' },
+    thermal_hit: { displayName: 'Thermal Signature', icon: '▲', color: '#FF8C42' },
+    friendly: { displayName: 'Team', icon: '●', color: '#4FC3F7' },
+    hostile: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
+    neutral: { displayName: 'POI', icon: '◆', color: '#FFD54F' },
+    unknown: { displayName: 'Unconfirmed', icon: '?', color: '#FFB300' },
+  },
+  assetTypes: [
+    { type: 'DRONE', label: 'SEARCH UAV', icon: '○' },
+    { type: 'TEAM', label: 'GROUND TEAM', icon: '○' },
+    { type: 'K9', label: 'K-9 UNIT', icon: '○' },
+    { type: 'AIRCRAFT', label: 'HELICOPTER', icon: '○' },
+    { type: 'BASE', label: 'BASE CAMP', icon: '○' },
+  ],
+  mapLayers: [
+    { id: 'entities', name: 'Teams & Assets', enabled: true, color: '#4FC3F7', icon: '●' },
+    { id: 'search_grid', name: 'Search Grid', enabled: true, color: '#FFD54F', icon: '▦' },
+    { id: 'pod_map', name: 'Probability of Detection', enabled: false, color: '#818cf8', icon: '◌' },
+    { id: 'clues', name: 'Clue Markers', enabled: true, color: '#FFD54F', icon: '◆' },
+    { id: 'geofences', name: 'Search Boundaries', enabled: true, color: '#FFB300', icon: '⬢' },
+  ],
+  commandExamples: [
+    'search grid sector charlie',
+    'deploy thermal drone to last known point',
+    'expand search radius 500 meters',
+    'status all ground teams',
+    'mark clue at current position',
+    'recall team bravo to base',
+  ],
+  alertTypes: [
+    { id: 'thermal_hit', label: 'Thermal Signature', icon: '▲', color: '#FF8C42' },
+    { id: 'subject_found', label: 'Subject Located', icon: '◉', color: '#4AEDC4' },
+    { id: 'clue', label: 'Clue Found', icon: '◆', color: '#FFD54F' },
+    { id: 'team_emergency', label: 'Team Emergency', icon: '⊘', color: '#FF3B3B' },
+  ],
+  missionTemplates: [
+    { id: 'grid_search', label: 'Grid Search', intent: 'search', description: 'Systematic grid search of assigned sector' },
+    { id: 'hasty_search', label: 'Hasty Search', intent: 'respond', description: 'Quick search along high-probability routes' },
+    { id: 'thermal_sweep', label: 'Thermal Sweep', intent: 'survey', description: 'Drone thermal survey of search area' },
+    { id: 'monitor_lkp', label: 'Monitor LKP', intent: 'observe', description: 'Loiter over last known point' },
+  ],
+  terminology: {
+    mission: 'Operation',
+    asset: 'Team',
+    alert: 'Signal',
+    entity: 'Unit',
+    operatorView: 'Search Coordinator',
+    supervisorView: 'Search Manager',
+  },
+};
+
+export default sarDomain;

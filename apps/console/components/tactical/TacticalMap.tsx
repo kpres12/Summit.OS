@@ -155,29 +155,6 @@ export default function TacticalMap({ layers }: TacticalMapProps) {
         )}
       </div>
 
-      {/* View mode toggle */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-0.5 text-[10px] font-mono z-10">
-        <button
-          onClick={() => setViewMode('3d')}
-          className={`px-3 py-1 rounded-l transition-colors ${
-            viewMode === '3d'
-              ? 'bg-zinc-700 text-zinc-100'
-              : 'bg-zinc-900/80 text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          3D GLOBE
-        </button>
-        <button
-          onClick={() => setViewMode('2d')}
-          className={`px-3 py-1 rounded-r transition-colors ${
-            viewMode === '2d'
-              ? 'bg-zinc-700 text-zinc-100'
-              : 'bg-zinc-900/80 text-zinc-500 hover:text-zinc-300'
-          }`}
-        >
-          2D MAP
-        </button>
-      </div>
 
       {/* Shader mode selector */}
       <div className="absolute bottom-3 left-3 flex gap-0.5 text-[10px] font-mono z-10">

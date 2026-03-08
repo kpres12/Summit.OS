@@ -1,0 +1,72 @@
+import type { DomainConfig } from './types';
+
+const constructionDomain: DomainConfig = {
+  id: 'construction',
+  name: 'Site Safety',
+  description: 'Construction site safety monitoring and hazard detection',
+  palette: {
+    accent: '#FFA726',
+    accentDim: '#CC8520',
+    accentDark: '#8A5A15',
+    warning: '#FFB300',
+    critical: '#FF3B3B',
+    nominal: '#4AEDC4',
+    active: '#4FC3F7',
+    backgroundTint: '#0C0A08',
+    panelBg: '#12100D',
+    border: 'rgba(255, 167, 38, 0.15)',
+    scanline: 'rgba(255, 167, 38, 0.02)',
+  },
+  entityLabels: {
+    worker: { displayName: 'Worker', icon: '●', color: '#4AEDC4' },
+    equipment: { displayName: 'Heavy Equipment', icon: '■', color: '#4FC3F7' },
+    crane: { displayName: 'Crane', icon: '▲', color: '#FFA726' },
+    hazard: { displayName: 'Hazard Zone', icon: '⊘', color: '#FF3B3B' },
+    camera: { displayName: 'Site Camera', icon: '◎', color: '#a1a1aa' },
+    friendly: { displayName: 'Personnel', icon: '●', color: '#4AEDC4' },
+    hostile: { displayName: 'Hazard', icon: '⊘', color: '#FF3B3B' },
+    neutral: { displayName: 'Equipment', icon: '■', color: '#4FC3F7' },
+    unknown: { displayName: 'Unidentified', icon: '?', color: '#FFB300' },
+  },
+  assetTypes: [
+    { type: 'CAMERA', label: 'SITE CAMERA', icon: '○' },
+    { type: 'DRONE', label: 'SURVEY UAV', icon: '○' },
+    { type: 'BEACON', label: 'WORKER BEACON', icon: '○' },
+    { type: 'SENSOR', label: 'ENVIRO SENSOR', icon: '○' },
+  ],
+  mapLayers: [
+    { id: 'entities', name: 'Personnel & Equipment', enabled: true, color: '#4AEDC4', icon: '●' },
+    { id: 'exclusion_zones', name: 'Exclusion Zones', enabled: true, color: '#FF3B3B', icon: '⊘' },
+    { id: 'crane_zones', name: 'Crane Swing Zones', enabled: true, color: '#FFA726', icon: '▲' },
+    { id: 'cameras', name: 'Camera Coverage', enabled: true, color: '#a1a1aa', icon: '◎' },
+    { id: 'geofences', name: 'Site Boundary', enabled: true, color: '#FFB300', icon: '⬢' },
+  ],
+  commandExamples: [
+    'status all zones',
+    'who is in crane zone 3',
+    'survey site perimeter',
+    'deploy drone for progress photo',
+    'alert all workers zone bravo',
+  ],
+  alertTypes: [
+    { id: 'zone_breach', label: 'Zone Breach', icon: '⊘', color: '#FF3B3B' },
+    { id: 'proximity', label: 'Proximity Warning', icon: '▲', color: '#FFB300' },
+    { id: 'ppe_violation', label: 'PPE Violation', icon: '⚠', color: '#FFA726' },
+    { id: 'equipment_fault', label: 'Equipment Fault', icon: '■', color: '#FF3B3B' },
+  ],
+  missionTemplates: [
+    { id: 'site_survey', label: 'Site Survey', intent: 'survey', description: 'Drone survey for progress documentation' },
+    { id: 'perimeter_check', label: 'Perimeter Check', intent: 'patrol', description: 'Patrol site perimeter for security' },
+    { id: 'inspect_structure', label: 'Inspect Structure', intent: 'observe', description: 'Close inspection of structure or equipment' },
+  ],
+  terminology: {
+    mission: 'Task',
+    asset: 'Equipment',
+    alert: 'Violation',
+    entity: 'Asset',
+    operatorView: 'Safety Officer',
+    supervisorView: 'Site Manager',
+  },
+};
+
+export default constructionDomain;

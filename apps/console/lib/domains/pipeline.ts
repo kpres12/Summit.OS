@@ -1,0 +1,75 @@
+import type { DomainConfig } from './types';
+
+const pipelineDomain: DomainConfig = {
+  id: 'pipeline',
+  name: 'Pipeline Ops',
+  description: 'Pipeline integrity monitoring and leak detection',
+  palette: {
+    accent: '#4FC3F7',
+    accentDim: '#2196B8',
+    accentDark: '#15607A',
+    warning: '#FFB300',
+    critical: '#FF3B3B',
+    nominal: '#4AEDC4',
+    active: '#4FC3F7',
+    backgroundTint: '#080A0C',
+    panelBg: '#0D1014',
+    border: 'rgba(79, 195, 247, 0.15)',
+    scanline: 'rgba(79, 195, 247, 0.02)',
+  },
+  entityLabels: {
+    leak: { displayName: 'Leak Detected', icon: '💧', color: '#FF3B3B' },
+    anomaly: { displayName: 'Pressure Anomaly', icon: '▲', color: '#FFB300' },
+    valve: { displayName: 'Valve Station', icon: '◎', color: '#4FC3F7' },
+    pump: { displayName: 'Pump Station', icon: '■', color: '#4FC3F7' },
+    sensor: { displayName: 'Pressure Tap', icon: '◇', color: '#818cf8' },
+    drone: { displayName: 'Inspection Drone', icon: '●', color: '#4AEDC4' },
+    crew: { displayName: 'Maintenance Crew', icon: '●', color: '#4AEDC4' },
+    friendly: { displayName: 'Asset', icon: '●', color: '#4AEDC4' },
+    hostile: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
+    neutral: { displayName: 'Infrastructure', icon: '◆', color: '#a1a1aa' },
+    unknown: { displayName: 'Unclassified', icon: '?', color: '#FFB300' },
+  },
+  assetTypes: [
+    { type: 'DRONE', label: 'INSPECTION UAV', icon: '○' },
+    { type: 'PRESSURE_TAP', label: 'PRESSURE TAP', icon: '○' },
+    { type: 'VALVE', label: 'VALVE STATION', icon: '○' },
+    { type: 'CAMERA', label: 'CROSSING CAMERA', icon: '○' },
+    { type: 'CREW', label: 'MAINT. CREW', icon: '○' },
+  ],
+  mapLayers: [
+    { id: 'entities', name: 'Assets', enabled: true, color: '#4AEDC4', icon: '●' },
+    { id: 'pipeline_route', name: 'Pipeline Route', enabled: true, color: '#4FC3F7', icon: '━' },
+    { id: 'pressure', name: 'Pressure Readings', enabled: true, color: '#818cf8', icon: '◇' },
+    { id: 'anomalies', name: 'Anomalies', enabled: true, color: '#FFB300', icon: '▲' },
+    { id: 'geofences', name: 'Exclusion Zones', enabled: true, color: '#FF3B3B', icon: '⬢' },
+  ],
+  commandExamples: [
+    'inspect segment 12 mile marker 45',
+    'status all pressure taps',
+    'dispatch drone to anomaly',
+    'valve status sector north',
+    'flow rate report last 4 hours',
+  ],
+  alertTypes: [
+    { id: 'leak', label: 'Leak Detected', icon: '💧', color: '#FF3B3B' },
+    { id: 'pressure_anomaly', label: 'Pressure Anomaly', icon: '▲', color: '#FFB300' },
+    { id: 'flow_deviation', label: 'Flow Deviation', icon: '〰', color: '#FFB300' },
+    { id: 'valve_fault', label: 'Valve Fault', icon: '⊘', color: '#FF3B3B' },
+  ],
+  missionTemplates: [
+    { id: 'inspect_anomaly', label: 'Inspect Anomaly', intent: 'verify', description: 'Dispatch drone to inspect pressure anomaly' },
+    { id: 'survey_segment', label: 'Survey Segment', intent: 'survey', description: 'Fly pipeline segment for visual inspection' },
+    { id: 'patrol_route', label: 'Patrol Route', intent: 'patrol', description: 'Routine patrol of pipeline corridor' },
+  ],
+  terminology: {
+    mission: 'Inspection',
+    asset: 'Equipment',
+    alert: 'Anomaly',
+    entity: 'Asset',
+    operatorView: 'Controller',
+    supervisorView: 'Operations Manager',
+  },
+};
+
+export default pipelineDomain;
