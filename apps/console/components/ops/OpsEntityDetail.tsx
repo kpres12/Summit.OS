@@ -6,6 +6,7 @@ import { EntityData } from '@/hooks/useEntityStream';
 interface OpsEntityDetailProps {
   entity: EntityData | null;
   onClose: () => void;
+  onDispatch?: (entity: EntityData) => void;
 }
 
 function ageString(lastSeen: number): string {
@@ -65,12 +66,22 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-export default function OpsEntityDetail({ entity, onClose }: OpsEntityDetailProps) {
+export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEntityDetailProps) {
+  const [dispatched, setDispatched] = React.useState(false);
+
   if (!entity) return null;
 
   const typeColor = entityTypeColor(entity.entity_type);
   const shortId = entity.entity_id.slice(0, 12);
   const displayName = entity.callsign || shortId;
+
+  const handleDispatch = () => {
+    setDispatched(true);
+    onDispatch?.(entity);
+    setTimeout(() => {
+      onClose();
+    }, 600);
+  };
 
   return (
     <div
@@ -104,6 +115,34 @@ export default function OpsEntityDetail({ entity, onClose }: OpsEntityDetailProp
           onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,230,201,0.4)')}
         >
           ✕
+        </button>
+      </div>
+
+      {/* DISPATCH — primary action */}
+      <div
+        className="flex-none px-4 py-3"
+        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+      >
+        <button
+          onClick={handleDispatch}
+          disabled={dispatched}
+          className="w-full py-3 text-sm font-bold tracking-widest transition-all"
+          style={{
+            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+            color: dispatched ? '#080C0A' : '#080C0A',
+            background: dispatched ? '#00CC74' : '#00FF9C',
+            border: 'none',
+            cursor: dispatched ? 'default' : 'pointer',
+            letterSpacing: '0.2em',
+          }}
+          onMouseEnter={(e) => {
+            if (!dispatched) (e.currentTarget as HTMLButtonElement).style.background = '#00CC74';
+          }}
+          onMouseLeave={(e) => {
+            if (!dispatched) (e.currentTarget as HTMLButtonElement).style.background = '#00FF9C';
+          }}
+        >
+          {dispatched ? 'DISPATCHED' : 'DISPATCH'}
         </button>
       </div>
 

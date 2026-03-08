@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { EntityData } from '@/hooks/useEntityStream';
+import React, { useState, useCallback } from 'react';
+import { EntityData, useEntityStream } from '@/hooks/useEntityStream';
+import { AlertAPI } from '@/lib/api';
 import OpsTopBar from './OpsTopBar';
 import OpsNavRail from './OpsNavRail';
 import OpsAlertQueue from './OpsAlertQueue';
@@ -51,12 +52,11 @@ function OpsMapLayers() {
             onClick={() => toggle(l.id)}
             className="flex items-center gap-3 text-left transition-colors"
             style={{
-              background: 'none',
+              background: l.enabled ? 'rgba(0,255,156,0.05)' : 'transparent',
               border: 'none',
               cursor: 'pointer',
               padding: '8px 12px',
               borderLeft: `2px solid ${l.enabled ? '#00FF9C' : 'rgba(0,255,156,0.2)'}`,
-              background: l.enabled ? 'rgba(0,255,156,0.05)' : 'transparent',
             }}
           >
             <div
@@ -130,12 +130,59 @@ function OpsSystem() {
 }
 
 export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
+  const { entityList } = useEntityStream();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
+  const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [alertEntityIds, setAlertEntityIds] = useState<Set<string>>(new Set());
+
+  // Core investigate flow — the one interaction that has to be perfect.
+  // Finds the entity matching the alert source, zooms the map, opens entity detail.
+  const investigateAlert = useCallback((alert: AlertAPI) => {
+    const source = alert.source || '';
+    const match = entityList.find((e) =>
+      e.callsign === source ||
+      e.entity_id === source ||
+      e.entity_id.startsWith(source.slice(0, 8)) ||
+      source.toLowerCase().includes(e.entity_id.slice(0, 8).toLowerCase()) ||
+      source.toLowerCase().includes((e.callsign || '').toLowerCase())
+    ) || (entityList.length > 0 ? entityList[0] : null);
+
+    if (match) {
+      setSelectedEntity(match);
+      setFlyToLocation({ lat: match.position.lat, lon: match.position.lon });
+      // Mark this entity for alert pulse on the map
+      setAlertEntityIds((prev) => {
+        const next = new Set(prev);
+        next.add(match.entity_id);
+        return next;
+      });
+      // Clear pulse after animation completes (3 pulses × 600ms = ~1.8s)
+      setTimeout(() => {
+        setAlertEntityIds((prev) => {
+          const next = new Set(prev);
+          next.delete(match.entity_id);
+          return next;
+        });
+      }, 2000);
+    }
+    setActivePanel(null); // close the alert panel
+  }, [entityList]);
+
+  // Investigate by callsign — triggered from detection chips in bottom bar
+  const investigateEntity = useCallback((callsign: string) => {
+    const match = entityList.find((e) =>
+      e.callsign === callsign || e.entity_id.startsWith(callsign.slice(0, 8))
+    );
+    if (match) {
+      setSelectedEntity(match);
+      setFlyToLocation({ lat: match.position.lat, lon: match.position.lon });
+    }
+  }, [entityList]);
 
   const renderPanel = () => {
     switch (activePanel) {
-      case 'alerts': return <OpsAlertQueue />;
+      case 'alerts': return <OpsAlertQueue onInvestigate={investigateAlert} />;
       case 'entities': return <OpsEntityList />;
       case 'missions': return <OpsMissions />;
       case 'layers': return <OpsMapLayers />;
@@ -176,7 +223,11 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
 
         {/* Map area */}
         <div className="flex-1 relative overflow-hidden">
-          <OpsMapView onSelectEntity={setSelectedEntity} />
+          <OpsMapView
+            onSelectEntity={setSelectedEntity}
+            flyToLocation={flyToLocation}
+            alertEntityIds={alertEntityIds}
+          />
         </div>
 
         {/* Entity detail panel */}
@@ -192,13 +243,14 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             <OpsEntityDetail
               entity={selectedEntity}
               onClose={() => setSelectedEntity(null)}
+              onDispatch={() => setSelectedEntity(null)}
             />
           </div>
         </div>
       </div>
 
       {/* Bottom bar */}
-      <OpsBottomBar />
+      <OpsBottomBar onInvestigateEntity={investigateEntity} />
     </div>
   );
 }

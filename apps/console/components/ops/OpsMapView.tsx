@@ -1,23 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import Map, { Marker, NavigationControl, ScaleControl } from 'react-map-gl/maplibre';
+import React, { useState, useEffect, useRef } from 'react';
+import Map, { Marker, NavigationControl, ScaleControl, MapRef } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 
 const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-const LAYER_IDS = ['entities', 'tracks', 'geofences'];
-
-interface LayerState {
-  entities: boolean;
-  tracks: boolean;
-  geofences: boolean;
-}
-
 interface OpsMapViewProps {
   onSelectEntity?: (entity: EntityData | null) => void;
-  showLayers?: LayerState;
+  flyToLocation?: { lat: number; lon: number } | null;
+  alertEntityIds?: Set<string>;
 }
 
 function markerColor(e: EntityData): string {
@@ -29,13 +22,24 @@ function markerColor(e: EntityData): string {
   }
 }
 
-export default function OpsMapView({ onSelectEntity, showLayers }: OpsMapViewProps) {
+export default function OpsMapView({ onSelectEntity, flyToLocation, alertEntityIds }: OpsMapViewProps) {
   const { entityList } = useEntityStream();
-  const layers = showLayers ?? { entities: true, tracks: true, geofences: true };
+  const mapRef = useRef<MapRef>(null);
+
+  // Fly to location when prop changes
+  useEffect(() => {
+    if (!flyToLocation || !mapRef.current) return;
+    mapRef.current.flyTo({
+      center: [flyToLocation.lon, flyToLocation.lat],
+      zoom: 13,
+      duration: 800,
+    });
+  }, [flyToLocation]);
 
   return (
     <div className="w-full h-full relative">
       <Map
+        ref={mapRef}
         initialViewState={{
           longitude: -98.5,
           latitude: 39.8,
@@ -47,7 +51,7 @@ export default function OpsMapView({ onSelectEntity, showLayers }: OpsMapViewPro
         <NavigationControl position="top-right" />
         <ScaleControl position="bottom-left" />
 
-        {layers.entities && entityList.map((entity) =>
+        {entityList.map((entity) =>
           entity.position ? (
             <Marker
               key={entity.entity_id}
@@ -60,6 +64,7 @@ export default function OpsMapView({ onSelectEntity, showLayers }: OpsMapViewPro
             >
               <div
                 title={entity.callsign || entity.entity_id}
+                className={alertEntityIds?.has(entity.entity_id) ? 'alert-pulse' : undefined}
                 style={{
                   width: '10px',
                   height: '10px',

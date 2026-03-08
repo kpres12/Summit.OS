@@ -41,7 +41,11 @@ interface DetectionChip {
   ts: number;
 }
 
-export default function OpsBottomBar() {
+interface OpsBottomBarProps {
+  onInvestigateEntity?: (callsign: string) => void;
+}
+
+export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps) {
   const { entityCount, entityList } = useEntityStream();
   const [chips, setChips] = useState<DetectionChip[]>([]);
   const [command, setCommand] = useState('');
@@ -171,12 +175,20 @@ export default function OpsBottomBar() {
             return (
               <div
                 key={chip.id}
-                className="flex-none text-[9px] px-1.5 py-0.5 whitespace-nowrap"
+                onClick={() => onInvestigateEntity?.(chip.callsign)}
+                className="flex-none text-[9px] px-1.5 py-0.5 whitespace-nowrap transition-colors"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
                   color,
                   border: `1px solid ${color}40`,
                   background: `${color}10`,
+                  cursor: onInvestigateEntity ? 'pointer' : 'default',
+                }}
+                onMouseEnter={(e) => {
+                  if (onInvestigateEntity) (e.currentTarget as HTMLDivElement).style.background = `${color}25`;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background = `${color}10`;
                 }}
               >
                 [{domainTag(chip.domain)}] {chip.callsign} {Math.round(chip.confidence * 100)}%

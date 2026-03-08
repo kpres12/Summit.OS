@@ -20,7 +20,11 @@ function severityColor(severity: string): string {
   return 'rgba(200,230,201,0.45)';
 }
 
-export default function OpsAlertQueue() {
+interface OpsAlertQueueProps {
+  onInvestigate?: (alert: AlertAPI) => void;
+}
+
+export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
   const [alerts, setAlerts] = useState<AlertAPI[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -158,7 +162,7 @@ export default function OpsAlertQueue() {
                     borderRight: '1px solid rgba(0,255,156,0.1)',
                     cursor: 'pointer',
                   }}
-                  onClick={() => console.log('Investigate:', alert.alert_id)}
+                  onClick={() => onInvestigate?.(alert)}
                   onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,156,0.08)')}
                   onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
                 >
