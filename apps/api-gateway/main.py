@@ -59,7 +59,7 @@ GATEWAY_TEST_MODE = os.getenv("GATEWAY_TEST_MODE", "false").lower() == "true"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, SessionLocal
-    
+
     # Setup DB for approvals
     if GATEWAY_TEST_MODE:
         db_url = "sqlite+aiosqlite://"
@@ -67,9 +67,16 @@ async def lifespan(app: FastAPI):
         db_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
     engine = create_async_engine(db_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
+
+    # Initialise audit log (append-only Postgres table via asyncpg)
+    try:
+        from middleware.audit import init_audit_log
+        await init_audit_log(db_url)
+    except Exception as exc:
+        logger.warning("Audit log init failed (non-fatal): %s", exc)
 
     # Initialise MFA user store (creates tables if not present)
     try:
@@ -83,12 +90,127 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("MFA store init failed (non-fatal): %s", exc)
 
+    # ── CyberSynetic learning engine ───────────────────────────────────────
+    _learning_engine = None
+    try:
+        import sys as _sys
+        from pathlib import Path as _Path
+        _packages_dir = str(_Path(__file__).resolve().parents[2] / "packages")
+        if _packages_dir not in _sys.path:
+            _sys.path.insert(0, _packages_dir)
+
+        from packages.learning.engine import CyberSyneticEngine
+        from routers.learning import init_learning_router
+
+        _learning_db_url = os.getenv("LEARNING_DATABASE_URL", db_url)
+        _learning_engine = CyberSyneticEngine(database_url=_learning_db_url)
+        await _learning_engine.initialize()
+        init_learning_router(_learning_engine)
+        logger.info("CyberSynetic learning engine started.")
+    except Exception as exc:
+        logger.warning("CyberSynetic engine init failed (non-fatal): %s", exc)
+
+    # ── Adapter registry ───────────────────────────────────────────────────
+    _adapter_registry = None
+    try:
+        import json as _json
+        import sys as _sys
+        from pathlib import Path as _Path
+
+        # Ensure packages/ is on the path so adapters package is importable
+        _packages_dir = str(_Path(__file__).resolve().parents[2] / "packages")
+        if _packages_dir not in _sys.path:
+            _sys.path.insert(0, _packages_dir)
+
+        from adapters.registry import AdapterRegistry, _try_register_builtins
+        from adapters.base import AdapterConfig
+        from routers.adapters import init_adapter_router
+
+        _adapter_registry = AdapterRegistry()
+        _try_register_builtins(_adapter_registry)
+
+        # Build MQTT client for adapters (optional — adapters log if unavailable)
+        _mqtt_client = None
+        try:
+            import paho.mqtt.client as _mqtt
+            _mqtt_host = os.getenv("MQTT_HOST", "localhost")
+            _mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
+            _c = _mqtt.Client(client_id="summit-api-gateway-adapters")
+            _mqtt_user = os.getenv("MQTT_USERNAME")
+            _mqtt_pass = os.getenv("MQTT_PASSWORD")
+            if _mqtt_user and _mqtt_pass:
+                _c.username_pw_set(_mqtt_user, _mqtt_pass)
+            _c.connect(_mqtt_host, _mqtt_port, 60)
+            _c.loop_start()
+            _mqtt_client = _c
+            logger.info("Adapter MQTT client connected to %s:%s", _mqtt_host, _mqtt_port)
+        except Exception as _mqtt_exc:
+            logger.warning("Adapter MQTT client unavailable (non-fatal): %s", _mqtt_exc)
+
+        # Load adapter configs from file
+        _config_path = os.getenv("ADAPTER_CONFIG_PATH", "adapters.json")
+        if not os.path.isabs(_config_path):
+            _config_path = os.path.join(os.path.dirname(__file__), _config_path)
+
+        if os.path.exists(_config_path):
+            try:
+                with open(_config_path, "r") as _f:
+                    _raw_configs = _json.load(_f)
+                if not isinstance(_raw_configs, list):
+                    _raw_configs = _raw_configs.get("adapters", [])
+                for _raw in _raw_configs:
+                    try:
+                        _cfg = AdapterConfig(**_raw)
+                        _adapter_registry.add(_cfg, mqtt_client=_mqtt_client)
+                    except Exception as _cfg_exc:
+                        logger.warning("Skipping invalid adapter config %s: %s", _raw, _cfg_exc)
+                logger.info(
+                    "Loaded %d adapter config(s) from %s",
+                    len(_adapter_registry._adapters),
+                    _config_path,
+                )
+            except Exception as _load_exc:
+                logger.warning("Failed to load adapter configs from %s: %s", _config_path, _load_exc)
+        else:
+            logger.info(
+                "No adapter config file found at %s — starting with zero adapters.", _config_path
+            )
+
+        init_adapter_router(_adapter_registry)
+        await _adapter_registry.start_all()
+        logger.info("Adapter registry started.")
+
+    except Exception as exc:
+        logger.warning("Adapter registry init failed (non-fatal): %s", exc)
+
     yield
+
+    # ── Adapter shutdown ───────────────────────────────────────────────────
+    if _adapter_registry is not None:
+        try:
+            await _adapter_registry.stop_all()
+            logger.info("Adapter registry stopped.")
+        except Exception as exc:
+            logger.warning("Adapter registry stop failed: %s", exc)
+
+    # Shutdown: close audit pool before disposing the SQLAlchemy engine
+    try:
+        from middleware.audit import close_audit_log
+        await close_audit_log()
+    except Exception as exc:
+        logger.warning("Audit log close failed (non-fatal): %s", exc)
 
     if engine:
         await engine.dispose()
 
 app = FastAPI(title="Summit API Gateway", version="0.4.1", lifespan=lifespan)
+
+# Audit logging middleware — must be added before CORS so it wraps all requests
+try:
+    from middleware.audit import AuditLogMiddleware
+    app.add_middleware(AuditLogMiddleware)
+except Exception as _audit_exc:
+    logger.warning("Audit middleware not loaded: %s", _audit_exc)
 
 # ── MFA / Auth router ────────────────────────────────────────────────────────
 try:
@@ -96,6 +218,20 @@ try:
     app.include_router(mfa_router)
 except Exception as _mfa_exc:
     logger.warning("MFA router not loaded: %s", _mfa_exc)
+
+# ── Adapters router ───────────────────────────────────────────────────────────
+try:
+    from routers.adapters import router as adapters_router
+    app.include_router(adapters_router)
+except Exception as _adapters_exc:
+    logger.warning("Adapters router not loaded: %s", _adapters_exc)
+
+# ── Learning / CyberSynetic router ────────────────────────────────────────────
+try:
+    from routers.learning import router as learning_router
+    app.include_router(learning_router)
+except Exception as _learning_exc:
+    logger.warning("Learning router not loaded: %s", _learning_exc)
 
 # CORS for local dev (console at 3000)
 try:

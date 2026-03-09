@@ -14,3 +14,4 @@ slowapi==0.1.9
 aiosqlite==0.20.0
 webauthn==2.1.0
 cryptography==42.0.5
+pymavlink>=2.4.41

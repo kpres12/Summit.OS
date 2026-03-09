@@ -2,46 +2,57 @@
 
 ## Overview
 
-Summit.OS is a distributed intelligence kernel that serves as the foundational operating system for autonomous defense and security systems. Like Anduril's LatticeOS, Summit.OS provides the core infrastructure, communication protocols, and AI reasoning capabilities that applications can build upon.
+Summit.OS is an open-source autonomous systems coordination platform. It is the **integration and coordination layer** that sits between your existing signals and the missions you need to run.
 
-Summit.OS unifies sensors, drones, and ground robots into a shared, real-time world model for decision-making and coordinated action. It functions as an AI-driven "kernel for the physical world," providing the essential services that specialized applications like Sentinel (wildfire management) require for autonomous operation.
+The core loop is simple:
+
+```
+ANY SIGNAL → world model → operator builds mission → coordinated execution
+```
+
+Summit.OS does not build drones, sensors, cameras, or robots. It connects to the ones you already have — or the ones your customers already have — and makes them work together. Every new adapter added to the platform extends what operators can see, understand, and act on.
+
+**Who it's for:** operators, incident commanders, fleet managers, emergency responders, and developers building on top of real-time sensor data. Any domain where humans need to coordinate autonomous or semi-autonomous systems in the physical world.
+
+**What makes it different:** You bring your own hardware. Summit.OS provides the fabric — signal ingestion, sensor fusion, world model, mission framework, and operator interface — as a unified open platform anyone can deploy, extend, and build on top of.
 
 ## System Architecture
 
 ### Core Principles
 
-1. **Distributed Intelligence**: AI capabilities distributed across edge and cloud
-2. **Real-time Fusion**: Multi-modal sensor data fusion with sub-second latency
-3. **Autonomous Coordination**: Dynamic mission planning and asset coordination
-4. **Edge Resilience**: Offline-capable with local buffering and sync
-5. **Open Architecture**: Standardized APIs for third-party integration
+1. **Connect Anything**: Standardized adapter framework — if it emits a signal, Summit.OS can ingest it
+2. **One World Model**: All signals fused into a single, real-time operational picture regardless of source
+3. **Mission-First**: Operators build and execute missions on top of live data — not the other way around
+4. **Human-in-the-Loop**: Autonomous coordination with operator authority at every decision point
+5. **Open by Default**: Open-source, open APIs, open adapter spec — no vendor lock-in, no black boxes
+6. **Edge Resilient**: Offline-capable with local buffering; syncs when connectivity returns
 
 ### Architectural Layers
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Operator Interface                       │
-│              (Console - Next.js)                 │
+│         OPS · COMMAND · DEV  (Console — Next.js)           │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│                 Command & Control Layer                      │
-│              (Mission Planning & Tasking)                  │
+│                 Mission Layer                               │
+│         Build · Execute · Monitor  (Tasking Service)       │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│                Reasoning & Decision Layer                   │
-│              (AI Intelligence & Risk Assessment)           │
+│                Intelligence Layer                           │
+│         Alerts · Risk · Recommendations  (Intelligence)    │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│              Perception & Fusion Layer                      │
-│         (Multi-modal Sensor Data Fusion)                   │
+│                 World Model Layer                           │
+│         Entity tracking · Fusion  (Fusion Service)         │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
 │                  Data Fabric Layer                         │
-│            (MQTT + Redis Streams + gRPC)                    │
+│            (MQTT + Redis Streams + WebSocket)              │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│                      Edge Layer                            │
-│        (ROS 2 Agents + Local Inference)                    │
+│                  Signal Ingestion Layer                     │
+│   Adapters: drones · cameras · sensors · APIs · anything   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -150,25 +161,34 @@ Summit.OS unifies sensors, drones, and ground robots into a shared, real-time wo
 
 ## Data Flow
 
-### 1. Data Ingestion
 ```
-Edge Devices → Edge Agent → Data Fabric → Fusion Service
+Any Signal Source
+  (drone telemetry, camera, ADS-B, weather, IoT sensor, webhook, NMEA GPS, ...)
+      │
+      ▼
+  Adapter Layer  ─── normalizes to Summit.OS observation schema
+      │
+      ▼
+  Data Fabric  ─── MQTT + Redis Streams
+      │
+      ▼
+  Fusion Service  ─── fuses observations into persistent entity records
+      │
+      ▼
+  World Model  ─── live operational picture (all entities, positions, state)
+      │
+      ├──▶  Intelligence Service  ─── alerts, risk scores, recommendations
+      │
+      └──▶  Tasking Service  ─── operator builds mission on live world model
+                │
+                ▼
+           Mission Execution  ─── coordinates connected assets
+                │
+                ▼
+           API Gateway → Console  ─── operator sees and controls everything
 ```
 
-### 2. Intelligence Processing
-```
-Fusion Service → Intelligence Service → Alert Generation
-```
-
-### 3. Mission Planning
-```
-Intelligence Service → Tasking Service → Mission Execution
-```
-
-### 4. Operator Interface
-```
-All Services → API Gateway → Console
-```
+Every signal source, regardless of manufacturer or protocol, ends up as a normalized entity in the world model. Operators never deal with protocol details — they see a unified picture and build missions from it.
 
 ## Technology Stack
 
@@ -248,31 +268,39 @@ make dev  # Full local development stack
 - **Hybrid**: Edge-cloud synchronization
 - **Disaster Recovery**: Multi-region deployment
 
-## Integration Points
+## Signal Integrations (Adapters)
 
-### Console Integration
-- **REST API**: HTTP/HTTPS for data queries
-- **WebSocket**: Real-time data streams
-- **Event Hooks**: Webhook notifications
-- **Shared Schemas**: Common data models
+Adapters are the growth engine of Summit.OS. Each adapter connects a signal source to the platform. Adding a new adapter makes the platform more valuable for every existing deployment.
 
-### External Systems
-- **ArcGIS**: Geospatial data integration
-- **CAD Systems**: Computer-aided dispatch
-- **Weather APIs**: Real-time weather data
-- **Emergency Services**: 911 integration
+### Built-in Adapters
+| Adapter | Protocol | Use Cases |
+|---|---|---|
+| OpenSky ADS-B | REST | Aircraft tracking, airspace awareness |
+| CelesTrak | REST | Satellite positions, orbital tracking |
+| MAVLink | UDP/TCP/Serial | ArduPilot & PX4 drones, UAV telemetry |
+| RTSP Camera | RTSP | Any IP camera — surveillance, inspection |
+| ONVIF | HTTP | Standards-compliant IP cameras |
+| NMEA GPS | Serial/TCP | GPS receivers, vessels, vehicles |
+| CAP Alerts | XML/Atom | FEMA, NWS, emergency alert systems |
+| Webhook | HTTP | Any system that can POST JSON |
+| MQTT Relay | MQTT | Bridge from another MQTT broker |
 
-## Future Extensions
+### Writing a Custom Adapter
+Any signal source can be integrated by subclassing `BaseAdapter` from `packages/adapters/base.py`. The framework handles reconnection, health tracking, metrics, and MQTT publishing. An adapter implementation is typically 50–100 lines.
 
-### Planned Features
-- **Multi-tenant Support**: Organization isolation
-- **Advanced AI**: GPT integration for natural language
-- **IoT Integration**: Standard IoT protocols
-- **Mobile Apps**: Native mobile applications
-- **API Marketplace**: Third-party integrations
+### Use Cases by Domain
+- **Wildfire / Disaster Response**: Drone imagery + weather stations + ground sensors + CAP alerts
+- **Search & Rescue**: UAV telemetry + NMEA GPS (ground teams) + RTSP cameras + radio relays
+- **Commercial UAV Fleets**: MAVLink telemetry from any autopilot + geofence data + ADS-B awareness
+- **Critical Infrastructure**: ONVIF cameras + IoT sensors + access control + weather data
+- **Maritime**: AIS vessel tracking + NMEA GPS + weather + RTSP dock cameras
+- **Smart Cities / Public Safety**: Any combination of the above
 
-### Scalability Roadmap
-- **Global Deployment**: Multi-continent scaling
-- **Edge Computing**: 5G and edge optimization
-- **Quantum Computing**: Future quantum algorithms
-- **Autonomous Systems**: Fully autonomous operations
+## Future Roadmap
+
+- **Mission Templates**: Shareable, parameterized mission blueprints
+- **Natural Language Missions**: "Dispatch nearest drone to sector 4 and establish visual contact" → executed
+- **Adapter Marketplace**: Community-contributed adapters with one-click install
+- **Multi-tenant**: Isolated organizations on shared infrastructure
+- **Mobile**: Native operator apps (iOS/Android) with offline support
+- **Edge AI**: On-device inference for low-bandwidth deployments

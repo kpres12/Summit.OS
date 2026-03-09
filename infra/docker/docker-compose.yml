@@ -48,6 +48,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # One-time init: create the keycloak database in Postgres
+  keycloak-db-init:
+    image: postgres:15-alpine
+    container_name: summit-keycloak-db-init
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-summit_password}
+    command: >
+      sh -c "psql -h postgres -U summit -d summit_os -c \"SELECT 1 FROM pg_database WHERE datname='keycloak'\" | grep -q 1 || psql -h postgres -U summit -d summit_os -c \"CREATE DATABASE keycloak OWNER summit\""
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   # Summit.OS Services
   fabric:
     build:

@@ -1,8 +1,14 @@
 # Summit.OS
 
-An open-source operating system for coordinating autonomous systems and sensor networks.
+**Connect any signal. Build any mission.**
 
-Summit.OS provides the middleware layer between your sensors, robots, and operators — a unified world model, real-time data fabric, mission tasking runtime, and operator console. It doesn't care if you're tracking drones, ground vehicles, maritime assets, or fixed sensors. Everything is an entity. Everything flows through one shared model.
+Summit.OS is an open-source autonomous systems coordination platform — the integration and coordination layer between your existing sensors, cameras, drones, and assets and the missions you need to run.
+
+You bring your hardware. Summit.OS connects it, fuses the signals into a live world model, and gives your operators one unified interface to understand what's happening and act on it. It works with DJI drones, ONVIF cameras, MAVLink autopilots, ADS-B receivers, weather stations, IoT sensors, and anything else you can write an adapter for.
+
+**Built for:** wildfire response, search & rescue, disaster coordination, commercial UAV operations, maritime safety, critical infrastructure monitoring — any domain where humans need to coordinate autonomous systems in the physical world.
+
+Summit.OS does not build hardware. It makes your hardware work together.
 
 ## Architecture
 

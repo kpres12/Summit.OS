@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Role } from '@/hooks/useRole';
+import { useAuth } from '@/components/AuthProvider';
+import { allowedViews, highestRole, roleLabel } from '@/lib/rbac';
 
 interface RoleCard {
   role: Role;
@@ -11,7 +13,7 @@ interface RoleCard {
   icon: string;
 }
 
-const ROLES: RoleCard[] = [
+const ALL_ROLES: RoleCard[] = [
   {
     role: 'ops',
     label: 'OPS',
@@ -40,6 +42,19 @@ interface RolePickerProps {
 }
 
 export default function RolePicker({ onSelect }: RolePickerProps) {
+  const { user } = useAuth();
+  const roles     = user?.roles ?? [];
+  const allowed   = allowedViews(roles);
+  const topRole   = highestRole(roles);
+
+  // Filter cards to only those the user has access to
+  const visibleCards = ALL_ROLES.filter((r) => allowed.includes(r.role));
+
+  // If only one view is allowed, auto-select it
+  React.useEffect(() => {
+    if (visibleCards.length === 1) onSelect(visibleCards[0].role);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center"
@@ -71,16 +86,59 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
         style={{ height: '1px', background: 'rgba(0,255,156,0.15)' }}
       />
 
-      {/* Role cards */}
-      <div className="flex gap-6">
-        {ROLES.map((r) => (
-          <RoleCardButton key={r.role} card={r} onSelect={onSelect} />
-        ))}
-      </div>
+      {/* Role cards — only what this user can access */}
+      {visibleCards.length > 0 ? (
+        <div className="flex gap-6">
+          {visibleCards.map((r) => (
+            <RoleCardButton key={r.role} card={r} onSelect={onSelect} />
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          padding:    '24px 32px',
+          background: 'rgba(255,59,59,0.06)',
+          border:     '1px solid rgba(255,59,59,0.2)',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
+          fontSize:   '11px',
+          color:      '#FF3B3B',
+          textAlign:  'center',
+        }}>
+          ACCESS DENIED — NO ROLES ASSIGNED<br />
+          <span style={{ color: 'rgba(200,230,201,0.3)', fontSize: '9px', marginTop: '6px', display: 'block' }}>
+            Contact your administrator to be assigned a role.
+          </span>
+        </div>
+      )}
+
+      {/* User identity + role badge */}
+      {user && (
+        <div style={{
+          marginTop:  '32px',
+          display:    'flex',
+          alignItems: 'center',
+          gap:        '10px',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
+          fontSize:   '9px',
+          color:      'rgba(200,230,201,0.3)',
+        }}>
+          <span>{user.email}</span>
+          {topRole && (
+            <span style={{
+              padding:       '2px 8px',
+              background:    'rgba(0,255,156,0.06)',
+              border:        '1px solid rgba(0,255,156,0.2)',
+              color:         '#00FF9C',
+              letterSpacing: '0.1em',
+            }}>
+              {roleLabel(topRole)}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div
-        className="mt-12 text-[10px] tracking-widest"
+        className="mt-8 text-[10px] tracking-widest"
         style={{ color: 'rgba(200,230,201,0.25)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
       >
         AUTONOMOUS SYSTEMS COORDINATION PLATFORM
