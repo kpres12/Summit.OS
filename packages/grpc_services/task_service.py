@@ -1,7 +1,7 @@
 """
 gRPC Task Service for Summit.OS
 
-Implements the Lattice-style Task API:
+Implements the Summit.OS Task API:
 - CreateTask / GetTask / ListTasks / CancelTask
 - AssignTask / CompleteTask / FailTask
 - Task state machine: PENDING → ASSIGNED → RUNNING → COMPLETED/FAILED/CANCELLED
@@ -253,7 +253,7 @@ class TaskStore:
 
 
 class TaskServicer:
-    """gRPC Task service matching Lattice's Task API."""
+    """gRPC Task service for Summit.OS."""
 
     def __init__(self, store: Optional[TaskStore] = None):
         self.store = store or TaskStore()

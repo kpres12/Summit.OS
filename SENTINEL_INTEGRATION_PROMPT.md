@@ -2,11 +2,11 @@
 
 ## Objective
 
-Integrate Summit.OS's enhanced multi-link communication capabilities into the Sentinel wildfire fighting system to match Anduril's Sentry tower communication architecture. This will enable Sentinel towers and drones to operate with the same resilient, multi-modal networking approach used by military-grade autonomous systems.
+Integrate Summit.OS's enhanced multi-link communication capabilities into the Sentinel wildfire fighting system. This will enable Sentinel towers and drones to operate with resilient, multi-modal networking for reliable autonomous coordination in degraded environments.
 
 ## Enhanced Communication Architecture
 
-Sentinel should implement a **layered communication strategy** similar to Anduril's approach:
+Sentinel should implement a **layered communication strategy** for resilient field operations:
 
 ### 1. Local Radio/Mesh Network (Primary - Low Latency)
 - **Purpose**: Ultra-low latency communication between nearby assets (towers, drones, ground vehicles)
@@ -320,4 +320,4 @@ tower:
 5. **Test resilience** with simulated communication failures
 6. **Deploy pilot system** with multi-link towers in high-risk fire areas
 
-This architecture will give Sentinel the same communication resilience and autonomous coordination capabilities as military-grade systems like Anduril's Sentry towers, ensuring reliable wildfire detection and response even in contested or damaged communication environments.
+This architecture gives Sentinel communication resilience and autonomous coordination capabilities suitable for reliable wildfire detection and response even in degraded or damaged communication environments.

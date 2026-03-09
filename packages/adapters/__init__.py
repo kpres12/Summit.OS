@@ -1,0 +1,1 @@
+# Summit.OS Adapter Framework

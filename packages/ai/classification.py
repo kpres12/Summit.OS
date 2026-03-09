@@ -1,7 +1,7 @@
 """
 Entity Classification for Summit.OS
 
-Lattice-style Automatic Target Recognition (ATR) pipeline:
+Summit.OS Automatic Recognition (AR) pipeline:
 - BayesianClassifier: updates entity class probabilities as new
   evidence (detections, radar signatures, behavioral features) arrives.
 - RuleBasedClassifier: deterministic rules for quick classification
@@ -26,7 +26,7 @@ logger = logging.getLogger("ai.classification")
 
 class EntityTaxonomy:
     """
-    Hierarchical entity class taxonomy matching Lattice entity model.
+    Hierarchical entity class taxonomy for Summit.OS.
 
     Level 0: Domain     (AIR, GROUND, SURFACE, SUBSURFACE, SPACE, CYBER)
     Level 1: Category   (FIXED_WING, ROTARY_WING, UAV, ...)
@@ -169,7 +169,7 @@ class EntityClassifier(ABC):
 class BayesianClassifier(EntityClassifier):
     """
     Bayesian entity classifier that updates class probabilities
-    as evidence arrives, matching Lattice's incremental ATR approach.
+    as evidence arrives, using incremental Bayesian updates.
 
     P(class | evidence) ∝ P(evidence | class) * P(class)
 
@@ -398,9 +398,8 @@ class FusionClassifier(EntityClassifier):
     Fuses results from Bayesian and Rule-Based classifiers.
 
     Rule-based results take priority when confidence is high (>0.85),
-    otherwise Bayesian posterior is used. This mirrors how Lattice
-    combines deterministic identifiers (IFF, ADS-B) with probabilistic
-    ATR outputs.
+    otherwise Bayesian posterior is used. This combines deterministic
+    identifiers (IFF, ADS-B) with probabilistic recognition outputs.
     """
 
     def __init__(self, classes: Optional[List[str]] = None):

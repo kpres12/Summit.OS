@@ -9,7 +9,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 ### 1. Data Fusion & Sensemaking (Perception Layer)
 
 **Purpose**: Convert raw sensor streams into a unified world model  
-**Analogous to**: LatticeOS "sensor fusion + environment model"
+**Layer**: Data Fusion & Sensemaking (Perception)
 
 #### AI Capabilities:
 - **Multimodal Sensor Fusion**: Weather, LiDAR, IR, visual data → spatial context
@@ -27,7 +27,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 ### 2. Object Detection, Classification & Tracking
 
 **Purpose**: Know what's out there and how it's moving  
-**Analogous to**: LatticeOS object tracking and threat detection
+**Layer**: Object Detection, Classification & Tracking
 
 #### AI Capabilities:
 - **Computer Vision Models** (ONNX/TensorRT): Detect smoke, tools, humans, vehicles, pipes, waste bins
@@ -44,7 +44,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 ### 3. Autonomous Operations & Decision Reasoning (Task Layer)
 
 **Purpose**: Decide what to do next given goals and constraints  
-**Analogous to**: LatticeOS "autonomous command & control"
+**Layer**: Autonomous Operations & Decision Reasoning (Task)
 
 #### AI Capabilities:
 - **Mission Planning**: Graph-based planners + reinforcement learning for optimal task assignment

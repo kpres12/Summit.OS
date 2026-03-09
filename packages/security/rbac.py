@@ -2,7 +2,7 @@
 Role-Based Access Control (RBAC) for Summit.OS
 
 Provides:
-- Role/Permission definitions matching Lattice access patterns
+- Role/Permission definitions for Summit.OS access control
 - Hierarchical role inheritance
 - Resource-level permission checks
 - Audit logging

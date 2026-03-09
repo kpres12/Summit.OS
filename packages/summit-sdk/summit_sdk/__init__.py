@@ -2,7 +2,7 @@
 Summit.OS SDK
 
 Programmatic Python SDK for interacting with Summit.OS services.
-Mirrors Lattice SDK patterns (Go/Java/TypeScript/Python).
+Python SDK for Summit.OS services (REST + WebSocket + gRPC).
 """
 from .client import SummitClient
 from .integration import IntegrationClient

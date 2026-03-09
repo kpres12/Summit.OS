@@ -7,7 +7,7 @@ Provides a high-level Python API for Summit.OS services:
 - Sensor data ingestion
 - Mesh status monitoring
 
-Mirrors Lattice SDK patterns with REST + WebSocket transports.
+REST + WebSocket transports for Summit.OS services.
 """
 from __future__ import annotations
 

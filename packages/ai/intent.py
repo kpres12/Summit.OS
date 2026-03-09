@@ -7,7 +7,7 @@ Predicts entity intent from observed behavior:
   (loitering, approach, evasion, formation, patrol)
 - ThreatAssessor: fuses trajectory + behavior into threat level
 
-Mirrors Lattice's advisory and threat assessment capabilities.
+Provides advisory and situational assessment capabilities.
 """
 from __future__ import annotations
 

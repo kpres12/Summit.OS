@@ -6,7 +6,7 @@ Provides:
 - TLSContextFactory: creates SSL contexts for server/client with mTLS
 - Certificate rotation and revocation support
 
-Matches Lattice's zero-trust mTLS mesh networking security model.
+Implements zero-trust mTLS mesh networking for Summit.OS services.
 """
 from __future__ import annotations
 

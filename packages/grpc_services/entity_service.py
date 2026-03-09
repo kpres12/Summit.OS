@@ -1,7 +1,7 @@
 """
 gRPC Entity Service for Summit.OS
 
-Implements the Lattice-style Entity API:
+Implements the Summit.OS Entity API:
 - GetEntity / ListEntities / WatchEntities (server-stream)
 - CreateEntity / UpdateEntity / DeleteEntity
 - Bulk operations for high-throughput ingest
@@ -189,7 +189,7 @@ class EntityServicer:
     gRPC service implementation for entities.
 
     Can be registered with a grpc.aio.server or used standalone.
-    Methods follow Lattice's Entity API pattern.
+    Methods follow the Summit.OS Entity API pattern.
     """
 
     def __init__(self, store: Optional[EntityStore] = None):
