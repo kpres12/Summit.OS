@@ -70,13 +70,32 @@ async def lifespan(app: FastAPI):
     
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
-    
+
+    # Initialise MFA user store (creates tables if not present)
+    try:
+        from security.user_store import UserMFAStore  # packages/ added to path by mfa router import
+        from routers.mfa import init_mfa_router
+        mfa_db_url = os.getenv("MFA_DATABASE_URL", db_url)
+        mfa_store = UserMFAStore(database_url=mfa_db_url)
+        await mfa_store.initialize()
+        init_mfa_router(mfa_store)
+        logger.info("MFA store initialised")
+    except Exception as exc:
+        logger.warning("MFA store init failed (non-fatal): %s", exc)
+
     yield
-    
+
     if engine:
         await engine.dispose()
 
 app = FastAPI(title="Summit API Gateway", version="0.4.1", lifespan=lifespan)
+
+# ── MFA / Auth router ────────────────────────────────────────────────────────
+try:
+    from routers.mfa import router as mfa_router
+    app.include_router(mfa_router)
+except Exception as _mfa_exc:
+    logger.warning("MFA router not loaded: %s", _mfa_exc)
 
 # CORS for local dev (console at 3000)
 try:

@@ -9,6 +9,7 @@
  * sees any token — they go straight into httpOnly cookies.
  */
 
+import { timingSafeEqual } from 'crypto';
 import { type NextRequest, NextResponse } from 'next/server';
 import {
   AUTH_CONFIG,
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(`${loginUrl}?error=session_expired`);
   }
 
-  if (!state || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(storedState))) {
+  if (!state || !timingSafeEqual(Buffer.from(state), Buffer.from(storedState))) {
     return NextResponse.redirect(`${loginUrl}?error=invalid_state`);
   }
 
