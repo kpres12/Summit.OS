@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authConfig, exchangeCodeForTokens, extractUser } from '../../../lib/auth';
 
-export default function AuthCallbackPage() {
+function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -75,13 +75,13 @@ export default function AuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
+      <div className="min-h-screen flex items-center justify-center bg-[#080C0A]">
         <div className="text-center space-y-4">
-          <div className="text-[#FF3333] text-xl font-mono">Authentication Failed</div>
-          <div className="text-[#00FF91] text-sm font-mono">{error}</div>
+          <div className="text-[#FF3B3B] text-xl font-mono">Authentication Failed</div>
+          <div className="text-[#00FF9C] text-sm font-mono">{error}</div>
           <button
             onClick={() => router.push('/')}
-            className="mt-4 px-6 py-2 bg-[#00FF91] text-[#0A0A0A] font-mono hover:bg-[#00CC74] transition-colors"
+            className="mt-4 px-6 py-2 bg-[#00FF9C] text-[#080C0A] font-mono hover:bg-[#00CC74] transition-colors"
           >
             Return Home
           </button>
@@ -91,13 +91,29 @@ export default function AuthCallbackPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A]">
+    <div className="min-h-screen flex items-center justify-center bg-[#080C0A]">
       <div className="text-center space-y-4">
-        <div className="text-[#00FF91] text-xl font-mono animate-pulse">
+        <div className="text-[#00FF9C] text-xl font-mono animate-pulse">
           Authenticating...
         </div>
-        <div className="w-16 h-16 border-4 border-[#00FF91] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-16 h-16 border-4 border-[#00FF9C] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#080C0A]">
+          <div className="text-[#00FF9C] text-xl font-mono animate-pulse">
+            Authenticating...
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackInner />
+    </Suspense>
   );
 }
