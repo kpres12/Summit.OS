@@ -17,7 +17,7 @@ jobs:
 
       - name: Install common Python deps
         run: |
-          pip install flake8 black pytest pytest-cov pytest-asyncio anyio httpx mypy
+          pip install flake8 black pytest pytest-cov pytest-asyncio anyio httpx mypy bandit
 
       - name: Install per-service deps
         run: |
@@ -26,8 +26,13 @@ jobs:
               pip install -r "apps/$svc/requirements.txt"
             fi
           done
-          # FastAPI / SQLAlchemy / Pydantic are required by all services
-          pip install fastapi uvicorn sqlalchemy aiosqlite pydantic httpx prometheus-client
+          pip install fastapi uvicorn sqlalchemy aiosqlite pydantic httpx prometheus-client cryptography
+
+      - name: Install SDK and packages
+        run: |
+          pip install -e packages/sdk
+          # Optional deps: install what's available, skip the rest
+          pip install pymodbus asyncua pymavlink pynacl || true
 
       - name: Lint Python services (advisory)
         run: |
@@ -36,10 +41,29 @@ jobs:
             --extend-ignore=E302,E303,E402,E501,W291,W292,W293,W391,F401 \
             --exit-zero
 
+      - name: Lint adapters and packages (advisory)
+        run: |
+          flake8 adapters/ packages/ \
+            --max-line-length=120 \
+            --extend-ignore=E302,E303,E402,E501,W291,W292,W293,W391,F401 \
+            --exit-zero
+
       - name: Format check (advisory)
         continue-on-error: true
         run: |
-          black --check --diff apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway apps/inference || echo 'Format drift detected — run make format to fix'
+          black --check --diff \
+            apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway apps/inference \
+            adapters/ packages/ \
+            || echo 'Format drift detected — run: black adapters/ packages/ apps/'
+
+      - name: Security scan (bandit)
+        continue-on-error: true
+        run: |
+          bandit -r apps/ packages/ adapters/ \
+            -ll \
+            --exclude apps/console \
+            -f txt \
+            || echo 'Bandit findings above — review before merge'
 
       - name: Node setup (console)
         uses: actions/setup-node@v4
@@ -57,23 +81,64 @@ jobs:
           npm run lint
           npm run typecheck
 
-      - name: Run unit tests with coverage
+      - name: Validate SDK import
+        env:
+          PYTHONPATH: ${{ github.workspace }}/packages
+        run: |
+          python -c "
+          from sdk import BaseAdapter, AdapterManifest, EntityBuilder, Protocol, Capability
+          from sdk.manifest import Protocol, Capability
+          from sdk.entity import EntityBuilder
+          print('SDK import OK — BaseAdapter, AdapterManifest, EntityBuilder all importable')
+          "
+
+      - name: Run unit tests (SDK, rate limiter, policy signer)
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          cd apps/fabric && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
-          cd apps/fusion && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
-          cd apps/intelligence && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
-          cd apps/tasking && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
-          cd apps/api-gateway && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../.. 
+          python -m pytest tests/unit/ -v --tb=short \
+            --cov=packages/sdk \
+            --cov=apps/fabric \
+            --cov=packages/policy \
+            --cov=packages/secrets \
+            --cov=packages/identity \
+            --cov-report=term-missing \
+            -p no:warnings
 
-      - name: Run WorldStore and entity tests
+      - name: Run adapter simulation tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          OPENSKY_ENABLED: "true"
+          CELESTRAK_ENABLED: "true"
+          MODBUS_ENABLED: "true"
+          OPCUA_ENABLED: "true"
+          MAVLINK_ENABLED: "true"
+        run: |
+          python -m pytest tests/unit/test_adapters.py -v --tb=short -p no:warnings
+
+      - name: Run per-service unit tests
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python -m pytest packages/ -v --tb=short --ignore=packages/summit-sdk --ignore=packages/summit-os-sdk || true
+          for svc in fabric fusion intelligence tasking api-gateway; do
+            if [ -d "apps/$svc/tests" ]; then
+              echo "--- Testing $svc ---"
+              cd apps/$svc && python -m pytest tests/ -v --tb=short --cov=. --cov-report=term-missing && cd ../..
+            fi
+          done
 
-      - name: mypy (continue on error)
+      - name: Run WorldStore and packages tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m pytest packages/ -v --tb=short \
+            --ignore=packages/sdk \
+            --ignore=packages/summit-sdk \
+            --ignore=packages/summit-os-sdk \
+            || true
+
+      - name: mypy (advisory)
+        continue-on-error: true
         run: make mypy || true
 
       - name: Run integration tests
@@ -82,18 +147,15 @@ jobs:
         run: |
           python -m pytest tests/integration/test_e2e_pipeline.py -v --tb=short
 
-      - name: Validate SDK packaging
-        run: |
-          pip install -e packages/summit-sdk
-          python -c "from summit_sdk import SummitClient, RetryPolicy, CircuitBreaker, SummitError; print('SDK import OK')"
-
-      - name: Run E2E gateway tests
+      - name: Run E2E gateway tests (live stack optional)
         env:
           PYTHONPATH: ${{ github.workspace }}
           GATEWAY_TEST_MODE: "true"
         run: |
-          pip install anyio
-          python -m pytest tests/e2e/test_gateway_live.py -v --tb=short || true
+          python -m pytest tests/e2e/test_gateway_live.py \
+                           tests/e2e/test_api_version.py \
+                           tests/e2e/test_device_identity.py \
+            -v --tb=short || true
 
       - name: Summary
         run: echo "CI completed"
@@ -114,12 +176,12 @@ jobs:
         run: pip install build twine
 
       - name: Build SDK wheel
-        run: python -m build packages/summit-sdk
+        run: python -m build packages/sdk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: packages/summit-sdk/dist/*
+          files: packages/sdk/dist/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

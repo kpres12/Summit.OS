@@ -2,26 +2,24 @@
 Summit.OS Modbus/TCP Adapter
 
 Polls industrial hardware via Modbus/TCP and publishes each register
-as a Summit.OS Entity into the data fabric via MQTT.
+as a Summit.OS ASSET Entity into the data fabric.
 
 Modbus is the lingua franca of industrial automation — PLCs, pumps,
-pressure sensors, flow meters, HVAC, and power meters all speak it.
-If Summit.OS can read Modbus, it can talk to the majority of the
-world's industrial infrastructure.
+pressure sensors, flow meters, HVAC, and power meters.
 
 Register Map Config (MODBUS_REGISTER_MAP env var, path to JSON file):
     [
       {
         "address": 40001,
-        "register_type": "holding",   // "holding", "input", "coil", "discrete"
+        "register_type": "holding",
         "name": "PressureValve_01",
         "class_label": "pressure_sensor",
         "unit": "PSI",
-        "scale": 0.1,                 // multiply raw value by this
-        "offset": 0.0,                // add after scaling
+        "scale": 0.1,
+        "offset": 0.0,
         "domain": "GROUND",
-        "warn_above": 800.0,          // value that sets state -> WARNING
-        "critical_above": 950.0,      // value that sets state -> CRITICAL
+        "warn_above": 800.0,
+        "critical_above": 950.0,
         "warn_below": null,
         "critical_below": null
       }
@@ -31,107 +29,53 @@ Environment variables:
     MODBUS_ENABLED          - "true" to enable (default: "false")
     MODBUS_HOST             - PLC/device host (default: "localhost")
     MODBUS_PORT             - Modbus TCP port (default: 502)
-    MODBUS_DEVICE_ID        - logical device name used in entity IDs (default: "modbus-device-01")
+    MODBUS_DEVICE_ID        - logical device name (default: "modbus-device-01")
     MODBUS_UNIT_ID          - Modbus unit/slave ID (default: 1)
     MODBUS_POLL_INTERVAL    - seconds between polls (default: 5)
-    MODBUS_REGISTER_MAP     - path to JSON register map file (default: built-in demo map)
+    MODBUS_REGISTER_MAP     - path to JSON register map file
     MODBUS_ORG_ID           - org_id for multi-tenant filtering (default: "")
     MQTT_HOST / MQTT_PORT   - broker connection
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
+import math
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
+
+from sdk import BaseAdapter, AdapterManifest, EntityBuilder, Protocol, Capability
+
 logger = logging.getLogger("summit.adapter.modbus")
 
-# Default demo register map — describes a hypothetical pumping station.
-# Operators replace this with their actual register map JSON file.
 DEFAULT_REGISTER_MAP: List[Dict[str, Any]] = [
-    {
-        "address": 40001,
-        "register_type": "holding",
-        "name": "Inlet_Pressure",
-        "class_label": "pressure_sensor",
-        "unit": "PSI",
-        "scale": 0.1,
-        "offset": 0.0,
-        "domain": "GROUND",
-        "warn_above": 800.0,
-        "critical_above": 950.0,
-        "warn_below": None,
-        "critical_below": 10.0,
-    },
-    {
-        "address": 40002,
-        "register_type": "holding",
-        "name": "Outlet_Pressure",
-        "class_label": "pressure_sensor",
-        "unit": "PSI",
-        "scale": 0.1,
-        "offset": 0.0,
-        "domain": "GROUND",
-        "warn_above": 750.0,
-        "critical_above": 900.0,
-        "warn_below": None,
-        "critical_below": 5.0,
-    },
-    {
-        "address": 40003,
-        "register_type": "holding",
-        "name": "Flow_Rate",
-        "class_label": "flow_meter",
-        "unit": "L/min",
-        "scale": 0.01,
-        "offset": 0.0,
-        "domain": "GROUND",
-        "warn_above": 5000.0,
-        "critical_above": None,
-        "warn_below": 10.0,
-        "critical_below": 0.0,
-    },
-    {
-        "address": 40004,
-        "register_type": "holding",
-        "name": "Motor_Temperature",
-        "class_label": "temperature_sensor",
-        "unit": "degC",
-        "scale": 0.1,
-        "offset": 0.0,
-        "domain": "GROUND",
-        "warn_above": 80.0,
-        "critical_above": 100.0,
-        "warn_below": None,
-        "critical_below": None,
-    },
-    {
-        "address": 1,
-        "register_type": "coil",
-        "name": "Main_Valve",
-        "class_label": "valve",
-        "unit": "bool",
-        "scale": 1.0,
-        "offset": 0.0,
-        "domain": "GROUND",
-        "warn_above": None,
-        "critical_above": None,
-        "warn_below": None,
-        "critical_below": None,
-    },
+    {"address": 40001, "register_type": "holding", "name": "Inlet_Pressure",
+     "class_label": "pressure_sensor", "unit": "PSI", "scale": 0.1, "offset": 0.0,
+     "domain": "GROUND", "warn_above": 800.0, "critical_above": 950.0, "critical_below": 10.0},
+    {"address": 40002, "register_type": "holding", "name": "Outlet_Pressure",
+     "class_label": "pressure_sensor", "unit": "PSI", "scale": 0.1, "offset": 0.0,
+     "domain": "GROUND", "warn_above": 750.0, "critical_above": 900.0, "critical_below": 5.0},
+    {"address": 40003, "register_type": "holding", "name": "Flow_Rate",
+     "class_label": "flow_meter", "unit": "L/min", "scale": 0.01, "offset": 0.0,
+     "domain": "GROUND", "warn_above": 5000.0, "warn_below": 10.0, "critical_below": 0.0},
+    {"address": 40004, "register_type": "holding", "name": "Motor_Temperature",
+     "class_label": "temperature_sensor", "unit": "degC", "scale": 0.1, "offset": 0.0,
+     "domain": "GROUND", "warn_above": 80.0, "critical_above": 100.0},
+    {"address": 1, "register_type": "coil", "name": "Main_Valve",
+     "class_label": "valve", "unit": "bool", "scale": 1.0, "offset": 0.0, "domain": "GROUND"},
 ]
 
 
 def _load_register_map(path: Optional[str]) -> List[Dict[str, Any]]:
     if not path:
-        logger.info("No register map file specified — using built-in demo map")
         return DEFAULT_REGISTER_MAP
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
         logger.info(f"Loaded {len(data)} register definitions from {path}")
         return data
@@ -140,102 +84,22 @@ def _load_register_map(path: Optional[str]) -> List[Dict[str, Any]]:
         return DEFAULT_REGISTER_MAP
 
 
-def _compute_state(value: float, reg: Dict[str, Any]) -> str:
-    """Map a scaled register value to a Summit entity state."""
-    critical_above = reg.get("critical_above")
-    critical_below = reg.get("critical_below")
-    warn_above = reg.get("warn_above")
-    warn_below = reg.get("warn_below")
+class ModbusAdapter(BaseAdapter):
+    """Polls a Modbus/TCP device and publishes register values as ASSET entities."""
 
-    if critical_above is not None and value >= critical_above:
-        return "CRITICAL"
-    if critical_below is not None and value <= critical_below:
-        return "CRITICAL"
-    if warn_above is not None and value >= warn_above:
-        return "WARNING"
-    if warn_below is not None and value <= warn_below:
-        return "WARNING"
-    return "ACTIVE"
-
-
-def _register_to_entity(
-    reg: Dict[str, Any],
-    raw_value: Any,
-    device_id: str,
-    org_id: str,
-    now_iso: str,
-) -> Dict[str, Any]:
-    """Convert a raw Modbus register value to a Summit.OS Entity dict."""
-    name = reg["name"]
-    reg_type = reg.get("register_type", "holding")
-    unit = reg.get("unit", "")
-    scale = float(reg.get("scale", 1.0))
-    offset = float(reg.get("offset", 0.0))
-    domain = reg.get("domain", "GROUND")
-    address = reg["address"]
-
-    # Scale the raw value
-    if reg_type == "coil" or reg_type == "discrete":
-        scaled = 1.0 if raw_value else 0.0
-    else:
-        scaled = float(raw_value) * scale + offset
-
-    state = _compute_state(scaled, reg)
-
-    entity_id = f"modbus-{device_id}-{name.lower().replace(' ', '-')}"
-
-    return {
-        "entity_id": entity_id,
-        "id": entity_id,
-        "entity_type": "ASSET",
-        "domain": domain,
-        "state": state,
-        "name": f"{device_id}/{name}",
-        "class_label": reg.get("class_label", "sensor"),
-        "confidence": 1.0,
-        "kinematics": {
-            "position": {
-                "latitude": 0.0,
-                "longitude": 0.0,
-                "altitude_msl": 0.0,
-                "altitude_agl": 0.0,
-            },
-            "heading_deg": 0.0,
-            "speed_mps": 0.0,
-            "climb_rate": 0.0,
-        },
-        "provenance": {
-            "source_id": f"modbus-{device_id}",
-            "source_type": "modbus",
-            "org_id": org_id,
-            "created_at": time.time(),
-            "updated_at": time.time(),
-            "version": 1,
-        },
-        "metadata": {
-            "value": str(round(scaled, 4)),
-            "raw_value": str(raw_value),
-            "unit": unit,
-            "register_address": str(address),
-            "register_type": reg_type,
-            "device_id": device_id,
-            "protocol": "modbus",
-            "state_reason": state,
-        },
-        "ttl_seconds": 30,
-        "ts": now_iso,
-    }
-
-
-class ModbusAdapter:
-    """
-    Polls a Modbus/TCP device and publishes register values as
-    Summit.OS ASSET entities to MQTT.
-    """
+    MANIFEST = AdapterManifest(
+        name="modbus",
+        version="1.0.0",
+        protocol=Protocol.MODBUS,
+        capabilities=[Capability.READ],
+        entity_types=["ASSET"],
+        description="Industrial Modbus/TCP adapter — PLCs, pumps, sensors, valves",
+        required_env=["MODBUS_HOST"],
+        optional_env=["MODBUS_PORT", "MODBUS_UNIT_ID", "MODBUS_REGISTER_MAP", "MODBUS_POLL_INTERVAL"],
+    )
 
     def __init__(
         self,
-        mqtt_client: Any,
         host: str = os.getenv("MODBUS_HOST", "localhost"),
         port: int = int(os.getenv("MODBUS_PORT", "502")),
         device_id: str = os.getenv("MODBUS_DEVICE_ID", "modbus-device-01"),
@@ -243,80 +107,55 @@ class ModbusAdapter:
         poll_interval: float = float(os.getenv("MODBUS_POLL_INTERVAL", "5")),
         register_map_path: Optional[str] = os.getenv("MODBUS_REGISTER_MAP"),
         org_id: str = os.getenv("MODBUS_ORG_ID", ""),
+        **kwargs,
     ):
-        self.mqtt = mqtt_client
+        super().__init__(device_id=device_id, org_id=org_id, **kwargs)
         self.host = host
         self.port = port
-        self.device_id = device_id
         self.unit_id = unit_id
         self.poll_interval = max(poll_interval, 1.0)
-        self.org_id = org_id
         self.registers = _load_register_map(register_map_path)
-        self._stop = asyncio.Event()
         self._stats = {"polls": 0, "published": 0, "errors": 0}
 
     @property
     def enabled(self) -> bool:
         return os.getenv("MODBUS_ENABLED", "false").lower() == "true"
 
-    async def start(self):
-        if not self.enabled:
-            logger.info("Modbus adapter disabled")
-            return
-
+    async def run(self):
         logger.info(
-            f"Modbus adapter starting (host={self.host}:{self.port}, "
-            f"device={self.device_id}, unit={self.unit_id}, "
-            f"registers={len(self.registers)}, interval={self.poll_interval}s)"
+            f"Modbus adapter running (host={self.host}:{self.port}, "
+            f"device={self.device_id}, registers={len(self.registers)}, "
+            f"interval={self.poll_interval}s)"
         )
-
-        while not self._stop.is_set():
+        while not self.stopped:
             try:
                 await self._poll()
             except Exception as e:
                 self._stats["errors"] += 1
                 logger.error(f"Modbus poll error: {e}")
-
-            try:
-                await asyncio.wait_for(self._stop.wait(), timeout=self.poll_interval)
-                break
-            except asyncio.TimeoutError:
-                pass
-
-        logger.info(f"Modbus adapter stopped (stats={self._stats})")
-
-    async def stop(self):
-        self._stop.set()
+            await self.sleep(self.poll_interval)
 
     async def _poll(self):
-        """Connect to device, read all registers, publish entities."""
         try:
             from pymodbus.client import AsyncModbusTcpClient
-            from pymodbus.exceptions import ModbusException
         except ImportError:
             logger.warning("pymodbus not installed — publishing simulated Modbus data")
             await self._poll_simulated()
             return
 
-        now_iso = datetime.now(timezone.utc).isoformat()
         published = 0
-
         async with AsyncModbusTcpClient(self.host, port=self.port) as client:
             if not client.connected:
                 logger.error(f"Could not connect to Modbus device at {self.host}:{self.port}")
                 self._stats["errors"] += 1
                 return
-
             for reg in self.registers:
                 try:
                     raw = await self._read_register(client, reg)
                     if raw is None:
                         continue
-                    entity = _register_to_entity(
-                        reg, raw, self.device_id, self.org_id, now_iso
-                    )
-                    topic = f"entities/{entity['entity_id']}/update"
-                    self.mqtt.publish(topic, json.dumps(entity), qos=1)
+                    entity = self._reg_to_entity(reg, raw)
+                    self.publish(entity, qos=1)
                     published += 1
                 except Exception as e:
                     logger.debug(f"Register {reg.get('address')} read error: {e}")
@@ -326,13 +165,9 @@ class ModbusAdapter:
         logger.info(f"Modbus: published {published}/{len(self.registers)} registers from {self.device_id}")
 
     async def _read_register(self, client: Any, reg: Dict[str, Any]) -> Optional[Any]:
-        """Read a single register and return its raw value."""
         address = reg["address"]
         reg_type = reg.get("register_type", "holding")
         count = reg.get("count", 1)
-
-        # Modbus addressing: holding registers are 1-indexed in convention
-        # but pymodbus uses 0-based. Normalize 4xxxx -> 0-based.
         addr = (address % 10000) - 1 if address >= 10000 else address
 
         if reg_type == "holding":
@@ -344,43 +179,61 @@ class ModbusAdapter:
         elif reg_type == "discrete":
             result = await client.read_discrete_inputs(addr, count=count, slave=self.unit_id)
         else:
-            logger.warning(f"Unknown register type: {reg_type}")
             return None
 
         if result.isError():
-            logger.debug(f"Modbus error reading {reg_type}@{address}: {result}")
             return None
+        return result.bits[0] if reg_type in ("coil", "discrete") else result.registers[0]
 
-        if reg_type in ("coil", "discrete"):
-            return result.bits[0]
-        else:
-            return result.registers[0]
+    def _reg_to_entity(self, reg: Dict[str, Any], raw: Any) -> Dict[str, Any]:
+        name = reg["name"]
+        reg_type = reg.get("register_type", "holding")
+        unit = reg.get("unit", "")
+        scale = float(reg.get("scale", 1.0))
+        offset = float(reg.get("offset", 0.0))
+
+        scaled = (1.0 if raw else 0.0) if reg_type in ("coil", "discrete") else float(raw) * scale + offset
+
+        b = (
+            EntityBuilder(
+                f"modbus-{self.device_id}-{name.lower().replace(' ', '-')}",
+                f"{self.device_id}/{name}",
+            )
+            .asset()
+            .ground()
+            .label(reg.get("class_label", "sensor"))
+            .value(scaled, unit)
+            .source("modbus", f"modbus-{self.device_id}")
+            .org(self.org_id)
+            .ttl(30)
+            .meta_dict({
+                "raw_value": str(raw),
+                "register_address": str(reg["address"]),
+                "register_type": reg_type,
+                "device_id": self.device_id,
+                "protocol": "modbus",
+            })
+        )
+
+        if reg.get("warn_above") is not None:
+            b = b.warn_above(float(reg["warn_above"]))
+        if reg.get("critical_above") is not None:
+            b = b.critical_above(float(reg["critical_above"]))
+        if reg.get("warn_below") is not None:
+            b = b.warn_below(float(reg["warn_below"]))
+        if reg.get("critical_below") is not None:
+            b = b.critical_below(float(reg["critical_below"]))
+
+        return b.build()
 
     async def _poll_simulated(self):
-        """Publish simulated register values when pymodbus is unavailable."""
-        import math
-        now_iso = datetime.now(timezone.utc).isoformat()
         t = time.time()
-        published = 0
-
-        sim_values = {
-            "holding": int(500 + 100 * math.sin(t * 0.1)),   # oscillating analog
-            "input": int(300 + 50 * math.cos(t * 0.05)),
-            "coil": bool(int(t) % 10 < 7),                    # mostly open
-            "discrete": True,
-        }
-
         for reg in self.registers:
             reg_type = reg.get("register_type", "holding")
-            raw = sim_values.get(reg_type, 0)
-            entity = _register_to_entity(
-                reg, raw, self.device_id, self.org_id, now_iso
-            )
+            raw = (int(500 + 100 * math.sin(t * 0.1)) if reg_type in ("holding", "input")
+                   else bool(int(t) % 10 < 7))
+            entity = self._reg_to_entity(reg, raw)
             entity["metadata"]["simulated"] = "true"
-            topic = f"entities/{entity['entity_id']}/update"
-            self.mqtt.publish(topic, json.dumps(entity), qos=1)
-            published += 1
-
+            self.publish(entity, qos=1)
         self._stats["polls"] += 1
-        self._stats["published"] += published
-        logger.info(f"Modbus (simulated): published {published} entities")
+        logger.debug(f"Modbus (simulated): published {len(self.registers)} entities")
