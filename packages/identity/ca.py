@@ -267,16 +267,20 @@ class DeviceCA:
         try:
             from cryptography import x509
             from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.asymmetric import ec, rsa, padding
             from cryptography.x509.oid import NameOID
 
             cert = x509.load_pem_x509_certificate(cert_pem.encode())
 
-            # Verify signature
-            self._ca_cert.public_key().verify(
-                cert.signature,
-                cert.tbs_certificate_bytes,
-                cert.signature_hash_algorithm,
-            )
+            # Verify signature — EC and RSA keys require different verify() call signatures
+            pub_key = self._ca_cert.public_key()
+            hash_alg = cert.signature_hash_algorithm
+            if isinstance(pub_key, ec.EllipticCurvePublicKey):
+                pub_key.verify(cert.signature, cert.tbs_certificate_bytes, ec.ECDSA(hash_alg))
+            elif isinstance(pub_key, rsa.RSAPublicKey):
+                pub_key.verify(cert.signature, cert.tbs_certificate_bytes, padding.PKCS1v15(), hash_alg)
+            else:
+                raise ValueError(f"Unsupported CA key type: {type(pub_key).__name__}")
 
             # Check expiry
             now = datetime.datetime.now(datetime.timezone.utc)
