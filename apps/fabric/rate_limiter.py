@@ -126,8 +126,12 @@ class MQTTRateLimiter:
 
     def _get_bucket(self, source_id: str) -> _TokenBucket:
         if source_id not in self._buckets:
-            rate = _SOURCE_OVERRIDES.get(source_id, self.default_rate)
-            burst = rate * 2  # burst = 2x rate for per-source overrides
+            if source_id in _SOURCE_OVERRIDES:
+                rate = _SOURCE_OVERRIDES[source_id]
+                burst = rate * 2  # burst = 2x rate for per-source overrides
+            else:
+                rate = self.default_rate
+                burst = self.default_burst
             self._buckets[source_id] = _TokenBucket(rate, burst)
         return self._buckets[source_id]
 
