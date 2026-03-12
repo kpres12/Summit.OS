@@ -26,7 +26,7 @@ const pipelineDomain: DomainConfig = {
     drone: { displayName: 'Inspection Drone', icon: '●', color: '#4AEDC4' },
     crew: { displayName: 'Maintenance Crew', icon: '●', color: '#4AEDC4' },
     friendly: { displayName: 'Asset', icon: '●', color: '#4AEDC4' },
-    hostile: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
+    alert: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
     neutral: { displayName: 'Infrastructure', icon: '◆', color: '#a1a1aa' },
     unknown: { displayName: 'Unclassified', icon: '?', color: '#FFB300' },
   },

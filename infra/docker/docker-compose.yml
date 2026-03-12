@@ -406,6 +406,9 @@ services:
       - CELESTRAK_MAX_SATS=${CELESTRAK_MAX_SATS:-200}
       - CELESTRAK_PROPAGATE_INTERVAL=${CELESTRAK_PROPAGATE_INTERVAL:-30}
       - CELESTRAK_GROUP=${CELESTRAK_GROUP:-active}
+      - AIS_ENABLED=${AIS_ENABLED:-true}
+      - AIS_BBOX=${AIS_BBOX:-}
+      - AISHUB_USERNAME=${AISHUB_USERNAME:-}
     depends_on:
       mqtt:
         condition: service_healthy

@@ -135,7 +135,7 @@ export default function MissionTimeline() {
           <div className="flex justify-between text-[10px] text-[#006644] font-mono mt-1">
             <span>PLANNING</span>
             <span>APPROVAL</span>
-            <span>DISPATCH</span>
+            <span>ASSIGN</span>
             <span>ACTIVE</span>
             <span>COMPLETE</span>
           </div>

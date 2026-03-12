@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { connectWebSocket } from '@/lib/api';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 const EXAMPLE_COMMANDS = [
   'patrol sector 4',
   'return all assets',
@@ -25,8 +27,8 @@ function domainTag(domain: string): string {
 
 function entityTypeColor(type: string): string {
   switch (type) {
-    case 'friendly': return '#00FF9C';
-    case 'hostile': return '#FF3B3B';
+    case 'active': return '#00FF9C';
+    case 'alert': return '#FF3B3B';
     case 'neutral': return 'rgba(200,230,201,0.45)';
     default: return '#FFB300';
   }
@@ -49,6 +51,7 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
   const { entityCount, entityList } = useEntityStream();
   const [chips, setChips] = useState<DetectionChip[]>([]);
   const [command, setCommand] = useState('');
+  const [cmdFeedback, setCmdFeedback] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -110,14 +113,26 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
 
   const activeEntities = entityList.filter((e) => e.speed_mps > 0.5);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (command.trim()) {
-      setHistory((prev) => [...prev, command]);
-      console.log('Command:', command);
-      setCommand('');
-      setHistoryIndex(-1);
+    const cmd = command.trim();
+    if (!cmd) return;
+    setHistory((prev) => [...prev, cmd]);
+    setCommand('');
+    setHistoryIndex(-1);
+    setCmdFeedback('SENDING...');
+    try {
+      const r = await fetch(`${API}/agents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mission_objective: cmd }),
+      });
+      const data = await r.json();
+      setCmdFeedback(data.ok ? `AGENT ${data.agent_id || 'STARTED'}` : `ERR: ${data.error || 'failed'}`);
+    } catch {
+      setCmdFeedback('SERVER UNREACHABLE');
     }
+    setTimeout(() => setCmdFeedback(null), 3000);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -207,21 +222,30 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
           >
             &gt;
           </span>
-          <input
-            type="text"
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={EXAMPLE_COMMANDS[placeholderIdx]}
-            className="flex-1 text-xs outline-none"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: '#00FF9C',
-              background: 'transparent',
-              border: 'none',
-              caretColor: '#00FF9C',
-            }}
-          />
+          {cmdFeedback ? (
+            <span
+              className="flex-1 text-xs"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: cmdFeedback.startsWith('ERR') || cmdFeedback === 'SERVER UNREACHABLE' ? '#FF3B3B' : '#00FF9C' }}
+            >
+              {cmdFeedback}
+            </span>
+          ) : (
+            <input
+              type="text"
+              value={command}
+              onChange={(e) => setCommand(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={EXAMPLE_COMMANDS[placeholderIdx]}
+              className="flex-1 text-xs outline-none"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: '#00FF9C',
+                background: 'transparent',
+                border: 'none',
+                caretColor: '#00FF9C',
+              }}
+            />
+          )}
         </form>
       </div>
 

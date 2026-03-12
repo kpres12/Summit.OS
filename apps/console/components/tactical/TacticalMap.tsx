@@ -44,8 +44,8 @@ export default function TacticalMap({ layers }: TacticalMapProps) {
 
   const markerColor = (e: EntityData) => {
     switch (e.entity_type) {
-      case 'friendly': return '#34d399';
-      case 'hostile': return '#ef4444';
+      case 'active': return '#34d399';
+      case 'alert': return '#ef4444';
       case 'neutral': return '#a1a1aa';
       default: return '#fbbf24';
     }

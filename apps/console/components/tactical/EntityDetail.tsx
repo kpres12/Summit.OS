@@ -11,7 +11,7 @@ interface EntityDetailProps {
 
 const TYPE_COLORS: Record<string, string> = {
   friendly: 'text-blue-400',
-  hostile: 'text-red-400',
+  alert: 'text-red-400',
   neutral: 'text-gray-400',
   unknown: 'text-yellow-400',
 };

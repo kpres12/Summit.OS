@@ -23,8 +23,8 @@ function domainTag(domain: string): string {
 
 function entityTypeColor(type: string): string {
   switch (type) {
-    case 'friendly': return '#00FF9C';
-    case 'hostile': return '#FF3B3B';
+    case 'active': return '#00FF9C';
+    case 'alert': return '#FF3B3B';
     case 'neutral': return 'rgba(200,230,201,0.45)';
     default: return '#FFB300';
   }

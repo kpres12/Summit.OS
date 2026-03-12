@@ -13,8 +13,8 @@ from .ai_models import SummitAIModels
 from .exceptions import SummitOSError, AuthenticationError, ConnectionError
 
 __version__ = "1.0.0"
-__author__ = "Big Mountain Technologies"
-__email__ = "sdk@bigmt.ai"
+__author__ = "Summit.OS Contributors"
+__email__ = ""
 
 __all__ = [
     "SummitClient",

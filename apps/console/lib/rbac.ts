@@ -84,7 +84,7 @@ export function roleLabel(role: SummitRole): string {
   const labels: Record<SummitRole, string> = {
     VIEWER:            'Viewer',
     OPERATOR:          'Operator',
-    MISSION_COMMANDER: 'Mission Commander',
+    MISSION_COMMANDER: 'Operations Lead',
     ADMIN:             'Admin',
     SUPER_ADMIN:       'Super Admin',
   };

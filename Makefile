@@ -1,7 +1,6 @@
 # Summit.OS Development Environment
-# Big Mountain Technologies — Distributed Intelligence Fabric
 
-.PHONY: help dev dev-services dev-apps dev-console dev-backend clean test lint format install-deps
+.PHONY: help dev dev-services dev-apps dev-console dev-backend mock clean test lint format install-deps
 
 # Default target
 help:
@@ -12,7 +11,8 @@ help:
 	@echo "  make dev           - Start full development environment"
 	@echo "  make dev-services  - Start infrastructure services only"
 	@echo "  make dev-apps      - Start Summit.OS applications"
-	@echo "  make dev-console   - Start Console only"
+	@echo "  make dev-console   - Start Console only
+  make mock          - Start mock server + console (no Docker required)"
 	@echo "  make dev-backend   - Start backend services only"
 	@echo "  make smoke         - Run end-to-end smoke test"
 	@echo "  make sim           - Launch SITL/HITL sim executor (local)"
@@ -72,6 +72,15 @@ dev-adapters:
 	@echo "Starting external data adapters..."
 	@docker-compose -f infra/docker/docker-compose.yml up -d adapters
 	@echo "Adapters started (OpenSky + CelesTrak)"
+
+# No-Docker dev: mock server + console (great for local dev without Docker)
+mock:
+	@echo "Starting Summit.OS mock server (no Docker required)..."
+	@pip install -r requirements_mock.txt -q
+	@echo "Mock server → http://localhost:8000  |  WS → ws://localhost:8001/ws"
+	@python scripts/mock_server.py &
+	@echo "Starting console..."
+	@cd apps/console && npm install --silent && npm run dev
 
 # Console only
 dev-console:

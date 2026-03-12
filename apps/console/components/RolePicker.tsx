@@ -17,15 +17,15 @@ const ALL_ROLES: RoleCard[] = [
   {
     role: 'ops',
     label: 'OPS',
-    subtitle: 'Field Operator',
-    description: 'Full-screen map. Asset monitoring. Mission dispatch.',
+    subtitle: 'Field Coordinator',
+    description: 'Full-screen map. Live entity tracking. Task assignment.',
     icon: '◉',
   },
   {
     role: 'command',
     label: 'COMMAND',
-    subtitle: 'Mission Commander',
-    description: 'Situation overview. Resource management. Approval authority.',
+    subtitle: 'Operations Lead',
+    description: 'Operations overview. Resource management. Mission approvals.',
     icon: '⬡',
   },
   {

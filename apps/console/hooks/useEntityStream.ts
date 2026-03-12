@@ -15,7 +15,7 @@ export interface EntityPosition {
 
 export interface EntityData {
   entity_id: string;
-  entity_type: 'friendly' | 'hostile' | 'neutral' | 'unknown';
+  entity_type: 'active' | 'alert' | 'neutral' | 'unknown';
   domain: 'aerial' | 'ground' | 'maritime' | 'fixed' | 'sensor';
   classification: string;
   position: EntityPosition;

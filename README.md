@@ -47,11 +47,29 @@ Summit.OS does not build hardware. It makes your hardware work together.
 
 ## Quick Start
 
-```bash
-git clone <repo-url>
-cd Summit.OS
+### No Docker (fastest — works on any machine)
 
-# Start everything (infrastructure + services + console)
+```bash
+git clone https://github.com/summit-os/summit-os.git
+cd summit-os
+
+# Install mock server deps (once)
+pip install -r requirements_mock.txt
+
+# Terminal 1: start the mock API + live ADS-B data
+make mock
+
+# Terminal 2: start the console
+make dev-console
+
+# Open http://localhost:3000
+# Live aircraft from OpenSky Network appear on the map immediately.
+```
+
+### Full Stack (Docker required)
+
+```bash
+# Start everything (infrastructure + all services + console)
 make dev
 
 # Verify the stack is healthy
@@ -59,8 +77,9 @@ make health
 
 # Run the end-to-end smoke test
 make smoke
+```
 
-# Access
+```
 # Console:     http://localhost:3000
 # API Gateway: http://localhost:8000
 # Grafana:     http://localhost:3001
@@ -169,4 +188,4 @@ See `CONTRIBUTING.md` for setup instructions, branching conventions, and PR proc
 
 ## License
 
-Proprietary — all rights reserved. License TBD at public launch.
+Apache 2.0 — see [LICENSE](LICENSE).

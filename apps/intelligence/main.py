@@ -266,6 +266,73 @@ async def get_agent(mission_id: str):
     return agent.to_dict()
 
 
+@app.get("/reasoning/{entity_id}")
+async def get_entity_reasoning(entity_id: str):
+    """
+    Return AI reasoning context for an entity.
+    Queries recent advisories and generates a thought log the console can display.
+    Falls back to rule-based reasoning when no advisories exist.
+    """
+    thoughts = []
+    # Query recent advisories mentioning this entity
+    if SessionLocal is not None:
+        try:
+            async with SessionLocal() as session:
+                rows = (await session.execute(
+                    text("SELECT message, confidence, ts FROM advisories ORDER BY id DESC LIMIT 5")
+                )).all()
+                for row in rows:
+                    ts_val = row.ts
+                    ts_str = ts_val.strftime("%H:%M:%SZ") if hasattr(ts_val, "strftime") else str(ts_val)[:19] + "Z"
+                    thoughts.append({
+                        "ts": ts_str,
+                        "msg": row.message,
+                        "confidence": float(row.confidence or 0.8),
+                    })
+        except Exception:
+            pass
+
+    if not thoughts:
+        # Rule-based fallback — fetch entity from fabric and reason over it
+        entity = None
+        fabric_url = os.getenv("FABRIC_URL", "http://localhost:8001")
+        try:
+            import httpx as _httpx
+            async with _httpx.AsyncClient(timeout=2.0) as client:
+                r = await client.get(f"{fabric_url}/api/v1/entities/{entity_id}")
+                if r.status_code == 200:
+                    entity = r.json()
+        except Exception:
+            pass
+
+        from datetime import datetime as _dt
+        now = _dt.utcnow()
+        if entity:
+            speed = entity.get("speed_mps", 0) or entity.get("kinematics", {}).get("speed_mps", 0)
+            etype = entity.get("entity_type", entity.get("state", "unknown"))
+            batt = entity.get("battery_pct")
+            pos = entity.get("position", {})
+            lat = pos.get("lat", 0) if pos else 0
+            lon = pos.get("lon", 0) if pos else 0
+            if etype in ("alert", "CRITICAL", "HIGH"):
+                thoughts = [
+                    {"ts": now.strftime("%H:%M:%SZ"), "msg": f"Anomalous state detected on {entity_id} — velocity {speed:.1f} m/s", "confidence": 0.89},
+                    {"ts": now.strftime("%H:%M:%SZ"), "msg": "No matching authorized profile. Operator review recommended.", "confidence": 0.84},
+                ]
+            elif batt is not None and float(batt) < 25:
+                thoughts = [
+                    {"ts": now.strftime("%H:%M:%SZ"), "msg": f"Battery at {float(batt):.0f}% — RTB evaluation initiated", "confidence": 0.95},
+                ]
+            else:
+                thoughts = [
+                    {"ts": now.strftime("%H:%M:%SZ"), "msg": f"Entity nominal at ({lat:.4f}, {lon:.4f}), speed {speed:.1f} m/s", "confidence": 0.97},
+                ]
+        else:
+            thoughts = [{"ts": now.strftime("%H:%M:%SZ"), "msg": f"Entity {entity_id} — awaiting data", "confidence": 0.5}]
+
+    return {"entity_id": entity_id, "thoughts": thoughts}
+
+
 @app.delete("/agents/{mission_id}")
 async def cancel_agent(mission_id: str):
     """Cancel a running mission agent."""

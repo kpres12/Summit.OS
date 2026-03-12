@@ -11,8 +11,9 @@ import OpsMissions from './OpsMissions';
 import OpsEntityDetail from './OpsEntityDetail';
 import OpsBottomBar from './OpsBottomBar';
 import OpsMapView from './OpsMapView';
+import OpsHardware from './OpsHardware';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'system';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system';
 
 interface OpsLayoutProps {
   onSwitchRole: () => void;
@@ -25,7 +26,7 @@ function OpsMapLayers() {
     { id: 'tracks', label: 'TRACKS', enabled: true },
     { id: 'geofences', label: 'GEOFENCES', enabled: false },
     { id: 'grid', label: 'GRID OVERLAY', enabled: false },
-    { id: 'threat', label: 'THREAT ZONES', enabled: false },
+    { id: 'threat', label: 'ALERT ZONES', enabled: false },
   ]);
 
   const toggle = (id: string) => {
@@ -186,6 +187,7 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       case 'entities': return <OpsEntityList />;
       case 'missions': return <OpsMissions />;
       case 'layers': return <OpsMapLayers />;
+      case 'hardware': return <OpsHardware />;
       case 'system': return <OpsSystem />;
       default: return null;
     }

@@ -15,12 +15,12 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="summit-os-sdk",
     version="0.1.0a1",
-    author="Big Mountain Technologies",
-    author_email="sdk@bigmt.ai",
-    description="Python SDK for Summit.OS distributed intelligence fabric",
+    author="Summit.OS Contributors",
+    author_email="",
+    description="Python SDK for Summit.OS autonomous systems coordination platform",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/bigmt/summit-os-sdk",
+    url="https://github.com/summit-os/summit-os",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",

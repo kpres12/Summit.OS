@@ -35,7 +35,7 @@ function EntityExplorer() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const types = ['ALL', 'friendly', 'hostile', 'neutral', 'unknown'];
+  const types = ['ALL', 'active', 'alert', 'neutral', 'unknown'];
   const statuses = ['ALL', 'aerial', 'ground', 'maritime', 'fixed', 'sensor'];
 
   const filtered = entityList.filter((e) => {
@@ -51,8 +51,8 @@ function EntityExplorer() {
 
   function entityTypeColor(type: string): string {
     switch (type) {
-      case 'friendly': return '#00FF9C';
-      case 'hostile': return '#FF3B3B';
+      case 'active': return '#00FF9C';
+      case 'alert': return '#FF3B3B';
       case 'neutral': return 'rgba(200,230,201,0.45)';
       default: return '#FFB300';
     }
