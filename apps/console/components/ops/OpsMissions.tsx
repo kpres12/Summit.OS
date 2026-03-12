@@ -38,7 +38,6 @@ function MissionTimeline({ status }: { status: string }) {
         const current = !isFailed && i === activeIdx;
         const failed = isFailed && i === (currentIdx >= 0 ? currentIdx : 2);
         const color = failed ? '#FF3B3B' : done || current ? '#00FF9C' : 'rgba(200,230,201,0.15)';
-        const textColor = failed ? '#FF3B3B' : done || current ? '#00FF9C' : 'rgba(200,230,201,0.25)';
         return (
           <React.Fragment key={phase}>
             <div
