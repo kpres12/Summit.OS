@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "summit-sdk"
+version = "1.0.0"
+description = "Summit.OS Adapter SDK — build physical world adapters for the Summit.OS platform"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = [
+    "paho-mqtt>=1.6.0",
+]
+
+[project.optional-dependencies]
+modbus = ["pymodbus>=3.6.0"]
+opcua  = ["asyncua>=1.0.0"]
+mavlink = ["pymavlink>=2.4.40"]
+all = ["pymodbus>=3.6.0", "asyncua>=1.0.0", "pymavlink>=2.4.40"]
+
+[project.urls]
+Homepage = "https://github.com/summit-os/summit-os"
+Documentation = "https://summit-os.dev/docs/sdk"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["summit_sdk*"]

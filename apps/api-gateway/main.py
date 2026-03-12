@@ -203,7 +203,33 @@ async def lifespan(app: FastAPI):
     if engine:
         await engine.dispose()
 
-app = FastAPI(title="Summit API Gateway", version="0.4.1", lifespan=lifespan)
+SUMMIT_API_VERSION = "1"
+SUMMIT_OS_VERSION = "1.0.0"
+
+app = FastAPI(
+    title="Summit.OS API Gateway",
+    version=SUMMIT_OS_VERSION,
+    lifespan=lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
+
+# ── API Version header middleware ─────────────────────────────────────────────
+# Every response carries X-Summit-API-Version and X-Summit-OS-Version headers
+# so clients can detect breaking changes.
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as _StarletteRequest
+from starlette.responses import Response as _StarletteResponse
+
+class _VersionHeaderMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: _StarletteRequest, call_next):
+        response = await call_next(request)
+        response.headers["X-Summit-API-Version"] = SUMMIT_API_VERSION
+        response.headers["X-Summit-OS-Version"] = SUMMIT_OS_VERSION
+        return response
+
+app.add_middleware(_VersionHeaderMiddleware)
 
 # Audit logging middleware — must be added before CORS so it wraps all requests
 try:
@@ -280,9 +306,137 @@ except Exception:
     pass
 
 
+@app.get("/api/version")
+async def api_version():
+    """Returns current API and platform version. Use this to check compatibility."""
+    return {
+        "api_version": SUMMIT_API_VERSION,
+        "summit_os_version": SUMMIT_OS_VERSION,
+        "min_sdk_version": "1.0.0",
+        "supported_api_versions": [SUMMIT_API_VERSION],
+        "deprecations": [],
+    }
+
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "api-gateway"}
+    return {"status": "ok", "service": "api-gateway", "version": SUMMIT_OS_VERSION}
+
+
+# ── Device Identity Endpoints ─────────────────────────────────────────────────
+# /v1/devices/register  — register a device and receive its cert
+# /v1/devices           — list registered devices (org-scoped)
+# /v1/devices/{id}/revoke — revoke a device
+
+_device_registry = None
+_device_ca = None
+
+async def _get_device_registry():
+    global _device_registry, _device_ca
+    if _device_registry is None:
+        import sys as _sys
+        from pathlib import Path as _Path
+        _pkgs = str(_Path(__file__).resolve().parents[2] / "packages")
+        if _pkgs not in _sys.path:
+            _sys.path.insert(0, _pkgs)
+        try:
+            from identity.registry import DeviceRegistry
+            from identity.ca import DeviceCA
+            _device_ca = DeviceCA()
+            await _device_ca.initialize()
+            _device_registry = DeviceRegistry()
+            await _device_registry.initialize()
+        except Exception as e:
+            logger.warning(f"Device identity system unavailable: {e}")
+    return _device_registry, _device_ca
+
+
+class _DeviceRegisterRequest(BaseModel):
+    device_id: str
+    device_type: str = "device"
+    org_id: str = ""
+    capabilities: list = []
+    metadata: dict = {}
+
+
+@app.post("/v1/devices/register", status_code=201)
+async def register_device(
+    req: _DeviceRegisterRequest,
+    org_id: Optional[str] = Depends(get_org_id),
+):
+    """
+    Register a new device and issue it a certificate.
+
+    Returns the device certificate (cert_pem) and private key (key_pem).
+    The key is returned ONCE — Summit.OS does not store it.
+    Store it securely on the device.
+    """
+    registry, ca = await _get_device_registry()
+    if registry is None:
+        raise HTTPException(status_code=503, detail="Device identity system unavailable")
+
+    effective_org = org_id or req.org_id
+
+    cert = await ca.issue_device_cert(
+        device_id=req.device_id,
+        device_type=req.device_type,
+        org_id=effective_org,
+    )
+    if cert is None:
+        raise HTTPException(status_code=500, detail="Certificate issuance failed")
+
+    ok = await registry.register(
+        device_id=req.device_id,
+        fingerprint=cert.fingerprint,
+        device_type=req.device_type,
+        org_id=effective_org,
+        capabilities=req.capabilities,
+        metadata=req.metadata,
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail="Device registration failed")
+
+    return {
+        "device_id": req.device_id,
+        "fingerprint": cert.fingerprint,
+        "cert_pem": cert.cert_pem,
+        "key_pem": cert.key_pem,   # returned once — never stored by Summit.OS
+        "not_before": cert.not_before.isoformat(),
+        "not_after": cert.not_after.isoformat(),
+        "message": "Store the key_pem securely on the device. It will not be shown again.",
+    }
+
+
+@app.get("/v1/devices")
+async def list_devices(org_id: Optional[str] = Depends(get_org_id)):
+    """List all registered devices for this org."""
+    registry, _ = await _get_device_registry()
+    if registry is None:
+        raise HTTPException(status_code=503, detail="Device identity system unavailable")
+    devices = await registry.list_devices(org_id=org_id)
+    # Never expose fingerprints in list — only device metadata
+    return {
+        "devices": [
+            {k: v for k, v in d.items() if k not in ("fingerprint",)}
+            for d in devices
+        ],
+        "count": len(devices),
+    }
+
+
+@app.post("/v1/devices/{device_id}/revoke")
+async def revoke_device(
+    device_id: str,
+    reason: str = "operator-revoked",
+    org_id: Optional[str] = Depends(get_org_id),
+):
+    """Revoke a device's authorization. The device cannot reconnect after revocation."""
+    registry, _ = await _get_device_registry()
+    if registry is None:
+        raise HTTPException(status_code=503, detail="Device identity system unavailable")
+    ok = await registry.revoke(device_id, reason=reason)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
+    return {"device_id": device_id, "status": "revoked", "reason": reason}
 
 @app.get("/readyz")
 async def readyz():

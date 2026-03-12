@@ -7,10 +7,18 @@ from typing import Callable, Optional, Dict, Any
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import MQTTMessage
 
+try:
+    from rate_limiter import MQTTRateLimiter, extract_source_id
+    _RATE_LIMITER = MQTTRateLimiter()
+    _RATE_LIMIT_AVAILABLE = True
+except ImportError:
+    _RATE_LIMIT_AVAILABLE = False
+    _RATE_LIMITER = None
+
 
 class MQTTClient:
-    """Async MQTT client wrapper."""
-    
+    """Async MQTT client wrapper with per-source rate limiting."""
+
     def __init__(
         self,
         broker: str,
@@ -24,16 +32,16 @@ class MQTTClient:
         self.username = username
         self.password = password
         self.keepalive = keepalive
-        
+
         self.client = mqtt.Client()
         self.client.username_pw_set(username, password)
-        
+
         # Set up callbacks
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         self.client.on_message = self._on_message
         self.client.on_publish = self._on_publish
-        
+
         self.connected = False
         self.subscriptions: Dict[str, Callable] = {}
         
@@ -51,18 +59,32 @@ class MQTTClient:
         logging.info(f"Disconnected from MQTT broker: {rc}")
     
     def _on_message(self, client, userdata, msg: MQTTMessage):
-        """MQTT message callback."""
+        """MQTT message callback — rate-limited per source."""
         topic = msg.topic
         payload = msg.payload.decode('utf-8')
-        
+
+        # Rate limit check: parse payload once to extract source_id
+        if _RATE_LIMIT_AVAILABLE and _RATE_LIMITER is not None:
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError:
+                logging.error(f"Invalid JSON in MQTT message on {topic}: {payload[:200]}")
+                return
+            source_id = extract_source_id(topic, data)
+            if not _RATE_LIMITER.allow(source_id):
+                return  # silently drop — rate limiter already logged it
+        else:
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError:
+                logging.error(f"Invalid JSON in MQTT message on {topic}: {payload[:200]}")
+                return
+
         # Find and call subscription handler
         for pattern, handler in self.subscriptions.items():
             if self._topic_matches(topic, pattern):
                 try:
-                    data = json.loads(payload)
                     asyncio.create_task(self._handle_message(handler, topic, data))
-                except json.JSONDecodeError:
-                    logging.error(f"Invalid JSON in MQTT message: {payload}")
                 except Exception as e:
                     logging.error(f"Error handling MQTT message: {e}")
                 break

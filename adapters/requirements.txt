@@ -1,3 +1,6 @@
 httpx>=0.25.0
 paho-mqtt>=1.6.0
 sgp4>=2.22
+pymodbus>=3.6.0
+asyncua>=1.0.0
+pymavlink>=2.4.40
