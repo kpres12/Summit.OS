@@ -10,8 +10,8 @@ jobs:
   lint-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
         with:
           python-version: '3.11'
 
@@ -28,10 +28,10 @@ jobs:
           done
           pip install fastapi uvicorn sqlalchemy aiosqlite pydantic httpx prometheus-client cryptography
 
-      - name: Install SDK and packages
+      - name: Install SDK optional deps
         run: |
-          pip install -e packages/sdk
-          # Optional deps: install what's available, skip the rest
+          # SDK is imported via PYTHONPATH — no pip install needed
+          # Optional hardware library deps: install what's available, skip the rest
           pip install pymodbus asyncua pymavlink pynacl || true
 
       - name: Lint Python services (advisory)
@@ -66,7 +66,7 @@ jobs:
             || echo 'Bandit findings above — review before merge'
 
       - name: Node setup (console)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.1.0
         with:
           node-version: '20'
 
@@ -167,8 +167,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
         with:
           python-version: '3.11'
 
@@ -179,7 +179,7 @@ jobs:
         run: python -m build packages/sdk
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: packages/sdk/dist/*
           generate_release_notes: true
