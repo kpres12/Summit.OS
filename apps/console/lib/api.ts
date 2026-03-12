@@ -7,7 +7,7 @@
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001';
+const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001/ws';
 
 export interface ApiErrorDetail {
   message: string;
@@ -122,7 +122,7 @@ export async function fetchWorldState() {
 export function connectWebSocket(onMessage: (data: unknown) => void): WebSocket | null {
   if (typeof window === 'undefined') return null;
   try {
-    const ws = new WebSocket(`${WS_BASE}/ws`);
+    const ws = new WebSocket(WS_BASE);
     ws.onmessage = (event) => {
       try { onMessage(JSON.parse(event.data)); } catch { /* non-JSON */ }
     };

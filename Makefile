@@ -11,8 +11,8 @@ help:
 	@echo "  make dev           - Start full development environment"
 	@echo "  make dev-services  - Start infrastructure services only"
 	@echo "  make dev-apps      - Start Summit.OS applications"
-	@echo "  make dev-console   - Start Console only
-  make mock          - Start mock server + console (no Docker required)"
+	@echo "  make dev-console   - Start Console only"
+	@echo "  make mock          - Start mock server + console (no Docker required)"
 	@echo "  make dev-backend   - Start backend services only"
 	@echo "  make smoke         - Run end-to-end smoke test"
 	@echo "  make sim           - Launch SITL/HITL sim executor (local)"

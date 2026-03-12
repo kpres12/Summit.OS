@@ -23,6 +23,52 @@ function statusColor(status: string): string {
   }
 }
 
+const PHASE_ORDER = ['PLANNING', 'STAGING', 'ACTIVE', 'RETURNING', 'COMPLETED'];
+
+function MissionTimeline({ status }: { status: string }) {
+  const s = status.toUpperCase();
+  const currentIdx = PHASE_ORDER.indexOf(s);
+  const activeIdx = currentIdx >= 0 ? currentIdx : s === 'FAILED' ? -1 : 0;
+  const isFailed = s === 'FAILED';
+
+  return (
+    <div className="flex items-center gap-0 mt-2 mb-1" style={{ height: '18px' }}>
+      {PHASE_ORDER.map((phase, i) => {
+        const done = !isFailed && i < activeIdx;
+        const current = !isFailed && i === activeIdx;
+        const failed = isFailed && i === (currentIdx >= 0 ? currentIdx : 2);
+        const color = failed ? '#FF3B3B' : done || current ? '#00FF9C' : 'rgba(200,230,201,0.15)';
+        const textColor = failed ? '#FF3B3B' : done || current ? '#00FF9C' : 'rgba(200,230,201,0.25)';
+        return (
+          <React.Fragment key={phase}>
+            <div
+              title={phase}
+              style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: current ? color : done ? color : 'transparent',
+                border: `1px solid ${color}`,
+                flexShrink: 0,
+                boxShadow: current ? `0 0 4px ${color}` : 'none',
+              }}
+            />
+            {i < PHASE_ORDER.length - 1 && (
+              <div style={{ flex: 1, height: '1px', background: done ? '#00FF9C40' : 'rgba(200,230,201,0.1)', minWidth: '4px' }} />
+            )}
+          </React.Fragment>
+        );
+      })}
+      <span
+        className="ml-2 text-[8px]"
+        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: isFailed ? '#FF3B3B' : 'rgba(200,230,201,0.35)', whiteSpace: 'nowrap' }}
+      >
+        {isFailed ? 'FAILED' : PHASE_ORDER[activeIdx] || s}
+      </span>
+    </div>
+  );
+}
+
 export default function OpsMissions() {
   const [missions, setMissions] = useState<MissionAPI[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,6 +201,9 @@ export default function OpsMissions() {
                   ))}
                 </div>
               )}
+
+              {/* Timeline */}
+              <MissionTimeline status={mission.status} />
 
               {/* Timestamp */}
               <div

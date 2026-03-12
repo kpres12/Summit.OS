@@ -130,6 +130,7 @@ _ws_clients: Set = set()
 _loop: asyncio.AbstractEventLoop = None  # set in main()
 _adapters: List[dict] = []
 _agents: List[dict] = []
+_geofences: List[dict] = []
 
 # ── OpenSky fetch ─────────────────────────────────────────────────────────────
 
@@ -285,20 +286,23 @@ class MockHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split("?")[0]
 
-        if path in ("/alerts", "/api/alerts"):
+        if path in ("/alerts", "/api/alerts", "/v1/alerts"):
             return self._send({"alerts": SAMPLE_ALERTS, "total": len(SAMPLE_ALERTS)})
 
-        if path in ("/missions", "/api/missions"):
+        if path in ("/missions", "/api/missions", "/v1/missions"):
             return self._send({"missions": [], "total": 0})
 
-        if path in ("/geofences", "/api/geofences"):
-            return self._send({"geofences": [], "total": 0})
+        if path in ("/geofences", "/api/geofences", "/v1/geofences"):
+            return self._send({"geofences": _geofences, "total": len(_geofences)})
 
-        if path in ("/entities", "/api/entities"):
+        if path in ("/entities", "/api/entities", "/v1/entities"):
             return self._send({"entities": list(_entities.values()), "total": len(_entities)})
 
-        if path in ("/api/version", "/version"):
+        if path in ("/api/version", "/version", "/v1/version"):
             return self._send({"api_version": "1", "os_version": "0.3.0-dev", "service": "mock"})
+
+        if path in ("/worldstate", "/v1/worldstate"):
+            return self._send({"entities": list(_entities.values()), "total": len(_entities)})
 
         if path in ("/health", "/api/health"):
             return self._send({"status": "ok", "entities": len(_entities), "ws_clients": len(_ws_clients)})
@@ -375,18 +379,51 @@ class MockHandler(BaseHTTPRequestHandler):
             try:
                 import uuid
                 payload = json.loads(body)
+                command = payload.get("command", "")
+                entity_id = payload.get("entity_id")
+
+                # OPA-style safety gate (mock enforcement)
+                HALT_COMMANDS = {"HALT", "RETURN_TO_BASE", "KILL_SWITCH"}
+                if command.upper() in HALT_COMMANDS:
+                    # Check entity is known before allowing override commands
+                    entity = _entities.get(entity_id or "")
+                    if entity_id and not entity:
+                        return self._send({"ok": False, "error": f"OPA DENY: entity '{entity_id}' not found in world model", "policy": "entity_existence"}, 403)
+                    # RTB requires entity to be aerial or ground domain
+                    if command.upper() == "RETURN_TO_BASE" and entity:
+                        if entity.get("domain") not in ("aerial", "ground"):
+                            return self._send({"ok": False, "error": f"OPA DENY: RTB not applicable to {entity.get('domain')} domain", "policy": "domain_capability"}, 403)
+                    log.info(f"OPA ALLOW: {command} for entity {entity_id or 'n/a'}")
+
                 agent = {
                     "agent_id": str(uuid.uuid4())[:8],
-                    "mission_objective": payload.get("mission_objective", ""),
-                    "entity_id": payload.get("entity_id"),
-                    "command": payload.get("command"),
+                    "mission_objective": payload.get("mission_objective", command or ""),
+                    "entity_id": entity_id,
+                    "command": command,
                     "status": "RUNNING",
                     "created_at": int(time.time()),
                 }
                 _agents.append(agent)
                 _db_save_agent(agent)
-                log.info(f"Agent started: {agent['agent_id']} — {agent['mission_objective'][:60]}")
+                log.info(f"Agent started: {agent['agent_id']} — {agent.get('mission_objective', '')[:60]}")
                 return self._send({"ok": True, "agent_id": agent["agent_id"], "status": "RUNNING"})
+            except Exception as exc:
+                return self._send({"ok": False, "error": str(exc)}, 400)
+
+        if path in ("/geofences", "/api/geofences", "/v1/geofences"):
+            try:
+                import uuid
+                payload = json.loads(body)
+                geo = {
+                    "geofence_id": str(uuid.uuid4())[:8],
+                    "name": payload.get("name", "unnamed"),
+                    "type": payload.get("type", "exclusion"),
+                    "coordinates": payload.get("coordinates", []),
+                    "created_at": int(time.time()),
+                }
+                _geofences.append(geo)
+                log.info(f"Geofence created: {geo['name']} ({geo['type']}, {len(geo['coordinates'])} vertices)")
+                return self._send({"ok": True, "geofence_id": geo["geofence_id"]})
             except Exception as exc:
                 return self._send({"ok": False, "error": str(exc)}, 400)
 

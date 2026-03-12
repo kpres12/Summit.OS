@@ -344,16 +344,6 @@ async def cancel_agent(mission_id: str):
     return {"mission_id": mission_id, "status": "CANCELLED"}
 
 
-# ── Plainview models (legacy) ─────────────────────────────────────────────────
-
-# Import Plainview models
-try:
-    from plainview_models import get_flow_detector, get_valve_predictor, get_pipeline_assessor
-    PLAINVIEW_MODELS_AVAILABLE = True
-except Exception as e:
-    logger.info(": %s", e)
-    PLAINVIEW_MODELS_AVAILABLE = False
-
 async def _get_org_id(req: _Req) -> str | None:
     return req.headers.get("X-Org-ID") or req.headers.get("x-org-id")
 
@@ -361,7 +351,7 @@ async def _get_org_id(req: _Req) -> str | None:
 async def list_advisories(risk_level: Optional[str] = None, limit: int = 50, org_id: str | None = Depends(_get_org_id)):
     """List recent advisories, optionally filtered by risk level."""
     assert SessionLocal is not None
-    
+
     async with SessionLocal() as session:
         base = "SELECT advisory_id, observation_id, risk_level, message, confidence, ts FROM advisories"
         where = []
@@ -374,42 +364,9 @@ async def list_advisories(risk_level: Optional[str] = None, limit: int = 50, org
             params["org_id"] = org_id
         sql = base + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT :lim"
         rows = (await session.execute(text(sql), params)).all()
-        
+
         return [Advisory(**dict(r._mapping)) for r in rows]
 
-
-# Plainview-specific endpoints
-@app.post("/plainview/flow/analyze")
-async def analyze_flow(metrics: dict):
-    """Analyze flow metrics for anomalies (Plainview integration)."""
-    if not PLAINVIEW_MODELS_AVAILABLE:
-        return {"error": "Plainview models not available", "fallback": True}
-    
-    detector = get_flow_detector()
-    result = detector.detect(metrics)
-    return result
-
-
-@app.post("/plainview/valve/health")
-async def predict_valve_health(valve_data: dict):
-    """Predict valve health and maintenance window (Plainview integration)."""
-    if not PLAINVIEW_MODELS_AVAILABLE:
-        return {"error": "Plainview models not available", "fallback": True}
-    
-    predictor = get_valve_predictor()
-    result = predictor.predict_health(valve_data)
-    return result
-
-
-@app.post("/plainview/pipeline/assess")
-async def assess_pipeline(pipeline_data: dict):
-    """Assess pipeline integrity (Plainview integration)."""
-    if not PLAINVIEW_MODELS_AVAILABLE:
-        return {"error": "Plainview models not available", "fallback": True}
-    
-    assessor = get_pipeline_assessor()
-    result = assessor.assess(pipeline_data)
-    return result
 
 async def _risk_scoring_processor():
     """Background processor that consumes observations and generates risk-scored advisories."""

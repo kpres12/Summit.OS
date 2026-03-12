@@ -52,6 +52,7 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
   const [chips, setChips] = useState<DetectionChip[]>([]);
   const [command, setCommand] = useState('');
   const [cmdFeedback, setCmdFeedback] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -97,6 +98,9 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
     return () => { ws?.close(); };
   }, [handleMsg]);
 
+  // Clean up polling on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
   // Auto-scroll feed to right
   useEffect(() => {
     if (feedRef.current) {
@@ -128,11 +132,45 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
         body: JSON.stringify({ mission_objective: cmd }),
       });
       const data = await r.json();
-      setCmdFeedback(data.ok ? `AGENT ${data.agent_id || 'STARTED'}` : `ERR: ${data.error || 'failed'}`);
+      if (!data.ok) {
+        setCmdFeedback(`ERR: ${data.error || 'failed'}`);
+        setTimeout(() => setCmdFeedback(null), 3000);
+        return;
+      }
+      const agentId = data.agent_id;
+      setCmdFeedback(`AGENT ${agentId} RUNNING`);
+      // Poll agent status until terminal state
+      if (pollRef.current) clearInterval(pollRef.current);
+      let polls = 0;
+      pollRef.current = setInterval(async () => {
+        polls++;
+        try {
+          const sr = await fetch(`${API}/agents`);
+          const sd = await sr.json();
+          const agent = (sd.agents || []).find((a: { agent_id: string; status: string }) => a.agent_id === agentId);
+          if (agent) {
+            const s = agent.status as string;
+            setCmdFeedback(`AGENT ${agentId} ${s}`);
+            if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(s) || polls >= 6) {
+              clearInterval(pollRef.current!);
+              pollRef.current = null;
+              setTimeout(() => setCmdFeedback(null), 2000);
+            }
+          } else if (polls >= 6) {
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
+            setTimeout(() => setCmdFeedback(null), 2000);
+          }
+        } catch {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setTimeout(() => setCmdFeedback(null), 2000);
+        }
+      }, 4000);
     } catch {
       setCmdFeedback('SERVER UNREACHABLE');
+      setTimeout(() => setCmdFeedback(null), 3000);
     }
-    setTimeout(() => setCmdFeedback(null), 3000);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

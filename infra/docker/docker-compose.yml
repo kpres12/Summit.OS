@@ -409,9 +409,14 @@ services:
       - AIS_ENABLED=${AIS_ENABLED:-true}
       - AIS_BBOX=${AIS_BBOX:-}
       - AISHUB_USERNAME=${AISHUB_USERNAME:-}
+      - INFERENCE_URL=http://inference:8006
+      - CAMERA_ENABLED=${CAMERA_ENABLED:-false}
+      - CAMERA_RTSP_URL=${CAMERA_RTSP_URL:-}
     depends_on:
       mqtt:
         condition: service_healthy
+      inference:
+        condition: service_started
     restart: unless-stopped
 
   # Observability
