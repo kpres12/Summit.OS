@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import json
 import asyncio
 import uuid
@@ -9,6 +10,9 @@ from typing import Optional, List
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 import redis.asyncio as aioredis
+
+# Make intelligence module importable by sub-modules
+sys.path.insert(0, os.path.dirname(__file__))
 
 logger = logging.getLogger("intelligence")
 logging.basicConfig(level=logging.INFO)
@@ -26,10 +30,20 @@ except Exception:
 # Test mode
 INTELLIGENCE_TEST_MODE = os.getenv("INTELLIGENCE_TEST_MODE", "false").lower() == "true"
 
+# Brain / agent registry (optional — only active when Ollama is available)
+try:
+    from mission_agent import AgentRegistry
+    from brain import Brain
+    _BRAIN_AVAILABLE = True
+except Exception as _brain_err:
+    _BRAIN_AVAILABLE = False
+    logger.debug(f"Brain not loaded: {_brain_err}")
+
 # Globals
 engine: Optional[AsyncEngine] = None
 SessionLocal: Optional[sessionmaker] = None
 redis_client: Optional[aioredis.Redis] = None
+agent_registry: Optional["AgentRegistry"] = None  # type: ignore
 
 # Optional XGBoost model
 risk_model: Optional["xgb.Booster"] = None  # type: ignore
@@ -103,8 +117,18 @@ async def lifespan(app: FastAPI):
 
     # Start background risk scoring processor (skip in test mode)
     task = None
+    prune_task = None
     if not INTELLIGENCE_TEST_MODE:
         task = asyncio.create_task(_risk_scoring_processor())
+
+    # Initialise agent registry
+    global agent_registry
+    if _BRAIN_AVAILABLE:
+        agent_registry = AgentRegistry()
+        prune_task = asyncio.create_task(_agent_prune_loop())
+        logger.info("AI brain initialised (AgentRegistry ready)")
+    else:
+        logger.info("AI brain not loaded — intelligence running in rule-based mode")
 
     try:
         yield
@@ -115,10 +139,26 @@ async def lifespan(app: FastAPI):
                 await task
             except asyncio.CancelledError:
                 pass
+        if prune_task:
+            prune_task.cancel()
+            try:
+                await prune_task
+            except asyncio.CancelledError:
+                pass
         if redis_client:
             await redis_client.close()
         if engine:
             await engine.dispose()
+
+
+async def _agent_prune_loop():
+    """Periodically prune finished agents to prevent unbounded memory growth."""
+    while True:
+        await asyncio.sleep(300)
+        if agent_registry:
+            n = agent_registry.prune_finished(keep=50)
+            if n > 0:
+                logger.info(f"Pruned {n} finished agents")
 
 app = FastAPI(title="Summit Intelligence", version="0.2.0", lifespan=lifespan)
 
@@ -151,7 +191,93 @@ async def readyz():
 async def livez():
     return {"status": "alive"}
 
-from fastapi import Request as _Req
+from fastapi import Request as _Req, HTTPException
+
+# ── AI Brain endpoints ────────────────────────────────────────────────────────
+
+@app.get("/brain/status")
+async def brain_status():
+    """Check if the local LLM (Ollama) brain is available."""
+    if not _BRAIN_AVAILABLE:
+        return {"available": False, "reason": "brain module not loaded"}
+    import httpx
+    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+    model = os.getenv("OLLAMA_MODEL", "llama3.1")
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(f"{ollama_url}/api/tags")
+            if r.status_code == 200:
+                tags = r.json().get("models", [])
+                names = [t.get("name", "").split(":")[0] for t in tags]
+                model_base = model.split(":")[0]
+                return {
+                    "available": model_base in names,
+                    "ollama_url": ollama_url,
+                    "model": model,
+                    "available_models": names,
+                }
+    except Exception as e:
+        return {"available": False, "ollama_url": ollama_url, "reason": str(e)}
+    return {"available": False}
+
+
+class AgentCreateRequest(BaseModel):
+    mission_objective: str
+    mission_id: Optional[str] = None
+    tick_interval: float = float(os.getenv("AGENT_TICK_INTERVAL", "30"))
+    max_steps: int = int(os.getenv("AGENT_MAX_STEPS", "20"))
+
+
+@app.post("/agents", status_code=201)
+async def create_agent(req: AgentCreateRequest):
+    """Launch an autonomous mission agent with a natural-language objective."""
+    if not _BRAIN_AVAILABLE or agent_registry is None:
+        raise HTTPException(status_code=503, detail="AI brain not available — check Ollama")
+    agent = await agent_registry.create(
+        mission_objective=req.mission_objective,
+        mission_id=req.mission_id,
+        tick_interval=req.tick_interval,
+        max_steps=req.max_steps,
+        world_url=os.getenv("FABRIC_URL", "http://localhost:8001"),
+        tasking_url=os.getenv("TASKING_URL", "http://localhost:8004"),
+    )
+    return agent.to_dict()
+
+
+@app.get("/agents")
+async def list_agents(status: Optional[str] = None):
+    """List all mission agents."""
+    if agent_registry is None:
+        return {"agents": [], "brain_available": False}
+    return {
+        "agents": agent_registry.list_agents(status=status),
+        "brain_available": _BRAIN_AVAILABLE,
+    }
+
+
+@app.get("/agents/{mission_id}")
+async def get_agent(mission_id: str):
+    """Get details for a specific mission agent."""
+    if agent_registry is None:
+        raise HTTPException(status_code=503, detail="Agent registry not available")
+    agent = agent_registry.get(mission_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail=f"Agent {mission_id} not found")
+    return agent.to_dict()
+
+
+@app.delete("/agents/{mission_id}")
+async def cancel_agent(mission_id: str):
+    """Cancel a running mission agent."""
+    if agent_registry is None:
+        raise HTTPException(status_code=503, detail="Agent registry not available")
+    ok = await agent_registry.cancel(mission_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Agent {mission_id} not found")
+    return {"mission_id": mission_id, "status": "CANCELLED"}
+
+
+# ── Plainview models (legacy) ─────────────────────────────────────────────────
 
 # Import Plainview models
 try:

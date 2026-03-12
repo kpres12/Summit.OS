@@ -14,6 +14,7 @@ Enable adapters via environment:
     MODBUS_ENABLED=true       Industrial PLCs, sensors, actuators (Modbus/TCP)
     OPCUA_ENABLED=true        Modern industrial systems (Siemens, GE, Honeywell)
     MAVLINK_ENABLED=true      Drones (ArduPilot, PX4, DJI via MAVLink)
+    CAMERA_ENABLED=true       RTSP/ONVIF cameras with YOLO detection + ByteTrack
 """
 from __future__ import annotations
 
@@ -35,6 +36,7 @@ _ADAPTER_CLASSES = [
     ("modbus",    "modbus.adapter",    "ModbusAdapter"),
     ("opcua",     "opcua.adapter",     "OPCUAAdapter"),
     ("mavlink",   "mavlink.adapter",   "MAVLinkAdapter"),
+    ("camera",    "camera.adapter",    "CameraAdapter"),
 ]
 
 
