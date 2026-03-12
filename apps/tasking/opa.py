@@ -24,6 +24,49 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("tasking.opa")
 
 DEFAULT_OPA_URL = os.getenv("OPA_URL", "http://opa:8181")
+
+# Policy signature verification (non-fatal if PyNaCl not installed)
+_policy_signer = None
+_POLICY_DIR = os.getenv("POLICY_DIR", "/infra/policy")
+
+def _get_policy_signer():
+    global _policy_signer
+    if _policy_signer is None:
+        try:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _pkgs = str(_Path(__file__).resolve().parents[2] / "packages")
+            if _pkgs not in _sys.path:
+                _sys.path.insert(0, _pkgs)
+            from policy.signer import PolicySigner
+            _policy_signer = PolicySigner()
+        except Exception:
+            pass
+    return _policy_signer
+
+def verify_policies(policy_dir: str = _POLICY_DIR) -> bool:
+    """
+    Verify all policy file signatures before Summit.OS loads them into OPA.
+    Call this at service startup.
+
+    Returns True if all policies are valid (or verification is unavailable).
+    Raises PolicyVerificationError if any policy is tampered (enforce mode).
+    """
+    import os
+    if not os.path.isdir(policy_dir):
+        logger.debug(f"Policy dir not found at {policy_dir} — skipping verification")
+        return True
+    signer = _get_policy_signer()
+    if signer is None:
+        logger.debug("Policy signer unavailable — skipping verification")
+        return True
+    try:
+        signer.verify_directory(policy_dir)
+        logger.info(f"All policies in {policy_dir} verified successfully")
+        return True
+    except Exception as e:
+        logger.critical(f"Policy verification FAILED: {e}")
+        raise
 OPA_FAIL_MODE = os.getenv("OPA_FAIL_MODE", "closed").lower()  # "closed" or "open"
 OPA_TIMEOUT = float(os.getenv("OPA_TIMEOUT", "3.0"))
 OPA_AUDIT_DB = os.getenv("OPA_AUDIT_DB", "policy_audit.db")
@@ -233,6 +276,8 @@ class OPAClient:
         asset_id: str,
         waypoints: List[Dict[str, float]],
         org_id: Optional[str] = None,
+        geofences: Optional[List[Dict[str, Any]]] = None,
+        max_altitude_m: float = 122.0,
     ) -> Dict[str, Any]:
         """Check waypoints against geofence policy."""
         input_data = {
@@ -242,9 +287,58 @@ class OPAClient:
             "context": {
                 "time": datetime.now(timezone.utc).isoformat(),
                 "check_type": "geofence",
+                "geofences": geofences or [],
+                "max_altitude_m": max_altitude_m,
             },
         }
         return await self.evaluate("geofence/check", input_data)
+
+    async def evaluate_actuator_command(
+        self,
+        command_type: str,
+        target_id: str,
+        parameters: Dict[str, Any],
+        world_state_entities: Dict[str, Any],
+        org_id: Optional[str] = None,
+        requested_by: str = "operator",
+        approved: bool = False,
+        mission_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Pre-flight safety check for physical actuator commands.
+
+        This is the last gate before Summit.OS sends a command to real
+        hardware. If this returns allow=False, the command is rejected
+        and the denial reason is surfaced to the operator.
+
+        Args:
+            command_type: e.g. "set_valve", "set_motor_speed", "emergency_stop"
+            target_id: entity_id of the target actuator
+            parameters: command-specific parameters (e.g. {"state": "closed"})
+            world_state_entities: current world model snapshot (entity_id -> entity)
+            requested_by: "operator", "ai-agent", or "mission-planner"
+            approved: whether a human operator has approved this command
+            mission_id: optional mission context
+        """
+        input_data = {
+            "command": {
+                "type": command_type,
+                "target_id": target_id,
+                "parameters": parameters,
+            },
+            "world_state": {
+                "entities": world_state_entities,
+            },
+            "org_id": org_id or "dev",
+            "requested_by": requested_by,
+            "context": {
+                "time": datetime.now(timezone.utc).isoformat(),
+                "check_type": "actuator_command",
+                "approved": approved,
+                "mission_id": mission_id or "",
+            },
+        }
+        return await self.evaluate("actuators/allow", input_data)
 
 
 async def get_audit_log(

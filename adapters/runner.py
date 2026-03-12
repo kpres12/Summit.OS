@@ -9,9 +9,12 @@ Usage:
     python runner.py
 
 Environment:
-    MQTT_HOST / MQTT_PORT - broker connection
-    OPENSKY_ENABLED       - enable OpenSky aircraft feed
-    CELESTRAK_ENABLED     - enable CelesTrak satellite feed
+    MQTT_HOST / MQTT_PORT   - broker connection
+    OPENSKY_ENABLED         - enable OpenSky aircraft feed (ADS-B)
+    CELESTRAK_ENABLED       - enable CelesTrak satellite feed
+    MODBUS_ENABLED          - enable Modbus/TCP industrial adapter
+    OPCUA_ENABLED           - enable OPC-UA industrial adapter
+    MAVLINK_ENABLED         - enable MAVLink drone telemetry adapter
 """
 from __future__ import annotations
 
@@ -54,37 +57,73 @@ async def run():
     mqtt_client = _create_mqtt_client()
     tasks = []
 
-    # OpenSky Network
+    # ── OpenSky Network (ADS-B aircraft) ───────────────────────────────────
     try:
         from opensky.adapter import OpenSkyAdapter
         adapter = OpenSkyAdapter(mqtt_client=mqtt_client)
         if adapter.enabled:
             tasks.append(("opensky", adapter, asyncio.create_task(adapter.start())))
-            logger.info("OpenSky adapter: ENABLED")
+            logger.info("OpenSky adapter:    ENABLED")
         else:
-            logger.info("OpenSky adapter: DISABLED")
+            logger.info("OpenSky adapter:    disabled")
     except ImportError as e:
         logger.warning(f"OpenSky adapter unavailable: {e}")
 
-    # CelesTrak
+    # ── CelesTrak (satellites) ──────────────────────────────────────────────
     try:
         from celestrak.adapter import CelesTrakAdapter
         adapter = CelesTrakAdapter(mqtt_client=mqtt_client)
         if adapter.enabled:
             tasks.append(("celestrak", adapter, asyncio.create_task(adapter.start())))
-            logger.info("CelesTrak adapter: ENABLED")
+            logger.info("CelesTrak adapter:  ENABLED")
         else:
-            logger.info("CelesTrak adapter: DISABLED")
+            logger.info("CelesTrak adapter:  disabled")
     except ImportError as e:
         logger.warning(f"CelesTrak adapter unavailable: {e}")
 
+    # ── Modbus/TCP (industrial PLCs, sensors, actuators) ───────────────────
+    try:
+        from modbus.adapter import ModbusAdapter
+        adapter = ModbusAdapter(mqtt_client=mqtt_client)
+        if adapter.enabled:
+            tasks.append(("modbus", adapter, asyncio.create_task(adapter.start())))
+            logger.info("Modbus adapter:     ENABLED")
+        else:
+            logger.info("Modbus adapter:     disabled")
+    except ImportError as e:
+        logger.warning(f"Modbus adapter unavailable: {e}")
+
+    # ── OPC-UA (modern industrial systems: Siemens, GE, Honeywell) ─────────
+    try:
+        from opcua.adapter import OPCUAAdapter
+        adapter = OPCUAAdapter(mqtt_client=mqtt_client)
+        if adapter.enabled:
+            tasks.append(("opcua", adapter, asyncio.create_task(adapter.start())))
+            logger.info("OPC-UA adapter:     ENABLED")
+        else:
+            logger.info("OPC-UA adapter:     disabled")
+    except ImportError as e:
+        logger.warning(f"OPC-UA adapter unavailable: {e}")
+
+    # ── MAVLink (drones: ArduPilot, PX4, DJI via MAVLink) ──────────────────
+    try:
+        from mavlink.adapter import MAVLinkAdapter
+        adapter = MAVLinkAdapter(mqtt_client=mqtt_client)
+        if adapter.enabled:
+            tasks.append(("mavlink", adapter, asyncio.create_task(adapter.start())))
+            logger.info("MAVLink adapter:    ENABLED")
+        else:
+            logger.info("MAVLink adapter:    disabled")
+    except ImportError as e:
+        logger.warning(f"MAVLink adapter unavailable: {e}")
+
     if not tasks:
-        logger.warning("No adapters enabled — exiting")
+        logger.warning("No adapters enabled — exiting. Set MODBUS_ENABLED=true, MAVLINK_ENABLED=true, etc.")
         mqtt_client.loop_stop()
         mqtt_client.disconnect()
         return
 
-    logger.info(f"Running {len(tasks)} adapter(s)")
+    logger.info(f"Running {len(tasks)} adapter(s): {[name for name, _, _ in tasks]}")
 
     # Wait for shutdown signal
     stop = asyncio.Event()
@@ -101,7 +140,10 @@ async def run():
     # Graceful shutdown
     logger.info("Shutting down adapters...")
     for name, adapter, task in tasks:
-        await adapter.stop()
+        try:
+            await adapter.stop()
+        except Exception as e:
+            logger.debug(f"Stop error for {name}: {e}")
     await asyncio.gather(*[t for _, _, t in tasks], return_exceptions=True)
 
     mqtt_client.loop_stop()
