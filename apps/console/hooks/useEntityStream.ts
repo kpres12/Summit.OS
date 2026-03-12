@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001/ws';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -186,8 +186,8 @@ export function useEntityStream() {
   const entityList = Array.from(entities.values());
   const trackList = Array.from(tracks.values());
 
-  const friendlyEntities = entityList.filter(e => e.entity_type === 'friendly');
-  const hostileEntities = entityList.filter(e => e.entity_type === 'hostile');
+  const friendlyEntities = entityList.filter(e => e.entity_type === 'active');
+  const hostileEntities = entityList.filter(e => e.entity_type === 'alert');
   const unknownEntities = entityList.filter(e => e.entity_type === 'unknown');
   const confirmedTracks = trackList.filter(t => t.state === 'confirmed');
 

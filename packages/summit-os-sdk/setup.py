@@ -75,6 +75,7 @@ setup(
     entry_points={
         "console_scripts": [
             "summit-os-cli=summit_os.cli:main",
+            "summit-os-conformance=summit_os.conformance:main",
         ],
     },
     include_package_data=True,

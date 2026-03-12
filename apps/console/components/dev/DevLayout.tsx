@@ -759,13 +759,63 @@ function SchemaValidator() {
 
 // ─── Inference Dashboard ─────────────────────────────────────
 
-const MOCK_MODELS = [
+const FALLBACK_MODELS = [
   { name: 'Object Detection', version: 'YOLOv8-S', status: 'online', latency: 12, accuracy: 94.2 },
   { name: 'Classification', version: 'ResNet-50', status: 'online', latency: 8, accuracy: 91.7 },
   { name: 'Segmentation', version: 'SAM-L', status: 'offline', latency: 45, accuracy: 88.5 },
 ];
 
+const INFERENCE_URL = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace(':8000', ':8006')
+  : 'http://localhost:8006';
+
+interface InferenceModel {
+  name: string;
+  version: string;
+  status: string;
+  latency: number;
+  accuracy: number;
+}
+
 function InferenceDashboard() {
+  const [models, setModels] = useState<InferenceModel[]>(FALLBACK_MODELS);
+  const [liveData, setLiveData] = useState(false);
+  const [reqCount, setReqCount] = useState(0);
+
+  useEffect(() => {
+    fetch(`${INFERENCE_URL}/health`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.status === 'ok') {
+          setLiveData(true);
+          return fetch(`${INFERENCE_URL}/models`);
+        }
+        return null;
+      })
+      .then((r) => r ? r.json() : null)
+      .then((d) => {
+        if (d?.models) {
+          setModels(d.models.map((m: { name?: string; model_id?: string; path?: string; status?: string }) => ({
+            name: m.name || m.model_id || 'Unknown',
+            version: m.path?.split('/').pop()?.replace('.onnx', '') || 'unknown',
+            status: m.status || 'online',
+            latency: 0,
+            accuracy: 0,
+          })));
+        }
+      })
+      .catch(() => {});
+
+    // Poll request count from health endpoint
+    const t = setInterval(() => {
+      fetch(`${INFERENCE_URL}/health`)
+        .then((r) => r.json())
+        .then((d) => { if (d.total_requests !== undefined) setReqCount(d.total_requests); })
+        .catch(() => {});
+    }, 5000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 gap-6">
       {/* Model Status */}
@@ -779,10 +829,19 @@ function InferenceDashboard() {
           </span>
           <span
             className="text-[9px] px-1.5 py-0.5"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.4)', border: '1px solid rgba(200,230,201,0.15)' }}
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: liveData ? '#00FF9C' : 'rgba(200,230,201,0.4)',
+              border: `1px solid ${liveData ? 'rgba(0,255,156,0.3)' : 'rgba(200,230,201,0.15)'}`,
+            }}
           >
-            [SIMULATED]
+            {liveData ? '[LIVE]' : '[SIMULATED]'}
           </span>
+          {reqCount > 0 && (
+            <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.4)' }}>
+              {reqCount} reqs
+            </span>
+          )}
         </div>
         <div style={{ border: '1px solid rgba(0,255,156,0.15)' }}>
           <div
@@ -800,7 +859,7 @@ function InferenceDashboard() {
             <span style={{ flex: 1 }}>LATENCY</span>
             <span style={{ flex: 1 }}>ACCURACY</span>
           </div>
-          {MOCK_MODELS.map((m) => (
+          {models.map((m) => (
             <div
               key={m.name}
               className="flex items-center px-4 py-2.5"
