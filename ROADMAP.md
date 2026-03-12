@@ -44,35 +44,49 @@
 
 ---
 
+**Multi-Latency AI Stack (v0.3)**
+- ByteTrack multi-object tracker (`apps/fusion/bytetrack.py`) — replaces SimpleTracker; two-stage Hungarian matching; Kalman prediction; persistent object IDs through occlusion
+- Camera adapter (`adapters/camera/`) — RTSP/ONVIF; frame→Inference→ByteTrack pipeline; geo-projected TRACK entities; simulation fallback
+- Local LLM brain (`apps/intelligence/brain.py`) — Ollama/Llama3.1; perceive→plan→act loop; tool-calling via physical action definitions; graceful degradation when offline
+- Context builder (`apps/intelligence/context_builder.py`) — WorldStore→LLM context; priority-ordered by state; token budget enforcement
+- Physical tools (`apps/intelligence/tools.py`) — deploy_asset, create_alert, create_geofence, send_command, open_actuator, query_world, request_human_input
+- Mission agent (`apps/intelligence/mission_agent.py`) — autonomous agent lifecycle; multiple concurrent missions; AgentRegistry; auto-completion detection
+- Behavior trees (`apps/tasking/behavior_tree.py`) — py-trees integration; Sequence/Selector/Parallel composites; OPA safety gate at every action node; battery and geofence conditions
+- Entity history (`packages/world/history.py`) — ring-buffer position trails per entity; haversine dedup; REST API for console map polylines
+- Mesh sync (`apps/fabric/mesh_sync.py`) — prioritised delta replication; CRITICAL entities first; bandwidth token bucket; store-and-forward; state-vector anti-entropy
+- BATMAN-adv setup (`infra/mesh/batman_setup.sh`) — Layer 2 self-healing mesh; ad-hoc WiFi; DHCP; setup/status/teardown commands
+- Brain API endpoints (`GET /brain/status`, `POST /agents`, `GET /agents`, `DELETE /agents/{id}`)
+
+---
+
 ## In Progress
 
 - WebSocket authentication (token-based, ties into device identity)
 - Entity TTL garbage collection background task
-- Geofence enforcement in assignment engine (pre-dispatch containment check)
+- Console entity history trail visualisation (polyline on MapLibre map)
 
 ---
 
 ## Next Up
 
 **Platform**
-- Track correlation and deduplication (multi-sensor fusion)
+- Track correlation and deduplication (multi-sensor fusion, multi-hypothesis)
 - WorldStore persistence benchmarks and tuning
 - Mission timeline view in console
-- Entity history trail (polyline of past positions on map)
 - Mobile-responsive console layout
 
 **Adapters**
 - ROS 2 adapter (nav2, sensor_msgs bridge)
 - AIS maritime data feed
 - Weather data overlay (NOAA/OpenWeather)
-- ONVIF camera adapter (IP cameras, PTZ control)
+- ONVIF PTZ control (pan/tilt/zoom commands back to camera)
 
 **AI / ML**
-- Additional ONNX reference models (classification, segmentation)
+- Additional ONNX reference models (classification, segmentation, fire detection)
 - Model registry with versioning
 - Edge inference adapter (ONNX Runtime on ARM/Jetson)
 - Anomaly detection pipeline (time-series sensor data)
-- LLM-powered operator assistant (natural language → mission commands)
+- Fine-tuning pipeline on collected deployment data
 
 ---
 

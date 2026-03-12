@@ -27,6 +27,8 @@ class Protocol(str, Enum):
     SERIAL    = "serial"
     CAN       = "can"
     ROS2      = "ros2"
+    RTSP      = "rtsp"         # camera / video streams
+    AIS       = "ais"          # maritime AIS
     CUSTOM    = "custom"
 
 
