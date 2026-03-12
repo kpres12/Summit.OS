@@ -48,7 +48,7 @@ export default function OpsMapView({ onSelectEntity, flyToLocation, alertEntityI
     setVertices((prev) => [...prev, { lat: e.lngLat.lat, lon: e.lngLat.lng }]);
   }, [drawMode]);
 
-  const handleMapDblClick = useCallback((_e: MapLayerMouseEvent) => {
+  const handleMapDblClick = useCallback((_evt: MapLayerMouseEvent) => {
     if (!drawMode || vertices.length < 3) return;
     finishPolygon();
   // eslint-disable-next-line react-hooks/exhaustive-deps
