@@ -169,6 +169,4 @@ See `CONTRIBUTING.md` for setup instructions, branching conventions, and PR proc
 
 ## License
 
-MIT License — see `LICENSE`.
-
-Bundled AI models may have separate licenses — see `models/LICENSE`.
+Proprietary — all rights reserved. License TBD at public launch.
