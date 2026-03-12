@@ -350,6 +350,12 @@ async def _get_device_registry():
     return _device_registry, _device_ca
 
 
+async def get_org_id(request: Request) -> str | None:
+    # Prefer explicit header set by mTLS proxy; fallback to None
+    org = request.headers.get("X-Org-ID") or request.headers.get("x-org-id")
+    return org
+
+
 class _DeviceRegisterRequest(BaseModel):
     device_id: str
     device_type: str = "device"
@@ -473,11 +479,6 @@ from pydantic import BaseModel as _BaseModel
 class ErrorResponse(_BaseModel):
     error: str
     detail: dict | list | str | None = None
-
-async def get_org_id(request: Request) -> str | None:
-    # Prefer explicit header set by mTLS proxy; fallback to None
-    org = request.headers.get("X-Org-ID") or request.headers.get("x-org-id")
-    return org
 
 # -------------------------
 # Security helpers (optional OIDC)
