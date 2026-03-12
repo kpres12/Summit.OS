@@ -24,7 +24,7 @@ const sarDomain: DomainConfig = {
     aircraft: { displayName: 'Air Asset', icon: '✈', color: '#4FC3F7' },
     thermal_hit: { displayName: 'Thermal Signature', icon: '▲', color: '#FF8C42' },
     friendly: { displayName: 'Team', icon: '●', color: '#4FC3F7' },
-    hostile: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
+    alert: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
     neutral: { displayName: 'POI', icon: '◆', color: '#FFD54F' },
     unknown: { displayName: 'Unconfirmed', icon: '?', color: '#FFB300' },
   },

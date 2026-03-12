@@ -173,8 +173,8 @@ export default function CesiumMap({ entities, onSelectEntity, showEntities, show
         pixelSize = 5;
       } else {
         switch (entity.entity_type) {
-          case 'friendly': color = Cesium.Color.fromCssColorString('#34d399'); break;
-          case 'hostile': color = Cesium.Color.fromCssColorString('#ef4444'); break;
+          case 'active': color = Cesium.Color.fromCssColorString('#34d399'); break;
+          case 'alert': color = Cesium.Color.fromCssColorString('#ef4444'); break;
           case 'unknown': color = Cesium.Color.fromCssColorString('#fbbf24'); break;
         }
       }

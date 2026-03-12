@@ -26,7 +26,7 @@ const fireDomain: DomainConfig = {
     camera: { displayName: 'Camera Station', icon: '◎', color: '#a1a1aa' },
     weather: { displayName: 'Weather Station', icon: '◇', color: '#818cf8' },
     friendly: { displayName: 'Unit', icon: '●', color: '#4AEDC4' },
-    hostile: { displayName: 'Fire', icon: '▲', color: '#FF3B3B' },
+    alert: { displayName: 'Fire', icon: '▲', color: '#FF3B3B' },
     neutral: { displayName: 'Monitored', icon: '◆', color: '#a1a1aa' },
     unknown: { displayName: 'Unconfirmed', icon: '?', color: '#FFB300' },
   },

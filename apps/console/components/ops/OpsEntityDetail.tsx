@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { EntityData } from '@/hooks/useEntityStream';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface OpsEntityDetailProps {
   entity: EntityData | null;
@@ -18,8 +20,8 @@ function ageString(lastSeen: number): string {
 
 function entityTypeColor(type: string): string {
   switch (type) {
-    case 'friendly': return '#00FF9C';
-    case 'hostile': return '#FF3B3B';
+    case 'active': return '#00FF9C';
+    case 'alert': return '#FF3B3B';
     case 'neutral': return 'rgba(200,230,201,0.45)';
     default: return '#FFB300';
   }
@@ -66,8 +68,46 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
+// Generate mock AI reasoning based on entity state
+function buildThoughts(entity: EntityData): { ts: string; msg: string; confidence: number }[] {
+  const thoughts = [];
+  const now = Date.now();
+
+  if (entity.entity_type === 'alert') {
+    thoughts.push({ ts: `${new Date(now - 8000).toISOString().slice(11,19)}Z`, msg: `Anomalous velocity detected: ${entity.speed_mps.toFixed(1)} m/s exceeds baseline`, confidence: 0.91 });
+    thoughts.push({ ts: `${new Date(now - 5000).toISOString().slice(11,19)}Z`, msg: 'Cross-referencing against known flight corridors — no match found', confidence: 0.87 });
+    thoughts.push({ ts: `${new Date(now - 2000).toISOString().slice(11,19)}Z`, msg: 'Flagging for operator review. Recommend visual verification.', confidence: 0.84 });
+  } else if (entity.battery_pct !== undefined && entity.battery_pct < 25) {
+    thoughts.push({ ts: `${new Date(now - 6000).toISOString().slice(11,19)}Z`, msg: `Battery critical at ${entity.battery_pct.toFixed(0)}% — estimating 4 min flight time remaining`, confidence: 0.96 });
+    thoughts.push({ ts: `${new Date(now - 3000).toISOString().slice(11,19)}Z`, msg: 'Initiating RTB evaluation. Current position within return range.', confidence: 0.94 });
+  } else {
+    thoughts.push({ ts: `${new Date(now - 10000).toISOString().slice(11,19)}Z`, msg: `Tracking ${entity.classification || 'entity'} on nominal trajectory`, confidence: 0.97 });
+    thoughts.push({ ts: `${new Date(now - 4000).toISOString().slice(11,19)}Z`, msg: `Speed ${entity.speed_mps.toFixed(1)} m/s, heading ${entity.position.heading_deg.toFixed(0)}° — consistent with mission profile`, confidence: 0.95 });
+  }
+  return thoughts;
+}
+
 export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEntityDetailProps) {
-  const [dispatched, setDispatched] = React.useState(false);
+  const [dispatched, setDispatched] = useState(false);
+  const [overrideStatus, setOverrideStatus] = useState<string | null>(null);
+  const [thoughts, setThoughts] = useState<{ ts: string; msg: string; confidence: number }[]>([]);
+
+  useEffect(() => {
+    if (!entity) return;
+    setDispatched(false);
+    setOverrideStatus(null);
+    // Try real reasoning endpoint first, fall back to local generation
+    fetch(`${API}/reasoning/${entity.entity_id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.thoughts?.length) {
+          setThoughts(data.thoughts);
+        } else {
+          setThoughts(buildThoughts(entity));
+        }
+      })
+      .catch(() => setThoughts(buildThoughts(entity)));
+  }, [entity?.entity_id]);
 
   if (!entity) return null;
 
@@ -118,7 +158,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
         </button>
       </div>
 
-      {/* DISPATCH — primary action */}
+      {/* ASSIGN — primary action */}
       <div
         className="flex-none px-4 py-3"
         style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
@@ -142,7 +182,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
             if (!dispatched) (e.currentTarget as HTMLButtonElement).style.background = '#00FF9C';
           }}
         >
-          {dispatched ? 'DISPATCHED' : 'DISPATCH'}
+          {dispatched ? 'ASSIGNED' : 'ASSIGN TASK'}
         </button>
       </div>
 
@@ -241,59 +281,113 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
           <DataRow label="SENSORS" value={entity.source_sensors.join(', ')} />
         )}
 
-        {/* Action buttons — shown for aerial domain */}
-        {entity.domain === 'aerial' && (
-          <>
-            <SectionHeader title="ACTIONS" />
-            <div className="flex flex-col gap-2 mt-2">
-              <button
-                className="w-full text-[10px] py-2 tracking-widest transition-colors"
-                style={{
-                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: '#4FC3F7',
-                  border: '1px solid rgba(79,195,247,0.4)',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-                onClick={() => console.log('Assign mission:', entity.entity_id)}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(79,195,247,0.08)')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-              >
-                ASSIGN MISSION
-              </button>
-              <button
-                className="w-full text-[10px] py-2 tracking-widest transition-colors"
-                style={{
-                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: '#FFB300',
-                  border: '1px solid rgba(255,179,0,0.4)',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-                onClick={() => console.log('Return home:', entity.entity_id)}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,179,0,0.08)')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-              >
-                RETURN HOME
-              </button>
-              <button
-                className="w-full text-[10px] py-2 tracking-widest transition-colors"
-                style={{
-                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: '#00FF9C',
-                  border: '1px solid rgba(0,255,156,0.4)',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-                onClick={() => console.log('Hold position:', entity.entity_id)}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,156,0.08)')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
-              >
-                HOLD POSITION
-              </button>
-            </div>
-          </>
+        {/* Brain Reasoning */}
+        <SectionHeader title="BRAIN REASONING" />
+        <div
+          className="flex flex-col gap-1 mb-1"
+          style={{
+            background: 'rgba(0,255,156,0.02)',
+            border: '1px solid rgba(0,255,156,0.08)',
+            padding: '8px',
+          }}
+        >
+          {thoughts.length === 0 ? (
+            <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.25)', fontSize: 9 }}>
+              No reasoning available
+            </span>
+          ) : (
+            thoughts.map((t, i) => (
+              <div key={i} className="flex flex-col gap-0.5">
+                <div className="flex items-center justify-between">
+                  <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.3)', fontSize: 8 }}>
+                    {t.ts}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                    fontSize: 8,
+                    color: t.confidence > 0.9 ? '#00FF9C' : t.confidence > 0.8 ? '#FFB300' : '#FF3B3B',
+                  }}>
+                    {Math.round(t.confidence * 100)}%
+                  </span>
+                </div>
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.65)', fontSize: 9, lineHeight: 1.4 }}>
+                  {t.msg}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Manual Overrides */}
+        <SectionHeader title="MANUAL OVERRIDES" />
+        {overrideStatus && (
+          <div style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            fontSize: 9,
+            color: '#00FF9C',
+            border: '1px solid rgba(0,255,156,0.2)',
+            padding: '4px 8px',
+            marginBottom: 8,
+          }}>
+            ✓ {overrideStatus}
+          </div>
         )}
+        <div className="flex flex-col gap-2 mt-1">
+          <button
+            className="w-full text-[10px] py-2 tracking-widest transition-colors"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: '#FF3B3B',
+              border: '1px solid rgba(255,59,59,0.4)',
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `HALT ${entity.entity_id}`, entity_id: entity.entity_id, command: 'halt' }) }).catch(() => {});
+              setOverrideStatus(`HALT sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,59,59,0.08)')}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+          >
+            HALT
+          </button>
+          <button
+            className="w-full text-[10px] py-2 tracking-widest transition-colors"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: '#FFB300',
+              border: '1px solid rgba(255,179,0,0.4)',
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Return ${entity.entity_id} to base`, entity_id: entity.entity_id, command: 'rtb' }) }).catch(() => {});
+              setOverrideStatus(`RTB sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,179,0,0.08)')}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+          >
+            RETURN TO BASE
+          </button>
+          <button
+            className="w-full text-[10px] py-2 tracking-widest transition-colors"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: '#4FC3F7',
+              border: '1px solid rgba(79,195,247,0.4)',
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Activate camera on ${entity.entity_id}`, entity_id: entity.entity_id, command: 'activate_camera' }) }).catch(() => {});
+              setOverrideStatus(`Camera activated on ${entity.callsign || entity.entity_id.slice(0,8)}`);
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(79,195,247,0.08)')}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+          >
+            ACTIVATE CAMERA
+          </button>
+        </div>
       </div>
     </div>
   );

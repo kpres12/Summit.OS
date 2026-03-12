@@ -24,7 +24,7 @@ const constructionDomain: DomainConfig = {
     hazard: { displayName: 'Hazard Zone', icon: '⊘', color: '#FF3B3B' },
     camera: { displayName: 'Site Camera', icon: '◎', color: '#a1a1aa' },
     friendly: { displayName: 'Personnel', icon: '●', color: '#4AEDC4' },
-    hostile: { displayName: 'Hazard', icon: '⊘', color: '#FF3B3B' },
+    alert: { displayName: 'Hazard', icon: '⊘', color: '#FF3B3B' },
     neutral: { displayName: 'Equipment', icon: '■', color: '#4FC3F7' },
     unknown: { displayName: 'Unidentified', icon: '?', color: '#FFB300' },
   },

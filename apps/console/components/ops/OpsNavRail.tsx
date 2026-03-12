@@ -2,13 +2,14 @@
 
 import React from 'react';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'system';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system';
 
 const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
   { id: 'alerts', icon: '⚠', label: 'Alerts' },
   { id: 'entities', icon: '◉', label: 'Entities' },
   { id: 'missions', icon: '⬡', label: 'Missions' },
   { id: 'layers', icon: '◫', label: 'Layers' },
+  { id: 'hardware', icon: '⊕', label: 'Hardware' },
   { id: 'system', icon: '⚙', label: 'System' },
 ];
 

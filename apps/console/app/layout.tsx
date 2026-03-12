@@ -17,8 +17,8 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: "Summit.OS Command Interface",
-  description: "Tactical operations control center for autonomous systems coordination",
+  title: "Summit.OS",
+  description: "Autonomous systems coordination platform for real-world operations",
 };
 
 export default function RootLayout({

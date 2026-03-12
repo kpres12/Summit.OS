@@ -15,6 +15,7 @@ Enable adapters via environment:
     OPCUA_ENABLED=true        Modern industrial systems (Siemens, GE, Honeywell)
     MAVLINK_ENABLED=true      Drones (ArduPilot, PX4, DJI via MAVLink)
     CAMERA_ENABLED=true       RTSP/ONVIF cameras with YOLO detection + ByteTrack
+    AIS_ENABLED=true          Maritime vessel tracking (AIS/NMEA)
 """
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ _ADAPTER_CLASSES = [
     ("opcua",     "opcua.adapter",     "OPCUAAdapter"),
     ("mavlink",   "mavlink.adapter",   "MAVLinkAdapter"),
     ("camera",    "camera.adapter",    "CameraAdapter"),
+    ("ais",       "ais.adapter",       "AISAdapter"),
 ]
 
 

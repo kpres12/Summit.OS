@@ -19,6 +19,20 @@ import {
 } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  // Dev bypass — skip auth when NEXT_PUBLIC_DEV_BYPASS_AUTH=true
+  if (process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true') {
+    return NextResponse.json({
+      user: {
+        id:     'dev-user',
+        email:  'dev@summit.local',
+        name:   'Dev Operator',
+        org_id: 'dev',
+        roles:  ['ADMIN'],
+      },
+      mfaPending: false,
+    });
+  }
+
   const idToken      = request.cookies.get(COOKIE_NAMES.ID_TOKEN)?.value;
   const accessToken  = request.cookies.get(COOKIE_NAMES.ACCESS_TOKEN)?.value;
   const refreshToken = request.cookies.get(COOKIE_NAMES.REFRESH_TOKEN)?.value;

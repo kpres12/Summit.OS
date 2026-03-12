@@ -21,6 +21,7 @@
 - Modbus/TCP (PLCs, pumps, pressure sensors, industrial automation)
 - OPC-UA (Siemens, GE, Honeywell — modern industrial systems)
 - MAVLink (ArduPilot/PX4 drones)
+- AIS Maritime (vessel tracking — AISHub API + simulation fallback)
 
 **OPA Safety Policies**
 - Geofence enforcement (altitude limits, exclusion zones, inclusion zones)

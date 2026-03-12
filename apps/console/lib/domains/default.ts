@@ -19,7 +19,7 @@ const defaultDomain: DomainConfig = {
   },
   entityLabels: {
     friendly: { displayName: 'Asset', icon: '●', color: '#4AEDC4' },
-    hostile: { displayName: 'Threat', icon: '▲', color: '#FF3B3B' },
+    alert: { displayName: 'Hazard', icon: '▲', color: '#FF3B3B' },
     neutral: { displayName: 'Tracked', icon: '◆', color: '#a1a1aa' },
     unknown: { displayName: 'Unknown', icon: '?', color: '#FFB300' },
   },
