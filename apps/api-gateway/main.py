@@ -90,6 +90,13 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("MFA store init failed (non-fatal): %s", exc)
 
+    try:
+        from middleware.billing import init_billing_tables
+        await init_billing_tables(engine)
+        logger.info("Billing tables initialized")
+    except Exception as exc:
+        logger.warning("Billing init failed (non-fatal): %s", exc)
+
     # ── CyberSynetic learning engine ───────────────────────────────────────
     _learning_engine = None
     try:
@@ -258,6 +265,12 @@ try:
     app.include_router(learning_router)
 except Exception as _learning_exc:
     logger.warning("Learning router not loaded: %s", _learning_exc)
+
+try:
+    from routers.billing import billing_router
+    app.include_router(billing_router)
+except Exception as exc:
+    logger.warning("Billing router load failed: %s", exc)
 
 # CORS for local dev (console at 3000)
 try:

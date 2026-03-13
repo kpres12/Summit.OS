@@ -1,0 +1,162 @@
+databases:
+  - name: summit-db
+    plan: free
+    region: ohio
+
+  - name: summit-redis
+    plan: free
+    region: ohio
+    type: redis
+
+services:
+  - type: web
+    name: api-gateway
+    env: python
+    region: ohio
+    plan: starter
+    rootDir: apps/api-gateway
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: summit-redis
+          type: redis
+          property: connectionString
+      # Set these in the Render dashboard after first deploy using your service URLs:
+      # https://<service-name>.onrender.com
+      - key: FABRIC_URL
+        sync: false
+      - key: FUSION_URL
+        sync: false
+      - key: INTELLIGENCE_URL
+        sync: false
+      - key: TASKING_URL
+        sync: false
+      - key: INFERENCE_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: API_KEY_ENFORCE
+        value: "true"
+
+  - type: web
+    name: fabric
+    env: python
+    region: ohio
+    plan: starter
+    rootDir: apps/fabric
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: summit-redis
+          type: redis
+          property: connectionString
+
+  - type: web
+    name: fusion
+    env: python
+    region: ohio
+    plan: starter
+    rootDir: apps/fusion
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+
+  - type: web
+    name: intelligence
+    env: python
+    region: ohio
+    plan: starter
+    rootDir: apps/intelligence
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+
+  - type: web
+    name: tasking
+    env: python
+    region: ohio
+    plan: starter
+    rootDir: apps/tasking
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+
+  - type: web
+    name: inference
+    env: python
+    region: ohio
+    plan: starter
+    rootDir: apps/inference
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+
+  - type: web
+    name: console
+    env: node
+    region: ohio
+    plan: starter
+    rootDir: apps/console
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      # Set these after first deploy: https://<api-gateway-name>.onrender.com
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      # wss://<api-gateway-name>.onrender.com/ws
+      - key: NEXT_PUBLIC_WS_URL
+        sync: false
