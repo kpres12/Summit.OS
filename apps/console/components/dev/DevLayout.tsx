@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { connectWebSocket } from '@/lib/api';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface DevLayoutProps {
   onSwitchRole: () => void;
@@ -804,14 +805,14 @@ function InferenceDashboard() {
           })));
         }
       })
-      .catch(() => {});
+      .catch((e: Error) => console.warn('[DevLayout] inference models fetch failed:', e.message));
 
     // Poll request count from health endpoint
     const t = setInterval(() => {
       fetch(`${INFERENCE_URL}/health`)
         .then((r) => r.json())
         .then((d) => { if (d.total_requests !== undefined) setReqCount(d.total_requests); })
-        .catch(() => {});
+        .catch((e: Error) => console.warn('[DevLayout] inference health poll failed:', e.message));
     }, 5000);
     return () => clearInterval(t);
   }, []);
@@ -966,6 +967,7 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
   };
 
   return (
+    <ErrorBoundary>
     <div className="fixed inset-0 flex flex-row" style={{ background: '#080C0A' }}>
       {/* Sidebar */}
       <div
@@ -1069,5 +1071,6 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

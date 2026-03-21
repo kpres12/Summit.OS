@@ -4,6 +4,7 @@ routers/billing.py — Billing and API key management router for Summit.OS api-g
 Endpoints (all under /v1/billing):
   POST /v1/billing/keys               — generate a new API key for an org
   GET  /v1/billing/subscription       — return org tier, limits, entity count
+  POST /v1/billing/checkout           — create a Stripe Checkout session
   POST /v1/billing/webhooks/stripe    — Stripe webhook handler (no SDK — stdlib hmac)
 """
 
@@ -11,9 +12,13 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json as _json_mod
 import logging
 import os
 import secrets
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -29,6 +34,8 @@ from middleware.billing import (
     api_keys_table,
     orgs_table,
     require_api_key,
+    encrypt_field,
+    decrypt_field,
 )
 
 logger = logging.getLogger("api-gateway.billing_router")
@@ -60,6 +67,18 @@ class SubscriptionResponse(BaseModel):
     subscription_status: str
     entity_limit: int
     operator_limit: int
+
+
+class CheckoutRequest(BaseModel):
+    org_id: str
+    tier: str                        # "pro" | "enterprise"
+    success_url: str
+    cancel_url: str
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
+    session_id: str
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +113,7 @@ async def create_api_key(body: CreateKeyRequest) -> CreateKeyResponse:
             await session.execute(
                 orgs_table.insert().values(
                     org_id=body.org_id,
-                    name=body.org_name,
+                    name=encrypt_field(body.org_name),
                     tier=tier,
                     subscription_status="active",
                     entity_limit=defaults["entity_limit"],
@@ -165,6 +184,102 @@ async def get_subscription(
 
 
 # ---------------------------------------------------------------------------
+# POST /v1/billing/checkout
+# ---------------------------------------------------------------------------
+
+_TIER_PRICE_ENV: dict[str, str] = {
+    "pro": "STRIPE_PRICE_ID_PRO",
+    "enterprise": "STRIPE_PRICE_ID_ENTERPRISE",
+}
+
+
+@billing_router.post("/checkout", response_model=CheckoutResponse, status_code=201)
+async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
+    """
+    Create a Stripe Checkout session for the requested tier.
+
+    Resolves STRIPE_SECRET_KEY and the price ID via the secrets client (Vault →
+    env fallback).  No Stripe SDK — uses stdlib urllib.request, consistent with
+    the webhook handler above.
+    """
+    try:
+        import sys as _sys_ck; from pathlib import Path as _Path_ck
+        _ck_root = str(_Path_ck(__file__).resolve().parents[3])
+        if _ck_root not in _sys_ck.path:
+            _sys_ck.path.insert(0, _ck_root)
+        from packages.secrets.client import get_secret as _get_ck
+        stripe_key = (await _get_ck("STRIPE_SECRET_KEY", default="")) or ""
+    except Exception:
+        stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+    if not stripe_key:
+        raise HTTPException(status_code=503, detail="Stripe not configured")
+
+    tier = body.tier.lower()
+    if tier not in _TIER_PRICE_ENV:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown tier '{tier}'. Valid tiers: {list(_TIER_PRICE_ENV)}",
+        )
+
+    price_env_key = _TIER_PRICE_ENV[tier]
+    try:
+        from packages.secrets.client import get_secret as _get_price  # type: ignore[import]
+        price_id = (await _get_price(price_env_key, default="")) or ""
+    except Exception:
+        price_id = os.getenv(price_env_key, "")
+
+    if not price_id:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Price ID for tier '{tier}' not configured ({price_env_key})",
+        )
+
+    # Build Stripe Checkout session via urllib (no SDK)
+    payload = urllib.parse.urlencode({
+        "mode": "subscription",
+        "line_items[0][price]": price_id,
+        "line_items[0][quantity]": "1",
+        "client_reference_id": body.org_id,
+        "success_url": body.success_url,
+        "cancel_url": body.cancel_url,
+    }).encode()
+
+    req = urllib.request.Request(
+        "https://api.stripe.com/v1/checkout/sessions",
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {stripe_key}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            session_data: dict = _json_mod.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        body_text = exc.read().decode("utf-8", errors="replace")
+        logger.error("Stripe checkout error %s: %s", exc.code, body_text)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Stripe returned {exc.code}: {body_text[:200]}",
+        )
+    except urllib.error.URLError as exc:
+        logger.error("Stripe unreachable: %s", exc.reason)
+        raise HTTPException(status_code=502, detail="Stripe service unreachable")
+
+    checkout_url: str = session_data.get("url", "")
+    session_id: str = session_data.get("id", "")
+
+    if not checkout_url or not session_id:
+        raise HTTPException(status_code=502, detail="Stripe response missing url or id")
+
+    logger.info("Created Stripe checkout session=%s org=%s tier=%s", session_id, body.org_id, tier)
+    return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
+
+
+# ---------------------------------------------------------------------------
 # POST /v1/billing/webhooks/stripe
 # ---------------------------------------------------------------------------
 
@@ -217,7 +332,15 @@ async def stripe_webhook(
     """
     import json as _json
 
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    try:
+        import sys as _sys_sec; from pathlib import Path as _Path_sec
+        _sec_root = str(_Path_sec(__file__).resolve().parents[3])
+        if _sec_root not in _sys_sec.path:
+            _sys_sec.path.insert(0, _sec_root)
+        from packages.secrets.client import get_secret as _get_sec
+        webhook_secret = await _get_sec("STRIPE_WEBHOOK_SECRET", default="") or ""
+    except Exception:
+        webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     raw_body = await request.body()
 
     if webhook_secret:

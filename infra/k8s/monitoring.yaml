@@ -1,0 +1,113 @@
+---
+# Prometheus
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summit-prometheus
+  labels:
+    app: summit-prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summit-prometheus
+  template:
+    metadata:
+      labels:
+        app: summit-prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.48.0
+          ports:
+            - containerPort: 9090
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.time=30d"
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus
+            - name: prometheus-data
+              mountPath: /prometheus
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+        - name: prometheus-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summit-prometheus
+spec:
+  selector:
+    app: summit-prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+---
+# Grafana
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summit-grafana
+  labels:
+    app: summit-grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summit-grafana
+  template:
+    metadata:
+      labels:
+        app: summit-grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.2.0
+          ports:
+            - containerPort: 3001
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          env:
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: summit-secrets
+                  key: GRAFANA_ADMIN_PASSWORD
+            - name: GF_SERVER_HTTP_PORT
+              value: "3001"
+          volumeMounts:
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: grafana-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summit-grafana
+spec:
+  selector:
+    app: summit-grafana
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001

@@ -1,5 +1,8 @@
 # Summit.OS Git Ignore
 
+# K8s secrets (never commit real values)
+infra/k8s/secrets.yaml
+
 # Environment files
 .env
 .env.local

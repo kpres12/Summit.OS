@@ -342,9 +342,13 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
               background: 'transparent',
               cursor: 'pointer',
             }}
-            onClick={() => {
-              fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `HALT ${entity.entity_id}`, entity_id: entity.entity_id, command: 'halt' }) }).catch(() => {});
-              setOverrideStatus(`HALT sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+            onClick={async () => {
+              try {
+                await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `HALT ${entity.entity_id}`, entity_id: entity.entity_id, command: 'halt' }) });
+                setOverrideStatus(`HALT sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+              } catch (err) {
+                setOverrideStatus(`HALT failed: ${(err as Error)?.message ?? 'network error'}`);
+              }
             }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,59,59,0.08)')}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
@@ -360,9 +364,13 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
               background: 'transparent',
               cursor: 'pointer',
             }}
-            onClick={() => {
-              fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Return ${entity.entity_id} to base`, entity_id: entity.entity_id, command: 'rtb' }) }).catch(() => {});
-              setOverrideStatus(`RTB sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+            onClick={async () => {
+              try {
+                await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Return ${entity.entity_id} to base`, entity_id: entity.entity_id, command: 'rtb' }) });
+                setOverrideStatus(`RTB sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+              } catch (err) {
+                setOverrideStatus(`RTB failed: ${(err as Error)?.message ?? 'network error'}`);
+              }
             }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,179,0,0.08)')}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
@@ -378,9 +386,13 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
               background: 'transparent',
               cursor: 'pointer',
             }}
-            onClick={() => {
-              fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Activate camera on ${entity.entity_id}`, entity_id: entity.entity_id, command: 'activate_camera' }) }).catch(() => {});
-              setOverrideStatus(`Camera activated on ${entity.callsign || entity.entity_id.slice(0,8)}`);
+            onClick={async () => {
+              try {
+                await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Activate camera on ${entity.entity_id}`, entity_id: entity.entity_id, command: 'activate_camera' }) });
+                setOverrideStatus(`Camera activated on ${entity.callsign || entity.entity_id.slice(0,8)}`);
+              } catch (err) {
+                setOverrideStatus(`Camera failed: ${(err as Error)?.message ?? 'network error'}`);
+              }
             }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(79,195,247,0.08)')}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}

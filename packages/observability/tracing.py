@@ -152,13 +152,29 @@ class Tracer:
             return False
 
     def _init_otel(self):
+        import os
         try:
             from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.resources import Resource
+            from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor, ConsoleSpanExporter
 
             resource = Resource.create({"service.name": self.service_name})
             provider = TracerProvider(resource=resource)
+
+            otlp_endpoint = os.getenv("OTLP_ENDPOINT", "")
+            if otlp_endpoint:
+                try:
+                    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+                    otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+                    provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+                    logger.info(f"OTLP exporter configured: {otlp_endpoint}")
+                except ImportError:
+                    logger.warning("opentelemetry-exporter-otlp-proto-grpc not installed — using console exporter")
+                    provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+            else:
+                provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+
             trace.set_tracer_provider(provider)
             self._otel_tracer = trace.get_tracer(self.service_name)
             logger.info(f"OpenTelemetry tracer initialized for {self.service_name}")
@@ -210,7 +226,7 @@ class Tracer:
 def create_tracing_middleware(tracer: Tracer):
     """Create FastAPI middleware for automatic request tracing."""
     async def middleware(request, call_next):
-        # Extract trace context from headers
+        # Extract trace context from incoming headers
         trace_id = request.headers.get("X-Trace-ID", "")
         if trace_id:
             _current_trace.set(trace_id)
@@ -221,11 +237,22 @@ def create_tracing_middleware(tracer: Tracer):
             "http.url": str(request.url),
             "http.route": request.url.path,
         }) as span:
+            # Bind trace_id to structlog context so all log lines in this request carry it
+            try:
+                import structlog
+                structlog.contextvars.clear_contextvars()
+                structlog.contextvars.bind_contextvars(
+                    trace_id=span.trace_id,
+                    service=tracer.service_name,
+                )
+            except ImportError:
+                pass
+
             response = await call_next(request)
             span.set_attribute("http.status_code", response.status_code)
             if response.status_code >= 400:
                 span.status = "error"
-            # Inject trace ID into response
+            # Propagate trace ID to caller
             response.headers["X-Trace-ID"] = span.trace_id
             return response
 
@@ -234,12 +261,11 @@ def create_tracing_middleware(tracer: Tracer):
 
 # ── Global tracer ──────────────────────────────────────────
 
-_global_tracer: Optional[Tracer] = None
+_tracer_registry: Dict[str, Tracer] = {}
 
 
 def get_tracer(service_name: str = "summit-os") -> Tracer:
-    """Get or create the global tracer."""
-    global _global_tracer
-    if _global_tracer is None:
-        _global_tracer = Tracer(service_name)
-    return _global_tracer
+    """Get or create a tracer for the given service name."""
+    if service_name not in _tracer_registry:
+        _tracer_registry[service_name] = Tracer(service_name)
+    return _tracer_registry[service_name]

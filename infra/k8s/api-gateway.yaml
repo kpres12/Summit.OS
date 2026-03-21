@@ -5,7 +5,7 @@ metadata:
   labels:
     app: summit-api-gateway
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: summit-api-gateway
@@ -19,17 +19,68 @@ spec:
           image: ghcr.io/bigmt/summit-api-gateway:latest
           ports:
             - containerPort: 8000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
           env:
             - name: FABRIC_URL
-              value: http://summit-fabric:8001
+              valueFrom:
+                configMapKeyRef:
+                  name: summit-config
+                  key: FABRIC_URL
             - name: FUSION_URL
-              value: http://summit-fusion:8002
+              valueFrom:
+                configMapKeyRef:
+                  name: summit-config
+                  key: FUSION_URL
             - name: INTELLIGENCE_URL
-              value: http://summit-intelligence:8003
+              valueFrom:
+                configMapKeyRef:
+                  name: summit-config
+                  key: INTELLIGENCE_URL
             - name: TASKING_URL
-              value: http://summit-tasking:8004
+              valueFrom:
+                configMapKeyRef:
+                  name: summit-config
+                  key: TASKING_URL
+            - name: API_KEY_ENFORCE
+              valueFrom:
+                configMapKeyRef:
+                  name: summit-config
+                  key: API_KEY_ENFORCE
             - name: OIDC_ENFORCE
-              value: "false"
+              valueFrom:
+                configMapKeyRef:
+                  name: summit-config
+                  key: OIDC_ENFORCE
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: summit-secrets
+                  key: POSTGRES_PASSWORD
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: summit-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+            - name: POSTGRES_URL
+              value: "postgresql+asyncpg://summit:$(POSTGRES_PASSWORD)@summit-postgres:5432/summit_os"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service

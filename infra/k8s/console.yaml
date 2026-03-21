@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summit-console
+  labels:
+    app: summit-console
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: summit-console
+  template:
+    metadata:
+      labels:
+        app: summit-console
+    spec:
+      containers:
+        - name: console
+          image: ghcr.io/bigmt/summit-console:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          env:
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://summit-api-gateway:8000"
+            - name: NEXT_PUBLIC_WS_URL
+              value: "ws://summit-fabric:8001/ws"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summit-console
+spec:
+  selector:
+    app: summit-console
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

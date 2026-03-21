@@ -1,0 +1,27 @@
+# CODEOWNERS — GitHub requires at least one review from a listed owner before merge.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: platform team owns everything unless overridden below
+*                                           @bigmt/platform
+
+# Security-sensitive paths require security team sign-off
+infra/policy/                               @bigmt/security @bigmt/platform
+packages/security/                          @bigmt/security @bigmt/platform
+apps/api-gateway/middleware/audit.py        @bigmt/security @bigmt/platform
+apps/api-gateway/middleware/billing.py      @bigmt/security @bigmt/platform
+apps/api-gateway/middleware/rbac.py         @bigmt/security @bigmt/platform
+infra/k8s/secrets.yaml                      @bigmt/security @bigmt/platform
+.github/workflows/                          @bigmt/security @bigmt/platform
+
+# Infrastructure changes require infrastructure team
+infra/                                      @bigmt/infra @bigmt/platform
+infra/docker/                               @bigmt/infra @bigmt/platform
+infra/helm/                                 @bigmt/infra @bigmt/platform
+
+# Frontend
+apps/console/                               @bigmt/frontend @bigmt/platform
+
+# AI / ML
+apps/inference/                             @bigmt/ml @bigmt/platform
+apps/intelligence/                          @bigmt/ml @bigmt/platform
+packages/ai/                                @bigmt/ml @bigmt/platform

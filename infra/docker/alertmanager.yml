@@ -1,0 +1,63 @@
+global:
+  resolve_timeout: 5m
+  # Optional SMTP settings — configure via environment or override this file
+  # smtp_smarthost: 'smtp.example.com:587'
+  # smtp_from: 'alerts@yourorg.com'
+
+route:
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default'
+
+  routes:
+    # Critical alerts page immediately
+    - match:
+        severity: critical
+      receiver: 'critical'
+      group_wait: 10s
+      repeat_interval: 1h
+
+    # Security alerts go to dedicated receiver
+    - match:
+        alertname: AuthFailureSpike
+      receiver: 'security'
+    - match:
+        alertname: AccessDeniedSpike
+      receiver: 'security'
+
+receivers:
+  - name: 'default'
+    # Logs to stdout by default. Wire Slack/PagerDuty via env vars below.
+    webhook_configs:
+      - url: '${ALERTMANAGER_WEBHOOK_URL:-http://localhost:9093/api/v1/alerts}'
+        send_resolved: true
+
+  - name: 'critical'
+    webhook_configs:
+      - url: '${ALERTMANAGER_CRITICAL_WEBHOOK_URL:-http://localhost:9093/api/v1/alerts}'
+        send_resolved: true
+    # Uncomment and configure for PagerDuty:
+    # pagerduty_configs:
+    #   - routing_key: '${PAGERDUTY_INTEGRATION_KEY}'
+    #     description: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+
+  - name: 'security'
+    webhook_configs:
+      - url: '${ALERTMANAGER_SECURITY_WEBHOOK_URL:-http://localhost:9093/api/v1/alerts}'
+        send_resolved: true
+    # Uncomment and configure for Slack:
+    # slack_configs:
+    #   - api_url: '${SLACK_WEBHOOK_URL}'
+    #     channel: '#security-alerts'
+    #     title: 'Summit.OS Security Alert'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+inhibit_rules:
+  # If ServiceDown is firing, suppress HighErrorRate and HighLatency for same job
+  - source_match:
+      alertname: ServiceDown
+    target_match_re:
+      alertname: 'HighErrorRate|HighLatency'
+    equal: ['job']

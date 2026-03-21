@@ -112,6 +112,31 @@ async def close_audit_log() -> None:
             _audit_pool = None
 
 
+async def prune_old_entries(retention_days: int = 90) -> int:
+    """
+    Delete audit_log rows older than *retention_days*.
+
+    Returns the number of rows deleted. Safe to call on a schedule — no-op
+    if the pool is not initialised. Logs on completion.
+    """
+    if _audit_pool is None:
+        return 0
+    try:
+        async with _audit_pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM audit_log WHERE timestamp < NOW() - ($1 * INTERVAL '1 day')",
+                retention_days,
+            )
+        # asyncpg returns "DELETE N" as a string
+        deleted = int(result.split()[-1]) if result else 0
+        if deleted:
+            logger.info("Audit retention: pruned %d rows older than %d days", deleted, retention_days)
+        return deleted
+    except Exception as exc:
+        logger.warning("Audit retention prune failed (non-fatal): %s", exc)
+        return 0
+
+
 # ---------------------------------------------------------------------------
 # JWT claim extraction (no verification — gateway already verified elsewhere)
 # ---------------------------------------------------------------------------

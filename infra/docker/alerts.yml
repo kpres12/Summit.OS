@@ -1,0 +1,102 @@
+groups:
+  - name: summit_availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been unreachable for more than 1 minute."
+
+      - alert: HighRestartRate
+        expr: increase(process_start_time_seconds[10m]) > 2
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service {{ $labels.job }} restarting frequently"
+          description: "{{ $labels.job }} has restarted more than twice in 10 minutes."
+
+  - name: summit_errors
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (job)
+          /
+          sum(rate(http_requests_total[5m])) by (job)
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.job }}"
+          description: "{{ $labels.job }} error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on {{ $labels.job }}"
+          description: "{{ $labels.job }} p95 latency is {{ $value }}s (threshold: 2s)."
+
+  - name: summit_security
+    rules:
+      - alert: AuthFailureSpike
+        expr: |
+          sum(increase(http_requests_total{status="401"}[5m])) by (job) > 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auth failure spike on {{ $labels.job }}"
+          description: "{{ $labels.job }} received {{ $value }} 401 responses in the last 5 minutes."
+
+      - alert: AccessDeniedSpike
+        expr: |
+          sum(increase(http_requests_total{status="403"}[5m])) by (job) > 20
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Access denied spike on {{ $labels.job }}"
+          description: "{{ $labels.job }} received {{ $value }} 403 responses in the last 5 minutes."
+
+  - name: summit_resources
+    rules:
+      - alert: HighMemoryUsage
+        expr: |
+          process_resident_memory_bytes
+          / on(job) group_left()
+          (node_memory_MemTotal_bytes > 0 or vector(1073741824))
+          > 0.80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.job }}"
+          description: "{{ $labels.job }} is using {{ $value | humanizePercentage }} of available memory."
+
+      - alert: PostgresDown
+        expr: up{job="summit-postgres"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Postgres is unreachable"
+          description: "The PostgreSQL database has been down for 30 seconds — all services will degrade."
+
+      - alert: RedisDown
+        expr: up{job="summit-redis"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is unreachable"
+          description: "Redis has been down for 30 seconds — entity streaming and caching will degrade."

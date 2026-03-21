@@ -154,6 +154,7 @@ services:
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
       - INTELLIGENCE_MODEL_PATH=${INTELLIGENCE_MODEL_PATH-}
       - PYTHONPATH=/workspace:/app
+      - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
       redis:
         condition: service_healthy
@@ -190,6 +191,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - TASKING_DIRECT_AUTOPILOT=${TASKING_DIRECT_AUTOPILOT-false}
       - PYTHONPATH=/workspace:/app
+      - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
       redis:
         condition: service_healthy
@@ -248,6 +250,7 @@ services:
       - MODEL_PATH=/models/yolov8n.onnx
       - MODEL_REGISTRY=/models
       - PYTHONPATH=/workspace:/app
+      - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
       redis:
         condition: service_healthy
@@ -280,7 +283,9 @@ services:
       - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
       - MISSIONS=sentinel
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - API_KEY_ENFORCE=${API_KEY_ENFORCE:-false}
       - PYTHONPATH=/workspace:/app
+      - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
       fabric:
         condition: service_started
@@ -427,11 +432,25 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alerts.yml:/etc/prometheus/alerts.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: summit-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    depends_on:
+      - prometheus
 
   grafana:
     image: grafana/grafana:latest
@@ -453,6 +472,21 @@ services:
       - "8181:8181"
     volumes:
       - ../../infra/policy:/policy:ro
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    container_name: summit-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   redis_data:

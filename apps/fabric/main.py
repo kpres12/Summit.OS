@@ -175,11 +175,24 @@ FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup/shutdown."""
-    global mqtt_client, redis_client, websocket_manager, engine, SessionLocal, mesh_peer, entity_crdt, world_store
+    global mqtt_client, redis_client, websocket_manager, engine, SessionLocal, mesh_peer, entity_crdt, world_store, FABRIC_JWT_SECRET
 
     settings = Settings()
 
     logger.info("Starting Summit.OS Data Fabric Service")
+
+    # Resolve sensitive secrets via secrets client (Vault → env var fallback)
+    try:
+        _root = str(Path(__file__).resolve().parents[2])
+        if _root not in sys.path:
+            sys.path.insert(0, _root)
+        from packages.secrets.client import get_secret as _get_secret_fabric
+        _resolved_jwt = await _get_secret_fabric("FABRIC_JWT_SECRET", default=FABRIC_JWT_SECRET)
+        if _resolved_jwt:
+            FABRIC_JWT_SECRET = _resolved_jwt
+        logger.info("Fabric secrets resolved")
+    except Exception as _e:
+        logger.warning("Secrets client unavailable, using env var: %s", _e)
 
     # DB connection
     if FABRIC_TEST_MODE:

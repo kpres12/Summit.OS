@@ -38,7 +38,7 @@ export default function TacticalLayout() {
           );
         }
       })
-      .catch(() => {});
+      .catch((e: Error) => console.warn('[TacticalLayout] geofence fetch failed:', e.message));
   }, []);
 
   const handleToggleLayer = (layerId: string) => {

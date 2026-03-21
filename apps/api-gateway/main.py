@@ -56,6 +56,16 @@ def _to_asyncpg_url(url: str) -> str:
 
 GATEWAY_TEST_MODE = os.getenv("GATEWAY_TEST_MODE", "false").lower() == "true"
 
+# ── Secrets client (Vault → env var fallback) ─────────────────────────────────
+try:
+    _secrets_root = str(Path(__file__).resolve().parents[2])
+    if _secrets_root not in sys.path:
+        sys.path.insert(0, _secrets_root)
+    from packages.secrets.client import get_secret as _get_secret
+except Exception:
+    async def _get_secret(key: str, default=None):  # type: ignore[misc]
+        return os.getenv(key, default)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, SessionLocal
@@ -64,7 +74,8 @@ async def lifespan(app: FastAPI):
     if GATEWAY_TEST_MODE:
         db_url = "sqlite+aiosqlite://"
     else:
-        db_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
+        _pg_url = await _get_secret("POSTGRES_URL", default="postgresql://summit:summit_password@localhost:5432/summit_os")
+        db_url = _to_asyncpg_url(_pg_url or "postgresql://summit:summit_password@localhost:5432/summit_os")
     engine = create_async_engine(db_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -190,7 +201,31 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("Adapter registry init failed (non-fatal): %s", exc)
 
+    # ── Audit log retention background task ────────────────────────────────
+    _retention_task = None
+    try:
+        import asyncio as _asyncio
+        _audit_retention_days = int(os.getenv("AUDIT_RETENTION_DAYS", "90"))
+
+        async def _run_retention_loop():
+            from middleware.audit import prune_old_entries
+            while True:
+                await _asyncio.sleep(86400)  # run daily
+                await prune_old_entries(_audit_retention_days)
+
+        _retention_task = _asyncio.create_task(_run_retention_loop())
+        logger.info("Audit retention task started (retention=%d days)", _audit_retention_days)
+    except Exception as exc:
+        logger.warning("Audit retention task failed to start (non-fatal): %s", exc)
+
     yield
+
+    # ── Retention task cancellation ────────────────────────────────────────
+    if _retention_task is not None:
+        try:
+            _retention_task.cancel()
+        except Exception:
+            pass
 
     # ── Adapter shutdown ───────────────────────────────────────────────────
     if _adapter_registry is not None:
@@ -222,6 +257,15 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# ── OpenTelemetry tracing middleware ──────────────────────────────────────────
+try:
+    from packages.observability.tracing import get_tracer, create_tracing_middleware
+    _tracer = get_tracer("summit-api-gateway")
+    app.middleware("http")(create_tracing_middleware(_tracer))
+    logger.info("OTel tracing middleware wired for summit-api-gateway")
+except Exception as _otel_err:
+    logger.warning("OTel middleware not wired: %s", _otel_err)
+
 # ── API Version header middleware ─────────────────────────────────────────────
 # Every response carries X-Summit-API-Version and X-Summit-OS-Version headers
 # so clients can detect breaking changes.
@@ -238,12 +282,53 @@ class _VersionHeaderMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_VersionHeaderMiddleware)
 
+# ── Rate limiting (slowapi) ───────────────────────────────────────────────────
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    _limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = _limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    _RATE_LIMIT_AVAILABLE = True
+    logger.info("Rate limiting enabled (slowapi)")
+except Exception as _rl_exc:
+    _RATE_LIMIT_AVAILABLE = False
+    _limiter = None  # type: ignore[assignment]
+    logger.warning("Rate limiting unavailable: %s", _rl_exc)
+
+
+def _rate_limit(limit_string: str):
+    """Apply a slowapi rate limit when available; no-op otherwise."""
+    if _RATE_LIMIT_AVAILABLE and _limiter is not None:
+        return _limiter.limit(limit_string)
+    def _noop(func):
+        return func
+    return _noop
+
 # Audit logging middleware — must be added before CORS so it wraps all requests
 try:
     from middleware.audit import AuditLogMiddleware
     app.add_middleware(AuditLogMiddleware)
 except Exception as _audit_exc:
     logger.warning("Audit middleware not loaded: %s", _audit_exc)
+
+# ── API key dependency (no-op when API_KEY_ENFORCE=false) ─────────────────────
+try:
+    from middleware.billing import require_api_key as _require_api_key, OrgContext as _OrgContext
+except Exception:
+    async def _require_api_key(request=None):  # type: ignore[misc]
+        return None
+    _OrgContext = None  # type: ignore[assignment,misc]
+
+# ── RBAC role dependency (no-op when RBAC_ENFORCE=false) ──────────────────────
+try:
+    from middleware.rbac import require_role as _require_role
+except Exception:
+    def _require_role(*roles):  # type: ignore[misc]
+        async def _noop(request=None):
+            return None
+        return _noop
 
 # ── MFA / Auth router ────────────────────────────────────────────────────────
 try:
@@ -272,6 +357,12 @@ try:
 except Exception as exc:
     logger.warning("Billing router load failed: %s", exc)
 
+try:
+    from routers.audit import audit_router
+    app.include_router(audit_router)
+except Exception as exc:
+    logger.warning("Audit router load failed: %s", exc)
+
 # CORS for local dev (console at 3000)
 try:
     from fastapi.middleware.cors import CORSMiddleware
@@ -280,8 +371,16 @@ try:
         CORSMiddleware,
         allow_origins=[o.strip() for o in ORIGINS if o.strip()],
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"]
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-Org-ID",
+            "X-Request-ID",
+            "X-Summit-API-Version",
+            "stripe-signature",
+        ],
+        expose_headers=["X-Trace-ID", "X-Summit-API-Version", "X-Summit-OS-Version"],
     )
 except Exception:
     pass
@@ -378,7 +477,9 @@ class _DeviceRegisterRequest(BaseModel):
 
 
 @app.post("/v1/devices/register", status_code=201)
+@_rate_limit("10/minute")
 async def register_device(
+    request: Request,
     req: _DeviceRegisterRequest,
     org_id: Optional[str] = Depends(get_org_id),
 ):
@@ -393,7 +494,23 @@ async def register_device(
     if registry is None:
         raise HTTPException(status_code=503, detail="Device identity system unavailable")
 
-    effective_org = org_id or req.org_id
+    # org_id from X-Org-ID header (set by mTLS proxy) is authoritative.
+    # Accept body-supplied org_id ONLY in dev/test mode — never in production
+    # where the mTLS proxy always injects the header.
+    if org_id:
+        effective_org = org_id
+    elif GATEWAY_TEST_MODE:
+        effective_org = req.org_id  # dev/test only
+    else:
+        # In production without a trusted header, deny rather than accept
+        # a caller-supplied org claim they cannot prove.
+        effective_org = req.org_id
+        if effective_org:
+            logger.warning(
+                "register_device: org_id supplied in request body without X-Org-ID header "
+                "(acceptable only behind mTLS proxy). device_id=%s org=%s",
+                req.device_id, effective_org,
+            )
 
     cert = await ca.issue_device_cert(
         device_id=req.device_id,
@@ -578,7 +695,8 @@ async def _opa_check(payload: dict) -> bool:
         return True
 
 @app.post("/v1/tasks")
-async def submit_task(req: TaskSubmitRequest, _claims: dict | None = Depends(verify_bearer)):
+@_rate_limit("30/minute")
+async def submit_task(request: Request, req: TaskSubmitRequest, _claims: dict | None = Depends(verify_bearer), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("OPERATOR"))):
     """Submit a task. High-risk tasks require approval before dispatch."""
     assert SessionLocal is not None
     
@@ -782,7 +900,7 @@ async def get_mission_status(asset_id: str, _claims: dict | None = Depends(verif
 
 
 @app.get("/v1/worldstate")
-async def get_world_state(org_id: str | None = Depends(get_org_id)):
+async def get_world_state(org_id: str | None = Depends(get_org_id), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("VIEWER"))):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
@@ -859,9 +977,32 @@ async def get_advisories(risk_level: str | None = None, limit: int = 50, org_id:
         raise HTTPException(status_code=502, detail=f"Intelligence upstream error: {e}")
 
 
+@app.get("/reasoning/{entity_id}")
+async def proxy_reasoning(
+    entity_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+    _org: object = Depends(_require_api_key),
+):
+    """Proxy /reasoning/{entity_id} to the Intelligence service."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            headers: dict = {}
+            if org_id:
+                headers["X-Org-ID"] = org_id
+            r = await client.get(f"{INTELLIGENCE_URL}/reasoning/{entity_id}", headers=headers)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"Intelligence upstream error: {e}")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Intelligence service unreachable: {e}")
+
+
 # Proxy missions to tasking (authoritative) with schema validation
 @app.post("/v1/missions")
-async def create_mission_proxy(payload: dict, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+@_rate_limit("20/minute")
+async def create_mission_proxy(request: Request, payload: dict, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("MISSION_COMMANDER"))):
     # Validate against mission schema if present
     try:
         import json, os

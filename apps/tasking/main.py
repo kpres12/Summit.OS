@@ -289,7 +289,18 @@ async def lifespan(app: FastAPI):
             await engine.dispose()
 
 
-app = FastAPI(title="Summit Intelligence", version="0.2.1", lifespan=lifespan)
+app = FastAPI(title="Summit Tasking", version="0.2.1", lifespan=lifespan)
+
+# ── OpenTelemetry tracing middleware ──────────────────────────────────────────
+try:
+    _otel_root = os.path.join(os.path.dirname(__file__), "../..")
+    if _otel_root not in sys.path:
+        sys.path.insert(0, _otel_root)
+    from packages.observability.tracing import get_tracer, create_tracing_middleware
+    _tracer = get_tracer("summit-tasking")
+    app.middleware("http")(create_tracing_middleware(_tracer))
+except Exception as _e:
+    logging.warning("OTel middleware not wired: %s", _e)
 
 # Unified error response shape
 from fastapi.responses import JSONResponse as _JSONResponse
