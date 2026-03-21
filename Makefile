@@ -148,7 +148,7 @@ mypy:
 .PHONY: typecheck
 typecheck:
 	@echo "Typechecking..."
-	@cd apps/console && npm run typecheck || true
+	@cd apps/console && npm run typecheck
 	@echo "Typecheck complete!"
 
 # Format code

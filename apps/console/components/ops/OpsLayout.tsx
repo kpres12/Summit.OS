@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { EntityData, useEntityStream } from '@/hooks/useEntityStream';
 import { AlertAPI } from '@/lib/api';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import OpsTopBar from './OpsTopBar';
 import OpsNavRail from './OpsNavRail';
 import OpsAlertQueue from './OpsAlertQueue';
@@ -194,6 +195,7 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   };
 
   return (
+    <ErrorBoundary>
     <div
       className="fixed inset-0 flex flex-col"
       style={{ background: '#080C0A' }}
@@ -254,5 +256,6 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       {/* Bottom bar */}
       <OpsBottomBar onInvestigateEntity={investigateEntity} />
     </div>
+    </ErrorBoundary>
   );
 }

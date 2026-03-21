@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summit-inference
+  labels:
+    app: summit-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summit-inference
+  template:
+    metadata:
+      labels:
+        app: summit-inference
+    spec:
+      containers:
+        - name: inference
+          image: ghcr.io/bigmt/summit-inference:latest
+          ports:
+            - containerPort: 8006
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          env:
+            - name: INFERENCE_BACKEND
+              value: "auto"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summit-inference
+spec:
+  selector:
+    app: summit-inference
+  ports:
+    - name: http
+      port: 8006
+      targetPort: 8006

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: summit-config
+  namespace: default
+data:
+  REDIS_URL: "redis://summit-redis:6379"
+  FABRIC_URL: "http://summit-fabric:8001"
+  FUSION_URL: "http://summit-fusion:8002"
+  INTELLIGENCE_URL: "http://summit-intelligence:8003"
+  TASKING_URL: "http://summit-tasking:8004"
+  INFERENCE_URL: "http://summit-inference:8006"
+  API_KEY_ENFORCE: "false"
+  OIDC_ENFORCE: "false"
+  OTLP_ENDPOINT: "http://summit-jaeger:4317"

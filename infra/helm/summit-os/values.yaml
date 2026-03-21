@@ -7,6 +7,13 @@ global:
     POSTGRES_URL: postgresql://summit:summit@postgres:5432/summit
     MQTT_BROKER: mqtt://mqtt:1883
 
+# ── Secrets (CHANGE_ME before deploying) ────────────────────
+secrets:
+  postgresPassword: "CHANGE_ME"
+  fabricJwtSecret: "CHANGE_ME"
+  stripeWebhookSecret: ""
+  grafanaAdminPassword: "CHANGE_ME"
+
 # ── API Gateway ─────────────────────────────────────────────
 apiGateway:
   replicas: 2

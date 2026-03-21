@@ -139,6 +139,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── OpenTelemetry tracing middleware ──────────────────────────────────────────
+try:
+    import sys as _sys_otel, os as _os_otel
+    _otel_root = _os_otel.path.join(_os_otel.path.dirname(__file__), "../..")
+    if _otel_root not in _sys_otel.path:
+        _sys_otel.path.insert(0, _otel_root)
+    from packages.observability.tracing import get_tracer, create_tracing_middleware
+    _tracer = get_tracer("summit-inference")
+    app.middleware("http")(create_tracing_middleware(_tracer))
+except Exception as _e:
+    pass  # inference service runs without tracing if OTel unavailable
+
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,

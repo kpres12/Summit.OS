@@ -15,6 +15,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+# Shared sanitization — avoids duplicating injection pattern lists
+from prompt_guard import _safe_str, sanitize_text
+
 logger = logging.getLogger("summit.intelligence.context")
 
 # Rough chars-per-token estimate for budget enforcement
@@ -65,6 +68,12 @@ def _summarise_entity(e: Dict) -> str:
     meta = e.get("metadata") or {}
     ts = e.get("updated_at") or e.get("ts")
 
+    # Sanitize all entity-sourced strings before embedding in LLM context
+    etype = _safe_str(etype, 32)
+    state = _safe_str(state, 32)
+    name  = _safe_str(name, 80)
+    domain = _safe_str(domain, 40)
+
     parts = [f"[{etype}/{state}] {name}"]
     if domain:
         parts[0] += f" ({domain})"
@@ -84,10 +93,10 @@ def _summarise_entity(e: Dict) -> str:
     if ts:
         parts.append(_age_str(str(ts)))
 
-    # Surface critical metadata
+    # Surface critical metadata (sanitize values — they come from external sensors)
     for key in ("value", "unit", "message", "description"):
         if meta.get(key):
-            parts.append(f"{key}={meta[key]}")
+            parts.append(f"{key}={_safe_str(meta[key], 120)}")
 
     return " | ".join(parts)
 
@@ -148,8 +157,11 @@ class ContextBuilder:
             return ""
         lines = ["ACTIVE ALERTS:"]
         for a in alerts[:10]:
-            sev = a.get("severity", "?")
-            desc = a.get("description", a.get("message", "?"))
+            # Sanitize all alert fields — alerts can come from external sources
+            # or be created by operators and are a primary injection vector
+            sev = _safe_str(a.get("severity", "?"), 32)
+            raw_desc = a.get("description", a.get("message", "?"))
+            desc = sanitize_text(str(raw_desc), max_len=300, label="alert description")
             ts = _age_str(str(a.get("ts_iso", a.get("ts", ""))))
             lines.append(f"  [{sev}] {desc} ({ts})")
         return "\n".join(lines)
@@ -184,7 +196,8 @@ class ContextBuilder:
 
         sections = [header, mission_section, alert_section, entity_section]
         if additional_context:
-            sections.append(f"\nADDITIONAL CONTEXT:\n{additional_context}")
+            safe_ctx = sanitize_text(additional_context, max_len=500, label="additional_context")
+            sections.append(f"\nADDITIONAL CONTEXT:\n{safe_ctx}")
 
         full = "\n".join(s for s in sections if s)
 

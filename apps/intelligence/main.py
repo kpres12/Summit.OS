@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 logger = logging.getLogger("intelligence")
 logging.basicConfig(level=logging.INFO)
-from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, text
+from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, and_, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -161,6 +161,17 @@ async def _agent_prune_loop():
                 logger.info(f"Pruned {n} finished agents")
 
 app = FastAPI(title="Summit Intelligence", version="0.2.0", lifespan=lifespan)
+
+# ── OpenTelemetry tracing middleware ──────────────────────────────────────────
+try:
+    _otel_root = os.path.join(os.path.dirname(__file__), "../..")
+    if _otel_root not in sys.path:
+        sys.path.insert(0, _otel_root)
+    from packages.observability.tracing import get_tracer, create_tracing_middleware
+    _tracer = get_tracer("summit-intelligence")
+    app.middleware("http")(create_tracing_middleware(_tracer))
+except Exception as _e:
+    logging.warning("OTel middleware not wired: %s", _e)
 
 class Advisory(BaseModel):
     advisory_id: str
@@ -352,18 +363,31 @@ async def list_advisories(risk_level: Optional[str] = None, limit: int = 50, org
     """List recent advisories, optionally filtered by risk level."""
     assert SessionLocal is not None
 
+    # Clamp limit to prevent abuse (e.g. limit=999999)
+    safe_limit = max(1, min(int(limit), 500))
+
     async with SessionLocal() as session:
-        base = "SELECT advisory_id, observation_id, risk_level, message, confidence, ts FROM advisories"
-        where = []
-        params: dict = {"lim": limit}
+        # Build query using SQLAlchemy ORM — fully parameterized, no string concat
+        conditions = []
         if risk_level:
-            where.append("risk_level = :rl")
-            params["rl"] = risk_level
+            conditions.append(advisories.c.risk_level == risk_level)
         if org_id:
-            where.append("org_id = :org_id")
-            params["org_id"] = org_id
-        sql = base + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT :lim"
-        rows = (await session.execute(text(sql), params)).all()
+            conditions.append(advisories.c.org_id == org_id)
+
+        stmt = (
+            select(
+                advisories.c.advisory_id,
+                advisories.c.observation_id,
+                advisories.c.risk_level,
+                advisories.c.message,
+                advisories.c.confidence,
+                advisories.c.ts,
+            )
+            .where(and_(*conditions) if conditions else text("1=1"))
+            .order_by(advisories.c.id.desc())
+            .limit(safe_limit)
+        )
+        rows = (await session.execute(stmt)).all()
 
         return [Advisory(**dict(r._mapping)) for r in rows]
 

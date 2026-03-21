@@ -34,6 +34,21 @@ jobs:
           # Optional hardware library deps: install what's available, skip the rest
           pip install pymodbus asyncua pymavlink pynacl || true
 
+      - name: Vulnerability scan (pip-audit)
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit \
+            -r apps/api-gateway/requirements.txt \
+            -r apps/fabric/requirements.txt \
+            -r apps/fusion/requirements.txt \
+            -r apps/intelligence/requirements.txt \
+            -r apps/tasking/requirements.txt \
+            -r apps/inference/requirements.txt \
+            --desc on \
+            --format columns \
+            || echo "pip-audit found vulnerabilities — review before merge"
+
       - name: Lint Python services (advisory)
         run: |
           flake8 apps/fabric apps/fusion apps/intelligence apps/tasking apps/api-gateway apps/inference \
@@ -80,6 +95,11 @@ jobs:
           cd apps/console
           npm run lint
           npm run typecheck
+
+      - name: Console unit tests
+        run: |
+          cd apps/console
+          npm test
 
       - name: Validate SDK import
         env:
@@ -147,14 +167,21 @@ jobs:
         run: |
           python -m pytest tests/integration/test_e2e_pipeline.py -v --tb=short
 
-      - name: Run E2E gateway tests (live stack optional)
+      - name: Run stable E2E tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          GATEWAY_TEST_MODE: "true"
+        run: |
+          python -m pytest tests/e2e/test_api_version.py \
+                           tests/e2e/test_device_identity.py \
+            -v --tb=short
+
+      - name: Run live-stack E2E tests (optional)
         env:
           PYTHONPATH: ${{ github.workspace }}
           GATEWAY_TEST_MODE: "true"
         run: |
           python -m pytest tests/e2e/test_gateway_live.py \
-                           tests/e2e/test_api_version.py \
-                           tests/e2e/test_device_identity.py \
             -v --tb=short || true
 
       - name: Summary

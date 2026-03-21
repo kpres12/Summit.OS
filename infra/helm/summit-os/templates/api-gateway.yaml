@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "summit-os.fullname" . }}-api-gateway
+  labels:
+    {{- include "summit-os.labels" . | nindent 4 }}
+    app: api-gateway
+spec:
+  replicas: {{ .Values.apiGateway.replicas }}
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: {{ .Values.global.image.registry }}{{ .Values.apiGateway.image }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.apiGateway.port }}
+          resources:
+            {{- toYaml .Values.apiGateway.resources | nindent 12 }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "summit-os.fullname" . }}-secrets
+                  key: POSTGRES_PASSWORD
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "summit-os.fullname" . }}-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+            - name: REDIS_URL
+              value: {{ .Values.global.env.REDIS_URL | quote }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiGateway.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.apiGateway.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+{{- if .Values.apiGateway.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "summit-os.fullname" . }}-api-gateway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "summit-os.fullname" . }}-api-gateway
+  minReplicas: {{ .Values.apiGateway.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.apiGateway.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.apiGateway.autoscaling.targetCPUUtilization }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "summit-os.fullname" . }}-api-gateway
+  labels:
+    {{- include "summit-os.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - name: http
+      port: {{ .Values.apiGateway.port }}
+      targetPort: {{ .Values.apiGateway.port }}

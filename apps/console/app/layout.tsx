@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
 import PolicyNotifications from "../components/notifications/PolicyNotifications";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
@@ -31,11 +32,13 @@ export default function RootLayout({
       <body
         className={`${ibmPlexMono.variable} ${orbitron.variable} antialiased`}
       >
-        <AuthProvider>
-          {children}
-          {/* Global policy notifications */}
-          <PolicyNotifications />
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            {children}
+            {/* Global policy notifications */}
+            <PolicyNotifications />
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

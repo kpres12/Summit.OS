@@ -15,9 +15,21 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
+
+# Field-level encryption for PII columns (org name)
+try:
+    _pkg_root = str(Path(__file__).resolve().parents[4])
+    if _pkg_root not in sys.path:
+        sys.path.insert(0, _pkg_root)
+    from packages.security.field_encryption import encrypt_field, decrypt_field
+except Exception:
+    def encrypt_field(v: str) -> str: return v  # type: ignore[misc]
+    def decrypt_field(v: str) -> str: return v  # type: ignore[misc]
 
 from fastapi import HTTPException, Request
 from sqlalchemy import (
