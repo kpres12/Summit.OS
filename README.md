@@ -131,6 +131,17 @@ That's it. After ~60 seconds:
 | http://localhost:3001 | Grafana dashboards (admin / admin) |
 | http://localhost:16686 | Jaeger distributed traces |
 
+**Seed demo data (see the pipeline work immediately)**
+
+```bash
+pip install httpx redis
+python scripts/seed_demo.py
+```
+
+This registers five assets on the map, injects a smoke detection, a missing hiker, and a power line alert — the intelligence service scores them, auto-dispatches missions, and your console shows a live active incident within seconds.
+
+Add `--live` to keep assets moving and fire new detections every 30 seconds.
+
 **Optional: enable the LLM reasoning brain**
 
 If you have Ollama installed locally, or want to run it in Docker:
