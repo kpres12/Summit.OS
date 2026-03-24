@@ -68,7 +68,11 @@ function MissionTimeline({ status }: { status: string }) {
   );
 }
 
-export default function OpsMissions() {
+interface OpsMissionsProps {
+  onReplay?: (missionId: string) => void;
+}
+
+export default function OpsMissions({ onReplay }: OpsMissionsProps) {
   const [missions, setMissions] = useState<MissionAPI[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -204,12 +208,31 @@ export default function OpsMissions() {
               {/* Timeline */}
               <MissionTimeline status={mission.status} />
 
-              {/* Timestamp */}
-              <div
-                className="text-[9px]"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.3)' }}
-              >
-                {ageString(mission.created_at)}
+              {/* Timestamp + Replay */}
+              <div className="flex items-center justify-between mt-1">
+                <div
+                  className="text-[9px]"
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.3)' }}
+                >
+                  {ageString(mission.created_at)}
+                </div>
+                {onReplay && (mission.status === 'COMPLETED' || mission.status === 'FAILED') && (
+                  <button
+                    onClick={() => onReplay(mission.mission_id)}
+                    style={{
+                      fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                      fontSize: 9,
+                      color: '#FFB300',
+                      background: 'transparent',
+                      border: '1px solid rgba(255,179,0,0.3)',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      letterSpacing: '0.1em',
+                    }}
+                  >
+                    REPLAY
+                  </button>
+                )}
               </div>
             </div>
           );

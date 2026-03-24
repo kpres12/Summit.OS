@@ -13,6 +13,9 @@ import OpsEntityDetail from './OpsEntityDetail';
 import OpsBottomBar from './OpsBottomBar';
 import OpsMapView from './OpsMapView';
 import OpsHardware from './OpsHardware';
+import OpsVideoPane from './OpsVideoPane';
+import OpsReplayControls from './OpsReplayControls';
+import { useReplay } from '@/hooks/useReplay';
 
 type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system';
 
@@ -137,6 +140,11 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
   const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [alertEntityIds, setAlertEntityIds] = useState<Set<string>>(new Set());
+  // Live video overlay (Gap 4)
+  const [videoStreamId, setVideoStreamId] = useState<string | null>(null);
+  // Mission replay (Gap 5)
+  const [replayMissionId, setReplayMissionId] = useState<string | null>(null);
+  const replay = useReplay(replayMissionId);
 
   // Core investigate flow — the one interaction that has to be perfect.
   // Finds the entity matching the alert source, zooms the map, opens entity detail.
@@ -186,7 +194,7 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
     switch (activePanel) {
       case 'alerts': return <OpsAlertQueue onInvestigate={investigateAlert} />;
       case 'entities': return <OpsEntityList />;
-      case 'missions': return <OpsMissions />;
+      case 'missions': return <OpsMissions onReplay={(id) => setReplayMissionId(id)} />;
       case 'layers': return <OpsMapLayers />;
       case 'hardware': return <OpsHardware />;
       case 'system': return <OpsSystem />;
@@ -232,6 +240,22 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             flyToLocation={flyToLocation}
             alertEntityIds={alertEntityIds}
           />
+          {/* Live video overlay */}
+          {videoStreamId && (
+            <OpsVideoPane
+              streamId={videoStreamId}
+              onClose={() => setVideoStreamId(null)}
+            />
+          )}
+          {/* Mission replay controls */}
+          {replayMissionId && (
+            <div style={{ position: 'absolute', bottom: 64, left: 8, width: 320, zIndex: 200 }}>
+              <OpsReplayControls
+                replay={replay}
+                onClose={() => setReplayMissionId(null)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Entity detail panel */}
@@ -248,6 +272,7 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
               entity={selectedEntity}
               onClose={() => setSelectedEntity(null)}
               onDispatch={() => setSelectedEntity(null)}
+              onLiveFeed={(streamId) => setVideoStreamId(streamId)}
             />
           </div>
         </div>

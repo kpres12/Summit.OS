@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { EntityData } from '@/hooks/useEntityStream';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { dispatchTask, sendAgentCommand } from '@/lib/api';
 
 interface OpsEntityDetailProps {
   entity: EntityData | null;
   onClose: () => void;
   onDispatch?: (entity: EntityData) => void;
+  onLiveFeed?: (streamId: string) => void;
 }
 
 function ageString(lastSeen: number): string {
@@ -87,7 +87,7 @@ function buildThoughts(entity: EntityData): { ts: string; msg: string; confidenc
   return thoughts;
 }
 
-export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEntityDetailProps) {
+export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFeed }: OpsEntityDetailProps) {
   const [dispatched, setDispatched] = useState(false);
   const [overrideStatus, setOverrideStatus] = useState<string | null>(null);
   const [thoughts, setThoughts] = useState<{ ts: string; msg: string; confidence: number }[]>([]);
@@ -97,7 +97,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
     setDispatched(false);
     setOverrideStatus(null);
     // Try real reasoning endpoint first, fall back to local generation
-    fetch(`${API}/reasoning/${entity.entity_id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/reasoning/${entity.entity_id}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data?.thoughts?.length) {
@@ -115,12 +115,15 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
   const shortId = entity.entity_id.slice(0, 12);
   const displayName = entity.callsign || shortId;
 
-  const handleDispatch = () => {
+  const handleDispatch = async () => {
     setDispatched(true);
+    try {
+      await dispatchTask({ asset_id: entity.entity_id, action: 'DISPATCH', risk_level: 'LOW' });
+    } catch {
+      // fire-and-forget — panel closes regardless
+    }
     onDispatch?.(entity);
-    setTimeout(() => {
-      onClose();
-    }, 600);
+    setTimeout(() => onClose(), 600);
   };
 
   return (
@@ -344,7 +347,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
             }}
             onClick={async () => {
               try {
-                await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `HALT ${entity.entity_id}`, entity_id: entity.entity_id, command: 'halt' }) });
+                await sendAgentCommand({ entity_id: entity.entity_id, command: 'halt', mission_objective: `HALT ${entity.entity_id}` });
                 setOverrideStatus(`HALT sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
               } catch (err) {
                 setOverrideStatus(`HALT failed: ${(err as Error)?.message ?? 'network error'}`);
@@ -366,7 +369,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
             }}
             onClick={async () => {
               try {
-                await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Return ${entity.entity_id} to base`, entity_id: entity.entity_id, command: 'rtb' }) });
+                await sendAgentCommand({ entity_id: entity.entity_id, command: 'rtb', mission_objective: `Return ${entity.entity_id} to base` });
                 setOverrideStatus(`RTB sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
               } catch (err) {
                 setOverrideStatus(`RTB failed: ${(err as Error)?.message ?? 'network error'}`);
@@ -388,7 +391,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
             }}
             onClick={async () => {
               try {
-                await fetch(`${API}/agents`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mission_objective: `Activate camera on ${entity.entity_id}`, entity_id: entity.entity_id, command: 'activate_camera' }) });
+                await sendAgentCommand({ entity_id: entity.entity_id, command: 'activate_camera', mission_objective: `Activate camera on ${entity.entity_id}` });
                 setOverrideStatus(`Camera activated on ${entity.callsign || entity.entity_id.slice(0,8)}`);
               } catch (err) {
                 setOverrideStatus(`Camera failed: ${(err as Error)?.message ?? 'network error'}`);
@@ -399,6 +402,23 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch }: OpsEnti
           >
             ACTIVATE CAMERA
           </button>
+          {onLiveFeed && (
+            <button
+              className="w-full text-[10px] py-2 tracking-widest transition-colors"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: '#00FF9C',
+                border: '1px solid rgba(0,255,156,0.4)',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+              onClick={() => onLiveFeed(entity.entity_id)}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,156,0.08)')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+            >
+              LIVE FEED
+            </button>
+          )}
         </div>
       </div>
     </div>

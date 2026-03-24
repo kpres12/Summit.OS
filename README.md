@@ -1,191 +1,362 @@
 # Summit.OS
 
-**Connect any signal. Build any mission.**
+> **Open source autonomous coordination for the physical world.**
+> The operational platform for wildfire response, search & rescue, disaster coordination, and commercial UAV fleets.
 
-Summit.OS is an open-source autonomous systems coordination platform — the integration and coordination layer between your existing sensors, cameras, drones, and assets and the missions you need to run.
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
+[![Next.js 15](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
+[![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](infra/docker/docker-compose.yml)
 
-You bring your hardware. Summit.OS connects it, fuses the signals into a live world model, and gives your operators one unified interface to understand what's happening and act on it. It works with DJI drones, ONVIF cameras, MAVLink autopilots, ADS-B receivers, weather stations, IoT sensors, and anything else you can write an adapter for.
+---
 
-**Built for:** wildfire response, search & rescue, disaster coordination, commercial UAV operations, maritime safety, critical infrastructure monitoring — any domain where humans need to coordinate autonomous systems in the physical world.
+## What it does
 
-Summit.OS does not build hardware. It makes your hardware work together.
+At **14:33 on a Tuesday**, a camera on a ridge detects smoke. Here's what Summit.OS does in the next 90 seconds — with no human touching a keyboard:
+
+1. **Fusion** receives the detection (`smoke, confidence 0.91, lat 34.12, lon -118.34`)
+2. **Intelligence** scores it CRITICAL, dispatches the nearest available UAV to SURVEY — automatically, using a trained ML model, no LLM required
+3. **Tasking** creates a mission, adjusts altitude for terrain, sends waypoints to the drone over MQTT
+4. **Fabric** raises an alert, starts escalating if no operator acknowledges within your configured timeout
+5. **Console** shows the operator a live map with the smoke location, the drone en route, and a live HLS video feed the moment the drone arrives
+
+The operator's job: watch, verify, decide whether to dispatch ground resources. The software handles everything before that decision.
+
+---
+
+## Why Summit.OS
+
+The coordination software that does this well — Anduril's LatticeOS, Shield AI's platform — is closed-source, defense-export-controlled, and costs millions per year. It is not available to a county fire department, a maritime SAR team, an NGO running conservation drones, or a startup building inspection UAVs.
+
+Summit.OS is the open-source alternative. Same architecture. Built for the civilian world.
+
+|  | Summit.OS | LatticeOS / Defense platforms |
+|---|---|---|
+| License | Apache 2.0 | Proprietary |
+| Access | Anyone | Defense contractors |
+| Cost | Free to self-host | $M/year |
+| Export restrictions | None | ITAR/EAR controlled |
+| Use cases | Civilian emergency response, commercial ops | Military |
+| AI | Trained on your data, self-improving | Black box |
+
+---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Operator Console (3000)                     │
-│              MapLibre map + entity stream + mission feed        │
-├─────────────────────────────────────────────────────────────────┤
-│                      API Gateway (8000)                         │
-│               Routes to backend services, OIDC/RBAC             │
-├──────────┬──────────┬──────────────┬────────────┬───────────────┤
-│  Fabric  │  Fusion  │ Intelligence │  Tasking   │  Inference    │
-│  (8001)  │  (8002)  │   (8003)     │  (8004)    │   (8006)      │
-│ WorldStore│ Tracking │  Reasoning   │  Missions  │  Detection    │
-│ MQTT/gRPC│ Kalman   │  Advisory    │  State Mach│  YOLOv8/ONNX  │
-│ Mesh CRDT│ Correlate│  Anomaly     │  Assignment│  Hot-swap     │
-├──────────┴──────────┴──────────────┴────────────┴───────────────┤
-│                    Infrastructure                               │
-│       Redis · Postgres+PostGIS · MQTT · Prometheus · Grafana    │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Operator Console :3000                          │
+│  MapLibre live map · Alert queue · Mission feed · Live video · Replay   │
+└───────────────────────────┬─────────────────────────────────────────────┘
+                            │  REST + WebSocket
+┌───────────────────────────▼─────────────────────────────────────────────┐
+│                         API Gateway :8000                               │
+│              Routing · OIDC/RBAC · Rate limiting · Audit log            │
+└──────────┬──────────┬────────────────┬────────────┬─────────────────────┘
+           │          │                │            │
+    ┌──────▼──┐ ┌─────▼──────┐ ┌──────▼────┐ ┌────▼───────┐ ┌───────────┐
+    │  Fabric │ │   Fusion   │ │Intelligence│ │  Tasking   │ │ Inference │
+    │  :8001  │ │   :8002    │ │   :8003   │ │   :8004    │ │   :8006   │
+    │─────────│ │────────────│ │───────────│ │────────────│ │───────────│
+    │WorldSt. │ │Multi-sensor│ │Rule+ML    │ │State mach. │ │ONNX model │
+    │MQTT brdg│ │track fusion│ │auto-disp. │ │Asset assign│ │hot-swap   │
+    │WS stream│ │Kalman EKF  │ │Risk score │ │OPA policy  │ │YOLOv8n    │
+    │Mesh CRDT│ │Re-ID       │ │LLM brain* │ │Replay store│ │           │
+    └────┬────┘ └─────┬──────┘ └──────┬────┘ └────┬───────┘ └───────────┘
+         │            │               │            │
+    ┌────▼────────────▼───────────────▼────────────▼───────────────────────┐
+    │               Redis · PostgreSQL+PostGIS · MQTT (Mosquitto)          │
+    │               Prometheus · Grafana · Jaeger · OPA                    │
+    └───────────────────────────────────────────────────────────────────────┘
+
+    * Optional — system operates fully without it
 ```
 
-## Core Concepts
+---
 
-**Everything is an Entity.** Drones, ground robots, cameras, tracks, alerts, missions, geofences — they all share one data model (`packages/entities/core.py`) and live in one WorldStore.
+## Key Capabilities
 
-**One World Model.** The WorldStore (`packages/world/store.py`) is the single source of truth. In-memory cache + Postgres persistence + MQTT/WebSocket broadcast. Every service reads from and writes to it.
+**Multi-sensor fusion** — Kalman EKF track fusion across camera, ADS-B, AIS, MAVLink, CoT/ATAK, and any custom sensor. M-of-N track confirmation. Cross-camera re-identification.
 
-**Mesh Replication.** CRDT-based entity replication across nodes (`packages/mesh/`). Nodes can disconnect, make conflicting updates, and merge correctly on reconnect.
+**Autonomous mission dispatch** — When a detection arrives, a trained ML model (GradientBoosting, ONNX, <1ms inference) decides the mission type and dispatches immediately. Trained on 108,000 real-world labeled events from NASA FIRMS, NOAA Storm Events, and GBIF. No LLM required. Rules-based fallback always active.
 
-**Intent-Based Tasking.** Describe what you want done, not how. The assignment engine scores available assets by capability, proximity, battery, and availability, then dispatches through a formal state machine with policy enforcement.
+**Self-improving AI** — Retrain the mission planner on your own operator decisions with one command:
+```bash
+python packages/ml/train_mission_classifier.py --real-data postgresql://...
+```
+The more you use it, the better it gets at your specific deployment context.
 
-**Plugin AI.** The inference runtime (`apps/inference/`) loads any ONNX model. Ships with YOLOv8n for general object detection. Swap in your own domain-specific model at runtime.
+**Live video** — HLS streaming from any RTSP source (IP cameras, drone gimbal feeds). Sub-5-second latency. Playable in any browser.
 
-**30-Minute Integration.** Subclass `SummitAdapter`, implement two methods (`get_telemetry`, `handle_command`), and your device appears in the world model. See `INTEGRATION_GUIDE.md`.
+**Mission replay** — Every mission is recorded as a time-indexed snapshot stream. Operators can scrub back through any incident for debrief or training.
+
+**Terrain awareness** — SRTM DEM integration. All waypoints automatically adjusted to maintain true AGL altitude over real terrain.
+
+**Alert escalation** — Unacknowledged alerts auto-escalate via webhook + email. Configurable timeout per severity.
+
+**CoT/ATAK compatibility** — Bidirectional UDP bridge. Entities visible to any ATAK device on the network.
+
+**30-minute device integration** — One base class, two methods:
+```python
+class MyDrone(SummitAdapter):
+    async def get_telemetry(self): ...
+    async def handle_command(self, cmd): ...
+```
+
+---
 
 ## Quick Start
 
-### No Docker (fastest — works on any machine)
+**Prerequisites:** Docker Desktop (or Docker + Compose V2), 8 GB RAM, 10 GB disk.
 
 ```bash
-git clone https://github.com/summit-os/summit-os.git
+# 1. Clone
+git clone https://github.com/bigmt-ai/summit-os.git
 cd summit-os
 
-# Install mock server deps (once)
-pip install -r requirements_mock.txt
+# 2. Configure (defaults work for local dev)
+cp .env.example .env
 
-# Terminal 1: start the mock API + live ADS-B data
-make mock
-
-# Terminal 2: start the console
-make dev-console
-
-# Open http://localhost:3000
-# Live aircraft from OpenSky Network appear on the map immediately.
+# 3. Start
+cd infra/docker
+docker compose up
 ```
 
-### Full Stack (Docker required)
+That's it. After ~60 seconds:
 
+| URL | What |
+|---|---|
+| http://localhost:3002 | Operator console |
+| http://localhost:8000/docs | API docs (Swagger) |
+| http://localhost:3001 | Grafana dashboards (admin / admin) |
+| http://localhost:16686 | Jaeger distributed traces |
+
+**Optional: enable the LLM reasoning brain**
+
+If you have Ollama installed locally, or want to run it in Docker:
 ```bash
-# Start everything (infrastructure + all services + console)
-make dev
+# With Docker (pulls llama3.1 on first start, ~4 GB)
+docker compose --profile llm up
 
-# Verify the stack is healthy
-make health
+# Then pull the model (one time)
+docker compose --profile llm exec ollama ollama pull llama3.1
+```
+The system works fully without this. The LLM adds natural-language mission reasoning for complex multi-entity scenarios.
 
-# Run the end-to-end smoke test
-make smoke
+---
+
+## How the AI works
+
+Summit.OS ships with two trained ML models in `packages/ml/models/`:
+
+| Model | What it does | Size | Latency |
+|---|---|---|---|
+| `mission_classifier.onnx` | Maps (class, confidence, location) → mission type | ~200 KB | <1ms |
+| `risk_scorer.onnx` | Scores observation severity (LOW → CRITICAL) | ~150 KB | <1ms |
+
+Both were trained on real-world data:
+- **35,928** NASA FIRMS active fire detections (global, 7-day)
+- **49,869** NOAA Storm Events (tornadoes, floods, storm surge, 2018–2023)
+- **1,363** GBIF wildlife observations
+- **20,936** synthetic examples covering SEARCH, INSPECT, DELIVER, ORBIT
+
+**Supported mission types:**
+
+| Mission | Triggers | Asset |
+|---|---|---|
+| SURVEY | Fire, smoke, flood, earthquake damage, crop anomaly | UAV or fixed-wing |
+| MONITOR | Person, survivor, vessel, vehicle, wildlife | UAV (loiter) |
+| SEARCH | Missing person, distress signal, mayday, overdue vessel | UAV grid pattern |
+| PERIMETER | Hazmat spill, tornado, storm surge, intrusion, armed threat | UAV boundary |
+| ORBIT | Suspicious drone, vessel tracking, persistent ISR | UAV (continuous orbit) |
+| DELIVER | Aid drop, medical supply, cargo, resupply | UAV |
+| INSPECT | Pipeline, power line, bridge, solar farm, wind turbine | UAV (close pass) |
+
+**Retrain on your data:**
+```bash
+# Download fresh public data (NASA, NOAA, GBIF)
+python packages/ml/download_real_data.py --years 2020 2021 2022 2023
+
+# Blend with your operator-approved mission history
+python packages/ml/train_mission_classifier.py \
+  --real-csv packages/ml/data/real_combined.csv \
+  --real-data postgresql://summit:password@localhost:5432/summit_os
+
+# New .onnx files drop in place — no redeployment needed
 ```
 
-```
-# Console:     http://localhost:3000
-# API Gateway: http://localhost:8000
-# Grafana:     http://localhost:3001
-```
+---
 
 ## Monorepo Structure
 
 ```
 apps/
-  console/          # Operator console (Next.js + MapLibre)
-  fabric/           # Data fabric — WorldStore, MQTT, mesh, WebSocket
-  fusion/           # Sensor fusion — tracking, correlation, Kalman filters
-  intelligence/     # AI reasoning — advisory, anomaly detection
-  tasking/          # Mission planning — state machine, assignment engine, OPA
-  inference/        # AI inference runtime — ONNX model serving
-  api-gateway/      # Routes requests to backend services
+  console/          # Next.js 15 operator UI — map, alerts, missions, video
+  fabric/           # WorldStore, MQTT bridge, mesh replication, WebSocket
+  fusion/           # Sensor fusion, Kalman tracking, re-identification, HLS
+  intelligence/     # ML dispatch, risk scoring, advisory, LLM brain (optional)
+  tasking/          # Mission lifecycle, assignment, terrain following, replay
+  inference/        # ONNX model serving — plug in any detection model
+  api-gateway/      # Routing, auth, rate limiting, audit
 
 packages/
-  entities/         # Core Entity dataclass — the universal data type
-  world/            # WorldStore + Entity CRUD API
-  mesh/             # CRDT replication, mesh peer, transport
-  ai/               # Detection, classification, anomaly, edge inference
-  hal/              # Hardware abstraction — MAVLink, ONVIF, SITL drivers
-  security/         # mTLS, RBAC, auth, data classification
-  autonomy/         # Behavior trees, rules engine
-  schemas/          # Shared Pydantic schemas
-  observability/    # Metrics, tracing
-  summit-os-sdk/    # Integration SDK — adapter base class, conformance tests
+  ml/               # Training pipeline, data downloaders, trained models
+  entities/         # Core Entity schema — the universal data type
+  world/            # WorldStore — in-memory + Postgres + broadcast
+  mesh/             # CRDT replication across disconnected nodes
+  geo/              # DEM terrain, elevation profiles, line-of-sight
+  adapters/         # Adapter registry, built-in adapters (CoT/ATAK, MAVLink)
+  observability/    # OpenTelemetry tracing middleware
+  security/         # mTLS, RBAC, JWT, data classification
 
-models/             # ONNX model files (YOLOv8n reference model)
-infra/docker/       # Docker Compose, Mosquitto config, Prometheus config
-scripts/            # Demo scripts, smoke tests, mock data generators
-tests/              # Integration and E2E tests
-examples/           # Quickstart adapter template
+infra/
+  docker/           # docker-compose.yml, Mosquitto, Prometheus, Grafana config
+  policy/           # OPA authorization policies
+  proxy/            # Nginx mTLS proxy configs
 ```
 
-## Services
+---
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Console | 3000 | Operator UI — map, entity list, mission feed, command bar |
-| API Gateway | 8000 | Unified REST API, request routing, OIDC enforcement |
-| Fabric | 8001 | WorldStore, MQTT bridge, mesh peer, WebSocket streaming |
-| Fusion | 8002 | Sensor fusion, multi-target tracking, correlation |
-| Intelligence | 8003 | AI reasoning, anomaly detection, advisory generation |
-| Tasking | 8004 | Mission lifecycle, assignment engine, OPA policy |
-| Inference | 8006 | ONNX model serving, object detection, model hot-swap |
+## Services at a glance
+
+| Service | Port | |
+|---|---|---|
+| Operator Console | 3002 | MapLibre map, alert queue, mission feed, video overlay |
+| API Gateway | 8000 | `/docs` for full API reference |
+| Fabric | 8001 | WebSocket at `/ws/{org_id}` for live entity stream |
+| Fusion | 8002 | `/api/v1/tracks`, `/api/v1/video/hls`, `/api/v1/elevation` |
+| Intelligence | 8003 | `/agents`, `/advisories`, `/brain/status` |
+| Tasking | 8004 | `/api/v1/missions`, `/api/v1/missions/{id}/replay/timeline` |
+| Inference | 8006 | `/detect`, `/models` — swap ONNX models at runtime |
+| Grafana | 3001 | Pre-built dashboards for all services |
+| Jaeger | 16686 | Distributed traces across the full request path |
+
+---
+
+## Connecting hardware
+
+Summit.OS ships with built-in adapters for:
+- **DJI / MAVLink autopilots** — via `pymavlink` (set `TASKING_DIRECT_AUTOPILOT=true`)
+- **CoT/ATAK** — bidirectional UDP, multicast at 239.2.3.1:6969
+- **ONVIF cameras** — discovery + RTSP stream registration
+- **OpenSky Network** — live ADS-B aircraft (no account needed)
+- **AIS vessels** — maritime vessel positions via AISHub
+- **CelesTrak** — satellite orbital positions
+
+Custom hardware: subclass `SummitAdapter` in `packages/adapters/`. See `examples/` for a complete template.
+
+---
+
+## Configuration
+
+Copy `.env.example` to `.env`. Defaults work out of the box for local development.
+
+**Minimum for production (change these):**
+```bash
+POSTGRES_PASSWORD=<strong password>
+FABRIC_JWT_SECRET=<64 random hex chars>
+FIELD_ENCRYPTION_KEY=<openssl rand -base64 32>
+```
+
+**To enable AI brain (optional):**
+```bash
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1
+```
+
+**To enforce auth:**
+```bash
+OIDC_ENFORCE=true
+OIDC_ISSUER=https://your-keycloak/realms/summit
+API_KEY_ENFORCE=true
+RBAC_ENFORCE=true
+```
+
+See `.env.example` for the full reference.
+
+---
 
 ## Development
 
 ```bash
-# Infrastructure only (Redis, Postgres, MQTT, Prometheus, Grafana)
-make dev-services
+# Infrastructure only (Postgres, Redis, MQTT, Prometheus)
+docker compose up redis postgres mqtt prometheus grafana
 
-# Backend Python services only
-make dev-backend
+# Individual services (from their app directory)
+cd apps/fabric && uvicorn main:app --reload --port 8001
+cd apps/console && npm run dev
 
-# Console only (local Next.js dev server)
-make dev-console
+# Run tests (per service — see CONTRIBUTING.md for why)
+python -m pytest apps/fabric/tests/
+python -m pytest apps/fusion/tests/
+python -m pytest apps/tasking/tests/
+python -m pytest apps/intelligence/tests/
 
-# Run all tests
-make test
-
-# Lint and format
-make lint
-make format
-
-# Stream logs
-make logs
-
-# Clean up containers and volumes
-make clean
+# Hot reload all Python services
+UVICORN_RELOAD=true docker compose up
 ```
 
-## Integration
+---
 
-See `INTEGRATION_GUIDE.md` for the full walkthrough. The short version:
+## Deployment
 
-```python
-from summit_os.adapter import SummitAdapter
-
-class MyDrone(SummitAdapter):
-    ENTITY_TYPE = "ASSET"
-    DOMAIN = "AERIAL"
-    CAPABILITIES = ["camera", "thermal"]
-
-    async def get_telemetry(self):
-        return {"lat": 34.05, "lon": -118.24, "alt": 100, "battery_pct": 85}
-
-    async def handle_command(self, command):
-        if command["action"] == "goto":
-            self.fly_to(command["lat"], command["lon"])
-
-adapter = MyDrone(entity_id="drone-001", gateway_url="http://localhost:8000")
-adapter.run()
-```
-
-Run conformance tests against your adapter:
+**Self-hosted (recommended start):**
 ```bash
-summit-os-conformance --adapter my_adapter:MyDrone --gateway http://localhost:8000
+# Production — builds images, no volume mounts
+docker compose -f infra/docker/docker-compose.yml up --build -d
 ```
+
+**Cloud:** Any Kubernetes cluster. Helm chart in progress — contributions welcome.
+
+**Air-gapped / edge:** All ML inference runs locally. No external API calls required. Designed to operate on field hardware with no internet connection.
+
+---
+
+## Editions
+
+| | Community | Cloud | Enterprise |
+|---|---|---|---|
+| Core platform | ✓ Open source | ✓ Managed | ✓ On-premise |
+| ML models (base) | ✓ Included | ✓ Updated monthly | ✓ Custom trained |
+| Observability stack | ✓ Self-host | ✓ Managed | ✓ Managed |
+| SLA | — | 99.5% | 99.9% + 4h response |
+| Auth (OIDC/RBAC) | ✓ Self-configure | ✓ Managed | ✓ SSO + MFA |
+| Custom model training | DIY | — | ✓ On your operator data |
+| Hardware integration support | Community | — | ✓ Dedicated |
+| Compliance (SOC 2 / ISO 27001) | DIY | — | ✓ Provided |
+| **Price** | **Free** | **~$500–2k/mo** | **Contact us** |
+
+---
+
+## Roadmap
+
+- [ ] Helm chart for Kubernetes deployment
+- [ ] USCG SAR data integration (SEARCH model improvement)
+- [ ] Behavior tree editor in the console (visual mission programming)
+- [ ] Hardware-in-the-loop SITL testing environment
+- [ ] Mobile companion app (iOS/Android) for field operators
+- [ ] Multi-org tenancy in Community edition
+- [ ] Pre-built adapters: Skydio, Autel, Parrot, Reach RTK
+- [ ] Federated learning — improve shared base models without sharing raw data
+
+---
 
 ## Contributing
 
-See `CONTRIBUTING.md` for setup instructions, branching conventions, and PR process.
+Issues, PRs, and adapter contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+If you're a fire department, SAR team, or drone operator running Summit.OS in the field — we want to hear from you. Your operational data (anonymized) is what makes the ML models better for everyone.
+
+---
+
+## Who built this
+
+Summit.OS is a [BigMT.ai](https://bigmt.ai) project. Built for civilian operators, not defense contractors.
+
+---
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+[Apache 2.0](LICENSE) — use it, fork it, build on it, sell services around it.
+
+The trained ML models in `packages/ml/models/` are trained on public data (NASA, NOAA, GBIF) and released under the same license.

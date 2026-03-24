@@ -153,6 +153,11 @@ services:
       - INTELLIGENCE_ENABLE_XGB=${INTELLIGENCE_ENABLE_XGB-false}
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
       - INTELLIGENCE_MODEL_PATH=${INTELLIGENCE_MODEL_PATH-}
+      - PLANNER_MODEL_PATH=/ml-models/mission_classifier.onnx
+      - FABRIC_URL=http://fabric:8001
+      - TASKING_URL=http://tasking:8004
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-llama3.1}
       - PYTHONPATH=/workspace:/app
       - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
@@ -166,6 +171,7 @@ services:
       - ../../:/workspace
       - ../../apps/intelligence:/app
       - ../../models:/models
+      - ../../packages/ml/models:/ml-models:ro
     command: uvicorn main:app --host 0.0.0.0 --port 8003 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8003/health || exit 1"]
@@ -488,9 +494,30 @@ services:
       timeout: 5s
       retries: 3
 
+  # ── Optional: local LLM (enable with: docker compose --profile llm up) ──────
+  # Provides the autonomous mission brain (Ollama + llama3.1).
+  # Without this, Summit.OS runs fully on rule-based + trained ML dispatch.
+  # First run: docker compose --profile llm exec ollama ollama pull llama3.1
+  ollama:
+    image: ollama/ollama:latest
+    container_name: summit-ollama
+    profiles: ["llm"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
 volumes:
   redis_data:
   postgres_data:
   grafana_data:
   mosquitto_data:
   mosquitto_log:
+  ollama_data:

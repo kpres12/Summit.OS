@@ -102,6 +102,9 @@ world_state: Dict[str, Any] = {
 }
 MAX_ALERTS = int(os.getenv("FABRIC_MAX_ALERTS", "200"))
 
+# Shared alert dict for AlertEscalationService (alert_id → alert dict, kept in sync)
+_escalation_alerts: Dict[str, Any] = {}
+
 # Database metadata and tables (registry)
 metadata = MetaData()
 
@@ -294,6 +297,15 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(telemetry_processor())
         asyncio.create_task(alert_processor())
         asyncio.create_task(heartbeat_watcher())
+
+        # Alert escalation service (uses live shared dict, updated as alerts arrive)
+        try:
+            from alert_escalation import AlertEscalationService
+            _esc_svc = AlertEscalationService(_escalation_alerts)
+            asyncio.create_task(_esc_svc.run())
+            logger.info("AlertEscalationService started")
+        except Exception as _esc_err:
+            logger.warning(f"AlertEscalationService not started: {_esc_err}")
 
         # Subscribe to entity update topics for WorldStore ingestion
         if mqtt_client and WORLD_STORE_AVAILABLE and world_store:
@@ -641,7 +653,7 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
         await redis_client.add_alert(am)
         # Update in-memory world state (alerts ring buffer)
         try:
-            world_state["alerts"].insert(0, {
+            alert_dict = {
                 "alert_id": alert.alert_id,
                 "severity": str(sev.value if hasattr(sev, "value") else sev),
                 "lat": float(aloc.latitude),
@@ -649,8 +661,11 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
                 "description": alert.description,
                 "source": alert.source,
                 "ts_iso": alert.timestamp.isoformat(),
-            })
+            }
+            world_state["alerts"].insert(0, alert_dict)
             del world_state["alerts"][MAX_ALERTS:]
+            # Keep escalation dict in sync (shared reference — AlertEscalationService watches this)
+            _escalation_alerts[alert.alert_id] = alert_dict
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         # Persist to world_alerts
@@ -707,6 +722,38 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
     except Exception as e:
         logger.error("Failed to publish alert", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to publish alert")
+
+@app.post("/api/v1/alerts/{alert_id}/acknowledge")
+async def acknowledge_alert(alert_id: str):
+    """Mark an alert as acknowledged, stopping escalation."""
+    found = False
+    for a in world_state["alerts"]:
+        if a.get("alert_id") == alert_id:
+            a["acknowledged"] = True
+            a["acknowledged_at"] = datetime.now(timezone.utc).isoformat()
+            found = True
+            break
+    # Also update the escalation-watched dict
+    if alert_id in _escalation_alerts:
+        _escalation_alerts[alert_id]["acknowledged"] = True
+        found = True
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found in active state")
+    return {"status": "acknowledged", "alert_id": alert_id}
+
+
+@app.get("/api/v1/elevation")
+async def get_elevation(lat: float, lon: float):
+    """Return terrain elevation (metres MSL) at lat/lon from SRTM DEM tiles."""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+        from packages.geo.dem import get_provider
+        elev = get_provider().get_elevation(lat, lon)
+        return {"lat": lat, "lon": lon, "elevation_m": elev}
+    except Exception as e:
+        return {"lat": lat, "lon": lon, "elevation_m": 0.0, "note": str(e)}
+
 
 @app.post("/missions")
 async def publish_mission_update(mission: "MissionData"):

@@ -111,6 +111,77 @@ export async function createMission(payload: Record<string, unknown>) {
   return apiJson('/v1/missions', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+// --- Tasks / Dispatch ---
+
+export interface TaskDispatch {
+  asset_id: string;
+  action: string;
+  risk_level?: string;
+  waypoints?: unknown[];
+}
+
+export async function dispatchTask(req: TaskDispatch): Promise<{ task_id: string; status: string }> {
+  return apiJson('/v1/tasks', {
+    method: 'POST',
+    body: JSON.stringify({ risk_level: 'LOW', waypoints: [], ...req }),
+  });
+}
+
+// --- Agent Commands (HALT / RTB / ACTIVATE_CAMERA) ---
+
+export interface AgentCommand {
+  entity_id: string;
+  command: string;
+  mission_objective?: string;
+}
+
+export async function sendAgentCommand(req: AgentCommand): Promise<unknown> {
+  return apiJson('/agents', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  });
+}
+
+// --- Alert Acknowledgement ---
+
+export async function acknowledgeAlert(alertId: string): Promise<unknown> {
+  return apiJson(`/v1/alerts/${alertId}/acknowledge`, { method: 'POST' });
+}
+
+// --- Mission Replay ---
+
+export interface ReplayTimeline {
+  mission_id: string;
+  count: number;
+  start: string | null;
+  end: string | null;
+  timestamps: string[];
+}
+
+export async function fetchReplayTimeline(missionId: string): Promise<ReplayTimeline> {
+  return apiJson(`/v1/missions/${missionId}/replay/timeline`);
+}
+
+export async function fetchReplaySnapshot(missionId: string, ts?: string, index?: number) {
+  const params = new URLSearchParams();
+  if (ts) params.set('ts', ts);
+  if (index !== undefined) params.set('index', String(index));
+  return apiJson(`/v1/missions/${missionId}/replay/snapshot?${params}`);
+}
+
+// --- HLS Video ---
+
+export async function startHLSStream(streamId: string, rtspUrl: string) {
+  return apiJson(`/v1/video/hls/${streamId}/start`, {
+    method: 'POST',
+    body: JSON.stringify({ rtsp_url: rtspUrl }),
+  });
+}
+
+export async function stopHLSStream(streamId: string) {
+  return apiJson(`/v1/video/hls/${streamId}`, { method: 'DELETE' });
+}
+
 // --- World State ---
 
 export async function fetchWorldState() {
