@@ -169,6 +169,83 @@ _SCENARIOS = [
 
     # ── Generic anomaly (catch-all) ───────────────────────────────────────────
     (["anomaly", "unknown object", "unidentified"], 0, (1,2,1,0), 0.7, 1.0),
+
+    # ── Earthquake / seismic ──────────────────────────────────────────────────
+    (["major earthquake", "great earthquake", "m7 earthquake"], 2, (0,0,0,4), 0.7, 1.0),
+    (["significant earthquake", "m6 earthquake", "strong earthquake"], 2, (0,0,1,3), 0.6, 1.0),
+    (["moderate earthquake", "earthquake", "seismic event"], 0, (0,1,2,1), 0.5, 0.95),
+    (["aftershock sequence", "tremor", "seismic swarm"], 3, (0,1,2,1), 0.5, 0.95),
+    (["liquefaction", "ground failure", "fissure"], 0, (0,0,1,3), 0.55, 1.0),
+
+    # ── Volcanic ─────────────────────────────────────────────────────────────
+    (["volcanic eruption", "lava flow", "pyroclastic flow"], 3, (0,0,0,4), 0.6, 1.0),
+    (["volcanic ash cloud", "ash fall", "tephra"], 3, (0,0,1,3), 0.55, 1.0),
+    (["volcanic alert", "volcanic activity", "lava dome"], 3, (0,0,2,2), 0.5, 1.0),
+    (["lahar", "volcanic mudflow", "debris avalanche"], 3, (0,0,1,3), 0.6, 1.0),
+
+    # ── Tsunami / coastal ─────────────────────────────────────────────────────
+    (["tsunami warning", "tsunami wave", "seismic sea wave"], 3, (0,0,0,4), 0.65, 1.0),
+    (["coastal flooding", "storm surge flooding", "inundation zone"], 3, (0,0,1,3), 0.55, 1.0),
+
+    # ── Epidemic / public health → DELIVER (medical supply) ──────────────────
+    (["disease outbreak", "epidemic", "cholera outbreak"], 5, (0,1,2,1), 0.6, 0.95),
+    (["medical supply needed", "medicine shortage", "vaccine delivery"], 5, (0,1,2,1), 0.65, 1.0),
+    (["mass vaccination site", "field hospital", "medical camp"], 5, (0,1,2,1), 0.60, 1.0),
+    (["contaminated water", "water contamination", "toxic water"], 5, (0,0,2,2), 0.55, 1.0),
+    (["food shortage", "aid required", "famine relief"], 5, (0,0,2,2), 0.55, 1.0),
+
+    # ── Chemical / nuclear (expanded) ────────────────────────────────────────
+    (["nuclear incident", "radiation release", "radiological hazard"], 3, (0,0,0,4), 0.5, 1.0),
+    (["chemical weapons", "nerve agent", "biological agent"], 3, (0,0,0,4), 0.5, 1.0),
+    (["industrial explosion", "refinery fire", "chemical plant fire"], 3, (0,0,0,4), 0.55, 1.0),
+    (["oil spill", "fuel spill", "petroleum release"], 3, (0,0,2,2), 0.5, 1.0),
+
+    # ── Air quality / pollution ───────────────────────────────────────────────
+    (["hazardous air quality", "smoke haze", "wildfire smoke"], 0, (0,0,2,2), 0.6, 1.0),
+    (["dust storm", "sandstorm", "haboob"], 0, (0,1,2,1), 0.55, 1.0),
+    (["industrial smog", "pollution plume", "emission plume"], 3, (0,1,2,1), 0.55, 1.0),
+    (["severe air pollution", "pm25 hazardous", "air quality emergency"], 3, (0,0,1,3), 0.65, 1.0),
+
+    # ── Tropical cyclone / hurricane (expanded) ───────────────────────────────
+    (["major hurricane", "category 4 hurricane", "category 5 hurricane"], 3, (0,0,0,4), 0.7, 1.0),
+    (["tropical cyclone", "typhoon", "cyclone landfall"], 3, (0,0,1,3), 0.6, 1.0),
+    (["hurricane evacuation zone", "mandatory evacuation", "hurricane shelter"], 0, (0,0,2,2), 0.55, 1.0),
+
+    # ── Ice / avalanche / cold (expanded) ────────────────────────────────────
+    (["avalanche", "snow avalanche", "slab avalanche"], 2, (0,0,1,3), 0.55, 1.0),
+    (["ice jam", "river ice", "ice hazard"], 3, (0,1,2,1), 0.5, 0.95),
+    (["blizzard", "whiteout conditions", "severe snowstorm"], 0, (0,1,2,1), 0.55, 1.0),
+    (["extreme cold", "hypothermia risk", "cold wave"], 0, (0,1,2,1), 0.55, 0.95),
+
+    # ── Drought / extreme heat ────────────────────────────────────────────────
+    (["extreme heat", "heat wave", "dangerous heat index"], 0, (0,1,2,1), 0.60, 0.95),
+    (["drought", "severe drought", "crop failure drought"], 0, (0,2,1,1), 0.55, 0.90),
+    (["wildfire risk", "red flag condition", "fire weather warning"], 0, (0,0,2,2), 0.60, 1.0),
+
+    # ── Expanded wildlife (new species from iNaturalist/GBIF) ─────────────────
+    (["jaguar sighting", "jaguar", "leopard sighting"], 3, (0,1,2,1), 0.5, 0.95),
+    (["tiger sighting", "tiger"], 3, (0,0,1,3), 0.5, 0.95),
+    (["crocodile", "alligator", "crocodile sighting"], 3, (0,1,2,1), 0.5, 0.95),
+    (["orca", "killer whale", "orca pod"], 1, (2,2,0,0), 0.5, 0.95),
+    (["humpback whale", "whale sighting", "whale breach"], 1, (2,2,0,0), 0.5, 0.95),
+    (["elephant herd", "elephant sighting", "elephant"], 1, (0,1,2,1), 0.5, 0.95),
+    (["rhino sighting", "rhino", "endangered species"], 1, (0,1,2,1), 0.5, 0.95),
+    (["gorilla sighting", "gorilla", "great ape"], 1, (0,1,2,1), 0.5, 0.95),
+    (["python", "invasive snake", "feral animal"], 3, (0,1,2,1), 0.5, 0.90),
+    (["bird strike risk", "raptor", "bald eagle"], 1, (1,2,1,0), 0.5, 0.90),
+
+    # ── Maritime / port security ──────────────────────────────────────────────
+    (["unidentified vessel", "suspicious vessel", "vessel of interest"], 4, (0,1,2,1), 0.5, 1.0),
+    (["port security breach", "unauthorized dock access", "maritime intrusion"], 3, (0,0,2,2), 0.5, 1.0),
+    (["search and rescue zone", "maritime search grid", "sar sector"], 2, (0,0,1,3), 0.5, 1.0),
+    (["vessel aground", "grounded ship", "beached vessel"], 2, (0,1,2,1), 0.5, 1.0),
+    (["diving emergency", "diver in distress", "diver missing"], 2, (0,0,1,3), 0.5, 1.0),
+
+    # ── Urban SAR ─────────────────────────────────────────────────────────────
+    (["trapped person", "person trapped in rubble", "urban rescue"], 2, (0,0,1,3), 0.5, 1.0),
+    (["building fire", "structure fire", "high-rise fire"], 3, (0,0,1,3), 0.55, 1.0),
+    (["gas explosion", "building explosion", "blast damage"], 2, (0,0,0,4), 0.55, 1.0),
+    (["mineshaft collapse", "mine rescue", "underground collapse"], 2, (0,0,1,3), 0.5, 1.0),
 ]
 
 _RNG = random.Random(42)
