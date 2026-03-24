@@ -115,11 +115,17 @@ async def lifespan(app: FastAPI):
         except Exception:
             globals()['risk_model'] = None
 
+    # Initialise KOFA model registry (loads all ONNX models once)
+    from kofa_models import get_kofa_models
+    get_kofa_models()  # warm up — logs which models loaded
+
     # Start background risk scoring processor (skip in test mode)
     task = None
     prune_task = None
+    anomaly_task = None
     if not INTELLIGENCE_TEST_MODE:
         task = asyncio.create_task(_risk_scoring_processor())
+        anomaly_task = asyncio.create_task(_entity_anomaly_loop())
 
     # Initialise agent registry
     global agent_registry
@@ -133,18 +139,13 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        if task:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        if prune_task:
-            prune_task.cancel()
-            try:
-                await prune_task
-            except asyncio.CancelledError:
-                pass
+        for t in [task, prune_task, anomaly_task]:
+            if t:
+                t.cancel()
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
         if redis_client:
             await redis_client.close()
         if engine:
@@ -395,45 +396,85 @@ async def list_advisories(risk_level: Optional[str] = None, limit: int = 50, org
 
 
 async def _risk_scoring_processor():
-    """Background processor that consumes observations and generates risk-scored advisories."""
+    """
+    Background processor: consumes observations_stream -> risk score -> advisory -> dispatch.
+
+    KOFA pipeline per observation:
+      1. False positive filter  — drop sensor noise before processing
+      2. Weather risk scorer    — elevate/downgrade risk if weather data present
+      3. Incident correlator    — suppress duplicate mission dispatch
+      4. Advisory persistence
+      5. Escalation predictor   — pre-escalate if operator unlikely to ack
+      6. Mission dispatch        — rule + ML planner, with outcome probability logged
+      7. LLM agent (optional)   — complex scenario reasoning via Ollama
+    """
     assert SessionLocal is not None
     assert redis_client is not None
-    
+
     import socket
+    from kofa_models import get_kofa_models
+
     consumer_name = f"intel-{socket.gethostname()}"
+    kofa = get_kofa_models()
+
+    # Rough active mission list for escalation predictor workload signal
+    _active_missions: List[str] = []
 
     while True:
         try:
-            # Read from observations_stream via consumer group
-            messages = await redis_client.xreadgroup("intelligence", consumer_name, {"observations_stream": ">"}, block=1000, count=10)
-            
+            messages = await redis_client.xreadgroup(
+                "intelligence", consumer_name,
+                {"observations_stream": ">"},
+                block=1000, count=10,
+            )
             if not messages:
                 continue
-            
-            for stream_name, stream_messages in messages:
+
+            for _stream_name, stream_messages in messages:
                 for msg_id, fields in stream_messages:
-                    
                     try:
                         payload = fields.get("payload")
                         if not payload:
                             continue
-                        
+
                         data = json.loads(payload)
-                        
-                        # Calculate risk score (XGB optional)
-                        risk_level = _calculate_risk_level_ml(data) if (INTELLIGENCE_ENABLE_XGB and risk_model is not None) else _calculate_risk_level(data)
-                        
-                        # Generate advisory message
-                        message = _generate_advisory_message(data, risk_level)
-                        
+
+                        # ── 1. False positive filter ───────────────────────────
+                        if kofa.is_false_positive(data):
+                            logger.debug(
+                                "KOFA FP filter: dropped %s (conf=%.2f)",
+                                data.get("class"), float(data.get("confidence", 0)),
+                            )
+                            await redis_client.xack("observations_stream", "intelligence", msg_id)
+                            continue
+
+                        # ── 2. Base risk score ─────────────────────────────────
+                        risk_level = (
+                            _calculate_risk_level_ml(data)
+                            if (INTELLIGENCE_ENABLE_XGB and risk_model is not None)
+                            else _calculate_risk_level(data)
+                        )
+
+                        # ── 2b. Weather adjustment ─────────────────────────────
+                        risk_level = kofa.adjust_risk_for_weather(data, risk_level)
+
+                        # ── 3. Incident correlation ────────────────────────────
+                        duplicate = (
+                            risk_level in ("CRITICAL", "HIGH")
+                            and kofa.is_duplicate_incident(data)
+                        )
+                        # Record after duplicate check so obs doesn't match itself
+                        kofa.record_observation(data)
+
+                        # ── 4. Advisory persistence ────────────────────────────
+                        message     = _generate_advisory_message(data, risk_level)
                         advisory_id = str(uuid.uuid4())
-                        
-                        # Persist advisory
+
                         async with SessionLocal() as session:
                             await session.execute(
                                 advisories.insert().values(
                                     advisory_id=advisory_id,
-                                    observation_id=None,  # Could link to observation.id if needed
+                                    observation_id=None,
                                     risk_level=risk_level,
                                     message=message,
                                     confidence=float(data.get("confidence", 0.0)),
@@ -442,49 +483,99 @@ async def _risk_scoring_processor():
                                 )
                             )
                             await session.commit()
-                        
-                        # ── Primary: deterministic rule-based dispatch ──────────
-                        # Works with zero external dependencies. Sub-millisecond.
+
+                        # ── 5. Escalation predictor ────────────────────────────
                         if risk_level in ("CRITICAL", "HIGH"):
+                            esc_prob = kofa.predict_escalation_prob(
+                                data, risk_level, len(_active_missions)
+                            )
+                            if esc_prob >= kofa.ESCALATION_THRESHOLD:
+                                logger.info(
+                                    "KOFA: pre-escalating %s advisory "
+                                    "(escalation_prob=%.0f%%, %s)",
+                                    risk_level, esc_prob * 100, data.get("class"),
+                                )
+                                try:
+                                    await redis_client.xadd(
+                                        "escalation_stream",
+                                        {
+                                            "advisory_id": advisory_id,
+                                            "risk_level": risk_level,
+                                            "class": str(data.get("class", "")),
+                                            "escalation_prob": str(round(esc_prob, 3)),
+                                            "ts": datetime.now(timezone.utc).isoformat(),
+                                        },
+                                    )
+                                except Exception as _esc_err:
+                                    logger.debug("Escalation stream write failed: %s", _esc_err)
+
+                        # ── 6. Mission dispatch ────────────────────────────────
+                        if risk_level in ("CRITICAL", "HIGH") and not duplicate:
                             from mission_planner import get_planner
                             plan = get_planner().plan(data)
                             if plan is not None:
+                                outcome_prob = kofa.predict_mission_success_prob(data)
                                 try:
                                     import httpx as _httpx
                                     _tasking_url = os.getenv("TASKING_URL", "http://localhost:8004")
+                                    mission_payload: dict = {
+                                        "title": plan.rationale,
+                                        "mission_type": plan.mission_type,
+                                        "priority": plan.priority,
+                                        "asset_class": plan.asset_class,
+                                        "auto_generated": True,
+                                        "waypoints": [{
+                                            "lat": plan.lat,
+                                            "lon": plan.lon,
+                                            "alt_m": plan.alt_m,
+                                            "action": "LOITER" if plan.loiter else plan.mission_type,
+                                        }],
+                                        "source_advisory_id": advisory_id,
+                                    }
+                                    if outcome_prob >= 0:
+                                        mission_payload["kofa_outcome_prob"] = round(outcome_prob, 3)
+
                                     async with _httpx.AsyncClient(timeout=5.0) as _hc:
-                                        await _hc.post(
+                                        resp = await _hc.post(
                                             f"{_tasking_url}/api/v1/missions",
-                                            json={
-                                                "title": plan.rationale,
-                                                "mission_type": plan.mission_type,
-                                                "priority": plan.priority,
-                                                "asset_class": plan.asset_class,
-                                                "auto_generated": True,
-                                                "waypoints": [{
-                                                    "lat": plan.lat,
-                                                    "lon": plan.lon,
-                                                    "alt_m": plan.alt_m,
-                                                    "action": "LOITER" if plan.loiter else plan.mission_type,
-                                                }],
-                                                "source_advisory_id": advisory_id,
-                                            },
+                                            json=mission_payload,
                                         )
+                                        if resp.status_code in (200, 201):
+                                            _mid = resp.json().get("mission_id") or resp.json().get("id")
+                                            if _mid:
+                                                _active_missions.append(str(_mid))
+                                                if len(_active_missions) > 50:
+                                                    _active_missions.pop(0)
+
                                     logger.info(
-                                        "Auto-dispatched %s mission for %s (conf=%.2f)",
-                                        plan.mission_type, data.get("class"), float(data.get("confidence", 0)),
+                                        "KOFA: dispatched %s mission — %s "
+                                        "(conf=%.2f, outcome_prob=%s)",
+                                        plan.mission_type, data.get("class"),
+                                        float(data.get("confidence", 0)),
+                                        f"{outcome_prob:.0%}" if outcome_prob >= 0 else "n/a",
                                     )
                                 except Exception as _dispatch_err:
                                     logger.warning("Auto-dispatch failed: %s", _dispatch_err)
 
-                        # ── Optional: LLM agent for complex / ambiguous scenarios ──
-                        # Non-blocking; skipped gracefully when Ollama unavailable.
-                        if risk_level in ("CRITICAL", "HIGH") and agent_registry is not None and _BRAIN_AVAILABLE:
-                            obs_lat = data.get("lat")
-                            obs_lon = data.get("lon")
+                        elif duplicate:
+                            logger.info(
+                                "KOFA: skipped dispatch — correlates with active incident (%s)",
+                                data.get("class"),
+                            )
+
+                        # ── 7. Optional LLM agent ──────────────────────────────
+                        if (risk_level in ("CRITICAL", "HIGH")
+                                and not duplicate
+                                and agent_registry is not None
+                                and _BRAIN_AVAILABLE):
+                            obs_lat   = data.get("lat")
+                            obs_lon   = data.get("lon")
                             obs_class = str(data.get("class", "anomaly"))
-                            obs_conf = float(data.get("confidence", 0.0))
-                            loc_str = f" at ({float(obs_lat):.4f}, {float(obs_lon):.4f})" if obs_lat and obs_lon else ""
+                            obs_conf  = float(data.get("confidence", 0.0))
+                            loc_str   = (
+                                f" at ({float(obs_lat):.4f}, {float(obs_lon):.4f})"
+                                if obs_lat and obs_lon else ""
+                            )
                             objective = (
                                 f"{obs_class.capitalize()} detected{loc_str} with "
                                 f"{obs_conf:.0%} confidence. Verify detection and assess "
@@ -500,49 +591,113 @@ async def _risk_scoring_processor():
                             except Exception as _agent_err:
                                 logger.warning("LLM agent spawn failed (non-critical): %s", _agent_err)
 
-                        # Ack after success
-                        try:
-                            await redis_client.xack("observations_stream", "intelligence", msg_id)
-                        except Exception as e:
-                            logger.debug("Suppressed error", exc_info=True)  # was: pass
-                    
-                    except Exception as e:
-                        logger.warning("", exc_info=True)
-                        # DLQ: record failing payload
+                        await redis_client.xack("observations_stream", "intelligence", msg_id)
+
+                    except Exception as exc:
+                        logger.warning("Observation processing error", exc_info=True)
                         try:
                             if redis_client is not None:
-                                bad_payload = fields.get("payload") if isinstance(fields, dict) else None
                                 await redis_client.xadd(
                                     "intelligence_dlq",
                                     {
-                                        "error": str(e),
-                                        "payload": bad_payload or "",
+                                        "error": str(exc),
+                                        "payload": fields.get("payload") if isinstance(fields, dict) else "",
                                         "ts": datetime.now(timezone.utc).isoformat(),
                                     },
                                 )
-                                try:
-                                    await redis_client.xack("observations_stream", "intelligence", msg_id)
-                                except Exception as e:
-                                    logger.debug("Suppressed error", exc_info=True)  # was: pass
-                        except Exception as e:
-                            logger.debug("Suppressed error", exc_info=True)  # was: pass
+                                await redis_client.xack("observations_stream", "intelligence", msg_id)
+                        except Exception:
+                            pass
                         continue
-        
-        except Exception as e:
-            logger.error("", exc_info=True)
+
+        except Exception as exc:
+            logger.error("Stream processor error", exc_info=True)
             try:
                 if redis_client is not None:
                     await redis_client.xadd(
                         "intelligence_dlq",
                         {
-                            "error": str(e),
+                            "error": str(exc),
                             "payload": "<stream_error>",
                             "ts": datetime.now(timezone.utc).isoformat(),
                         },
                     )
-            except Exception as e:
-                logger.debug("Suppressed error", exc_info=True)  # was: pass
+            except Exception:
+                pass
             await asyncio.sleep(1)
+
+
+async def _entity_anomaly_loop():
+    """
+    Background task: poll Fabric for entity telemetry, detect anomalies,
+    and raise HIGH advisories for entities with anomalous behavior.
+    """
+    from kofa_models import get_kofa_models
+    _INTERVAL  = int(os.getenv("KOFA_ANOMALY_INTERVAL_S", "30"))
+    _THRESHOLD = float(os.getenv("KOFA_ANOMALY_ALERT_THRESHOLD", "-0.25"))
+    fabric_url = os.getenv("FABRIC_URL", "http://localhost:8001")
+    kofa = get_kofa_models()
+
+    while True:
+        await asyncio.sleep(_INTERVAL)
+        try:
+            import httpx as _httpx
+            async with _httpx.AsyncClient(timeout=3.0) as client:
+                r = await client.get(f"{fabric_url}/api/v1/entities")
+                if r.status_code != 200:
+                    continue
+                body = r.json()
+                entities = body if isinstance(body, list) else body.get("entities", [])
+
+            for ent in entities:
+                eid = ent.get("entity_id") or ent.get("id")
+                if not eid:
+                    continue
+                pos = ent.get("position") or {}
+                kin = ent.get("kinematics") or {}
+                kofa.update_entity_telemetry(eid, {
+                    "lat":           float(pos.get("lat") or ent.get("lat") or 0),
+                    "lon":           float(pos.get("lon") or ent.get("lon") or 0),
+                    "alt_m":         float(pos.get("alt_m") or ent.get("alt_m") or 0),
+                    "speed_mps":     float(kin.get("speed_mps") or ent.get("speed_mps") or 0),
+                    "heading_deg":   float(kin.get("heading_deg") or ent.get("heading_deg") or 0),
+                    "entity_type":   str(ent.get("entity_type") or ent.get("type") or ""),
+                    "mission_active": bool(ent.get("mission_id") or ent.get("mission_active")),
+                })
+
+            for item in kofa.anomalous_entities(threshold=_THRESHOLD):
+                eid   = item["entity_id"]
+                score = item["anomaly_score"]
+                logger.warning(
+                    "KOFA anomaly: entity %s score=%.3f — operator review recommended",
+                    eid, score,
+                )
+                if SessionLocal is not None:
+                    try:
+                        async with SessionLocal() as session:
+                            await session.execute(
+                                advisories.insert().values(
+                                    advisory_id=str(uuid.uuid4()),
+                                    observation_id=None,
+                                    risk_level="HIGH",
+                                    message=(
+                                        f"KOFA: anomalous behavior detected on entity {eid} "
+                                        f"(score={score:.3f}) — possible GPS spoof, "
+                                        f"connectivity loss, or erratic movement"
+                                    ),
+                                    confidence=min(abs(score) * 2, 1.0),
+                                    ts=datetime.now(timezone.utc),
+                                    org_id=None,
+                                )
+                            )
+                            await session.commit()
+                    except Exception as _adv_err:
+                        logger.debug("Anomaly advisory write failed: %s", _adv_err)
+
+        except Exception as exc:
+            logger.debug("Entity anomaly loop error: %s", exc)
+
+
 
 # ── Risk scorer (loaded once at import time) ──────────────────────────────────
 _ML_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "packages", "ml"))
