@@ -93,6 +93,11 @@ BUILT_IN_ADAPTERS: list[dict] = [
         "name": "MQTT Relay",
         "description": "Relay observations from another MQTT broker",
     },
+    {
+        "type": "atak",
+        "name": "CoT/ATAK",
+        "description": "Bidirectional Cursor on Target — first responder interoperability",
+    },
 ]
 
 # Index by type for O(1) lookup
@@ -303,6 +308,7 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("opensky.adapter",          "OpenSkyAdapter"),
         ("celestrak.adapter",        "CelesTrakAdapter"),
         ("adapters.mavlink_adapter", "MAVLinkAdapter"),
+        ("atak.adapter",             "ATAKAdapter"),
     ]
 
     for module_path, class_name in _builtins:

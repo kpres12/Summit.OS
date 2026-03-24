@@ -441,8 +441,63 @@ async def _risk_scoring_processor():
                             )
                             await session.commit()
                         
-                        # Optionally publish to MQTT for real-time alerts
-                        # await mqtt_client.publish(f"advisories/{data.get('class')}", ...)
+                        # ── Primary: deterministic rule-based dispatch ──────────
+                        # Works with zero external dependencies. Sub-millisecond.
+                        if risk_level in ("CRITICAL", "HIGH"):
+                            from mission_planner import get_planner
+                            plan = get_planner().plan(data)
+                            if plan is not None:
+                                try:
+                                    import httpx as _httpx
+                                    _tasking_url = os.getenv("TASKING_URL", "http://localhost:8004")
+                                    async with _httpx.AsyncClient(timeout=5.0) as _hc:
+                                        await _hc.post(
+                                            f"{_tasking_url}/api/v1/missions",
+                                            json={
+                                                "title": plan.rationale,
+                                                "mission_type": plan.mission_type,
+                                                "priority": plan.priority,
+                                                "asset_class": plan.asset_class,
+                                                "auto_generated": True,
+                                                "waypoints": [{
+                                                    "lat": plan.lat,
+                                                    "lon": plan.lon,
+                                                    "alt_m": plan.alt_m,
+                                                    "action": "LOITER" if plan.loiter else plan.mission_type,
+                                                }],
+                                                "source_advisory_id": advisory_id,
+                                            },
+                                        )
+                                    logger.info(
+                                        "Auto-dispatched %s mission for %s (conf=%.2f)",
+                                        plan.mission_type, data.get("class"), float(data.get("confidence", 0)),
+                                    )
+                                except Exception as _dispatch_err:
+                                    logger.warning("Auto-dispatch failed: %s", _dispatch_err)
+
+                        # ── Optional: LLM agent for complex / ambiguous scenarios ──
+                        # Non-blocking; skipped gracefully when Ollama unavailable.
+                        if risk_level in ("CRITICAL", "HIGH") and agent_registry is not None and _BRAIN_AVAILABLE:
+                            obs_lat = data.get("lat")
+                            obs_lon = data.get("lon")
+                            obs_class = str(data.get("class", "anomaly"))
+                            obs_conf = float(data.get("confidence", 0.0))
+                            loc_str = f" at ({float(obs_lat):.4f}, {float(obs_lon):.4f})" if obs_lat and obs_lon else ""
+                            objective = (
+                                f"{obs_class.capitalize()} detected{loc_str} with "
+                                f"{obs_conf:.0%} confidence. Verify detection and assess "
+                                f"risk. Adjust mission if rule-based dispatch was suboptimal."
+                            )
+                            try:
+                                await agent_registry.create(
+                                    mission_objective=objective,
+                                    world_url=os.getenv("FABRIC_URL", "http://localhost:8001"),
+                                    tasking_url=os.getenv("TASKING_URL", "http://localhost:8004"),
+                                )
+                                logger.info("LLM agent spawned for %s %s%s", risk_level, obs_class, loc_str)
+                            except Exception as _agent_err:
+                                logger.warning("LLM agent spawn failed (non-critical): %s", _agent_err)
+
                         # Ack after success
                         try:
                             await redis_client.xack("observations_stream", "intelligence", msg_id)
@@ -487,10 +542,42 @@ async def _risk_scoring_processor():
                 logger.debug("Suppressed error", exc_info=True)  # was: pass
             await asyncio.sleep(1)
 
+# ── Risk scorer (loaded once at import time) ──────────────────────────────────
+_ML_ROOT = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "packages", "ml"))
+if _ML_ROOT not in sys.path:
+    sys.path.insert(0, _ML_ROOT)
+
+_risk_session = None
+_risk_labels: dict = {}
+_risk_feat_fn = None
+
+try:
+    import onnxruntime as _ort  # type: ignore
+    import numpy as _np_risk  # type: ignore
+    from features import extract as _risk_feat_fn  # type: ignore
+    _risk_model_path = os.path.join(_ML_ROOT, "models", "risk_scorer.onnx")
+    _risk_labels_path = os.path.join(_ML_ROOT, "models", "risk_scorer_labels.json")
+    if os.path.exists(_risk_model_path):
+        _risk_session = _ort.InferenceSession(_risk_model_path, providers=["CPUExecutionProvider"])
+        with open(_risk_labels_path) as _f:
+            _risk_labels = json.load(_f)
+        logger.info("Risk scorer ONNX loaded")
+except Exception as _rs_err:
+    logger.debug("Risk scorer ONNX not loaded: %s", _rs_err)
+
+
 def _calculate_risk_level(data: dict) -> str:
-    """Calculate risk level based on observation data (rules fallback)."""
+    """Calculate risk level — trained ONNX model when available, rules as fallback."""
+    if _risk_session is not None and _risk_feat_fn is not None:
+        try:
+            feat = _np_risk.array([_risk_feat_fn(data)], dtype=_np_risk.float32)
+            input_name = _risk_session.get_inputs()[0].name
+            pred = _risk_session.run(None, {input_name: feat})[0][0]
+            return _risk_labels[str(int(pred))]
+        except Exception:
+            pass
+    # Rule fallback
     confidence = float(data.get("confidence", 0.0))
-    # Class-agnostic default: map confidence to LOW/MEDIUM/HIGH
     if confidence >= 0.85:
         return "CRITICAL"
     if confidence >= 0.7:

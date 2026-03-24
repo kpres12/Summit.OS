@@ -124,11 +124,18 @@ class MAVLinkAdapter(BaseAdapter):
             await driver.start_telemetry()
             logger.info(f"MAVLink {vehicle_id}: telemetry streaming")
 
+            # Subscribe to dispatch commands for this vehicle
+            cmd_task = asyncio.create_task(
+                self._command_listener(f"mavlink-{vehicle_id}", driver)
+            )
+
             while not self.stopped:
                 entity = self._telemetry_to_entity(driver.telemetry, vehicle)
                 self.publish(entity, qos=0)
                 await self.sleep(self.publish_interval)
 
+            cmd_task.cancel()
+            await asyncio.gather(cmd_task, return_exceptions=True)
             await driver.disconnect()
 
         except ImportError:
@@ -136,6 +143,74 @@ class MAVLinkAdapter(BaseAdapter):
             await self._run_simulated_vehicle(vehicle)
         except Exception as e:
             logger.error(f"MAVLink worker error for {vehicle_id}: {e}")
+
+    async def _command_listener(self, entity_id: str, driver: Any):
+        """Subscribe to tasks/{entity_id}/dispatch and execute commands on the driver."""
+        import queue as _queue
+        try:
+            import paho.mqtt.client as mqtt
+        except ImportError:
+            logger.warning("paho-mqtt not available — command listener disabled")
+            return
+
+        cmd_queue: "asyncio.Queue[Dict[str, Any]]" = asyncio.Queue()
+        loop = asyncio.get_event_loop()
+
+        def _on_message(_client, _userdata, msg):
+            try:
+                payload = json.loads(msg.payload.decode("utf-8"))
+            except Exception:
+                return
+            loop.call_soon_threadsafe(cmd_queue.put_nowait, payload)
+
+        client = mqtt.Client(client_id=f"summit-mavlink-cmd-{entity_id}")
+        if self._mqtt_username and self._mqtt_password:
+            client.username_pw_set(self._mqtt_username, self._mqtt_password)
+        client.on_message = _on_message
+
+        try:
+            client.connect(self._mqtt_host, self._mqtt_port, 60)
+            client.loop_start()
+            client.subscribe(f"tasks/{entity_id}/dispatch", qos=1)
+            logger.info(f"MAVLink command listener active on tasks/{entity_id}/dispatch")
+        except Exception as e:
+            logger.error(f"Command listener MQTT connect failed for {entity_id}: {e}")
+            return
+
+        try:
+            while True:
+                payload = await cmd_queue.get()
+                await self._execute_command(driver, entity_id, payload)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            client.loop_stop()
+            client.disconnect()
+
+    async def _execute_command(self, driver: Any, entity_id: str, payload: Dict[str, Any]):
+        """Execute a dispatched command on the MAVLink driver."""
+        action = (payload.get("action") or "").upper()
+        waypoints = payload.get("waypoints") or []
+
+        logger.info(f"MAVLink {entity_id}: executing action={action} waypoints={len(waypoints)}")
+
+        if action == "HALT":
+            await driver.land()
+        elif action in ("RTL", "RTB"):
+            await driver.rtl()
+        elif action == "TAKEOFF":
+            alt = payload.get("altitude", 10.0)
+            await driver.takeoff(altitude=float(alt))
+        elif waypoints:
+            # Fly to first waypoint; subsequent waypoints handled by autopilot AUTO mode
+            wp = waypoints[0]
+            await driver.goto(
+                lat=float(wp.get("lat", 0)),
+                lon=float(wp.get("lon", 0)),
+                alt=float(wp.get("alt", 30.0)),
+            )
+        else:
+            logger.warning(f"MAVLink {entity_id}: unhandled action '{action}'")
 
     def _telemetry_to_entity(self, telem: Any, vehicle: Dict[str, Any]) -> Dict[str, Any]:
         vehicle_id = vehicle["vehicle_id"]

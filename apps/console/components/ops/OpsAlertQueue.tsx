@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchAlerts, connectWebSocket, AlertAPI } from '@/lib/api';
+import { fetchAlerts, connectWebSocket, acknowledgeAlert, AlertAPI } from '@/lib/api';
 
 function ageString(isoString: string): string {
   const ts = new Date(isoString).getTime();
@@ -51,6 +51,15 @@ export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
 
   const dismiss = (alertId: string) => {
     setAlerts((prev) => prev.filter((a) => a.alert_id !== alertId));
+  };
+
+  const ack = async (alertId: string) => {
+    try {
+      await acknowledgeAlert(alertId);
+    } catch { /* best-effort */ }
+    setAlerts((prev) =>
+      prev.map((a) => a.alert_id === alertId ? { ...a, acknowledged: true } : a)
+    );
   };
 
   return (
@@ -167,6 +176,22 @@ export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
                   onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
                 >
                   INVESTIGATE
+                </button>
+                <button
+                  className="flex-1 text-[10px] py-1.5 tracking-widest transition-colors"
+                  style={{
+                    fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                    color: (alert as AlertAPI & { acknowledged?: boolean }).acknowledged ? 'rgba(200,230,201,0.25)' : '#4FC3F7',
+                    background: 'transparent',
+                    border: 'none',
+                    borderRight: '1px solid rgba(0,255,156,0.1)',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => ack(alert.alert_id)}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(79,195,247,0.08)')}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
+                >
+                  {(alert as AlertAPI & { acknowledged?: boolean }).acknowledged ? 'ACK\'D' : 'ACK'}
                 </button>
                 <button
                   className="flex-1 text-[10px] py-1.5 tracking-widest transition-colors"

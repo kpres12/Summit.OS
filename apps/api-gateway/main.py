@@ -899,6 +899,42 @@ async def get_mission_status(asset_id: str, _claims: dict | None = Depends(verif
     }
 
 
+class AgentCommandRequest(BaseModel):
+    entity_id: str
+    command: str  # halt | rtb | activate_camera
+    mission_objective: str | None = None
+
+
+# Maps UI command names to tasking action strings
+_AGENT_COMMAND_MAP = {
+    "halt": "HALT",
+    "rtb": "RTL",
+    "activate_camera": "ACTIVATE_CAMERA",
+}
+
+
+@app.post("/agents")
+async def agent_command(req: AgentCommandRequest, _claims: dict | None = Depends(verify_bearer)):
+    """Direct override commands — HALT, RTB, ACTIVATE_CAMERA — sent to the tasking service."""
+    action = _AGENT_COMMAND_MAP.get(req.command.lower(), req.command.upper())
+    task_id = str(uuid.uuid4())
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(
+                f"{TASKING_URL}/dispatch",
+                json={
+                    "task_id": task_id,
+                    "asset_id": req.entity_id,
+                    "action": action,
+                    "waypoints": [],
+                },
+            )
+            r.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Tasking service error: {e}")
+    return {"task_id": task_id, "status": "DISPATCHED", "action": action}
+
+
 @app.get("/v1/worldstate")
 async def get_world_state(org_id: str | None = Depends(get_org_id), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("VIEWER"))):
     try:

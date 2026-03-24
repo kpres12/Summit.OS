@@ -275,6 +275,15 @@ async def lifespan(app: FastAPI):
         mqtt_client.connect(broker, port, 60)
         mqtt_client.loop_start()
 
+        # Closed-loop execution monitor
+        try:
+            from execution_monitor import ExecutionMonitor
+            _exec_monitor = ExecutionMonitor(SessionLocal, mqtt_client)
+            asyncio.create_task(_exec_monitor.run())
+            logger.info("ExecutionMonitor started")
+        except Exception as _em_err:
+            logger.warning(f"ExecutionMonitor not started: {_em_err}")
+
         # Optional: direct autopilot worker subscribes to dispatches
         if DIRECT_AUTOPILOT:
             await _init_direct_autopilot()
@@ -290,6 +299,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Summit Tasking", version="0.2.1", lifespan=lifespan)
+
+# Mission replay API
+try:
+    from replay_router import router as _replay_router
+    app.include_router(_replay_router)
+except Exception as _rr_err:
+    logger.warning(f"Replay router not loaded: {_rr_err}")
 
 # ── OpenTelemetry tracing middleware ──────────────────────────────────────────
 try:
@@ -960,7 +976,17 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                     if (dist_total + seg) / max(0.1, spd) > max_time:
                         break
                     dist_total += seg
-                wps.append({"lat": wp["lat"], "lon": wp["lon"], "alt": alt, "speed": spd, "action": wp.get("action", "WAYPOINT")})
+                # DEM terrain-following: add ground elevation so alt is truly AGL (Gap 7)
+                wp_alt = alt
+                try:
+                    import sys as _sys
+                    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+                    from packages.geo.dem import get_provider as _get_dem
+                    terrain_m = _get_dem().get_elevation(wp["lat"], wp["lon"])
+                    wp_alt = alt + terrain_m
+                except Exception:
+                    pass
+                wps.append({"lat": wp["lat"], "lon": wp["lon"], "alt": wp_alt, "speed": spd, "action": wp.get("action", "WAYPOINT")})
                 prev = wp
             plans[aid] = {
                 "pattern": "grid",

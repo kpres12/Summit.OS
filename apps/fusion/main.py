@@ -69,6 +69,20 @@ except Exception:
 # Cache last bearings per source
 _last_bearings: dict[str, dict] = {}
 
+# Multi-sensor track fusion (Gap 1)
+try:
+    from track_manager import TrackManager
+    _track_manager: Optional[TrackManager] = TrackManager()
+except Exception:
+    _track_manager = None  # type: ignore
+
+# Cross-camera re-identification (Gap 8)
+try:
+    from reid import get_reid, AppearanceReID
+    _reid: Optional[AppearanceReID] = get_reid()
+except Exception:
+    _reid = None  # type: ignore
+
 
 def _to_asyncpg_url(url: str) -> str:
     if url.startswith("postgresql+asyncpg://"):
@@ -317,6 +331,27 @@ async def detect_and_track(payload: dict):
 
     # Create TRACK entities in WorldStore for each detection
     for det in detections:
+        # Re-ID: check if this detection matches a known cross-camera track
+        reid_track_id: Optional[str] = None
+        reid_score: float = 0.0
+        if _reid is not None:
+            crop_b64 = det.get("crop_b64")
+            if crop_b64:
+                try:
+                    import base64 as _b64
+                    crop_bytes = _b64.b64decode(crop_b64)
+                    crop_arr = np.frombuffer(crop_bytes, np.uint8)
+                    crop_img = cv2.imdecode(crop_arr, cv2.IMREAD_COLOR) if cv2 else None
+                    if crop_img is not None:
+                        reid_track_id, reid_score = _reid.query(
+                            crop_img, camera_id=str(device_id)
+                        )
+                        # Register this crop for future matching
+                        local_id = det.get("track_id") or det.get("id") or str(device_id)
+                        _reid.update(str(local_id), crop_img, camera_id=str(device_id))
+                except Exception:
+                    pass
+
         entity_payload = {
             "entity_type": "TRACK",
             "domain": "AERIAL",
@@ -330,6 +365,8 @@ async def detect_and_track(payload: dict):
             "metadata": {
                 "model": result.get("model_name", ""),
                 "bbox": json.dumps(det.get("bbox", {})),
+                "reid_match_id": reid_track_id,
+                "reid_score": round(reid_score, 3),
             },
         }
         try:
@@ -347,6 +384,40 @@ async def detect_and_track(payload: dict):
         "inference_ms": result.get("inference_ms", 0),
         "model_name": result.get("model_name", ""),
     }
+
+
+# Fused tracks endpoint (Gap 1)
+@app.get("/api/v1/tracks")
+async def get_tracks(status: Optional[str] = None, limit: int = 100):
+    """Return confirmed multi-sensor fused tracks."""
+    if _track_manager is None:
+        return {"tracks": [], "note": "TrackManager not available"}
+    tracks_out = []
+    for tid, track in list(_track_manager.tracks.items()):
+        if status and track.state != status.upper():
+            continue
+        state = track.ekf_state
+        tracks_out.append({
+            "track_id":   tid,
+            "state":      track.state,
+            "class":      track.class_label,
+            "confidence": track.confidence,
+            "lat":        float(state.x[0]) if state is not None else None,
+            "lon":        float(state.x[1]) if state is not None else None,
+            "last_seen":  track.last_seen,
+            "cameras":    _reid.get_track_cameras(tid) if _reid else [],
+        })
+        if len(tracks_out) >= limit:
+            break
+    return {"tracks": tracks_out, "count": len(tracks_out)}
+
+
+# HLS video streaming (Gap 4)
+try:
+    from hls_router import router as _hls_router
+    app.include_router(_hls_router, prefix="/api/v1/video", tags=["video"])
+except Exception as _vs_err:
+    logger.warning(f"HLS router not mounted: {_vs_err}")
 
 
 # Model registry endpoints
