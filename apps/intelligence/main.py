@@ -14,7 +14,7 @@ import redis.asyncio as aioredis
 # Make intelligence module importable by sub-modules
 sys.path.insert(0, os.path.dirname(__file__))
 
-logger = logging.getLogger("intelligence")
+logger = logging.getLogger("kofa")
 logging.basicConfig(level=logging.INFO)
 from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, and_, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -160,7 +160,9 @@ async def _agent_prune_loop():
             if n > 0:
                 logger.info(f"Pruned {n} finished agents")
 
-app = FastAPI(title="Summit Intelligence", version="0.2.0", lifespan=lifespan)
+ENGINE_NAME = "KOFA"   # Summit.OS autonomous dispatch engine
+
+app = FastAPI(title=f"Summit Intelligence — {ENGINE_NAME}", version="0.2.0", lifespan=lifespan)
 
 # ── OpenTelemetry tracing middleware ──────────────────────────────────────────
 try:
@@ -183,7 +185,7 @@ class Advisory(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "intelligence"}
+    return {"status": "ok", "service": "intelligence", "engine": ENGINE_NAME}
 
 @app.get("/readyz")
 async def readyz():

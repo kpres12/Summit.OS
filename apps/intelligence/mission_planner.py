@@ -1,4 +1,6 @@
 """
+KOFA — Summit.OS autonomous dispatch engine.
+
 MissionPlanner — deterministic dispatch with trained ML upgrade path.
 
 Primary path: keyword rule table → always works, sub-ms, no dependencies.
@@ -11,6 +13,8 @@ Domains: wildfire, flood, SAR, infrastructure, hazmat, agricultural,
          NOT limited to any single use case.
 """
 
+ENGINE_NAME = "KOFA"
+
 import json
 import logging
 import os
@@ -18,7 +22,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("mission_planner")
+logger = logging.getLogger("kofa.mission_planner")
 
 # Shared feature extractor (same code used during training)
 _ML_PKG = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "packages", "ml"))
