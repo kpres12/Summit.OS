@@ -192,23 +192,45 @@ def _asset_state_transition_valid(inputs: dict, instance: ObjectInstance, store:
 # ── side effects ──────────────────────────────────────────────────────────────
 
 def _link_asset_to_mission(inputs: dict, instance: ObjectInstance, store: ObjectStore) -> Optional[str]:
-    """Create Asset → Mission link when a mission is dispatched."""
+    """
+    Create Asset → Mission link when a mission is dispatched.
+
+    Uses optimistic locking: re-reads the asset inside the side-effect and
+    checks version + status again before committing. Since store operations
+    run under the Python GIL (synchronous, no await), this check-and-set is
+    atomic within a single process — it catches the case where a concurrent
+    request validated the same asset simultaneously.
+    """
     asset_id   = inputs.get("asset_id")
     mission_id = instance.object_id
-    if asset_id:
-        from ..types import LinkInstance
-        store._upsert_link(LinkInstance(
-            link_type  = "asset_executing_mission",
-            source_id  = asset_id,
-            target_id  = mission_id,
-        ))
-        # Update asset status
-        asset = store.get("Asset", asset_id)
-        if asset:
-            asset.properties["status"] = "ASSIGNED"
-            store._upsert(asset)
-        return f"Linked asset {asset_id} to mission {mission_id}"
-    return None
+    if not asset_id:
+        return None
+
+    from ..types import LinkInstance
+
+    # Re-read the asset now, inside the side-effect, after the validator ran.
+    # If another dispatch snuck in between the validator and here, the version
+    # will have changed and the status will be ASSIGNED.
+    asset = store.get("Asset", asset_id)
+    if asset is None:
+        raise RuntimeError(f"Asset '{asset_id}' disappeared between validation and commit")
+
+    if asset.properties.get("status") != "AVAILABLE":
+        raise RuntimeError(
+            f"Asset '{asset_id}' status changed to "
+            f"'{asset.properties.get('status')}' between validation and commit "
+            f"(version {asset.version}) — dispatch rejected."
+        )
+
+    # Commit: mark ASSIGNED and create the link
+    asset.properties["status"] = "ASSIGNED"
+    store._upsert(asset)
+    store._upsert_link(LinkInstance(
+        link_type  = "asset_executing_mission",
+        source_id  = asset_id,
+        target_id  = mission_id,
+    ))
+    return f"Linked asset {asset_id} → mission {mission_id} (asset v{asset.version})"
 
 
 def _link_alert_to_operator(inputs: dict, instance: ObjectInstance, store: ObjectStore) -> Optional[str]:
