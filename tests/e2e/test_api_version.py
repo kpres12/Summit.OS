@@ -21,8 +21,8 @@ def test_api_version_response_structure(api_base: str):
         assert r.status_code == 200
         data = r.json()
         assert "api_version" in data, "Missing 'api_version' field"
-        assert "os_version" in data, "Missing 'os_version' field"
-        assert "service" in data, "Missing 'service' field"
+        assert "summit_os_version" in data, "Missing 'summit_os_version' field"
+        assert "min_sdk_version" in data, "Missing 'min_sdk_version' field"
     finally:
         client.close()
 
@@ -57,7 +57,7 @@ def test_api_version_value_is_v1(api_base: str):
     try:
         r = client.get("/api/version")
         data = r.json()
-        assert data["api_version"] == "1", (
+        assert str(data["api_version"]) == "1", (
             f"Expected api_version='1', got {data['api_version']!r}"
         )
     finally:

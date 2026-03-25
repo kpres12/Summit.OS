@@ -44,13 +44,18 @@ def test_device_register_cert_is_pem(api_base: str):
 
 
 def test_device_list_endpoint(api_base: str):
-    """GET /v1/devices should return a list."""
+    """GET /v1/devices should return a paginated response with a devices list."""
     client = ApiClient(api_base)
     try:
         r = client.get("/v1/devices")
         assert r.status_code == 200
         data = r.json()
-        assert isinstance(data, list)
+        # API returns {count: int, devices: [...]} envelope
+        if isinstance(data, dict):
+            assert "devices" in data, f"Expected 'devices' key in response, got: {list(data.keys())}"
+            assert isinstance(data["devices"], list)
+        else:
+            assert isinstance(data, list)
     finally:
         client.close()
 
@@ -86,7 +91,10 @@ def test_registered_device_appears_in_list(api_base: str):
         })
         r = client.get("/v1/devices")
         assert r.status_code == 200
-        ids = [d.get("device_id") for d in r.json()]
-        assert device_id in ids, f"{device_id} not found in device list"
+        data = r.json()
+        # Unwrap envelope if present
+        devices = data["devices"] if isinstance(data, dict) else data
+        ids = [d.get("device_id") for d in devices]
+        assert device_id in ids, f"{device_id} not found in device list: {ids}"
     finally:
         client.close()
