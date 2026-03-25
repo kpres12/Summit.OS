@@ -10,21 +10,129 @@ Each ActionTypeDef has:
 
 Validators signature:   (inputs: dict, instance: ObjectInstance, store: ObjectStore) → Optional[str]
 Side effects signature: (inputs: dict, instance: ObjectInstance, store: ObjectStore) → Optional[str]
+
+NOTE on dispatch_mission validation:
+  The `instance` passed to validators is the TARGET object (a Mission stub).
+  Asset checks must look up the Asset separately from the store using inputs["asset_id"].
+  The store is populated by OntologySync.from_entity() from Fusion telemetry, so
+  freshness is bounded by the sync interval (typically <5s in production).
+  For hard real-time guarantees, FABRIC_URL can be set to query Fabric directly.
 """
 
 from __future__ import annotations
 
+import logging
+import os
 from typing import Any, Dict, Optional
+
+import httpx
 
 from ..store import ObjectStore
 from ..types import ActionTypeDef, ObjectInstance, PropertyDef, PropertyKind
+
+logger = logging.getLogger("ontology.actions.validators")
+
+# If set, asset validators will do a live check against Fabric before approving dispatch.
+FABRIC_URL        = os.getenv("FABRIC_URL", "")
+BATTERY_THRESHOLD = float(os.getenv("DISPATCH_MIN_BATTERY_PCT", "0.20"))  # 20% minimum
 
 
 # ── validators ────────────────────────────────────────────────────────────────
 
 def _asset_must_be_available(inputs: dict, instance: ObjectInstance, store: ObjectStore) -> Optional[str]:
-    if instance.properties.get("status") not in ("AVAILABLE", None):
-        return f"Asset '{instance.object_id}' is not available (status: {instance.properties.get('status')})"
+    """
+    Checks the ASSET named in inputs["asset_id"], not the Mission instance.
+
+    Validation order:
+      1. asset_id must be present in inputs
+      2. Asset must exist in the OntologyStore (synced from Fusion)
+      3. Asset.status must be AVAILABLE
+      4. Asset.battery_pct must be above DISPATCH_MIN_BATTERY_PCT (default 20%)
+      5. No other PENDING/ACTIVE mission already linked to this asset
+      6. If FABRIC_URL is set — live check against Fabric entity service
+    """
+    asset_id = inputs.get("asset_id")
+    if not asset_id:
+        return "dispatch_mission requires 'asset_id'"
+
+    # ── 1. Ontology store check ────────────────────────────────────────────
+    asset = store.get("Asset", asset_id)
+    if asset is None:
+        return (
+            f"Asset '{asset_id}' not found in ontology store. "
+            "Ensure Fusion is syncing entity updates to /sync/entity."
+        )
+
+    status = asset.properties.get("status", "UNKNOWN")
+    if status != "AVAILABLE":
+        return (
+            f"Asset '{asset_id}' is not available (current status: {status}). "
+            f"Valid status for dispatch: AVAILABLE."
+        )
+
+    # ── 2. Battery check ───────────────────────────────────────────────────
+    battery = asset.properties.get("battery_pct")
+    if battery is not None and battery < BATTERY_THRESHOLD:
+        return (
+            f"Asset '{asset_id}' battery too low for dispatch: "
+            f"{battery:.0%} < {BATTERY_THRESHOLD:.0%} minimum."
+        )
+
+    # ── 3. No active mission already assigned ──────────────────────────────
+    existing_mission_links = store.links_from_object(asset_id, "asset_executing_mission")
+    for link in existing_mission_links:
+        active_mission = store.get("Mission", link.target_id)
+        if active_mission and active_mission.properties.get("status") in ("PENDING", "ACTIVE"):
+            return (
+                f"Asset '{asset_id}' is already assigned to mission "
+                f"'{link.target_id}' (status: {active_mission.properties.get('status')}). "
+                "Complete or cancel that mission before dispatching a new one."
+            )
+
+    # ── 4. Live Fabric check (optional, requires FABRIC_URL) ──────────────
+    if FABRIC_URL:
+        fabric_error = _fabric_live_check(asset_id)
+        if fabric_error:
+            return fabric_error
+
+    return None
+
+
+def _fabric_live_check(asset_id: str) -> Optional[str]:
+    """
+    Query Fabric entity service for the real-time asset state.
+    Called only when FABRIC_URL is configured.
+    Falls back gracefully (returns None = allow) if Fabric is unreachable,
+    so a Fabric outage doesn't block all dispatch operations.
+    """
+    try:
+        resp = httpx.get(
+            f"{FABRIC_URL}/entities/{asset_id}",
+            timeout=2.0,
+        )
+        if resp.status_code == 404:
+            return f"Asset '{asset_id}' not found in Fabric entity registry."
+        if resp.status_code != 200:
+            logger.warning("Fabric live check returned %d for asset %s — allowing dispatch", resp.status_code, asset_id)
+            return None  # degrade gracefully
+
+        entity = resp.json()
+        state   = entity.get("state", "").upper()
+        if state in ("INACTIVE", "DELETED"):
+            return f"Asset '{asset_id}' is {state} in Fabric — cannot dispatch."
+
+        # Re-check battery from live telemetry
+        aerial   = entity.get("aerial") or {}
+        battery  = aerial.get("battery_pct") if isinstance(aerial, dict) else None
+        if battery is not None and battery < BATTERY_THRESHOLD:
+            return (
+                f"Asset '{asset_id}' live battery {battery:.0%} below threshold "
+                f"{BATTERY_THRESHOLD:.0%} (Fabric telemetry)."
+            )
+
+    except Exception as exc:
+        logger.warning("Fabric live check failed for asset %s (%s) — proceeding with store data", asset_id, exc)
+
     return None
 
 
