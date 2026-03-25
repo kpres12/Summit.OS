@@ -509,47 +509,87 @@ async def _risk_scoring_processor():
                                 except Exception as _esc_err:
                                     logger.debug("Escalation stream write failed: %s", _esc_err)
 
-                        # ── 6. Mission dispatch ────────────────────────────────
+                        # ── 6. Mission dispatch (single or swarm) ──────────────
                         if risk_level in ("CRITICAL", "HIGH") and not duplicate:
                             from mission_planner import get_planner
+                            from swarm_planner import get_swarm_planner
                             plan = get_planner().plan(data)
                             if plan is not None:
                                 outcome_prob = kofa.predict_mission_success_prob(data)
                                 try:
                                     import httpx as _httpx
                                     _tasking_url = os.getenv("TASKING_URL", "http://localhost:8004")
-                                    mission_payload: dict = {
-                                        "title": plan.rationale,
-                                        "mission_type": plan.mission_type,
-                                        "priority": plan.priority,
-                                        "asset_class": plan.asset_class,
-                                        "auto_generated": True,
-                                        "waypoints": [{
-                                            "lat": plan.lat,
-                                            "lon": plan.lon,
-                                            "alt_m": plan.alt_m,
-                                            "action": "LOITER" if plan.loiter else plan.mission_type,
-                                        }],
-                                        "source_advisory_id": advisory_id,
-                                    }
-                                    if outcome_prob >= 0:
-                                        mission_payload["kofa_outcome_prob"] = round(outcome_prob, 3)
+                                    _fabric_url  = os.getenv("FABRIC_URL",  "http://localhost:8001")
 
-                                    async with _httpx.AsyncClient(timeout=5.0) as _hc:
-                                        resp = await _hc.post(
-                                            f"{_tasking_url}/api/v1/missions",
-                                            json=mission_payload,
+                                    # ── query available UAVs for swarm decision ──
+                                    n_available = 1
+                                    try:
+                                        async with _httpx.AsyncClient(timeout=2.0) as _fc:
+                                            _er = await _fc.get(
+                                                f"{_fabric_url}/api/v1/entities",
+                                                params={"type": "UAV", "status": "available"},
+                                            )
+                                            if _er.status_code == 200:
+                                                _body = _er.json()
+                                                _ents = _body if isinstance(_body, list) else _body.get("entities", [])
+                                                n_available = max(1, len(_ents))
+                                    except Exception:
+                                        pass  # graceful fallback to single dispatch
+
+                                    # ── expand to swarm if multiple assets ready ──
+                                    swarm = get_swarm_planner()
+                                    if swarm.should_swarm(plan.mission_type, n_available):
+                                        plans_to_dispatch = swarm.expand(plan, n_available)
+                                        logger.info(
+                                            "KOFA swarm: %d drones → %s "
+                                            "(%d sectors, %s)",
+                                            n_available, plan.mission_type,
+                                            len(plans_to_dispatch), data.get("class"),
                                         )
-                                        if resp.status_code in (200, 201):
-                                            _mid = resp.json().get("mission_id") or resp.json().get("id")
-                                            if _mid:
-                                                _active_missions.append(str(_mid))
-                                                if len(_active_missions) > 50:
-                                                    _active_missions.pop(0)
+                                    else:
+                                        plans_to_dispatch = [plan]
+
+                                    # ── dispatch each plan ──────────────────────
+                                    for _plan in plans_to_dispatch:
+                                        _wps = _plan.raw_observation.get("_waypoints") or [{
+                                            "lat":    _plan.lat,
+                                            "lon":    _plan.lon,
+                                            "alt_m":  _plan.alt_m,
+                                            "action": "LOITER" if _plan.loiter else _plan.mission_type,
+                                        }]
+                                        _mp: dict = {
+                                            "title":             _plan.rationale,
+                                            "mission_type":      _plan.mission_type,
+                                            "priority":          _plan.priority,
+                                            "asset_class":       _plan.asset_class,
+                                            "auto_generated":    True,
+                                            "waypoints":         _wps,
+                                            "source_advisory_id": advisory_id,
+                                        }
+                                        if outcome_prob >= 0:
+                                            _mp["kofa_outcome_prob"] = round(outcome_prob, 3)
+                                        swarm_id = _plan.raw_observation.get("_swarm_id")
+                                        if swarm_id:
+                                            _mp["swarm_id"]     = swarm_id
+                                            _mp["sector_id"]    = _plan.raw_observation.get("_sector_id")
+                                            _mp["n_sectors"]    = _plan.raw_observation.get("_n_sectors")
+
+                                        async with _httpx.AsyncClient(timeout=5.0) as _hc:
+                                            resp = await _hc.post(
+                                                f"{_tasking_url}/api/v1/missions",
+                                                json=_mp,
+                                            )
+                                            if resp.status_code in (200, 201):
+                                                _mid = resp.json().get("mission_id") or resp.json().get("id")
+                                                if _mid:
+                                                    _active_missions.append(str(_mid))
+                                                    if len(_active_missions) > 50:
+                                                        _active_missions.pop(0)
 
                                     logger.info(
-                                        "KOFA: dispatched %s mission — %s "
+                                        "KOFA: dispatched %d %s mission(s) — %s "
                                         "(conf=%.2f, outcome_prob=%s)",
+                                        len(plans_to_dispatch),
                                         plan.mission_type, data.get("class"),
                                         float(data.get("confidence", 0)),
                                         f"{outcome_prob:.0%}" if outcome_prob >= 0 else "n/a",
@@ -789,7 +829,105 @@ def _generate_advisory_message(data: dict, risk_level: str) -> str:
     confidence = float(data.get("confidence", 0.0))
     lat = data.get("lat")
     lon = data.get("lon")
-    
+
     location_str = f" at ({lat:.4f}, {lon:.4f})" if lat and lon else ""
-    
+
     return f"{risk_level} risk: {obs_class} detected with {confidence:.0%} confidence{location_str}"
+
+
+# ── SITREP endpoint ────────────────────────────────────────────────────────────
+
+class SitRepRequest(BaseModel):
+    time_window_s: int = 300
+    risk_level:    Optional[str] = None   # filter to specific risk level
+    enhance_llm:   bool = False           # request LLM narrative enhancement
+
+
+@app.post("/sitrep")
+async def generate_sitrep(req: SitRepRequest):
+    """
+    Generate a situation report from recent advisories.
+
+    Returns a structured SITREP with a natural-language summary, per-domain
+    findings, and a recommended action.
+
+    Set enhance_llm=true to request LLM narrative enhancement via Ollama
+    (falls back to template if Ollama is unavailable).
+    """
+    from sitrep import get_sitrep_generator
+
+    assert SessionLocal is not None
+    safe_window = max(30, min(req.time_window_s, 86400))
+
+    async with SessionLocal() as session:
+        conditions = [
+            text(f"ts >= datetime('now', '-{safe_window} seconds')")
+            if "sqlite" in str(session.bind.url) else
+            text(f"ts >= NOW() - INTERVAL '{safe_window} seconds'")
+        ]
+        if req.risk_level:
+            conditions.append(advisories.c.risk_level == req.risk_level)
+
+        stmt = (
+            select(
+                advisories.c.advisory_id,
+                advisories.c.risk_level,
+                advisories.c.message,
+                advisories.c.confidence,
+                advisories.c.ts,
+            )
+            .where(and_(*conditions))
+            .order_by(advisories.c.id.desc())
+            .limit(200)
+        )
+        rows = (await session.execute(stmt)).all()
+
+    raw_advisories = [dict(r._mapping) for r in rows]
+
+    gen    = get_sitrep_generator()
+    sitrep = gen.from_advisories(raw_advisories, time_window_s=safe_window)
+
+    if req.enhance_llm and _BRAIN_AVAILABLE:
+        sitrep = await gen.enhance_with_llm(sitrep, raw_advisories)
+
+    return sitrep.to_dict()
+
+
+@app.get("/sitrep")
+async def get_latest_sitrep(
+    time_window_s: int = 300,
+    risk_level: Optional[str] = None,
+):
+    """
+    GET shorthand for /sitrep — returns template-only SITREP (no LLM).
+    Use POST /sitrep with enhance_llm=true for LLM narrative.
+    """
+    req = SitRepRequest(
+        time_window_s=time_window_s,
+        risk_level=risk_level,
+        enhance_llm=False,
+    )
+    return await generate_sitrep(req)
+
+
+# ── Swarm status endpoint ──────────────────────────────────────────────────────
+
+@app.get("/swarm/{swarm_id}")
+async def get_swarm_status(swarm_id: str):
+    """
+    Return all missions belonging to a swarm_id.
+    Queries Tasking service for missions tagged with this swarm_id.
+    """
+    import httpx as _httpx
+    tasking_url = os.getenv("TASKING_URL", "http://localhost:8004")
+    try:
+        async with _httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(
+                f"{tasking_url}/api/v1/missions",
+                params={"swarm_id": swarm_id},
+            )
+            if r.status_code == 200:
+                return {"swarm_id": swarm_id, "missions": r.json()}
+    except Exception as exc:
+        logger.debug("Swarm status query failed: %s", exc)
+    return {"swarm_id": swarm_id, "missions": [], "note": "tasking service unavailable"}
