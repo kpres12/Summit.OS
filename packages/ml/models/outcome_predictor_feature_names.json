@@ -1,0 +1,17 @@
+[
+  "mission_type",
+  "asset_type",
+  "battery_at_start",
+  "distance_km_norm",
+  "observation_conf",
+  "risk_level",
+  "weather_wind_norm",
+  "weather_visibility",
+  "terrain_difficulty",
+  "time_of_day_sin",
+  "time_of_day_cos",
+  "operator_approved",
+  "auto_generated",
+  "num_assets_avail",
+  "has_backup_asset"
+]

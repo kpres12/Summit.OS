@@ -1,0 +1,17 @@
+[
+  "mission_type",
+  "asset_type",
+  "battery_pct",
+  "distance_km",
+  "capability_thermal",
+  "capability_rgb",
+  "capability_lidar",
+  "capability_payload",
+  "currently_idle",
+  "endurance_min",
+  "wind_speed_mps",
+  "time_of_day_sin",
+  "time_of_day_cos",
+  "terrain_difficulty",
+  "mission_priority"
+]

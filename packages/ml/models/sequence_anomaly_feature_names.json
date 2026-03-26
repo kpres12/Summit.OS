@@ -1,0 +1,18 @@
+[
+  "mean_speed_mps",
+  "speed_std",
+  "max_speed_mps",
+  "heading_change_mean_deg",
+  "heading_change_std",
+  "stop_duration_s",
+  "position_variance_m",
+  "altitude_change_mean_m",
+  "altitude_variance_m",
+  "time_gap_mean_s",
+  "time_gap_max_s",
+  "entity_type_uav",
+  "entity_type_vessel",
+  "entity_type_person",
+  "entity_type_vehicle",
+  "mission_active"
+]

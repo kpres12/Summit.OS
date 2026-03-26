@@ -32,6 +32,7 @@ Usage:
   python train_asset_assignment.py --samples 100000
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -269,15 +270,101 @@ def generate_samples(n: int, seed: int = 42):
     return np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)
 
 
-def train(n_samples: int = 50_000):
+def load_real_csv(csv_path: str):
+    """Load real observations and map to asset assignment feature space (15 floats)."""
+    import csv as _csv
+    X, y = [], []
+
+    mission_type_map = {
+        "SURVEY": MISSION_SURVEY,
+        "MONITOR": MISSION_MONITOR,
+        "SEARCH": MISSION_SEARCH,
+        "PERIMETER": MISSION_PERIMETER,
+        "ORBIT": MISSION_ORBIT,
+        "DELIVER": MISSION_DELIVER,
+        "INSPECT": MISSION_INSPECT,
+    }
+    priority_map = {"LOW": 0.0, "MEDIUM": 0.33, "HIGH": 0.66, "CRITICAL": 1.0}
+    # Proxy label: CRITICAL/HIGH risk → good-match assignment needed (1); LOW/MEDIUM → 0
+    risk_to_label = {"LOW": 0, "MEDIUM": 0, "HIGH": 1, "CRITICAL": 1}
+
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    mission_str = row.get("mission_type", "SURVEY").strip().upper()
+                    mission_type = float(mission_type_map.get(mission_str, MISSION_SURVEY))
+                    risk_str = row.get("risk_level", "MEDIUM").strip().upper()
+                    if risk_str not in priority_map:
+                        continue
+                    priority = priority_map[risk_str]
+                    conf = float(row["confidence"])
+                    feat = np.array([
+                        mission_type,         # mission_type
+                        float(ASSET_VTOL),    # asset_type (VTOL default)
+                        0.75,                 # battery_pct
+                        0.15,                 # distance_km (normalized)
+                        1.0,                  # capability_thermal (VTOL default)
+                        1.0,                  # capability_rgb
+                        0.0,                  # capability_lidar
+                        0.5,                  # capability_payload (50/50)
+                        1.0,                  # currently_idle
+                        0.70,                 # endurance_min (normalized)
+                        0.20,                 # wind_speed_mps (normalized)
+                        float(np.sin(2 * np.pi * 12 / 24.0)),  # time_of_day_sin
+                        float(np.cos(2 * np.pi * 12 / 24.0)),  # time_of_day_cos
+                        0.20,                 # terrain_difficulty
+                        priority,             # mission_priority
+                    ], dtype=np.float32)
+                    label = risk_to_label[risk_str]
+                    X.append(feat)
+                    y.append(label)
+                except (ValueError, KeyError):
+                    continue
+        print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+
+
+def train(n_samples: int = 50_000, real_csv: str = None):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print(f"Generating {n_samples} synthetic asset-mission pair samples...")
     X, y = generate_samples(n_samples)
+
+    if real_csv:
+        X_real, y_real = load_real_csv(real_csv)
+        if X_real is not None:
+            from collections import defaultdict
+            import random as _rand
+            _rand.seed(42)
+            syn_counts = defaultdict(int)
+            for lbl in y:
+                syn_counts[int(lbl)] += 1
+            real_capped_X, real_capped_y = [], []
+            real_counts = defaultdict(int)
+            combined = list(zip(X_real.tolist(), y_real.tolist()))
+            _rand.shuffle(combined)
+            for feat, lbl in combined:
+                cap = syn_counts[int(lbl)] * 2
+                if real_counts[int(lbl)] < cap:
+                    real_capped_X.append(feat)
+                    real_capped_y.append(lbl)
+                    real_counts[int(lbl)] += 1
+            if real_capped_X:
+                X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
+                y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
+                label_map = {0: "poor_match", 1: "good_match"}
+                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(f"  Combined: {len(X)} total samples (real + synthetic)")
+
     pos = int(y.sum())
     neg = int((y == 0).sum())
-    print(f"  {n_samples} samples — positive (good match): {pos}  negative: {neg}")
-    print(f"  Positive rate: {pos / n_samples:.1%}")
+    n_total = len(y)
+    print(f"  {n_total} samples — positive (good match): {pos}  negative: {neg}")
+    print(f"  Positive rate: {pos / n_total:.1%}")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -326,7 +413,7 @@ def train(n_samples: int = 50_000):
     # Export to ONNX
     onnx_path = os.path.join(OUTPUT_DIR, "asset_assignment.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
-    onnx_model   = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model   = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved: {onnx_path}")
@@ -382,5 +469,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Summit.OS asset assignment scorer")
     parser.add_argument("--samples", type=int, default=50_000,
                         help="Number of synthetic training samples (default: 50000)")
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples)
+    train(n_samples=args.samples, real_csv=args.real_csv)

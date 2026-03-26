@@ -29,6 +29,7 @@ Usage:
   python train_escalation_predictor.py --samples 80000 --output-dir /tmp/models
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -205,11 +206,81 @@ def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
 # Training
 # ---------------------------------------------------------------------------
 
-def train(n_samples: int = 50000, output_dir: str = MODELS_DIR) -> str:
+def load_real_csv(csv_path: str):
+    """Load real observations and map to escalation predictor feature space (21 floats)."""
+    import csv as _csv
+    from features import extract as _extract
+    X, y = [], []
+    # Map risk_level → severity encoding (proxy for escalation label)
+    risk_to_sev = {"LOW": 0.25, "MEDIUM": 0.50, "HIGH": 0.75, "CRITICAL": 1.00}
+    # HIGH/CRITICAL observations proxy as likely-to-escalate; LOW/MEDIUM as acknowledged
+    risk_to_label = {"LOW": 0, "MEDIUM": 0, "HIGH": 1, "CRITICAL": 1}
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    conf = float(row["confidence"])
+                    lat = float(row["lat"])
+                    lon = float(row["lon"])
+                    risk = row.get("risk_level", "MEDIUM").strip().upper()
+                    if risk not in risk_to_sev:
+                        continue
+                    obs = {"class": row["class"], "confidence": conf,
+                           "lat": lat, "lon": lon}
+                    base_vec = _extract(obs)  # 15 floats
+                    sev_enc = risk_to_sev[risk]
+                    # Use midday weekday as default temporal context (unknown)
+                    hour, dow = 12, 2
+                    hour_sin = float(np.sin(2 * np.pi * hour / 24.0))
+                    hour_cos = float(np.cos(2 * np.pi * hour / 24.0))
+                    dow_sin = float(np.sin(2 * np.pi * dow / 7.0))
+                    dow_cos = float(np.cos(2 * np.pi * dow / 7.0))
+                    active_missions_norm = 0.3  # moderate workload default
+                    feat = base_vec + [sev_enc, hour_sin, hour_cos,
+                                       dow_sin, dow_cos, active_missions_norm]
+                    label = risk_to_label[risk]
+                    X.append(feat)
+                    y.append(label)
+                except (ValueError, KeyError):
+                    continue
+        print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+
+
+def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = None) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"Generating {n_samples:,} synthetic samples...")
     X, y = generate_escalation_samples(n_samples)
+
+    if real_csv:
+        X_real, y_real = load_real_csv(real_csv)
+        if X_real is not None:
+            from collections import defaultdict
+            import random as _rand
+            _rand.seed(42)
+            syn_counts = defaultdict(int)
+            for lbl in y:
+                syn_counts[int(lbl)] += 1
+            real_capped_X, real_capped_y = [], []
+            real_counts = defaultdict(int)
+            combined = list(zip(X_real.tolist(), y_real.tolist()))
+            _rand.shuffle(combined)
+            for feat, lbl in combined:
+                cap = syn_counts[int(lbl)] * 2
+                if real_counts[int(lbl)] < cap:
+                    real_capped_X.append(feat)
+                    real_capped_y.append(lbl)
+                    real_counts[int(lbl)] += 1
+            if real_capped_X:
+                X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
+                y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
+                label_map = {0: "acknowledged", 1: "escalated"}
+                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     esc_rate = y.mean()
     print(f"  Class balance: {esc_rate:.1%} escalate  |  {1 - esc_rate:.1%} acknowledged")
@@ -296,7 +367,7 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR) -> str:
     # ------------------------------------------------------------------
     onnx_path = os.path.join(output_dir, "escalation_predictor.onnx")
     initial_type = [("float_input", FloatTensorType([None, EXTENDED_FEATURE_DIM]))]
-    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved:    {onnx_path}")
@@ -361,5 +432,9 @@ if __name__ == "__main__":
         "--output-dir", dest="output_dir", default=MODELS_DIR,
         help="Directory to write .onnx and .json files (default: packages/ml/models/)"
     )
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples, output_dir=args.output_dir)
+    train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

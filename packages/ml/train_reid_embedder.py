@@ -24,6 +24,7 @@ Usage:
   python train_reid_embedder.py --epochs 100 --samples 600 --output-dir ./models
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -425,7 +426,7 @@ def _train_pca_stub(output_dir: Path) -> Path:
 
     onnx_path = output_dir / "reid_embedder.onnx"
     initial_type = [("image_flat", FloatTensorType([None, flat_dim]))]
-    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
 

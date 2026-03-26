@@ -35,6 +35,7 @@ Usage:
   python train_sequence_anomaly.py --samples 80000 --output-dir packages/ml/models
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -405,7 +406,61 @@ def generate_data(n_total: int = 80000, seed: int = 42):
 # Training
 # ---------------------------------------------------------------------------
 
-def train(n_samples: int = 80000, output_dir: str = None):
+def load_real_csv(csv_path: str):
+    """Load real observations and map to sequence anomaly feature space (16 floats).
+
+    Real CSV contains single-point observations, not telemetry windows.  We map
+    each row to the 16-float feature vector using the entity's class to set entity-
+    type flags and sensible defaults for the kinematic features.  Rows are treated
+    as normal (non-anomalous) background samples since the CSV represents confirmed
+    real-world observations rather than flagged anomalies.
+    """
+    import csv as _csv
+    X = []
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    cls = row.get("class", "").strip().lower()
+                    conf = float(row["confidence"])
+
+                    # Map class → entity type flags
+                    is_uav = any(kw in cls for kw in ["uav", "drone", "aircraft"])
+                    is_vessel = any(kw in cls for kw in ["boat", "vessel", "ship", "marine"])
+                    is_person = any(kw in cls for kw in ["person", "human", "survivor", "missing"])
+                    is_vehicle = any(kw in cls for kw in ["vehicle", "truck", "car"])
+
+                    # If no entity type matches, treat as person (most common in SAR context)
+                    if not any([is_uav, is_vessel, is_person, is_vehicle]):
+                        is_person = True
+
+                    # Build representative normal kinematics based on entity type
+                    if is_uav:
+                        feat = [10.0, 0.8, 12.0, 8.0, 4.0, 0.0, 3.0, 0.5, 1.5, 1.0, 2.0,
+                                1.0, 0.0, 0.0, 0.0, 1.0]
+                    elif is_vessel:
+                        feat = [5.0, 0.5, 6.5, 3.0, 1.5, 0.0, 20.0, 0.0, 0.0, 4.0, 7.0,
+                                0.0, 1.0, 0.0, 0.0, 0.0]
+                    elif is_vehicle:
+                        feat = [12.0, 2.0, 17.0, 20.0, 10.0, 10.0, 40.0, 0.0, 0.0, 2.0, 5.0,
+                                0.0, 0.0, 0.0, 1.0, 0.0]
+                    else:  # person
+                        feat = [1.2, 0.3, 1.8, 30.0, 15.0, 5.0, 8.0, 0.0, 0.0, 2.0, 4.0,
+                                0.0, 0.0, 1.0, 0.0, 0.0]
+
+                    # Scale mean_speed by confidence as a mild proxy for activity level
+                    feat[0] = feat[0] * conf
+                    X.append(feat)
+                except (ValueError, KeyError):
+                    continue
+        print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+    return np.array(X, dtype=np.float32) if X else None
+
+
+def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
     """Train IsolationForest anomaly detector and export to ONNX."""
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(__file__), "models")
@@ -417,6 +472,24 @@ def train(n_samples: int = 80000, output_dir: str = None):
     n_anom = int((y_labels == 1).sum())
     print(f"  Normal: {n_normal:,}  |  Anomalous: {n_anom:,}  "
           f"(contamination rate: {n_anom / len(X):.3f})")
+
+    if real_csv:
+        X_real = load_real_csv(real_csv)
+        if X_real is not None:
+            # Cap real normal samples at 2x the synthetic normal count to avoid skewing
+            cap = n_normal * 2
+            if len(X_real) > cap:
+                import random as _rand
+                _rand.seed(42)
+                indices = list(range(len(X_real)))
+                _rand.shuffle(indices)
+                X_real = X_real[indices[:cap]]
+            # Real observations are treated as normal (label=0)
+            y_real = np.zeros(len(X_real), dtype=np.int32)
+            X = np.vstack([X, X_real])
+            y_labels = np.concatenate([y_labels, y_real])
+            print(f"  Real data blended: {len(X_real)} normal samples")
+            print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     # IsolationForest is trained on ALL data — no labels required.
     # contamination=0.05 tells it to expect ~5% outliers when scoring.
@@ -473,7 +546,10 @@ def train(n_samples: int = 80000, output_dir: str = None):
     # --- ONNX export (matches project skl2onnx pattern) ---------------------
     onnx_path = os.path.join(output_dir, "sequence_anomaly.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
-    onnx_model = convert_sklearn(clf, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(
+        clf, initial_types=initial_type,
+        target_opset={"": 12, "ai.onnx.ml": 3},
+    )
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved: {onnx_path}")
@@ -504,7 +580,7 @@ def train(n_samples: int = 80000, output_dir: str = None):
         for label, feat in smoke_cases:
             x = np.array([feat], dtype=np.float32)
             result = sess.run(None, {"float_input": x})
-            pred_label = int(result[0][0])
+            pred_label = int(np.asarray(result[0]).flat[0])
             tag = "ANOMALY" if pred_label == -1 else "normal"
             print(f"  {label:<40} → {tag}")
     except ImportError:
@@ -529,5 +605,9 @@ if __name__ == "__main__":
         "--output-dir", dest="output_dir", default=None,
         help="Directory to write .onnx and .json files (default: packages/ml/models/)"
     )
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples, output_dir=args.output_dir)
+    train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)
