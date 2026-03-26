@@ -21,6 +21,7 @@ Real-data schema expected (tasking DB):
   WHERE m.operator_approved = TRUE;
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import csv
 import json
@@ -190,7 +191,7 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
     # Export to ONNX
     onnx_path = os.path.join(OUTPUT_DIR, "mission_classifier.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
-    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved: {onnx_path}")

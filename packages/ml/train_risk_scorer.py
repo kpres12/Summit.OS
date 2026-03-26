@@ -15,6 +15,9 @@ import json
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(__file__))
+import onnx_compat  # noqa: F401 — must be before skl2onnx
+
 import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.model_selection import cross_val_score, train_test_split
@@ -24,8 +27,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_sample_weight
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
-
-sys.path.insert(0, os.path.dirname(__file__))
 from generate_data import generate_risk_samples, RISK_LABELS
 from features import FEATURE_DIM
 
@@ -126,7 +127,7 @@ def train(n_synthetic: int = 8000, real_csv: str = None):
     # Export to ONNX
     onnx_path = os.path.join(OUTPUT_DIR, "risk_scorer.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
-    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved: {onnx_path}")

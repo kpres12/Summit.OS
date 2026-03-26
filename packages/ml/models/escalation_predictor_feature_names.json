@@ -1,0 +1,23 @@
+[
+  "confidence",
+  "has_location",
+  "is_fire_smoke",
+  "is_person",
+  "is_flood_water",
+  "is_structural",
+  "is_vehicle",
+  "is_hazmat",
+  "is_wildlife",
+  "is_infrastructure",
+  "is_agricultural",
+  "is_medical",
+  "is_security",
+  "is_search_target",
+  "is_logistics",
+  "severity_encoded",
+  "hour_of_day_sin",
+  "hour_of_day_cos",
+  "day_of_week_sin",
+  "day_of_week_cos",
+  "active_mission_count_norm"
+]

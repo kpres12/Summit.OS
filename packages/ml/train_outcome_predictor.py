@@ -31,6 +31,7 @@ Usage:
   python train_outcome_predictor.py --samples 80000
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -89,7 +90,7 @@ RISK_MAP = {0: 0.0, 1: 0.33, 2: 0.66, 3: 1.0}
 def _success_probability(
     mission_type, asset_type, battery, distance_norm, obs_conf,
     risk, wind_norm, visibility, terrain, tod_sin, tod_cos,
-    op_approved, auto_gen, num_assets_norm, has_backup, rng,
+    op_approved, auto_gen, num_assets_avail, has_backup, rng,
 ):
     """
     Compute a continuous success probability then threshold with noise.
@@ -253,15 +254,102 @@ def print_calibration_stats(y_true, y_proba, n_bins: int = 10):
     print(f"  Perfect calibration Brier benchmark:   {float(np.mean(y_true) * (1 - np.mean(y_true))):.4f}")
 
 
-def train(n_samples: int = 40_000):
+def load_real_csv(csv_path: str):
+    """Load real observations and map to outcome predictor feature space (15 floats)."""
+    import csv as _csv
+    X, y = [], []
+
+    mission_type_map = {
+        "SURVEY": MISSION_SURVEY,
+        "MONITOR": MISSION_MONITOR,
+        "SEARCH": MISSION_SEARCH,
+        "PERIMETER": MISSION_PERIMETER,
+        "ORBIT": MISSION_ORBIT,
+        "DELIVER": MISSION_DELIVER,
+        "INSPECT": MISSION_INSPECT,
+    }
+    risk_to_encoded = {"LOW": 0.0, "MEDIUM": 0.33, "HIGH": 0.66, "CRITICAL": 1.0}
+    # Proxy success label: HIGH/CRITICAL risk missions in real data are harder → success=0
+    risk_to_label = {"LOW": 1, "MEDIUM": 1, "HIGH": 0, "CRITICAL": 0}
+
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    conf = float(row["confidence"])
+                    mission_str = row.get("mission_type", "SURVEY").strip().upper()
+                    mission_type = mission_type_map.get(mission_str, MISSION_SURVEY)
+                    risk_str = row.get("risk_level", "MEDIUM").strip().upper()
+                    if risk_str not in risk_to_encoded:
+                        continue
+                    risk_enc = risk_to_encoded[risk_str]
+                    # Use neutral defaults for fields not in CSV
+                    feat = np.array([
+                        float(mission_type),  # mission_type
+                        float(ASSET_VTOL),    # asset_type (VTOL as default capable asset)
+                        0.75,                 # battery_at_start (assume charged)
+                        0.15,                 # distance_km_norm (typical short mission)
+                        conf,                 # observation_conf
+                        risk_enc,             # risk_level
+                        0.20,                 # weather_wind_norm (moderate default)
+                        0.80,                 # weather_visibility (good default)
+                        0.20,                 # terrain_difficulty (mostly flat)
+                        float(np.sin(2 * np.pi * 12 / 24.0)),  # time_of_day_sin (midday)
+                        float(np.cos(2 * np.pi * 12 / 24.0)),  # time_of_day_cos
+                        1.0,                  # operator_approved
+                        0.0,                  # auto_generated
+                        0.60,                 # num_assets_avail
+                        1.0,                  # has_backup_asset
+                    ], dtype=np.float32)
+                    label = risk_to_label[risk_str]
+                    X.append(feat)
+                    y.append(label)
+                except (ValueError, KeyError):
+                    continue
+        print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+
+
+def train(n_samples: int = 40_000, real_csv: str = None):
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     print(f"Generating {n_samples} synthetic mission outcome samples...")
     X, y = generate_samples(n_samples)
+
+    if real_csv:
+        X_real, y_real = load_real_csv(real_csv)
+        if X_real is not None:
+            from collections import defaultdict
+            import random as _rand
+            _rand.seed(42)
+            syn_counts = defaultdict(int)
+            for lbl in y:
+                syn_counts[int(lbl)] += 1
+            real_capped_X, real_capped_y = [], []
+            real_counts = defaultdict(int)
+            combined = list(zip(X_real.tolist(), y_real.tolist()))
+            _rand.shuffle(combined)
+            for feat, lbl in combined:
+                cap = syn_counts[int(lbl)] * 2
+                if real_counts[int(lbl)] < cap:
+                    real_capped_X.append(feat)
+                    real_capped_y.append(lbl)
+                    real_counts[int(lbl)] += 1
+            if real_capped_X:
+                X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
+                y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
+                label_map = {0: "failure", 1: "success"}
+                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(f"  Combined: {len(X)} total samples (real + synthetic)")
+
     pos = int(y.sum())
     neg = int((y == 0).sum())
-    print(f"  {n_samples} samples — success: {pos}  failure: {neg}")
-    print(f"  Base success rate: {pos / n_samples:.1%}")
+    n_total = len(y)
+    print(f"  {n_total} samples — success: {pos}  failure: {neg}")
+    print(f"  Base success rate: {pos / n_total:.1%}")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -321,7 +409,7 @@ def train(n_samples: int = 40_000):
     # Export to ONNX
     onnx_path = os.path.join(OUTPUT_DIR, "outcome_predictor.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
-    onnx_model   = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model   = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved: {onnx_path}")
@@ -364,10 +452,20 @@ def train(n_samples: int = 40_000):
     print("\nSmoke test predictions:")
     for desc, feats in smoke_cases:
         x     = np.array([feats], dtype=np.float32)
-        proba = sess.run(["probabilities"], {input_name: x})[0][0]
-        pred  = int(sess.run([sess.get_outputs()[0].name], {input_name: x})[0][0])
+        output_names = [o.name for o in sess.get_outputs()]
+        results = sess.run(output_names, {input_name: x})
+        pred = int(np.asarray(results[0]).flat[0])
         label = "success" if pred == 1 else "failure"
-        print(f"  {desc:<52} → {label}  (confidence={proba[1]:.3f})")
+        # probability output is second output if available, else just show pred
+        if len(results) > 1:
+            proba_raw = results[1]
+            try:
+                conf = float(np.asarray(proba_raw).flat[1])
+                print(f"  {desc:<52} → {label}  (confidence={conf:.3f})")
+            except Exception:
+                print(f"  {desc:<52} → {label}")
+        else:
+            print(f"  {desc:<52} → {label}")
 
     return onnx_path
 
@@ -376,5 +474,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Summit.OS mission outcome predictor")
     parser.add_argument("--samples", type=int, default=40_000,
                         help="Number of synthetic training samples (default: 40000)")
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples)
+    train(n_samples=args.samples, real_csv=args.real_csv)

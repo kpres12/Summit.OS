@@ -1,0 +1,52 @@
+{
+  "feature_names": [
+    "confidence",
+    "has_location",
+    "is_fire_smoke",
+    "is_person",
+    "is_flood_water",
+    "is_structural",
+    "is_vehicle",
+    "is_hazmat",
+    "is_wildlife",
+    "is_infrastructure",
+    "is_agricultural",
+    "is_medical",
+    "is_security",
+    "is_search_target",
+    "is_logistics",
+    "wind_speed_mps_norm",
+    "wind_gust_mps_norm",
+    "humidity_pct_inv",
+    "temp_c_norm",
+    "precip_mm_norm",
+    "visibility_km_norm"
+  ],
+  "feature_dim": 21,
+  "base_feature_dim": 15,
+  "weather_feature_dim": 6,
+  "weather_feature_indices": {
+    "wind_speed_mps_norm": 15,
+    "wind_gust_mps_norm": 16,
+    "humidity_pct_inv": 17,
+    "temp_c_norm": 18,
+    "precip_mm_norm": 19,
+    "visibility_km_norm": 20
+  },
+  "normalization": {
+    "wind_speed_mps_norm": "raw_value / 30.0  (clip to 1.0)",
+    "wind_gust_mps_norm": "raw_value / 40.0  (clip to 1.0)",
+    "humidity_pct_inv": "(100 - humidity_pct) / 100",
+    "temp_c_norm": "(temp_c - (-20)) / 70  (range -20C to 50C)",
+    "precip_mm_norm": "min(precip_mm / 50, 1.0)",
+    "visibility_km_norm": "min(visibility_km / 20, 1.0)"
+  },
+  "risk_labels": {
+    "0": "LOW",
+    "1": "MEDIUM",
+    "2": "HIGH",
+    "3": "CRITICAL"
+  },
+  "onnx_input_name": "float_input",
+  "model_class": "CalibratedClassifierCV(HistGradientBoostingClassifier)"
+}

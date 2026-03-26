@@ -39,6 +39,7 @@ Usage:
   python train_incident_correlator.py --samples 70000 --output-dir packages/ml/models
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -464,7 +465,121 @@ def generate_data(n_total: int = 70000, seed: int = 42):
 # Training
 # ---------------------------------------------------------------------------
 
-def train(n_samples: int = 70000, output_dir: str = None):
+def load_real_csv(csv_path: str):
+    """Load real observations and form detection pairs for incident correlator.
+
+    Because the CSV contains single observations (not pre-paired), we form pairs
+    by pairing consecutive rows that share the same class (same incident) and
+    pairing rows from different classes (different incidents), using spatial
+    distance from lat/lon and a fixed synthetic time gap.
+    """
+    import csv as _csv
+    import math
+
+    def _haversine_km(lat1, lon1, lat2, lon2):
+        R = 6371.0
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlam = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    rows = []
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    conf = float(row["confidence"])
+                    lat = float(row["lat"])
+                    lon = float(row["lon"])
+                    cls = row["class"].strip().lower()
+                    rows.append({"class": cls, "confidence": conf, "lat": lat, "lon": lon})
+                except (ValueError, KeyError):
+                    continue
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+        return None, None
+
+    # Build a fast feature vec per row
+    def _row_feat(r):
+        v = np.zeros(15, dtype=np.float32)
+        v[0] = r["confidence"]
+        v[1] = 1.0  # has location
+        domain = _get_domain(r["class"].split()[0] if r["class"] else "")
+        domain_to_idx = {
+            "fire_smoke": 2, "person": 3, "flood_water": 4,
+            "structural": 5, "vehicle": 6, "hazmat": 7,
+        }
+        idx = domain_to_idx.get(domain)
+        if idx is not None:
+            v[idx] = 1.0
+        return v
+
+    X, y = [], []
+    import random as _rand
+    _rand.seed(42)
+
+    # Group by class for same-incident pairs
+    from collections import defaultdict
+    by_class = defaultdict(list)
+    for r in rows:
+        by_class[r["class"]].append(r)
+
+    # Same-incident pairs: consecutive rows of same class within 5 km
+    for cls, group in by_class.items():
+        for i in range(len(group) - 1):
+            a, b = group[i], group[i + 1]
+            try:
+                dist = _haversine_km(a["lat"], a["lon"], b["lat"], b["lon"])
+                if dist > 50.0:
+                    continue  # skip implausible same-incident pairs
+                time_s = float(_rand.uniform(0, 600))
+                fa = _row_feat(a)
+                fb = _row_feat(b)
+                vec = _build_feature_vector(
+                    dist, time_s, a["confidence"], b["confidence"],
+                    a["class"].split()[0], b["class"].split()[0],
+                    fa, fb, True,
+                    float(_rand.uniform(0, 1)), float(_rand.uniform(0, 1)),
+                    True, np.random.default_rng(42),
+                )
+                X.append(vec)
+                y.append(1)
+            except Exception:
+                continue
+
+    # Different-incident pairs: random rows of different classes
+    row_list = rows[:min(len(rows), 20000)]
+    _rand.shuffle(row_list)
+    n_diff = min(len(X), len(row_list) // 2)
+    for i in range(n_diff):
+        a = row_list[i]
+        b = row_list[-(i + 1)]
+        if a["class"] == b["class"]:
+            continue
+        try:
+            dist = _haversine_km(a["lat"], a["lon"], b["lat"], b["lon"])
+            time_s = float(_rand.uniform(600, 86400))
+            fa = _row_feat(a)
+            fb = _row_feat(b)
+            vec = _build_feature_vector(
+                dist, time_s, a["confidence"], b["confidence"],
+                a["class"].split()[0], b["class"].split()[0],
+                fa, fb, True,
+                float(_rand.uniform(0, 1)), float(_rand.uniform(0, 1)),
+                False, np.random.default_rng(43),
+            )
+            X.append(vec)
+            y.append(0)
+        except Exception:
+            continue
+
+    print(f"  Loaded {len(X)} real detection-pair samples from {os.path.basename(csv_path)}")
+    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int32)) if X else (None, None)
+
+
+def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
     """Train CalibratedClassifierCV(HistGradientBoostingClassifier) and export to ONNX."""
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(__file__), "models")
@@ -476,6 +591,32 @@ def train(n_samples: int = 70000, output_dir: str = None):
     n_diff = int((y == 0).sum())
     print(f"  Same incident (1): {n_same:,}  ({n_same/len(y)*100:.1f}%)")
     print(f"  Different    (0): {n_diff:,}  ({n_diff/len(y)*100:.1f}%)")
+
+    if real_csv:
+        X_real, y_real = load_real_csv(real_csv)
+        if X_real is not None:
+            from collections import defaultdict
+            import random as _rand
+            _rand.seed(42)
+            syn_counts = defaultdict(int)
+            for lbl in y:
+                syn_counts[int(lbl)] += 1
+            real_capped_X, real_capped_y = [], []
+            real_counts = defaultdict(int)
+            combined = list(zip(X_real.tolist(), y_real.tolist()))
+            _rand.shuffle(combined)
+            for feat, lbl in combined:
+                cap = syn_counts[int(lbl)] * 2
+                if real_counts[int(lbl)] < cap:
+                    real_capped_X.append(feat)
+                    real_capped_y.append(lbl)
+                    real_counts[int(lbl)] += 1
+            if real_capped_X:
+                X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
+                y = np.concatenate([y, np.array(real_capped_y, dtype=np.int32)])
+                label_map = {0: "different", 1: "same"}
+                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -540,7 +681,7 @@ def train(n_samples: int = 70000, output_dir: str = None):
     # --- ONNX export (matches project skl2onnx pattern) ---------------------
     onnx_path = os.path.join(output_dir, "incident_correlator.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
-    onnx_model = convert_sklearn(clf, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(clf, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved: {onnx_path}")
@@ -621,5 +762,9 @@ if __name__ == "__main__":
         "--output-dir", dest="output_dir", default=None,
         help="Directory to write .onnx and .json files (default: packages/ml/models/)"
     )
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples, output_dir=args.output_dir)
+    train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

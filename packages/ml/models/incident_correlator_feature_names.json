@@ -1,0 +1,22 @@
+[
+  "spatial_distance_km",
+  "temporal_distance_s",
+  "confidence_a",
+  "confidence_b",
+  "confidence_diff",
+  "same_domain",
+  "same_class",
+  "complementary_class",
+  "feat_dot_product",
+  "feat_l2_distance",
+  "both_have_location",
+  "bearing_deg_normalized",
+  "wind_alignment",
+  "sensor_same_type",
+  "rapid_succession",
+  "close_proximity",
+  "medium_proximity",
+  "far_apart",
+  "long_time_gap",
+  "escalating_confidence"
+]

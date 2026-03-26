@@ -26,6 +26,7 @@ Usage:
   python train_false_positive_filter.py --samples 80000 --output-dir /tmp/models
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -192,11 +193,79 @@ def generate_false_positive_samples(n: int, seed: int = 42) -> tuple:
 # Training
 # ---------------------------------------------------------------------------
 
-def train(n_samples: int = 60000, output_dir: str = MODELS_DIR) -> str:
+def load_real_csv(csv_path: str):
+    """Load real observations from download_real_data.py CSV and map to FP filter features."""
+    import csv as _csv
+    X, y = [], []
+    cls_to_idx = {
+        "fire_smoke": 2, "person": 3, "flood_water": 4, "structural": 5,
+        "vehicle": 6, "hazmat": 7, "wildlife": 8, "infrastructure": 9,
+        "agricultural": 10, "medical": 11, "security": 12,
+        "search_target": 13, "logistics": 14,
+    }
+    # Map class string → feature index via features.extract keyword groups
+    from features import extract as _extract
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    conf = float(row["confidence"])
+                    lat = float(row["lat"])
+                    lon = float(row["lon"])
+                    obs = {"class": row["class"], "confidence": conf,
+                           "lat": lat, "lon": lon}
+                    base_vec = _extract(obs)  # 15 floats
+                    # Extend to 18 floats: detection_frequency=0.5 (unknown), hour=12 (midday)
+                    hour = 12.0
+                    hour_sin = float(np.sin(2 * np.pi * hour / 24.0))
+                    hour_cos = float(np.cos(2 * np.pi * hour / 24.0))
+                    feat = base_vec + [0.5, hour_sin, hour_cos]
+                    # Use risk_level as a proxy for real/false-positive label:
+                    # LOW risk → likely false positive (0); anything else → real (1)
+                    risk = row.get("risk_level", "MEDIUM").strip().upper()
+                    label = 0 if risk == "LOW" else 1
+                    X.append(feat)
+                    y.append(label)
+                except (ValueError, KeyError):
+                    continue
+        print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+
+
+def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = None) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"Generating {n_samples:,} synthetic samples...")
     X, y = generate_false_positive_samples(n_samples)
+
+    if real_csv:
+        X_real, y_real = load_real_csv(real_csv)
+        if X_real is not None:
+            from collections import defaultdict
+            import random as _rand
+            _rand.seed(42)
+            syn_counts = defaultdict(int)
+            for lbl in y:
+                syn_counts[int(lbl)] += 1
+            real_capped_X, real_capped_y = [], []
+            real_counts = defaultdict(int)
+            combined = list(zip(X_real.tolist(), y_real.tolist()))
+            _rand.shuffle(combined)
+            for feat, lbl in combined:
+                cap = syn_counts[int(lbl)] * 2
+                if real_counts[int(lbl)] < cap:
+                    real_capped_X.append(feat)
+                    real_capped_y.append(lbl)
+                    real_counts[int(lbl)] += 1
+            if real_capped_X:
+                X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
+                y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
+                label_map = {0: "false_positive", 1: "real"}
+                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     fp_rate = 1.0 - y.mean()
     print(f"  Class balance: {y.mean():.1%} real  |  {fp_rate:.1%} false positive")
@@ -296,7 +365,7 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR) -> str:
     # ------------------------------------------------------------------
     onnx_path = os.path.join(output_dir, "false_positive_filter.onnx")
     initial_type = [("float_input", FloatTensorType([None, EXTENDED_FEATURE_DIM]))]
-    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=17)
+    onnx_model = convert_sklearn(pipe, initial_types=initial_type, target_opset=12)
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
     print(f"\nModel saved:    {onnx_path}")
@@ -358,5 +427,9 @@ if __name__ == "__main__":
         "--output-dir", dest="output_dir", default=MODELS_DIR,
         help="Directory to write .onnx and .json files (default: packages/ml/models/)"
     )
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples, output_dir=args.output_dir)
+    train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

@@ -27,6 +27,7 @@ Usage:
   python train_weather_risk_scorer.py --samples 80000 --output-dir ./models
 """
 
+import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
@@ -441,7 +442,53 @@ def _print_weather_examples(model) -> None:
 
 # ── Training ──────────────────────────────────────────────────────────────────
 
-def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR):
+def load_real_csv(csv_path: str):
+    """Load real observations and map to weather risk scorer feature space (21 floats)."""
+    import csv as _csv
+    label_inv = {v: k for k, v in RISK_LABELS.items()}
+    X, y = [], []
+    # Default neutral weather (temperate, calm) for rows without weather data
+    default_weather = {
+        "wind_speed_mps": 5.0,
+        "wind_gust_mps":  8.0,
+        "humidity_pct":   55.0,
+        "temp_c":         18.0,
+        "precip_mm":      0.0,
+        "visibility_km":  15.0,
+    }
+    try:
+        with open(csv_path, newline="") as f:
+            reader = _csv.DictReader(f)
+            for row in reader:
+                try:
+                    risk_str = row.get("risk_level", "").strip().upper()
+                    label = label_inv.get(risk_str)
+                    if label is None:
+                        continue
+                    conf = float(row["confidence"])
+                    lat_str = row.get("lat", "")
+                    lon_str = row.get("lon", "")
+                    obs = {
+                        "class": row.get("class", ""),
+                        "confidence": conf,
+                        "lat": float(lat_str) if lat_str else None,
+                        "lon": float(lon_str) if lon_str else None,
+                    }
+                    base_feat = extract(obs)
+                    weather_feats = _normalize_weather(default_weather)
+                    feat = base_feat + weather_feats
+                    X.append(feat)
+                    y.append(label)
+                except (ValueError, KeyError):
+                    continue
+        print(f"  Loaded {len(X)} real weather-risk samples from {os.path.basename(csv_path)}")
+    except FileNotFoundError:
+        print(f"  CSV not found: {csv_path}")
+    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+
+
+def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
+          real_csv: str = None):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
@@ -455,6 +502,31 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR):
     # ── Generate data ──────────────────────────────────────────────────────
     print("Generating synthetic training data with weather amplification ...")
     X, y = generate_weather_risk_samples(n_samples)
+
+    if real_csv:
+        X_real, y_real = load_real_csv(real_csv)
+        if X_real is not None:
+            from collections import defaultdict
+            import random as _rand
+            _rand.seed(42)
+            syn_counts = defaultdict(int)
+            for lbl in y:
+                syn_counts[int(lbl)] += 1
+            real_capped_X, real_capped_y = [], []
+            real_counts = defaultdict(int)
+            combined = list(zip(X_real.tolist(), y_real.tolist()))
+            _rand.shuffle(combined)
+            for feat, lbl in combined:
+                cap = syn_counts[int(lbl)] * 2
+                if real_counts[int(lbl)] < cap:
+                    real_capped_X.append(feat)
+                    real_capped_y.append(lbl)
+                    real_counts[int(lbl)] += 1
+            if real_capped_X:
+                X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
+                y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
+                print(f"  Real data (capped): { {RISK_LABELS[k]: v for k, v in real_counts.items()} }")
+                print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     dist = Counter(RISK_LABELS[i] for i in y.tolist())
     print(f"  {len(X):,} samples  |  class distribution: {dict(dist)}")
@@ -516,7 +588,7 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR):
     onnx_model = convert_sklearn(
         model,
         initial_types=initial_type,
-        target_opset=17,
+        target_opset=12,
     )
     with open(onnx_path, "wb") as f:
         f.write(onnx_model.SerializeToString())
@@ -614,8 +686,12 @@ def main():
         "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
         help=f"Output directory for .onnx + .json (default: {DEFAULT_OUTPUT_DIR})"
     )
+    parser.add_argument(
+        "--real-csv", dest="real_csv", default=None,
+        help="Path to real observations CSV to blend with synthetic data"
+    )
     args = parser.parse_args()
-    train(n_samples=args.samples, output_dir=args.output_dir)
+    train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)
 
 
 if __name__ == "__main__":
