@@ -10,6 +10,7 @@ Dependencies
 ------------
     pip install pymodbus>=3.6.0
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -75,9 +76,7 @@ class ModbusAdapter(BaseAdapter):
         # Validate register definitions
         for reg in self._registers:
             if "address" not in reg or "name" not in reg:
-                raise ValueError(
-                    f"Each register must have 'address' and 'name': {reg}"
-                )
+                raise ValueError(f"Each register must have 'address' and 'name': {reg}")
             reg_type = reg.get("type", "holding")
             if reg_type not in ("holding", "coil", "input", "discrete"):
                 raise ValueError(
@@ -145,7 +144,10 @@ class ModbusAdapter(BaseAdapter):
             except Exception as exc:
                 self._log.warning(
                     "Failed to read register %s (addr=%d, type=%s): %s",
-                    name, address, reg_type, exc,
+                    name,
+                    address,
+                    reg_type,
+                    exc,
                 )
                 values[name] = None
 

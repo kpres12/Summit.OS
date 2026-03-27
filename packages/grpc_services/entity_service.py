@@ -10,6 +10,7 @@ Works with or without generated protobuf stubs:
 - If stubs are available (from compile.sh), uses them directly
 - Otherwise falls back to grpcio reflection or JSON-over-gRPC
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -26,9 +27,11 @@ logger = logging.getLogger("grpc.entity_service")
 
 # ── Entity Store ────────────────────────────────────────────
 
+
 @dataclass
 class EntityRecord:
     """Server-side entity record."""
+
     entity_id: str
     entity_type: str  # "track", "asset", "sensor", "zone"
     domain: str = "UNKNOWN"  # AIR, GROUND, SURFACE, SUBSURFACE, SPACE
@@ -77,10 +80,13 @@ class EntityStore:
             return None
         return e
 
-    def list(self, entity_type: Optional[str] = None,
-             domain: Optional[str] = None,
-             affiliation: Optional[str] = None,
-             limit: int = 1000) -> List[EntityRecord]:
+    def list(
+        self,
+        entity_type: Optional[str] = None,
+        domain: Optional[str] = None,
+        affiliation: Optional[str] = None,
+        limit: int = 1000,
+    ) -> List[EntityRecord]:
         results = []
         for e in self._entities.values():
             if e.is_expired:
@@ -184,6 +190,7 @@ class EntityStore:
 
 # ── gRPC Service Implementation ────────────────────────────
 
+
 class EntityServicer:
     """
     gRPC service implementation for entities.
@@ -248,9 +255,7 @@ class EntityServicer:
         return {"deleted": deleted, "entity_id": entity_id}
 
     async def BulkUpsert(self, request: Dict) -> Dict:
-        entities = [
-            EntityRecord(**e) for e in request.get("entities", [])
-        ]
+        entities = [EntityRecord(**e) for e in request.get("entities", [])]
         count = self.store.bulk_upsert(entities)
         return {"upserted": count}
 
@@ -276,8 +281,10 @@ class EntityServicer:
 
 # ── Server Factory ──────────────────────────────────────────
 
-async def serve_entity_service(port: int = 50051,
-                               store: Optional[EntityStore] = None) -> None:
+
+async def serve_entity_service(
+    port: int = 50051, store: Optional[EntityStore] = None
+) -> None:
     """
     Start gRPC entity service.
 
@@ -297,6 +304,8 @@ async def serve_entity_service(port: int = 50051,
         logger.info(f"Entity gRPC service started on port {port}")
         await server.wait_for_termination()
     except ImportError:
-        logger.warning("grpcio not installed — running EntityServicer in standalone mode")
+        logger.warning(
+            "grpcio not installed — running EntityServicer in standalone mode"
+        )
         # Still usable via direct method calls
         pass

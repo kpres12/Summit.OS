@@ -10,6 +10,7 @@ Each sensor model describes:
 Used by the Track Manager to properly weight observations
 from heterogeneous sensor types.
 """
+
 from __future__ import annotations
 
 import math
@@ -22,6 +23,7 @@ from abc import ABC, abstractmethod
 @dataclass
 class SensorSpec:
     """Static sensor specification."""
+
     sensor_id: str
     sensor_type: str  # radar, eo_ir, adsb, gps, acoustic, lidar
     # Position of sensor (for bearing-range sensors)
@@ -72,8 +74,10 @@ class SensorModel(ABC):
         # Normalize azimuth difference to [-180, 180]
         daz = ((az_deg - self.spec.boresight_az_deg + 180) % 360) - 180
         de = el_deg - self.spec.boresight_el_deg
-        return (abs(daz) <= self.spec.azimuth_fov_deg / 2 and
-                abs(de) <= self.spec.elevation_fov_deg / 2)
+        return (
+            abs(daz) <= self.spec.azimuth_fov_deg / 2
+            and abs(de) <= self.spec.elevation_fov_deg / 2
+        )
 
 
 class RadarModel(SensorModel):
@@ -98,16 +102,18 @@ class RadarModel(SensorModel):
 
     def measurement_noise_matrix(self, range_m: float = 1000.0) -> np.ndarray:
         """R matrix in (range, azimuth, elevation) space."""
-        return np.diag([
-            self.range_sigma_m ** 2,
-            self.az_sigma_rad ** 2,
-            self.el_sigma_rad ** 2,
-        ])
+        return np.diag(
+            [
+                self.range_sigma_m**2,
+                self.az_sigma_rad**2,
+                self.el_sigma_rad**2,
+            ]
+        )
 
     def sigma_position_m(self, range_m: float = 1000.0) -> float:
         """Effective position uncertainty at given range."""
         cross_range = range_m * self.az_sigma_rad
-        return math.sqrt(self.range_sigma_m ** 2 + cross_range ** 2)
+        return math.sqrt(self.range_sigma_m**2 + cross_range**2)
 
     def detection_probability(self, range_m: float = 0.0) -> float:
         """Pd drops with range^4 (radar equation)."""
@@ -115,7 +121,7 @@ class RadarModel(SensorModel):
             return 0.0
         # Simple model: Pd degrades as (max_range/range)^2 scaled
         ratio = range_m / self.spec.max_range_m
-        return self.spec.detection_probability * max(0.0, 1.0 - ratio ** 2)
+        return self.spec.detection_probability * max(0.0, 1.0 - ratio**2)
 
 
 class EOIRModel(SensorModel):
@@ -136,10 +142,12 @@ class EOIRModel(SensorModel):
 
     def measurement_noise_matrix(self, range_m: float = 1000.0) -> np.ndarray:
         """R matrix in (azimuth, elevation) bearing space."""
-        return np.diag([
-            self.pixel_sigma_rad ** 2,
-            self.pixel_sigma_rad ** 2,
-        ])
+        return np.diag(
+            [
+                self.pixel_sigma_rad**2,
+                self.pixel_sigma_rad**2,
+            ]
+        )
 
     def sigma_position_m(self, range_m: float = 1000.0) -> float:
         """Bearing-only: position uncertainty = range * angular uncertainty."""
@@ -166,11 +174,13 @@ class ADSBModel(SensorModel):
 
     def measurement_noise_matrix(self, range_m: float = 0.0) -> np.ndarray:
         """R matrix in (lat_m, lon_m, alt_m) position space."""
-        return np.diag([
-            self.position_sigma_m ** 2,
-            self.position_sigma_m ** 2,
-            self.altitude_sigma_m ** 2,
-        ])
+        return np.diag(
+            [
+                self.position_sigma_m**2,
+                self.position_sigma_m**2,
+                self.altitude_sigma_m**2,
+            ]
+        )
 
     def sigma_position_m(self, range_m: float = 0.0) -> float:
         """ADS-B has constant accuracy regardless of range."""
@@ -193,11 +203,13 @@ class GPSModel(SensorModel):
         self.vertical_sigma_m = vertical_sigma_m
 
     def measurement_noise_matrix(self, range_m: float = 0.0) -> np.ndarray:
-        return np.diag([
-            self.horizontal_sigma_m ** 2,
-            self.horizontal_sigma_m ** 2,
-            self.vertical_sigma_m ** 2,
-        ])
+        return np.diag(
+            [
+                self.horizontal_sigma_m**2,
+                self.horizontal_sigma_m**2,
+                self.vertical_sigma_m**2,
+            ]
+        )
 
     def sigma_position_m(self, range_m: float = 0.0) -> float:
         return self.horizontal_sigma_m
@@ -217,7 +229,7 @@ class AcousticModel(SensorModel):
         self.bearing_sigma_rad = math.radians(bearing_sigma_deg)
 
     def measurement_noise_matrix(self, range_m: float = 0.0) -> np.ndarray:
-        return np.diag([self.bearing_sigma_rad ** 2])
+        return np.diag([self.bearing_sigma_rad**2])
 
     def sigma_position_m(self, range_m: float = 500.0) -> float:
         return range_m * self.bearing_sigma_rad

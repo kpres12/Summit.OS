@@ -9,6 +9,7 @@ Implements a pull-based anti-entropy protocol where nodes periodically:
 This minimizes bandwidth in contested/degraded network environments
 while guaranteeing eventual consistency.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -29,6 +30,7 @@ class StateDigest:
     Compact representation of a node's CRDT state.
     Used for efficient comparison during anti-entropy rounds.
     """
+
     node_id: str
     # key -> hash of serialized value
     register_digests: Dict[str, str] = field(default_factory=dict)
@@ -42,15 +44,21 @@ class StateDigest:
         digest = cls(node_id=store.node_id, timestamp=time.time())
 
         for key, reg in store.registers.items():
-            h = hashlib.sha256(json.dumps(reg.to_dict(), sort_keys=True).encode()).hexdigest()[:16]
+            h = hashlib.sha256(
+                json.dumps(reg.to_dict(), sort_keys=True).encode()
+            ).hexdigest()[:16]
             digest.register_digests[key] = h
 
         for key, ctr in store.counters.items():
-            h = hashlib.sha256(json.dumps(ctr.to_dict(), sort_keys=True).encode()).hexdigest()[:16]
+            h = hashlib.sha256(
+                json.dumps(ctr.to_dict(), sort_keys=True).encode()
+            ).hexdigest()[:16]
             digest.counter_digests[key] = h
 
         for key, s in store.sets.items():
-            h = hashlib.sha256(json.dumps(s.to_dict(), sort_keys=True).encode()).hexdigest()[:16]
+            h = hashlib.sha256(
+                json.dumps(s.to_dict(), sort_keys=True).encode()
+            ).hexdigest()[:16]
             digest.set_digests[key] = h
 
         return digest
@@ -80,6 +88,7 @@ class SyncDelta:
     """
     A delta containing only the CRDT entries that differ between two nodes.
     """
+
     source_node_id: str
     registers: Dict[str, Dict] = field(default_factory=dict)
     counters: Dict[str, Dict] = field(default_factory=dict)
@@ -214,9 +223,9 @@ class SyncProtocol:
         """Quick check if sync is needed."""
         local_digest = self.create_digest()
         return (
-            local_digest.register_digests != remote_digest.register_digests or
-            local_digest.counter_digests != remote_digest.counter_digests or
-            local_digest.set_digests != remote_digest.set_digests
+            local_digest.register_digests != remote_digest.register_digests
+            or local_digest.counter_digests != remote_digest.counter_digests
+            or local_digest.set_digests != remote_digest.set_digests
         )
 
     def get_stats(self) -> Dict:

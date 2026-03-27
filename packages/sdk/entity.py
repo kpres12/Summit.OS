@@ -17,6 +17,7 @@ Usage:
         .build()
     )
 """
+
 from __future__ import annotations
 
 import time
@@ -105,7 +106,11 @@ class EntityBuilder:
     # ── Auto-state from thresholds ───────────────────────────────────────────
 
     def warn_above(self, threshold: float) -> "EntityBuilder":
-        if self._value is not None and self._value >= threshold and self._state == "ACTIVE":
+        if (
+            self._value is not None
+            and self._value >= threshold
+            and self._state == "ACTIVE"
+        ):
             self._state = "WARNING"
         return self
 
@@ -115,7 +120,11 @@ class EntityBuilder:
         return self
 
     def warn_below(self, threshold: float) -> "EntityBuilder":
-        if self._value is not None and self._value <= threshold and self._state == "ACTIVE":
+        if (
+            self._value is not None
+            and self._value <= threshold
+            and self._state == "ACTIVE"
+        ):
             self._state = "WARNING"
         return self
 
@@ -132,7 +141,9 @@ class EntityBuilder:
         self._alt = alt
         return self
 
-    def moving(self, heading: float, speed_mps: float, climb_mps: float = 0.0) -> "EntityBuilder":
+    def moving(
+        self, heading: float, speed_mps: float, climb_mps: float = 0.0
+    ) -> "EntityBuilder":
         self._heading = heading
         self._speed = speed_mps
         self._climb = climb_mps

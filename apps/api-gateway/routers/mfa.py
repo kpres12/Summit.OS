@@ -31,6 +31,7 @@ Rate limiting uses slowapi. Limits are enforced per client IP:
   - /auth/mfa/webauthn/authenticate/complete: 5/minute
   - /auth/mfa/totp/enroll/begin: 10/hour
 """
+
 from __future__ import annotations
 
 import logging
@@ -56,6 +57,7 @@ logger = logging.getLogger("api-gateway.mfa")
 try:
     from slowapi import Limiter  # type: ignore
     from slowapi.util import get_remote_address  # type: ignore
+
     _limiter = Limiter(key_func=get_remote_address)
     _SLOWAPI_AVAILABLE = True
 except ImportError:
@@ -73,9 +75,11 @@ def _rate_limit(limit_string: str):
     """
     if _SLOWAPI_AVAILABLE and _limiter is not None:
         return _limiter.limit(limit_string)
+
     # No-op decorator fallback.
     def _noop(func):
         return func
+
     return _noop
 
 
@@ -174,32 +178,38 @@ def _clear_pending(user_id: str) -> None:
 
 class TOTPEnrollVerifyRequest(BaseModel):
     """Body for /auth/mfa/totp/enroll/verify."""
+
     token: str
 
 
 class TOTPValidateRequest(BaseModel):
     """Body for /auth/mfa/totp/validate."""
+
     token: str
 
 
 class TOTPDisableRequest(BaseModel):
     """Body for /auth/mfa/totp/disable. Requires the current TOTP code."""
+
     token: str
 
 
 class BackupCodeRegenerateRequest(BaseModel):
     """Body for /auth/mfa/backup-codes/regenerate. Requires current TOTP code."""
+
     token: str
 
 
 class WebAuthnRegisterBeginRequest(BaseModel):
     """Body for /auth/mfa/webauthn/register/begin."""
+
     rp_id: str
     rp_name: str = "Summit.OS"
 
 
 class WebAuthnRegisterCompleteRequest(BaseModel):
     """Body for /auth/mfa/webauthn/register/complete."""
+
     credential: dict
     challenge: str
     rp_id: str
@@ -209,11 +219,13 @@ class WebAuthnRegisterCompleteRequest(BaseModel):
 
 class WebAuthnAuthBeginRequest(BaseModel):
     """Body for /auth/mfa/webauthn/authenticate/begin."""
+
     rp_id: str
 
 
 class WebAuthnAuthCompleteRequest(BaseModel):
     """Body for /auth/mfa/webauthn/authenticate/complete."""
+
     credential: dict
     challenge: str
     rp_id: str
@@ -297,11 +309,7 @@ def _user_from_claims(claims: dict) -> tuple[str, str]:
     user_id = claims.get("sub") or claims.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Token missing 'sub' claim")
-    email = (
-        claims.get("email")
-        or claims.get("preferred_username")
-        or user_id
-    )
+    email = claims.get("email") or claims.get("preferred_username") or user_id
     return str(user_id), str(email)
 
 
@@ -432,7 +440,9 @@ async def totp_validate(
 
     secret = await store.get_totp_secret(user_id)
     if not secret:
-        raise HTTPException(status_code=400, detail="TOTP is not enrolled for this user.")
+        raise HTTPException(
+            status_code=400, detail="TOTP is not enrolled for this user."
+        )
 
     if not verify_totp(body.token, secret):
         raise HTTPException(status_code=422, detail="Invalid TOTP code.")
@@ -468,10 +478,14 @@ async def totp_disable(
 
     secret = await store.get_totp_secret(user_id)
     if not secret:
-        raise HTTPException(status_code=400, detail="TOTP is not enrolled for this user.")
+        raise HTTPException(
+            status_code=400, detail="TOTP is not enrolled for this user."
+        )
 
     if not verify_totp(body.token, secret):
-        raise HTTPException(status_code=422, detail="Invalid TOTP code — cannot disable MFA.")
+        raise HTTPException(
+            status_code=422, detail="Invalid TOTP code — cannot disable MFA."
+        )
 
     await store.disable_totp(user_id)
     logger.info("TOTP disabled for user %s", user_id)
@@ -560,7 +574,9 @@ async def webauthn_register_complete(
         raise HTTPException(status_code=501, detail=str(exc)) from exc
     except Exception as exc:
         logger.warning("WebAuthn registration failed for user %s: %s", user_id, exc)
-        raise HTTPException(status_code=422, detail=f"Registration failed: {exc}") from exc
+        raise HTTPException(
+            status_code=422, detail=f"Registration failed: {exc}"
+        ) from exc
 
     # Allow caller to override the device name.
     if body.device_name:
@@ -649,9 +665,7 @@ async def webauthn_auth_complete(
     user_id, _ = _user_from_claims(claims)
 
     # Locate the stored credential by the ID present in the response.
-    credential_id_raw = (
-        body.credential.get("id") or body.credential.get("rawId", "")
-    )
+    credential_id_raw = body.credential.get("id") or body.credential.get("rawId", "")
     all_creds = await store.get_webauthn_credentials(user_id)
     stored = next(
         (c for c in all_creds if c["credential_id"] == credential_id_raw),
@@ -765,7 +779,10 @@ async def backup_codes_regenerate(
 
     secret = await store.get_totp_secret(user_id)
     if not secret:
-        raise HTTPException(status_code=400, detail="TOTP is not enrolled — cannot regenerate backup codes.")
+        raise HTTPException(
+            status_code=400,
+            detail="TOTP is not enrolled — cannot regenerate backup codes.",
+        )
 
     if not verify_totp(body.token, secret):
         raise HTTPException(status_code=422, detail="Invalid TOTP code.")

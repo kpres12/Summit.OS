@@ -3,6 +3,7 @@ import os
 import uuid
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -23,6 +24,7 @@ from typing import Any
 # Optional OIDC/JWT enforcement
 try:
     from jose import jwt
+
     OIDC_JOSE_AVAILABLE = True
 except Exception:
     OIDC_JOSE_AVAILABLE = False
@@ -44,8 +46,9 @@ approvals = Table(
     Column("status", String(32)),  # PENDING_APPROVAL, APPROVED, REJECTED
     Column("approved_by", String(128)),
     Column("created_at", DateTime(timezone=True)),
-    Column("approved_at", DateTime(timezone=True))
+    Column("approved_at", DateTime(timezone=True)),
 )
+
 
 def _to_asyncpg_url(url: str) -> str:
     if url.startswith("postgresql+asyncpg://"):
@@ -53,6 +56,7 @@ def _to_asyncpg_url(url: str) -> str:
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
+
 
 GATEWAY_TEST_MODE = os.getenv("GATEWAY_TEST_MODE", "false").lower() == "true"
 
@@ -63,8 +67,10 @@ try:
         sys.path.insert(0, _secrets_root)
     from packages.secrets.client import get_secret as _get_secret
 except Exception:
+
     async def _get_secret(key: str, default=None):  # type: ignore[misc]
         return os.getenv(key, default)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,8 +80,13 @@ async def lifespan(app: FastAPI):
     if GATEWAY_TEST_MODE:
         db_url = "sqlite+aiosqlite://"
     else:
-        _pg_url = await _get_secret("POSTGRES_URL", default="postgresql://summit:summit_password@localhost:5432/summit_os")
-        db_url = _to_asyncpg_url(_pg_url or "postgresql://summit:summit_password@localhost:5432/summit_os")
+        _pg_url = await _get_secret(
+            "POSTGRES_URL",
+            default="postgresql://summit:summit_password@localhost:5432/summit_os",
+        )
+        db_url = _to_asyncpg_url(
+            _pg_url or "postgresql://summit:summit_password@localhost:5432/summit_os"
+        )
     engine = create_async_engine(db_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -85,14 +96,18 @@ async def lifespan(app: FastAPI):
     # Initialise audit log (append-only Postgres table via asyncpg)
     try:
         from middleware.audit import init_audit_log
+
         await init_audit_log(db_url)
     except Exception as exc:
         logger.warning("Audit log init failed (non-fatal): %s", exc)
 
     # Initialise MFA user store (creates tables if not present)
     try:
-        from security.user_store import UserMFAStore  # packages/ added to path by mfa router import
+        from security.user_store import (
+            UserMFAStore,
+        )  # packages/ added to path by mfa router import
         from routers.mfa import init_mfa_router
+
         mfa_db_url = os.getenv("MFA_DATABASE_URL", db_url)
         mfa_store = UserMFAStore(database_url=mfa_db_url)
         await mfa_store.initialize()
@@ -103,6 +118,7 @@ async def lifespan(app: FastAPI):
 
     try:
         from middleware.billing import init_billing_tables
+
         await init_billing_tables(engine)
         logger.info("Billing tables initialized")
     except Exception as exc:
@@ -113,6 +129,7 @@ async def lifespan(app: FastAPI):
     try:
         import sys as _sys
         from pathlib import Path as _Path
+
         _packages_dir = str(_Path(__file__).resolve().parents[2] / "packages")
         if _packages_dir not in _sys.path:
             _sys.path.insert(0, _packages_dir)
@@ -151,6 +168,7 @@ async def lifespan(app: FastAPI):
         _mqtt_client = None
         try:
             import paho.mqtt.client as _mqtt
+
             _mqtt_host = os.getenv("MQTT_HOST", "localhost")
             _mqtt_port = int(os.getenv("MQTT_PORT", "1883"))
             _c = _mqtt.Client(client_id="summit-api-gateway-adapters")
@@ -161,7 +179,9 @@ async def lifespan(app: FastAPI):
             _c.connect(_mqtt_host, _mqtt_port, 60)
             _c.loop_start()
             _mqtt_client = _c
-            logger.info("Adapter MQTT client connected to %s:%s", _mqtt_host, _mqtt_port)
+            logger.info(
+                "Adapter MQTT client connected to %s:%s", _mqtt_host, _mqtt_port
+            )
         except Exception as _mqtt_exc:
             logger.warning("Adapter MQTT client unavailable (non-fatal): %s", _mqtt_exc)
 
@@ -181,17 +201,24 @@ async def lifespan(app: FastAPI):
                         _cfg = AdapterConfig(**_raw)
                         _adapter_registry.add(_cfg, mqtt_client=_mqtt_client)
                     except Exception as _cfg_exc:
-                        logger.warning("Skipping invalid adapter config %s: %s", _raw, _cfg_exc)
+                        logger.warning(
+                            "Skipping invalid adapter config %s: %s", _raw, _cfg_exc
+                        )
                 logger.info(
                     "Loaded %d adapter config(s) from %s",
                     len(_adapter_registry._adapters),
                     _config_path,
                 )
             except Exception as _load_exc:
-                logger.warning("Failed to load adapter configs from %s: %s", _config_path, _load_exc)
+                logger.warning(
+                    "Failed to load adapter configs from %s: %s",
+                    _config_path,
+                    _load_exc,
+                )
         else:
             logger.info(
-                "No adapter config file found at %s — starting with zero adapters.", _config_path
+                "No adapter config file found at %s — starting with zero adapters.",
+                _config_path,
             )
 
         init_adapter_router(_adapter_registry)
@@ -205,16 +232,20 @@ async def lifespan(app: FastAPI):
     _retention_task = None
     try:
         import asyncio as _asyncio
+
         _audit_retention_days = int(os.getenv("AUDIT_RETENTION_DAYS", "90"))
 
         async def _run_retention_loop():
             from middleware.audit import prune_old_entries
+
             while True:
                 await _asyncio.sleep(86400)  # run daily
                 await prune_old_entries(_audit_retention_days)
 
         _retention_task = _asyncio.create_task(_run_retention_loop())
-        logger.info("Audit retention task started (retention=%d days)", _audit_retention_days)
+        logger.info(
+            "Audit retention task started (retention=%d days)", _audit_retention_days
+        )
     except Exception as exc:
         logger.warning("Audit retention task failed to start (non-fatal): %s", exc)
 
@@ -238,12 +269,14 @@ async def lifespan(app: FastAPI):
     # Shutdown: close audit pool before disposing the SQLAlchemy engine
     try:
         from middleware.audit import close_audit_log
+
         await close_audit_log()
     except Exception as exc:
         logger.warning("Audit log close failed (non-fatal): %s", exc)
 
     if engine:
         await engine.dispose()
+
 
 SUMMIT_API_VERSION = "1"
 SUMMIT_OS_VERSION = "1.0.0"
@@ -260,6 +293,7 @@ app = FastAPI(
 # ── OpenTelemetry tracing middleware ──────────────────────────────────────────
 try:
     from packages.observability.tracing import get_tracer, create_tracing_middleware
+
     _tracer = get_tracer("summit-api-gateway")
     app.middleware("http")(create_tracing_middleware(_tracer))
     logger.info("OTel tracing middleware wired for summit-api-gateway")
@@ -273,12 +307,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as _StarletteRequest
 from starlette.responses import Response as _StarletteResponse
 
+
 class _VersionHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: _StarletteRequest, call_next):
         response = await call_next(request)
         response.headers["X-Summit-API-Version"] = SUMMIT_API_VERSION
         response.headers["X-Summit-OS-Version"] = SUMMIT_OS_VERSION
         return response
+
 
 app.add_middleware(_VersionHeaderMiddleware)
 
@@ -287,6 +323,7 @@ try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
     from slowapi.util import get_remote_address
     from slowapi.errors import RateLimitExceeded
+
     _limiter = Limiter(key_func=get_remote_address)
     app.state.limiter = _limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -302,37 +339,50 @@ def _rate_limit(limit_string: str):
     """Apply a slowapi rate limit when available; no-op otherwise."""
     if _RATE_LIMIT_AVAILABLE and _limiter is not None:
         return _limiter.limit(limit_string)
+
     def _noop(func):
         return func
+
     return _noop
+
 
 # Audit logging middleware — must be added before CORS so it wraps all requests
 try:
     from middleware.audit import AuditLogMiddleware
+
     app.add_middleware(AuditLogMiddleware)
 except Exception as _audit_exc:
     logger.warning("Audit middleware not loaded: %s", _audit_exc)
 
 # ── API key dependency (no-op when API_KEY_ENFORCE=false) ─────────────────────
 try:
-    from middleware.billing import require_api_key as _require_api_key, OrgContext as _OrgContext
+    from middleware.billing import (
+        require_api_key as _require_api_key,
+        OrgContext as _OrgContext,
+    )
 except Exception:
+
     async def _require_api_key(request=None):  # type: ignore[misc]
         return None
+
     _OrgContext = None  # type: ignore[assignment,misc]
 
 # ── RBAC role dependency (no-op when RBAC_ENFORCE=false) ──────────────────────
 try:
     from middleware.rbac import require_role as _require_role
 except Exception:
+
     def _require_role(*roles):  # type: ignore[misc]
         async def _noop(request=None):
             return None
+
         return _noop
+
 
 # ── MFA / Auth router ────────────────────────────────────────────────────────
 try:
     from routers.mfa import router as mfa_router
+
     app.include_router(mfa_router)
 except Exception as _mfa_exc:
     logger.warning("MFA router not loaded: %s", _mfa_exc)
@@ -340,6 +390,7 @@ except Exception as _mfa_exc:
 # ── Adapters router ───────────────────────────────────────────────────────────
 try:
     from routers.adapters import router as adapters_router
+
     app.include_router(adapters_router)
 except Exception as _adapters_exc:
     logger.warning("Adapters router not loaded: %s", _adapters_exc)
@@ -347,18 +398,21 @@ except Exception as _adapters_exc:
 # ── Learning / CyberSynetic router ────────────────────────────────────────────
 try:
     from routers.learning import router as learning_router
+
     app.include_router(learning_router)
 except Exception as _learning_exc:
     logger.warning("Learning router not loaded: %s", _learning_exc)
 
 try:
     from routers.billing import billing_router
+
     app.include_router(billing_router)
 except Exception as exc:
     logger.warning("Billing router load failed: %s", exc)
 
 try:
     from routers.audit import audit_router
+
     app.include_router(audit_router)
 except Exception as exc:
     logger.warning("Audit router load failed: %s", exc)
@@ -366,7 +420,10 @@ except Exception as exc:
 # CORS for local dev (console at 3000)
 try:
     from fastapi.middleware.cors import CORSMiddleware
-    ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+
+    ORIGINS = os.getenv(
+        "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[o.strip() for o in ORIGINS if o.strip()],
@@ -389,9 +446,15 @@ except Exception:
 from fastapi.responses import JSONResponse
 from fastapi.requests import Request as _Request
 
+
 @app.exception_handler(HTTPException)
 async def http_exc_handler(_req: _Request, exc: HTTPException):
-    return JSONResponse(status_code=exc.status_code, content=ErrorResponse(error="HTTPException", detail=exc.detail).model_dump())
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(error="HTTPException", detail=exc.detail).model_dump(),
+    )
+
+
 FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
 FUSION_URL = os.getenv("FUSION_URL", "http://fusion:8002")
 TASKING_URL = os.getenv("TASKING_URL", "http://tasking:8004")
@@ -409,9 +472,11 @@ MISSIONS = os.getenv("MISSIONS", "").split(",") if os.getenv("MISSIONS") else []
 try:
     if any(m.strip().lower() == "sentinel" for m in MISSIONS):
         from .plugins.sentinel import register as register_sentinel
+
         register_sentinel(app, FUSION_URL)
     elif any(m.strip().lower() == "wildfire" for m in MISSIONS):  # backward-compatible
         from .plugins.wildfire import register as register_wildfire
+
         register_wildfire(app, FUSION_URL)
 except Exception:
     # Plugins are optional; don't fail API startup if missing
@@ -429,6 +494,7 @@ async def api_version():
         "deprecations": [],
     }
 
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "api-gateway", "version": SUMMIT_OS_VERSION}
@@ -442,17 +508,20 @@ async def health():
 _device_registry = None
 _device_ca = None
 
+
 async def _get_device_registry():
     global _device_registry, _device_ca
     if _device_registry is None:
         import sys as _sys
         from pathlib import Path as _Path
+
         _pkgs = str(_Path(__file__).resolve().parents[2] / "packages")
         if _pkgs not in _sys.path:
             _sys.path.insert(0, _pkgs)
         try:
             from identity.registry import DeviceRegistry
             from identity.ca import DeviceCA
+
             _device_ca = DeviceCA()
             await _device_ca.initialize()
             _device_registry = DeviceRegistry()
@@ -492,7 +561,9 @@ async def register_device(
     """
     registry, ca = await _get_device_registry()
     if registry is None:
-        raise HTTPException(status_code=503, detail="Device identity system unavailable")
+        raise HTTPException(
+            status_code=503, detail="Device identity system unavailable"
+        )
 
     # org_id from X-Org-ID header (set by mTLS proxy) is authoritative.
     # Accept body-supplied org_id ONLY in dev/test mode — never in production
@@ -509,7 +580,8 @@ async def register_device(
             logger.warning(
                 "register_device: org_id supplied in request body without X-Org-ID header "
                 "(acceptable only behind mTLS proxy). device_id=%s org=%s",
-                req.device_id, effective_org,
+                req.device_id,
+                effective_org,
             )
 
     cert = await ca.issue_device_cert(
@@ -535,7 +607,7 @@ async def register_device(
         "device_id": req.device_id,
         "fingerprint": cert.fingerprint,
         "cert_pem": cert.cert_pem,
-        "key_pem": cert.key_pem,   # returned once — never stored by Summit.OS
+        "key_pem": cert.key_pem,  # returned once — never stored by Summit.OS
         "not_before": cert.not_before.isoformat(),
         "not_after": cert.not_after.isoformat(),
         "message": "Store the key_pem securely on the device. It will not be shown again.",
@@ -547,13 +619,14 @@ async def list_devices(org_id: Optional[str] = Depends(get_org_id)):
     """List all registered devices for this org."""
     registry, _ = await _get_device_registry()
     if registry is None:
-        raise HTTPException(status_code=503, detail="Device identity system unavailable")
+        raise HTTPException(
+            status_code=503, detail="Device identity system unavailable"
+        )
     devices = await registry.list_devices(org_id=org_id)
     # Never expose fingerprints in list — only device metadata
     return {
         "devices": [
-            {k: v for k, v in d.items() if k not in ("fingerprint",)}
-            for d in devices
+            {k: v for k, v in d.items() if k not in ("fingerprint",)} for d in devices
         ],
         "count": len(devices),
     }
@@ -568,11 +641,14 @@ async def revoke_device(
     """Revoke a device's authorization. The device cannot reconnect after revocation."""
     registry, _ = await _get_device_registry()
     if registry is None:
-        raise HTTPException(status_code=503, detail="Device identity system unavailable")
+        raise HTTPException(
+            status_code=503, detail="Device identity system unavailable"
+        )
     ok = await registry.revoke(device_id, reason=reason)
     if not ok:
         raise HTTPException(status_code=404, detail=f"Device '{device_id}' not found")
     return {"device_id": device_id, "status": "revoked", "reason": reason}
+
 
 @app.get("/readyz")
 async def readyz():
@@ -590,25 +666,35 @@ async def readyz():
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Not ready: {e}")
 
+
 @app.get("/livez")
 async def livez():
     return {"status": "alive"}
 
+
 # Prometheus metrics
-_http_errors = Counter('api_gateway_errors_total', 'Total errors by endpoint and status', ['endpoint', 'status'])
+_http_errors = Counter(
+    "api_gateway_errors_total",
+    "Total errors by endpoint and status",
+    ["endpoint", "status"],
+)
+
 
 @app.get("/metrics")
 async def metrics():
     return PrometheusResponse(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 # -------------------------
 # Org scoping and security helpers
 # -------------------------
 from pydantic import BaseModel as _BaseModel
 
+
 class ErrorResponse(_BaseModel):
     error: str
     detail: dict | list | str | None = None
+
 
 # -------------------------
 # Security helpers (optional OIDC)
@@ -627,6 +713,7 @@ async def _load_jwks() -> dict | None:
             _JWKS_CACHE = None
     return _JWKS_CACHE
 
+
 def _select_jwk(jwks: dict, kid: str | None) -> dict | None:
     try:
         keys = jwks.get("keys", []) if isinstance(jwks, dict) else []
@@ -638,12 +725,15 @@ def _select_jwk(jwks: dict, kid: str | None) -> dict | None:
     except Exception:
         return None
 
+
 async def verify_bearer(authorization: str | None = None) -> dict | None:
     """FastAPI dependency to optionally enforce OIDC JWTs on protected routes."""
     if not OIDC_ENFORCE:
         return None
     if not OIDC_JOSE_AVAILABLE:
-        raise HTTPException(status_code=500, detail="OIDC enforcement enabled but jose not installed")
+        raise HTTPException(
+            status_code=500, detail="OIDC enforcement enabled but jose not installed"
+        )
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Missing bearer token")
     token = authorization.split(" ", 1)[1]
@@ -651,7 +741,16 @@ async def verify_bearer(authorization: str | None = None) -> dict | None:
     try:
         headers = jwt.get_unverified_header(token)
         claims = jwt.get_unverified_claims(token)
-        if OIDC_AUDIENCE and claims.get("aud") and OIDC_AUDIENCE not in (claims.get("aud") if isinstance(claims.get("aud"), list) else [claims.get("aud")]):
+        if (
+            OIDC_AUDIENCE
+            and claims.get("aud")
+            and OIDC_AUDIENCE
+            not in (
+                claims.get("aud")
+                if isinstance(claims.get("aud"), list)
+                else [claims.get("aud")]
+            )
+        ):
             raise HTTPException(status_code=401, detail="Invalid audience")
         if OIDC_ISSUER and claims.get("iss") != OIDC_ISSUER:
             raise HTTPException(status_code=401, detail="Invalid issuer")
@@ -661,10 +760,19 @@ async def verify_bearer(authorization: str | None = None) -> dict | None:
             if jwk is None:
                 raise HTTPException(status_code=401, detail="No matching JWK")
             from jose.utils import base64url_decode
+
             try:
-                jwt.decode(token, jwk, algorithms=[headers.get("alg") or "RS256"], audience=OIDC_AUDIENCE, issuer=OIDC_ISSUER)
+                jwt.decode(
+                    token,
+                    jwk,
+                    algorithms=[headers.get("alg") or "RS256"],
+                    audience=OIDC_AUDIENCE,
+                    issuer=OIDC_ISSUER,
+                )
             except Exception as e:
-                raise HTTPException(status_code=401, detail=f"Signature verification failed: {e}")
+                raise HTTPException(
+                    status_code=401, detail=f"Signature verification failed: {e}"
+                )
         return claims
     except HTTPException:
         raise
@@ -677,6 +785,7 @@ class TaskSubmitRequest(BaseModel):
     action: str
     risk_level: str  # LOW, MEDIUM, HIGH, CRITICAL
     waypoints: list = []
+
 
 class TaskApproveRequest(BaseModel):
     approved_by: str
@@ -694,19 +803,26 @@ async def _opa_check(payload: dict) -> bool:
         # Fail open if OPA not reachable
         return True
 
+
 @app.post("/v1/tasks")
 @_rate_limit("30/minute")
-async def submit_task(request: Request, req: TaskSubmitRequest, _claims: dict | None = Depends(verify_bearer), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("OPERATOR"))):
+async def submit_task(
+    request: Request,
+    req: TaskSubmitRequest,
+    _claims: dict | None = Depends(verify_bearer),
+    _org: object = Depends(_require_api_key),
+    _role: object = Depends(_require_role("OPERATOR")),
+):
     """Submit a task. High-risk tasks require approval before dispatch."""
     assert SessionLocal is not None
-    
+
     task_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc)
-    
+
     # High-risk tasks require human approval
     if req.risk_level in ["HIGH", "CRITICAL"]:
         status = "PENDING_APPROVAL"
-        
+
         # Store approval record
         async with SessionLocal() as session:
             await session.execute(
@@ -716,26 +832,28 @@ async def submit_task(request: Request, req: TaskSubmitRequest, _claims: dict | 
                     action=req.action,
                     risk_level=req.risk_level,
                     status=status,
-                    created_at=created_at
+                    created_at=created_at,
                 )
             )
             await session.commit()
-        
+
         return {
             "task_id": task_id,
             "status": status,
-            "message": "Task requires approval due to high risk level"
+            "message": "Task requires approval due to high risk level",
         }
     else:
         # Policy check (OPA) before dispatch
         approved = True
         try:
-            approved = await _opa_check({
-                "action": "dispatch",
-                "risk_level": req.risk_level,
-                "approved": True,  # low/med implicit
-                "in_geofence": True  # assume OK; future: query fabric
-            })
+            approved = await _opa_check(
+                {
+                    "action": "dispatch",
+                    "risk_level": req.risk_level,
+                    "approved": True,  # low/med implicit
+                    "in_geofence": True,  # assume OK; future: query fabric
+                }
+            )
         except Exception:
             approved = True
         if not approved:
@@ -743,7 +861,7 @@ async def submit_task(request: Request, req: TaskSubmitRequest, _claims: dict | 
 
         # Low/Medium risk: dispatch immediately
         status = "DISPATCHED"
-        
+
         # Dispatch to Tasking service
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -753,47 +871,57 @@ async def submit_task(request: Request, req: TaskSubmitRequest, _claims: dict | 
                         "task_id": task_id,
                         "asset_id": req.asset_id,
                         "action": req.action,
-                        "waypoints": req.waypoints
-                    }
+                        "waypoints": req.waypoints,
+                    },
                 )
                 r.raise_for_status()
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Tasking service error: {e}")
-        
+
         return {"task_id": task_id, "status": status}
 
 
 @app.post("/v1/tasks/{task_id}/approve")
-async def approve_task(task_id: str, req: TaskApproveRequest, _claims: dict | None = Depends(verify_bearer)):
+async def approve_task(
+    task_id: str, req: TaskApproveRequest, _claims: dict | None = Depends(verify_bearer)
+):
     """Approve a pending task and dispatch it."""
     assert SessionLocal is not None
 
     # Basic RBAC: require supervisor/admin if OIDC enforced
     if OIDC_ENFORCE:
-        roles = set((_claims or {}).get("roles") or (_claims or {}).get("realm_access", {}).get("roles", []) or [])
+        roles = set(
+            (_claims or {}).get("roles")
+            or (_claims or {}).get("realm_access", {}).get("roles", [])
+            or []
+        )
         if not ("supervisor" in roles or "admin" in roles):
             raise HTTPException(status_code=403, detail="Insufficient role")
-    
+
     # Fetch approval record
     async with SessionLocal() as session:
         result = await session.execute(
-            text("SELECT task_id, asset_id, action, risk_level, status FROM approvals WHERE task_id = :tid"),
-            {"tid": task_id}
+            text(
+                "SELECT task_id, asset_id, action, risk_level, status FROM approvals WHERE task_id = :tid"
+            ),
+            {"tid": task_id},
         )
         row = result.first()
-        
+
         if not row:
             raise HTTPException(status_code=404, detail="Task not found")
-        
+
         if row.status != "PENDING_APPROVAL":
             raise HTTPException(status_code=400, detail=f"Task already {row.status}")
-        
+
         # Update approval
         await session.execute(
-            approvals.update().where(approvals.c.task_id == task_id).values(
+            approvals.update()
+            .where(approvals.c.task_id == task_id)
+            .values(
                 status="APPROVED",
                 approved_by=req.approved_by,
-                approved_at=datetime.now(timezone.utc)
+                approved_at=datetime.now(timezone.utc),
             )
         )
         await session.commit()
@@ -804,30 +932,39 @@ async def approve_task(task_id: str, req: TaskApproveRequest, _claims: dict | No
             # optional: check geofence containment if waypoints present
             if req and req.model_dump().get("waypoints"):
                 # sample first waypoint
-                wp = req.model_dump()["waypoints"][0] if req.model_dump()["waypoints"] else None
+                wp = (
+                    req.model_dump()["waypoints"][0]
+                    if req.model_dump()["waypoints"]
+                    else None
+                )
                 if wp and isinstance(wp, dict):
                     lat = wp.get("lat")
                     lon = wp.get("lon")
                     if lat is not None and lon is not None:
                         async with httpx.AsyncClient(timeout=3.0) as client:
-                            rr = await client.get(f"{FABRIC_URL}/api/v1/geofences/contains", params={"lat": lat, "lon": lon})
+                            rr = await client.get(
+                                f"{FABRIC_URL}/api/v1/geofences/contains",
+                                params={"lat": lat, "lon": lon},
+                            )
                             rr.raise_for_status()
                             geo_ok = bool(rr.json().get("contains", True))
         except Exception:
             geo_ok = True
-        pol_ok = await _opa_check({
-            "action": "dispatch",
-            "risk_level": "APPROVED",
-            "approved": True,
-            "in_geofence": geo_ok,
-        })
+        pol_ok = await _opa_check(
+            {
+                "action": "dispatch",
+                "risk_level": "APPROVED",
+                "approved": True,
+                "in_geofence": geo_ok,
+            }
+        )
         if not pol_ok:
             raise HTTPException(status_code=403, detail="Policy denied dispatch")
     except HTTPException:
         raise
     except Exception as e:
         logger.debug("Suppressed error", exc_info=True)  # was: pass
-    
+
     # Dispatch to Tasking
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -836,18 +973,18 @@ async def approve_task(task_id: str, req: TaskApproveRequest, _claims: dict | No
                 json={
                     "task_id": task_id,
                     "asset_id": row.asset_id,
-                    "action": row.action
-                }
+                    "action": row.action,
+                },
             )
             r.raise_for_status()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Tasking service error: {e}")
-    
+
     return {
         "task_id": task_id,
         "status": "APPROVED",
         "approved_by": req.approved_by,
-        "approved_at": datetime.now(timezone.utc).isoformat()
+        "approved_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -855,13 +992,15 @@ async def approve_task(task_id: str, req: TaskApproveRequest, _claims: dict | No
 async def list_pending_tasks(_claims: dict | None = Depends(verify_bearer)):
     """List all tasks pending approval."""
     assert SessionLocal is not None
-    
+
     async with SessionLocal() as session:
         result = await session.execute(
-            text("SELECT task_id, asset_id, action, risk_level, created_at FROM approvals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at DESC")
+            text(
+                "SELECT task_id, asset_id, action, risk_level, created_at FROM approvals WHERE status = 'PENDING_APPROVAL' ORDER BY created_at DESC"
+            )
         )
         rows = result.all()
-        
+
         return {
             "pending_tasks": [
                 {
@@ -869,7 +1008,11 @@ async def list_pending_tasks(_claims: dict | None = Depends(verify_bearer)):
                     "asset_id": r.asset_id,
                     "action": r.action,
                     "risk_level": r.risk_level,
-                    "created_at": r.created_at.isoformat() if hasattr(r.created_at, 'isoformat') else str(r.created_at or '')
+                    "created_at": (
+                        r.created_at.isoformat()
+                        if hasattr(r.created_at, "isoformat")
+                        else str(r.created_at or "")
+                    ),
                 }
                 for r in rows
             ]
@@ -891,7 +1034,9 @@ async def list_alerts(limit: int = 100):
 
 
 @app.get("/v1/mission/{asset_id}/status")
-async def get_mission_status(asset_id: str, _claims: dict | None = Depends(verify_bearer)):
+async def get_mission_status(
+    asset_id: str, _claims: dict | None = Depends(verify_bearer)
+):
     return {
         "asset_id": asset_id,
         "status": "IDLE",
@@ -914,7 +1059,9 @@ _AGENT_COMMAND_MAP = {
 
 
 @app.post("/agents")
-async def agent_command(req: AgentCommandRequest, _claims: dict | None = Depends(verify_bearer)):
+async def agent_command(
+    req: AgentCommandRequest, _claims: dict | None = Depends(verify_bearer)
+):
     """Direct override commands — HALT, RTB, ACTIVATE_CAMERA — sent to the tasking service."""
     action = _AGENT_COMMAND_MAP.get(req.command.lower(), req.command.upper())
     task_id = str(uuid.uuid4())
@@ -936,7 +1083,11 @@ async def agent_command(req: AgentCommandRequest, _claims: dict | None = Depends
 
 
 @app.get("/v1/worldstate")
-async def get_world_state(org_id: str | None = Depends(get_org_id), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("VIEWER"))):
+async def get_world_state(
+    org_id: str | None = Depends(get_org_id),
+    _org: object = Depends(_require_api_key),
+    _role: object = Depends(_require_role("VIEWER")),
+):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
@@ -945,6 +1096,7 @@ async def get_world_state(org_id: str | None = Depends(get_org_id), _org: object
             return r.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
 
 # -------------------------
 # Node registry proxy to Fabric
@@ -958,23 +1110,39 @@ class NodeRegisterRequest(BaseModel):
     capabilities: list[str] = []
     comm: list[str] = []
 
+
 @app.post("/api/v1/nodes/register")
-async def proxy_register_node(req: NodeRegisterRequest, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+async def proxy_register_node(
+    req: NodeRegisterRequest,
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
-            r = await client.post(f"{FABRIC_URL}/api/v1/nodes/register", json=req.model_dump(), headers=headers)
+            r = await client.post(
+                f"{FABRIC_URL}/api/v1/nodes/register",
+                json=req.model_dump(),
+                headers=headers,
+            )
             r.raise_for_status()
             return r.json()
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
 
+
 @app.delete("/api/v1/nodes/{node_id}")
-async def proxy_retire_node(node_id: str, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+async def proxy_retire_node(
+    node_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
-            r = await client.delete(f"{FABRIC_URL}/api/v1/nodes/{node_id}", headers=headers)
+            r = await client.delete(
+                f"{FABRIC_URL}/api/v1/nodes/{node_id}", headers=headers
+            )
             r.raise_for_status()
             return r.json()
     except httpx.HTTPError as e:
@@ -982,7 +1150,9 @@ async def proxy_retire_node(node_id: str, _claims: dict | None = Depends(verify_
 
 
 @app.get("/v1/observations")
-async def get_observations(cls: str | None = None, limit: int = 50, org_id: str | None = Depends(get_org_id)):
+async def get_observations(
+    cls: str | None = None, limit: int = 50, org_id: str | None = Depends(get_org_id)
+):
     params = {"limit": str(limit)}
     if cls:
         params["cls"] = cls
@@ -998,7 +1168,11 @@ async def get_observations(cls: str | None = None, limit: int = 50, org_id: str 
 
 
 @app.get("/v1/advisories")
-async def get_advisories(risk_level: str | None = None, limit: int = 50, org_id: str | None = Depends(get_org_id)):
+async def get_advisories(
+    risk_level: str | None = None,
+    limit: int = 50,
+    org_id: str | None = Depends(get_org_id),
+):
     params = {"limit": str(limit)}
     if risk_level:
         params["risk_level"] = risk_level
@@ -1026,26 +1200,49 @@ async def proxy_reasoning(
             headers: dict = {}
             if org_id:
                 headers["X-Org-ID"] = org_id
-            r = await client.get(f"{INTELLIGENCE_URL}/reasoning/{entity_id}", headers=headers)
+            r = await client.get(
+                f"{INTELLIGENCE_URL}/reasoning/{entity_id}", headers=headers
+            )
             r.raise_for_status()
             return r.json()
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=f"Intelligence upstream error: {e}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Intelligence upstream error: {e}",
+        )
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Intelligence service unreachable: {e}")
+        raise HTTPException(
+            status_code=502, detail=f"Intelligence service unreachable: {e}"
+        )
 
 
 # Proxy missions to tasking (authoritative) with schema validation
 @app.post("/v1/missions")
 @_rate_limit("20/minute")
-async def create_mission_proxy(request: Request, payload: dict, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id), _org: object = Depends(_require_api_key), _role: object = Depends(_require_role("MISSION_COMMANDER"))):
+async def create_mission_proxy(
+    request: Request,
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+    _org: object = Depends(_require_api_key),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
+):
     # Validate against mission schema if present
     try:
         import json, os
         from jsonschema import validate
-        schema_path = os.path.join(os.path.dirname(__file__), "..", "..", "packages", "contracts", "jsonschemas", "mission.schema.json")
+
+        schema_path = os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "packages",
+            "contracts",
+            "jsonschemas",
+            "mission.schema.json",
+        )
         schema_path = os.path.abspath(schema_path)
-        with open(schema_path, 'r') as f:
+        with open(schema_path, "r") as f:
             schema = json.load(f)
         validate(instance=payload, schema=schema)
     except Exception as e:
@@ -1053,7 +1250,9 @@ async def create_mission_proxy(request: Request, payload: dict, _claims: dict | 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
-            r = await client.post(f"{TASKING_URL}/api/v1/missions", json=payload, headers=headers)
+            r = await client.post(
+                f"{TASKING_URL}/api/v1/missions", json=payload, headers=headers
+            )
             r.raise_for_status()
             return r.json()
     except httpx.HTTPError as e:
@@ -1061,7 +1260,9 @@ async def create_mission_proxy(request: Request, payload: dict, _claims: dict | 
 
 
 @app.get("/v1/missions/{mission_id}")
-async def get_mission_proxy(mission_id: str, _claims: dict | None = Depends(verify_bearer)):
+async def get_mission_proxy(
+    mission_id: str, _claims: dict | None = Depends(verify_bearer)
+):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.get(f"{TASKING_URL}/api/v1/missions/{mission_id}")
@@ -1072,12 +1273,20 @@ async def get_mission_proxy(mission_id: str, _claims: dict | None = Depends(veri
 
 
 @app.get("/v1/missions")
-async def list_missions_proxy(limit: int = 50, _claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+async def list_missions_proxy(
+    limit: int = 50,
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+):
     """List missions from tasking service."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
-            r = await client.get(f"{TASKING_URL}/api/v1/missions", params={"limit": str(limit)}, headers=headers)
+            r = await client.get(
+                f"{TASKING_URL}/api/v1/missions",
+                params={"limit": str(limit)},
+                headers=headers,
+            )
             r.raise_for_status()
             return r.json()
     except httpx.HTTPError as e:
@@ -1087,6 +1296,7 @@ async def list_missions_proxy(limit: int = 50, _claims: dict | None = Depends(ve
 # -------------------------
 # Entity proxy to Fabric (WorldStore)
 # -------------------------
+
 
 @app.get("/api/v1/entities")
 async def list_entities_proxy(
@@ -1117,7 +1327,9 @@ async def list_entities_proxy(
 
 
 @app.get("/api/v1/entities/{entity_id}")
-async def get_entity_proxy(entity_id: str, _claims: dict | None = Depends(verify_bearer)):
+async def get_entity_proxy(
+    entity_id: str, _claims: dict | None = Depends(verify_bearer)
+):
     """Get a single entity from fabric WorldStore."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1129,7 +1341,9 @@ async def get_entity_proxy(entity_id: str, _claims: dict | None = Depends(verify
 
 
 @app.post("/api/v1/entities")
-async def create_entity_proxy(payload: dict, _claims: dict | None = Depends(verify_bearer)):
+async def create_entity_proxy(
+    payload: dict, _claims: dict | None = Depends(verify_bearer)
+):
     """Create an entity in fabric WorldStore."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1141,7 +1355,10 @@ async def create_entity_proxy(payload: dict, _claims: dict | None = Depends(veri
 
 
 @app.get("/api/v1/cop")
-async def cop_proxy(_claims: dict | None = Depends(verify_bearer), org_id: str | None = Depends(get_org_id)):
+async def cop_proxy(
+    _claims: dict | None = Depends(verify_bearer),
+    org_id: str | None = Depends(get_org_id),
+):
     """Get the Common Operating Picture from fabric WorldStore."""
     try:
         params = {"org_id": org_id} if org_id else {}
@@ -1157,6 +1374,7 @@ async def cop_proxy(_claims: dict | None = Depends(verify_bearer), org_id: str |
 # Geofence proxy to Fabric
 # -------------------------
 
+
 @app.get("/v1/geofences")
 async def list_geofences_proxy(_claims: dict | None = Depends(verify_bearer)):
     """Proxy geofence list from fabric."""
@@ -1170,7 +1388,9 @@ async def list_geofences_proxy(_claims: dict | None = Depends(verify_bearer)):
 
 
 @app.post("/v1/geofences")
-async def create_geofence_proxy(payload: dict, _claims: dict | None = Depends(verify_bearer)):
+async def create_geofence_proxy(
+    payload: dict, _claims: dict | None = Depends(verify_bearer)
+):
     """Create a geofence via fabric."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1182,7 +1402,9 @@ async def create_geofence_proxy(payload: dict, _claims: dict | None = Depends(ve
 
 
 @app.delete("/v1/geofences/{geofence_id}")
-async def delete_geofence_proxy(geofence_id: int, _claims: dict | None = Depends(verify_bearer)):
+async def delete_geofence_proxy(
+    geofence_id: int, _claims: dict | None = Depends(verify_bearer)
+):
     """Delete a geofence via fabric."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1220,6 +1442,7 @@ async def get_contract_example(name: str):
     path = os.path.join(_repo_root(), "docs", "platform", "examples", f"{name}.json")
     try:
         import json
+
         with open(path, "r") as f:
             data = json.load(f)
         return data
@@ -1232,6 +1455,7 @@ async def get_contract_example(name: str):
 # -------------------------
 # Feature flags (platform + domain packs)
 # -------------------------
+
 
 def _deep_merge(base: dict, override: dict) -> dict:
     out = dict(base)
@@ -1248,6 +1472,7 @@ async def get_feature_flags(domain: str | None = None):
     # Try to load YAML; gracefully degrade if not installed or file missing
     try:
         import yaml  # type: ignore
+
         path = os.path.join(_repo_root(), "docs", "platform", "feature_flags.yaml")
         with open(path, "r") as f:
             cfg = yaml.safe_load(f) or {}

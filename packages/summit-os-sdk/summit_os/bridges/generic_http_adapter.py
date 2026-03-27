@@ -6,6 +6,7 @@ Usage:
 
 If vendor already posts Summit-shaped JSON, omit mappings and just POST to /telemetry or /detection.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,7 @@ _mappings: Dict[str, str] = {}
 
 def _extract(path: str, data: Dict[str, Any]) -> Any:
     cur: Any = data
-    for part in path.split('.'):
+    for part in path.split("."):
         if isinstance(cur, dict) and part in cur:
             cur = cur[part]
         else:
@@ -39,7 +40,10 @@ def build_app(adapter: BaseAdapter, mappings: Dict[str, str]) -> FastAPI:
     api = FastAPI(title="Summit Generic HTTP Adapter")
     api.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"], allow_methods=["*"], allow_headers=["*"], allow_credentials=True
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+        allow_credentials=True,
     )
 
     @api.get("/health")
@@ -60,11 +64,17 @@ def build_app(adapter: BaseAdapter, mappings: Dict[str, str]) -> FastAPI:
             lon = _extract(mappings.get("lon", ""), payload) if mappings else None
             alt = _extract(mappings.get("alt", ""), payload) if mappings else None
             if lat is None or lon is None:
-                raise HTTPException(status_code=400, detail="mapping for lat/lon missing or not found")
+                raise HTTPException(
+                    status_code=400, detail="mapping for lat/lon missing or not found"
+                )
             data = {
                 "device_id": adapter.cfg.device_id,
                 "ts_iso": adapter.now_iso(),
-                "location": {"lat": float(lat), "lon": float(lon), "alt": float(alt) if alt is not None else None},
+                "location": {
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "alt": float(alt) if alt is not None else None,
+                },
                 "status": "ACTIVE",
                 "sensors": payload,
             }
@@ -112,11 +122,24 @@ def main(argv: Optional[list[str]] = None):
 
     if args.register:
         try:
-            adapter.register_with_gateway(args.api, node_type="SENSOR", capabilities=["GENERIC_HTTP"], comm=["HTTP","MQTT"])
+            adapter.register_with_gateway(
+                args.api,
+                node_type="SENSOR",
+                capabilities=["GENERIC_HTTP"],
+                comm=["HTTP", "MQTT"],
+            )
         except Exception:
             pass
 
-    mappings = {k: v for k, v in {"lat": args.map_lat, "lon": args.map_lon, "alt": args.map_alt}.items() if v}
+    mappings = {
+        k: v
+        for k, v in {
+            "lat": args.map_lat,
+            "lon": args.map_lon,
+            "alt": args.map_alt,
+        }.items()
+        if v
+    }
 
     global app, _adapter, _mappings
     _adapter = adapter
@@ -126,6 +149,7 @@ def main(argv: Optional[list[str]] = None):
     # Start MQTT in background and run API
     async def runner():
         await adapter._connect_mqtt()
+
     asyncio.get_event_loop().run_until_complete(runner())
 
     uvicorn.run(app, host="0.0.0.0", port=args.port)

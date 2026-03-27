@@ -78,6 +78,7 @@ FEATURE_NAMES = [
 # Synthetic data generation
 # ---------------------------------------------------------------------------
 
+
 def _rng(seed: int = 42) -> np.random.Generator:
     return np.random.default_rng(seed)
 
@@ -89,259 +90,299 @@ def _clip(v, lo, hi):
 def _make_uav_on_mission(rng, n: int) -> np.ndarray:
     """UAV flying an active mission: steady speed, stable heading, 1-s pings."""
     speed = rng.uniform(8, 15, n)
-    return np.column_stack([
-        speed,                                      # mean_speed_mps
-        rng.uniform(0.2, 1.5, n),                   # speed_std   — tight
-        speed + rng.uniform(0.5, 2.5, n),           # max_speed_mps
-        rng.uniform(2, 15, n),                      # heading_change_mean_deg
-        rng.uniform(1, 8, n),                       # heading_change_std
-        np.zeros(n),                                # stop_duration_s
-        rng.uniform(0.5, 8, n),                     # position_variance_m
-        rng.uniform(0.2, 1.5, n),                   # altitude_change_mean_m
-        rng.uniform(0.5, 5, n),                     # altitude_variance_m
-        np.ones(n) * 1.0,                           # time_gap_mean_s
-        rng.uniform(1.0, 2.5, n),                   # time_gap_max_s
-        np.ones(n),                                 # entity_type_uav
-        np.zeros(n), np.zeros(n), np.zeros(n),      # vessel / person / vehicle
-        np.ones(n),                                 # mission_active
-    ])
+    return np.column_stack(
+        [
+            speed,  # mean_speed_mps
+            rng.uniform(0.2, 1.5, n),  # speed_std   — tight
+            speed + rng.uniform(0.5, 2.5, n),  # max_speed_mps
+            rng.uniform(2, 15, n),  # heading_change_mean_deg
+            rng.uniform(1, 8, n),  # heading_change_std
+            np.zeros(n),  # stop_duration_s
+            rng.uniform(0.5, 8, n),  # position_variance_m
+            rng.uniform(0.2, 1.5, n),  # altitude_change_mean_m
+            rng.uniform(0.5, 5, n),  # altitude_variance_m
+            np.ones(n) * 1.0,  # time_gap_mean_s
+            rng.uniform(1.0, 2.5, n),  # time_gap_max_s
+            np.ones(n),  # entity_type_uav
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),  # vessel / person / vehicle
+            np.ones(n),  # mission_active
+        ]
+    )
 
 
 def _make_uav_hovering(rng, n: int) -> np.ndarray:
     """UAV holding position: near-zero speed, minimal position variance."""
-    return np.column_stack([
-        rng.uniform(0, 2, n),
-        rng.uniform(0.1, 0.8, n),
-        rng.uniform(0.5, 2.5, n),
-        rng.uniform(5, 25, n),
-        rng.uniform(2, 12, n),
-        rng.uniform(0, 20, n),
-        rng.uniform(0.1, 4, n),
-        rng.uniform(0.1, 0.8, n),
-        rng.uniform(0.1, 3, n),
-        np.ones(n) * 1.0,
-        rng.uniform(1.0, 2.0, n),
-        np.ones(n),
-        np.zeros(n), np.zeros(n), np.zeros(n),
-        rng.integers(0, 2, n).astype(float),
-    ])
+    return np.column_stack(
+        [
+            rng.uniform(0, 2, n),
+            rng.uniform(0.1, 0.8, n),
+            rng.uniform(0.5, 2.5, n),
+            rng.uniform(5, 25, n),
+            rng.uniform(2, 12, n),
+            rng.uniform(0, 20, n),
+            rng.uniform(0.1, 4, n),
+            rng.uniform(0.1, 0.8, n),
+            rng.uniform(0.1, 3, n),
+            np.ones(n) * 1.0,
+            rng.uniform(1.0, 2.0, n),
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.integers(0, 2, n).astype(float),
+        ]
+    )
 
 
 def _make_vessel_underway(rng, n: int) -> np.ndarray:
     """Vessel making way: moderate speed, slow heading changes, regular AIS pings."""
     speed = rng.uniform(3, 8, n)
-    return np.column_stack([
-        speed,
-        rng.uniform(0.2, 1.0, n),
-        speed + rng.uniform(0.2, 1.5, n),
-        rng.uniform(0.5, 8, n),
-        rng.uniform(0.3, 3, n),
-        np.zeros(n),
-        rng.uniform(5, 40, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(2, 6, n),
-        rng.uniform(3, 10, n),
-        np.zeros(n),
-        np.ones(n),
-        np.zeros(n), np.zeros(n),
-        rng.integers(0, 2, n).astype(float),
-    ])
+    return np.column_stack(
+        [
+            speed,
+            rng.uniform(0.2, 1.0, n),
+            speed + rng.uniform(0.2, 1.5, n),
+            rng.uniform(0.5, 8, n),
+            rng.uniform(0.3, 3, n),
+            np.zeros(n),
+            rng.uniform(5, 40, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(2, 6, n),
+            rng.uniform(3, 10, n),
+            np.zeros(n),
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.integers(0, 2, n).astype(float),
+        ]
+    )
 
 
 def _make_vessel_anchored(rng, n: int) -> np.ndarray:
     """Vessel at anchor: essentially stationary, position variance from swinging."""
-    return np.column_stack([
-        rng.uniform(0, 0.5, n),
-        rng.uniform(0.05, 0.3, n),
-        rng.uniform(0.1, 0.7, n),
-        rng.uniform(0, 5, n),
-        rng.uniform(0, 3, n),
-        rng.uniform(30, 600, n),
-        rng.uniform(2, 10, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(2, 6, n),
-        rng.uniform(3, 12, n),
-        np.zeros(n),
-        np.ones(n),
-        np.zeros(n), np.zeros(n),
-        np.zeros(n),
-    ])
+    return np.column_stack(
+        [
+            rng.uniform(0, 0.5, n),
+            rng.uniform(0.05, 0.3, n),
+            rng.uniform(0.1, 0.7, n),
+            rng.uniform(0, 5, n),
+            rng.uniform(0, 3, n),
+            rng.uniform(30, 600, n),
+            rng.uniform(2, 10, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(2, 6, n),
+            rng.uniform(3, 12, n),
+            np.zeros(n),
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),
+        ]
+    )
 
 
 def _make_ground_vehicle(rng, n: int) -> np.ndarray:
     """Ground vehicle driving: variable speed, larger heading changes at intersections."""
     speed = rng.uniform(5, 20, n)
-    return np.column_stack([
-        speed,
-        rng.uniform(1, 4, n),
-        speed + rng.uniform(1, 5, n),
-        rng.uniform(5, 40, n),
-        rng.uniform(3, 20, n),
-        rng.uniform(0, 30, n),
-        rng.uniform(5, 80, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(1, 5, n),
-        rng.uniform(2, 12, n),
-        np.zeros(n), np.zeros(n),
-        np.zeros(n),
-        np.ones(n),
-        rng.integers(0, 2, n).astype(float),
-    ])
+    return np.column_stack(
+        [
+            speed,
+            rng.uniform(1, 4, n),
+            speed + rng.uniform(1, 5, n),
+            rng.uniform(5, 40, n),
+            rng.uniform(3, 20, n),
+            rng.uniform(0, 30, n),
+            rng.uniform(5, 80, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(1, 5, n),
+            rng.uniform(2, 12, n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.ones(n),
+            rng.integers(0, 2, n).astype(float),
+        ]
+    )
 
 
 def _make_person_walking(rng, n: int) -> np.ndarray:
     """Person on foot: slow speed, irregular heading changes."""
     speed = rng.uniform(0.8, 2.0, n)
-    return np.column_stack([
-        speed,
-        rng.uniform(0.1, 0.6, n),
-        speed + rng.uniform(0.1, 0.5, n),
-        rng.uniform(10, 60, n),
-        rng.uniform(5, 30, n),
-        rng.uniform(0, 15, n),
-        rng.uniform(1, 20, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(1, 4, n),
-        rng.uniform(2, 8, n),
-        np.zeros(n), np.zeros(n),
-        np.ones(n),
-        np.zeros(n),
-        rng.integers(0, 2, n).astype(float),
-    ])
+    return np.column_stack(
+        [
+            speed,
+            rng.uniform(0.1, 0.6, n),
+            speed + rng.uniform(0.1, 0.5, n),
+            rng.uniform(10, 60, n),
+            rng.uniform(5, 30, n),
+            rng.uniform(0, 15, n),
+            rng.uniform(1, 20, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(1, 4, n),
+            rng.uniform(2, 8, n),
+            np.zeros(n),
+            np.zeros(n),
+            np.ones(n),
+            np.zeros(n),
+            rng.integers(0, 2, n).astype(float),
+        ]
+    )
 
 
 # --- Anomalous sequences ---------------------------------------------------
 
+
 def _make_erratic_uav(rng, n: int) -> np.ndarray:
     """UAV with wildly varying speed and heading — likely malfunction or evasion."""
     speed = rng.uniform(2, 20, n)
-    return np.column_stack([
-        speed,
-        rng.uniform(8, 18, n),                      # speed_std >> normal
-        speed + rng.uniform(5, 15, n),
-        rng.uniform(40, 120, n),                    # heading_change_mean_deg >> normal
-        rng.uniform(60, 100, n),                    # heading_change_std >> normal
-        np.zeros(n),
-        rng.uniform(5, 30, n),
-        rng.uniform(2, 10, n),
-        rng.uniform(5, 20, n),
-        np.ones(n) * 1.0,
-        rng.uniform(1.0, 3.0, n),
-        np.ones(n),
-        np.zeros(n), np.zeros(n), np.zeros(n),
-        rng.integers(0, 2, n).astype(float),
-    ])
+    return np.column_stack(
+        [
+            speed,
+            rng.uniform(8, 18, n),  # speed_std >> normal
+            speed + rng.uniform(5, 15, n),
+            rng.uniform(40, 120, n),  # heading_change_mean_deg >> normal
+            rng.uniform(60, 100, n),  # heading_change_std >> normal
+            np.zeros(n),
+            rng.uniform(5, 30, n),
+            rng.uniform(2, 10, n),
+            rng.uniform(5, 20, n),
+            np.ones(n) * 1.0,
+            rng.uniform(1.0, 3.0, n),
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.integers(0, 2, n).astype(float),
+        ]
+    )
 
 
 def _make_uav_connectivity_loss(rng, n: int) -> np.ndarray:
     """UAV with telemetry dropout — long gap in ping stream."""
     speed = rng.uniform(5, 12, n)
-    return np.column_stack([
-        speed,
-        rng.uniform(0.5, 2, n),
-        speed + rng.uniform(0.5, 2, n),
-        rng.uniform(3, 20, n),
-        rng.uniform(2, 10, n),
-        np.zeros(n),
-        rng.uniform(1, 10, n),
-        rng.uniform(0.2, 1, n),
-        rng.uniform(0.5, 3, n),
-        rng.uniform(15, 60, n),                     # time_gap_mean elevated
-        rng.uniform(30, 120, n),                    # time_gap_max >> normal
-        np.ones(n),
-        np.zeros(n), np.zeros(n), np.zeros(n),
-        np.ones(n),
-    ])
+    return np.column_stack(
+        [
+            speed,
+            rng.uniform(0.5, 2, n),
+            speed + rng.uniform(0.5, 2, n),
+            rng.uniform(3, 20, n),
+            rng.uniform(2, 10, n),
+            np.zeros(n),
+            rng.uniform(1, 10, n),
+            rng.uniform(0.2, 1, n),
+            rng.uniform(0.5, 3, n),
+            rng.uniform(15, 60, n),  # time_gap_mean elevated
+            rng.uniform(30, 120, n),  # time_gap_max >> normal
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.ones(n),
+        ]
+    )
 
 
 def _make_vessel_stopped_no_mission(rng, n: int) -> np.ndarray:
     """Vessel stationary in shipping lane with no assigned mission — suspicious."""
-    return np.column_stack([
-        rng.uniform(0, 0.3, n),
-        rng.uniform(0.05, 0.2, n),
-        rng.uniform(0.1, 0.5, n),
-        rng.uniform(0, 5, n),
-        rng.uniform(0, 3, n),
-        rng.uniform(300, 1800, n),                  # stop_duration >> normal vessel
-        rng.uniform(2, 15, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(2, 6, n),
-        rng.uniform(3, 10, n),
-        np.zeros(n),
-        np.ones(n),
-        np.zeros(n), np.zeros(n),
-        np.zeros(n),                                # no mission
-    ])
+    return np.column_stack(
+        [
+            rng.uniform(0, 0.3, n),
+            rng.uniform(0.05, 0.2, n),
+            rng.uniform(0.1, 0.5, n),
+            rng.uniform(0, 5, n),
+            rng.uniform(0, 3, n),
+            rng.uniform(300, 1800, n),  # stop_duration >> normal vessel
+            rng.uniform(2, 15, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(2, 6, n),
+            rng.uniform(3, 10, n),
+            np.zeros(n),
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),  # no mission
+        ]
+    )
 
 
 def _make_fast_vessel(rng, n: int) -> np.ndarray:
     """Rapidly accelerating vessel — suspicious fast boat, possible smuggling."""
     speed = rng.uniform(15, 25, n)
-    return np.column_stack([
-        speed,
-        rng.uniform(3, 8, n),
-        speed + rng.uniform(3, 10, n),              # max_speed > 15 m/s
-        rng.uniform(5, 30, n),
-        rng.uniform(3, 15, n),
-        np.zeros(n),
-        rng.uniform(50, 200, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(1, 4, n),
-        rng.uniform(2, 8, n),
-        np.zeros(n),
-        np.ones(n),
-        np.zeros(n), np.zeros(n),
-        np.zeros(n),
-    ])
+    return np.column_stack(
+        [
+            speed,
+            rng.uniform(3, 8, n),
+            speed + rng.uniform(3, 10, n),  # max_speed > 15 m/s
+            rng.uniform(5, 30, n),
+            rng.uniform(3, 15, n),
+            np.zeros(n),
+            rng.uniform(50, 200, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(1, 4, n),
+            rng.uniform(2, 8, n),
+            np.zeros(n),
+            np.ones(n),
+            np.zeros(n),
+            np.zeros(n),
+            np.zeros(n),
+        ]
+    )
 
 
 def _make_person_stationary_flood(rng, n: int) -> np.ndarray:
     """Person stationary in a flood zone with an active mission — likely trapped."""
-    return np.column_stack([
-        rng.uniform(0, 0.3, n),
-        rng.uniform(0.05, 0.2, n),
-        rng.uniform(0.1, 0.4, n),
-        rng.uniform(2, 20, n),
-        rng.uniform(1, 10, n),
-        rng.uniform(120, 900, n),                   # stop_duration >> normal person
-        rng.uniform(0.5, 5, n),
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(1, 4, n),
-        rng.uniform(2, 8, n),
-        np.zeros(n), np.zeros(n),
-        np.ones(n),
-        np.zeros(n),
-        np.ones(n),                                 # mission_active — SAR in progress
-    ])
+    return np.column_stack(
+        [
+            rng.uniform(0, 0.3, n),
+            rng.uniform(0.05, 0.2, n),
+            rng.uniform(0.1, 0.4, n),
+            rng.uniform(2, 20, n),
+            rng.uniform(1, 10, n),
+            rng.uniform(120, 900, n),  # stop_duration >> normal person
+            rng.uniform(0.5, 5, n),
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(1, 4, n),
+            rng.uniform(2, 8, n),
+            np.zeros(n),
+            np.zeros(n),
+            np.ones(n),
+            np.zeros(n),
+            np.ones(n),  # mission_active — SAR in progress
+        ]
+    )
 
 
 def _make_gps_spoofing(rng, n: int) -> np.ndarray:
     """GPS spoofing signature: position variance spikes but reported speed is near zero."""
-    return np.column_stack([
-        rng.uniform(0, 0.5, n),                     # speed ~ 0
-        rng.uniform(0.1, 0.5, n),
-        rng.uniform(0.2, 1.0, n),
-        rng.uniform(5, 30, n),
-        rng.uniform(3, 15, n),
-        rng.uniform(30, 300, n),
-        rng.uniform(500, 5000, n),                  # position_variance wildly high
-        np.zeros(n),
-        np.zeros(n),
-        rng.uniform(1, 5, n),
-        rng.uniform(2, 10, n),
-        rng.integers(0, 2, n).astype(float),
-        rng.integers(0, 2, n).astype(float),
-        rng.integers(0, 2, n).astype(float),
-        rng.integers(0, 2, n).astype(float),
-        rng.integers(0, 2, n).astype(float),
-    ])
+    return np.column_stack(
+        [
+            rng.uniform(0, 0.5, n),  # speed ~ 0
+            rng.uniform(0.1, 0.5, n),
+            rng.uniform(0.2, 1.0, n),
+            rng.uniform(5, 30, n),
+            rng.uniform(3, 15, n),
+            rng.uniform(30, 300, n),
+            rng.uniform(500, 5000, n),  # position_variance wildly high
+            np.zeros(n),
+            np.zeros(n),
+            rng.uniform(1, 5, n),
+            rng.uniform(2, 10, n),
+            rng.integers(0, 2, n).astype(float),
+            rng.integers(0, 2, n).astype(float),
+            rng.integers(0, 2, n).astype(float),
+            rng.integers(0, 2, n).astype(float),
+            rng.integers(0, 2, n).astype(float),
+        ]
+    )
 
 
 def generate_data(n_total: int = 80000, seed: int = 42):
@@ -406,6 +447,7 @@ def generate_data(n_total: int = 80000, seed: int = 42):
 # Training
 # ---------------------------------------------------------------------------
 
+
 def load_real_csv(csv_path: str):
     """Load real observations and map to sequence anomaly feature space (16 floats).
 
@@ -416,6 +458,7 @@ def load_real_csv(csv_path: str):
     real-world observations rather than flagged anomalies.
     """
     import csv as _csv
+
     X = []
     try:
         with open(csv_path, newline="") as f:
@@ -427,8 +470,12 @@ def load_real_csv(csv_path: str):
 
                     # Map class → entity type flags
                     is_uav = any(kw in cls for kw in ["uav", "drone", "aircraft"])
-                    is_vessel = any(kw in cls for kw in ["boat", "vessel", "ship", "marine"])
-                    is_person = any(kw in cls for kw in ["person", "human", "survivor", "missing"])
+                    is_vessel = any(
+                        kw in cls for kw in ["boat", "vessel", "ship", "marine"]
+                    )
+                    is_person = any(
+                        kw in cls for kw in ["person", "human", "survivor", "missing"]
+                    )
                     is_vehicle = any(kw in cls for kw in ["vehicle", "truck", "car"])
 
                     # If no entity type matches, treat as person (most common in SAR context)
@@ -437,17 +484,81 @@ def load_real_csv(csv_path: str):
 
                     # Build representative normal kinematics based on entity type
                     if is_uav:
-                        feat = [10.0, 0.8, 12.0, 8.0, 4.0, 0.0, 3.0, 0.5, 1.5, 1.0, 2.0,
-                                1.0, 0.0, 0.0, 0.0, 1.0]
+                        feat = [
+                            10.0,
+                            0.8,
+                            12.0,
+                            8.0,
+                            4.0,
+                            0.0,
+                            3.0,
+                            0.5,
+                            1.5,
+                            1.0,
+                            2.0,
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                        ]
                     elif is_vessel:
-                        feat = [5.0, 0.5, 6.5, 3.0, 1.5, 0.0, 20.0, 0.0, 0.0, 4.0, 7.0,
-                                0.0, 1.0, 0.0, 0.0, 0.0]
+                        feat = [
+                            5.0,
+                            0.5,
+                            6.5,
+                            3.0,
+                            1.5,
+                            0.0,
+                            20.0,
+                            0.0,
+                            0.0,
+                            4.0,
+                            7.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                        ]
                     elif is_vehicle:
-                        feat = [12.0, 2.0, 17.0, 20.0, 10.0, 10.0, 40.0, 0.0, 0.0, 2.0, 5.0,
-                                0.0, 0.0, 0.0, 1.0, 0.0]
+                        feat = [
+                            12.0,
+                            2.0,
+                            17.0,
+                            20.0,
+                            10.0,
+                            10.0,
+                            40.0,
+                            0.0,
+                            0.0,
+                            2.0,
+                            5.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                        ]
                     else:  # person
-                        feat = [1.2, 0.3, 1.8, 30.0, 15.0, 5.0, 8.0, 0.0, 0.0, 2.0, 4.0,
-                                0.0, 0.0, 1.0, 0.0, 0.0]
+                        feat = [
+                            1.2,
+                            0.3,
+                            1.8,
+                            30.0,
+                            15.0,
+                            5.0,
+                            8.0,
+                            0.0,
+                            0.0,
+                            2.0,
+                            4.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            0.0,
+                            0.0,
+                        ]
 
                     # Scale mean_speed by confidence as a mild proxy for activity level
                     feat[0] = feat[0] * conf
@@ -470,8 +581,10 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
     X, y_labels = generate_data(n_total=n_samples)
     n_normal = int((y_labels == 0).sum())
     n_anom = int((y_labels == 1).sum())
-    print(f"  Normal: {n_normal:,}  |  Anomalous: {n_anom:,}  "
-          f"(contamination rate: {n_anom / len(X):.3f})")
+    print(
+        f"  Normal: {n_normal:,}  |  Anomalous: {n_anom:,}  "
+        f"(contamination rate: {n_anom / len(X):.3f})"
+    )
 
     if real_csv:
         X_real = load_real_csv(real_csv)
@@ -480,6 +593,7 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
             cap = n_normal * 2
             if len(X_real) > cap:
                 import random as _rand
+
                 _rand.seed(42)
                 indices = list(range(len(X_real)))
                 _rand.shuffle(indices)
@@ -505,8 +619,8 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
 
     # --- Evaluation against synthetic ground-truth labels -------------------
     # IsolationForest predict: -1 = anomaly, 1 = normal
-    preds_raw = clf.predict(X)              # -1 or +1
-    scores = clf.score_samples(X)          # lower = more anomalous
+    preds_raw = clf.predict(X)  # -1 or +1
+    scores = clf.score_samples(X)  # lower = more anomalous
 
     preds_binary = (preds_raw == -1).astype(int)  # 1 = predicted anomaly
 
@@ -514,10 +628,14 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
     normal_scores = scores[y_labels == 0]
     anom_scores = scores[y_labels == 1]
     print("\nAnomaly score distribution (lower = more anomalous):")
-    print(f"  Normal    — mean: {normal_scores.mean():.4f}  std: {normal_scores.std():.4f}  "
-          f"min: {normal_scores.min():.4f}  max: {normal_scores.max():.4f}")
-    print(f"  Anomalous — mean: {anom_scores.mean():.4f}  std: {anom_scores.std():.4f}  "
-          f"min: {anom_scores.min():.4f}  max: {anom_scores.max():.4f}")
+    print(
+        f"  Normal    — mean: {normal_scores.mean():.4f}  std: {normal_scores.std():.4f}  "
+        f"min: {normal_scores.min():.4f}  max: {normal_scores.max():.4f}"
+    )
+    print(
+        f"  Anomalous — mean: {anom_scores.mean():.4f}  std: {anom_scores.std():.4f}  "
+        f"min: {anom_scores.min():.4f}  max: {anom_scores.max():.4f}"
+    )
 
     # AUC-ROC (negate scores so higher = more anomalous for roc_auc_score)
     auc = roc_auc_score(y_labels, -scores)
@@ -525,6 +643,7 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
 
     # Precision / recall at the model's built-in threshold
     from sklearn.metrics import precision_score, recall_score, f1_score
+
     prec = precision_score(y_labels, preds_binary, zero_division=0)
     rec = recall_score(y_labels, preds_binary, zero_division=0)
     f1 = f1_score(y_labels, preds_binary, zero_division=0)
@@ -539,15 +658,18 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
     ranked = np.argsort(delta)[::-1]
     print("\nTop anomaly-discriminating features (mean shift normal → anomalous):")
     for rank, idx in enumerate(ranked[:8], 1):
-        print(f"  {rank}. {FEATURE_NAMES[idx]:<30}  "
-              f"normal={normal_mean[idx]:.3f}  anomalous={anom_mean[idx]:.3f}  "
-              f"delta={delta[idx]:.3f}")
+        print(
+            f"  {rank}. {FEATURE_NAMES[idx]:<30}  "
+            f"normal={normal_mean[idx]:.3f}  anomalous={anom_mean[idx]:.3f}  "
+            f"delta={delta[idx]:.3f}"
+        )
 
     # --- ONNX export (matches project skl2onnx pattern) ---------------------
     onnx_path = os.path.join(output_dir, "sequence_anomaly.onnx")
     initial_type = [("float_input", FloatTensorType([None, FEATURE_DIM]))]
     onnx_model = convert_sklearn(
-        clf, initial_types=initial_type,
+        clf,
+        initial_types=initial_type,
         target_opset={"": 12, "ai.onnx.ml": 3},
     )
     with open(onnx_path, "wb") as f:
@@ -563,18 +685,97 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
     # --- Smoke test via ONNX runtime ----------------------------------------
     try:
         import onnxruntime as ort
+
         sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
         smoke_cases = [
-            ("UAV on mission (normal)",
-             [12.0, 0.8, 14.2, 8.0, 4.0, 0.0, 3.0, 0.5, 1.5, 1.0, 1.8, 1, 0, 0, 0, 1]),
-            ("Erratic UAV (anomaly)",
-             [9.0, 14.0, 22.0, 90.0, 85.0, 0.0, 12.0, 6.0, 15.0, 1.0, 2.0, 1, 0, 0, 0, 1]),
-            ("Vessel underway (normal)",
-             [5.5, 0.5, 6.8, 3.0, 1.5, 0.0, 20.0, 0.0, 0.0, 4.0, 6.0, 0, 1, 0, 0, 0]),
-            ("Vessel stopped no mission (anomaly)",
-             [0.1, 0.1, 0.2, 1.0, 0.8, 600.0, 5.0, 0.0, 0.0, 4.0, 7.0, 0, 1, 0, 0, 0]),
-            ("GPS spoofing (anomaly)",
-             [0.2, 0.3, 0.4, 10.0, 8.0, 60.0, 3500.0, 0.0, 0.0, 2.0, 4.0, 0, 1, 0, 0, 0]),
+            (
+                "UAV on mission (normal)",
+                [
+                    12.0,
+                    0.8,
+                    14.2,
+                    8.0,
+                    4.0,
+                    0.0,
+                    3.0,
+                    0.5,
+                    1.5,
+                    1.0,
+                    1.8,
+                    1,
+                    0,
+                    0,
+                    0,
+                    1,
+                ],
+            ),
+            (
+                "Erratic UAV (anomaly)",
+                [
+                    9.0,
+                    14.0,
+                    22.0,
+                    90.0,
+                    85.0,
+                    0.0,
+                    12.0,
+                    6.0,
+                    15.0,
+                    1.0,
+                    2.0,
+                    1,
+                    0,
+                    0,
+                    0,
+                    1,
+                ],
+            ),
+            (
+                "Vessel underway (normal)",
+                [5.5, 0.5, 6.8, 3.0, 1.5, 0.0, 20.0, 0.0, 0.0, 4.0, 6.0, 0, 1, 0, 0, 0],
+            ),
+            (
+                "Vessel stopped no mission (anomaly)",
+                [
+                    0.1,
+                    0.1,
+                    0.2,
+                    1.0,
+                    0.8,
+                    600.0,
+                    5.0,
+                    0.0,
+                    0.0,
+                    4.0,
+                    7.0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                ],
+            ),
+            (
+                "GPS spoofing (anomaly)",
+                [
+                    0.2,
+                    0.3,
+                    0.4,
+                    10.0,
+                    8.0,
+                    60.0,
+                    3500.0,
+                    0.0,
+                    0.0,
+                    2.0,
+                    4.0,
+                    0,
+                    1,
+                    0,
+                    0,
+                    0,
+                ],
+            ),
         ]
         print("\nSmoke test (label_map: -1=anomaly, 1=normal):")
         for label, feat in smoke_cases:
@@ -598,16 +799,22 @@ if __name__ == "__main__":
         description="Train Summit.OS sequence anomaly detector and export to ONNX."
     )
     parser.add_argument(
-        "--samples", type=int, default=80000,
-        help="Total number of synthetic telemetry window samples (default: 80000)"
+        "--samples",
+        type=int,
+        default=80000,
+        help="Total number of synthetic telemetry window samples (default: 80000)",
     )
     parser.add_argument(
-        "--output-dir", dest="output_dir", default=None,
-        help="Directory to write .onnx and .json files (default: packages/ml/models/)"
+        "--output-dir",
+        dest="output_dir",
+        default=None,
+        help="Directory to write .onnx and .json files (default: packages/ml/models/)",
     )
     parser.add_argument(
-        "--real-csv", dest="real_csv", default=None,
-        help="Path to real observations CSV to blend with synthetic data"
+        "--real-csv",
+        dest="real_csv",
+        default=None,
+        help="Path to real observations CSV to blend with synthetic data",
     )
     args = parser.parse_args()
     train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

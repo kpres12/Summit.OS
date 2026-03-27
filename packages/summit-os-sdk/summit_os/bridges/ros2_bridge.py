@@ -6,6 +6,7 @@ ROS 2 <-> Summit Fabric bridge
 
 Safe to import even if ROS 2 is not installed; functions will no-op.
 """
+
 from __future__ import annotations
 
 import os
@@ -16,12 +17,14 @@ try:
     import rclpy  # type: ignore
     from rclpy.node import Node  # type: ignore
     from std_msgs.msg import String  # type: ignore
+
     ROS2_AVAILABLE = True
 except Exception:
     ROS2_AVAILABLE = False
 
 try:
     import paho.mqtt.client as mqtt  # type: ignore
+
     MQTT_AVAILABLE = True
 except Exception:
     MQTT_AVAILABLE = False
@@ -32,7 +35,9 @@ def bridge_available() -> bool:
 
 
 class _RosMqttBridge(Node):
-    def __init__(self, name: str, mqtt_host: str, mqtt_port: int, topic_map: Dict[str, str]):
+    def __init__(
+        self, name: str, mqtt_host: str, mqtt_port: int, topic_map: Dict[str, str]
+    ):
         super().__init__(name)
         self._topic_map = topic_map  # ROS topic -> MQTT topic
         self._mqtt = mqtt.Client() if MQTT_AVAILABLE else None
@@ -41,9 +46,13 @@ class _RosMqttBridge(Node):
             self._mqtt.loop_start()
         self._subs = []
         for ros_topic, mqtt_topic in topic_map.items():
-            sub = self.create_subscription(String, ros_topic, self._make_cb(mqtt_topic), 10)
+            sub = self.create_subscription(
+                String, ros_topic, self._make_cb(mqtt_topic), 10
+            )
             self._subs.append(sub)
-        self.get_logger().info(f"ROS<->MQTT bridge started; topics: {list(topic_map.keys())}")
+        self.get_logger().info(
+            f"ROS<->MQTT bridge started; topics: {list(topic_map.keys())}"
+        )
 
     def _make_cb(self, mqtt_topic: str) -> Callable[[Any], None]:
         def _cb(msg: Any) -> None:
@@ -57,6 +66,7 @@ class _RosMqttBridge(Node):
                     self._mqtt.publish(mqtt_topic, data, qos=1)
             except Exception:
                 pass
+
         return _cb
 
     def destroy(self) -> None:  # type: ignore[override]

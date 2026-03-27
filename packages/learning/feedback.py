@@ -6,6 +6,7 @@ event schema and the store that persists all feedback for the learning loops.
 
 Compatible with both SQLite (dev) and PostgreSQL (production) via SQLAlchemy Core.
 """
+
 from __future__ import annotations
 
 import json
@@ -42,25 +43,26 @@ UTC = timezone.utc
 # Event schema
 # ---------------------------------------------------------------------------
 
+
 class FeedbackEventType(str, Enum):
     # Alert lifecycle
-    ALERT_INVESTIGATED   = "ALERT_INVESTIGATED"    # operator clicked investigate
-    ALERT_DISMISSED      = "ALERT_DISMISSED"        # operator dismissed as not relevant
-    ALERT_FALSE_POSITIVE = "ALERT_FALSE_POSITIVE"   # operator marked as false positive
-    ALERT_CONFIRMED      = "ALERT_CONFIRMED"        # operator confirmed real event
+    ALERT_INVESTIGATED = "ALERT_INVESTIGATED"  # operator clicked investigate
+    ALERT_DISMISSED = "ALERT_DISMISSED"  # operator dismissed as not relevant
+    ALERT_FALSE_POSITIVE = "ALERT_FALSE_POSITIVE"  # operator marked as false positive
+    ALERT_CONFIRMED = "ALERT_CONFIRMED"  # operator confirmed real event
 
     # Mission lifecycle
-    MISSION_CREATED      = "MISSION_CREATED"
-    MISSION_DISPATCHED   = "MISSION_DISPATCHED"     # assets sent
-    MISSION_COMPLETED    = "MISSION_COMPLETED"      # objective achieved
-    MISSION_ABORTED      = "MISSION_ABORTED"        # operator cancelled
-    MISSION_FAILED       = "MISSION_FAILED"         # failed to complete objective
+    MISSION_CREATED = "MISSION_CREATED"
+    MISSION_DISPATCHED = "MISSION_DISPATCHED"  # assets sent
+    MISSION_COMPLETED = "MISSION_COMPLETED"  # objective achieved
+    MISSION_ABORTED = "MISSION_ABORTED"  # operator cancelled
+    MISSION_FAILED = "MISSION_FAILED"  # failed to complete objective
 
     # Asset performance
-    ASSET_DISPATCHED     = "ASSET_DISPATCHED"
-    ASSET_RETURNED       = "ASSET_RETURNED"         # mission complete, asset back
-    ASSET_BATTERY_LOW    = "ASSET_BATTERY_LOW"      # battery warning during mission
-    ASSET_MALFUNCTION    = "ASSET_MALFUNCTION"      # asset failed during mission
+    ASSET_DISPATCHED = "ASSET_DISPATCHED"
+    ASSET_RETURNED = "ASSET_RETURNED"  # mission complete, asset back
+    ASSET_BATTERY_LOW = "ASSET_BATTERY_LOW"  # battery warning during mission
+    ASSET_MALFUNCTION = "ASSET_MALFUNCTION"  # asset failed during mission
 
     # Recommendation feedback
     RECOMMENDATION_ACCEPTED = "RECOMMENDATION_ACCEPTED"
@@ -69,23 +71,23 @@ class FeedbackEventType(str, Enum):
 
 
 class FeedbackEvent(BaseModel):
-    event_id:   str = Field(default_factory=lambda: str(uuid.uuid4()))
+    event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: FeedbackEventType
-    timestamp:  datetime = Field(default_factory=lambda: datetime.now(UTC))
-    user_id:    Optional[str] = None
-    user_role:  Optional[str] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    user_id: Optional[str] = None
+    user_role: Optional[str] = None
 
     # What the event is about
-    entity_id:  Optional[str] = None   # asset involved
-    alert_id:   Optional[str] = None
+    entity_id: Optional[str] = None  # asset involved
+    alert_id: Optional[str] = None
     mission_id: Optional[str] = None
-    adapter_id: Optional[str] = None   # signal source
+    adapter_id: Optional[str] = None  # signal source
 
     # Outcome data (filled in for completion events)
-    duration_seconds:  Optional[float] = None
-    success:           Optional[bool]  = None
-    distance_m:        Optional[float] = None    # for asset missions
-    battery_delta_pct: Optional[float] = None    # battery used
+    duration_seconds: Optional[float] = None
+    success: Optional[bool] = None
+    distance_m: Optional[float] = None  # for asset missions
+    battery_delta_pct: Optional[float] = None  # battery used
 
     # Free-form context
     extra: dict = Field(default_factory=dict)
@@ -100,32 +102,33 @@ _metadata = MetaData()
 feedback_events_table = Table(
     "feedback_events",
     _metadata,
-    Column("id",               Integer,  primary_key=True, autoincrement=True),
-    Column("event_id",         String(64), nullable=False, unique=True),
-    Column("event_type",       String(64), nullable=False),
-    Column("timestamp",        DateTime(timezone=True), nullable=False),
-    Column("user_id",          String(128)),
-    Column("user_role",        String(64)),
-    Column("entity_id",        String(128)),
-    Column("alert_id",         String(128)),
-    Column("mission_id",       String(128)),
-    Column("adapter_id",       String(128)),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("event_id", String(64), nullable=False, unique=True),
+    Column("event_type", String(64), nullable=False),
+    Column("timestamp", DateTime(timezone=True), nullable=False),
+    Column("user_id", String(128)),
+    Column("user_role", String(64)),
+    Column("entity_id", String(128)),
+    Column("alert_id", String(128)),
+    Column("mission_id", String(128)),
+    Column("adapter_id", String(128)),
     Column("duration_seconds", Float),
-    Column("success",          Boolean),
-    Column("distance_m",       Float),
+    Column("success", Boolean),
+    Column("distance_m", Float),
     Column("battery_delta_pct", Float),
-    Column("extra_json",       Text, default="{}"),
-    Index("ix_fe_entity_id",  "entity_id"),
-    Index("ix_fe_alert_id",   "alert_id"),
+    Column("extra_json", Text, default="{}"),
+    Index("ix_fe_entity_id", "entity_id"),
+    Index("ix_fe_alert_id", "alert_id"),
     Index("ix_fe_mission_id", "mission_id"),
     Index("ix_fe_event_type", "event_type"),
-    Index("ix_fe_timestamp",  "timestamp"),
+    Index("ix_fe_timestamp", "timestamp"),
 )
 
 
 # ---------------------------------------------------------------------------
 # Store
 # ---------------------------------------------------------------------------
+
 
 class FeedbackStore:
     """
@@ -155,33 +158,35 @@ class FeedbackStore:
         """Persist a feedback event."""
         engine = self._ensure_engine()
         row = {
-            "event_id":         event.event_id,
-            "event_type":       event.event_type.value,
-            "timestamp":        event.timestamp,
-            "user_id":          event.user_id,
-            "user_role":        event.user_role,
-            "entity_id":        event.entity_id,
-            "alert_id":         event.alert_id,
-            "mission_id":       event.mission_id,
-            "adapter_id":       event.adapter_id,
+            "event_id": event.event_id,
+            "event_type": event.event_type.value,
+            "timestamp": event.timestamp,
+            "user_id": event.user_id,
+            "user_role": event.user_role,
+            "entity_id": event.entity_id,
+            "alert_id": event.alert_id,
+            "mission_id": event.mission_id,
+            "adapter_id": event.adapter_id,
             "duration_seconds": event.duration_seconds,
-            "success":          event.success,
-            "distance_m":       event.distance_m,
+            "success": event.success,
+            "distance_m": event.distance_m,
             "battery_delta_pct": event.battery_delta_pct,
-            "extra_json":       json.dumps(event.extra),
+            "extra_json": json.dumps(event.extra),
         }
         async with engine.begin() as conn:
             await conn.execute(insert(feedback_events_table).values(**row))
-        logger.debug("Recorded feedback event %s (%s)", event.event_id, event.event_type)
+        logger.debug(
+            "Recorded feedback event %s (%s)", event.event_id, event.event_type
+        )
 
     async def query(
         self,
-        entity_id:  Optional[str] = None,
-        alert_id:   Optional[str] = None,
+        entity_id: Optional[str] = None,
+        alert_id: Optional[str] = None,
         mission_id: Optional[str] = None,
         event_type: Optional[FeedbackEventType] = None,
-        since:      Optional[datetime] = None,
-        limit:      int = 100,
+        since: Optional[datetime] = None,
+        limit: int = 100,
     ) -> list[FeedbackEvent]:
         """Return feedback events matching the given filters."""
         engine = self._ensure_engine()
@@ -250,7 +255,10 @@ class FeedbackStore:
             completed_q = await conn.execute(
                 select(func.count()).where(
                     (feedback_events_table.c.entity_id == entity_id)
-                    & (feedback_events_table.c.event_type == FeedbackEventType.ASSET_RETURNED.value)
+                    & (
+                        feedback_events_table.c.event_type
+                        == FeedbackEventType.ASSET_RETURNED.value
+                    )
                 )
             )
             completed = completed_q.scalar() or 0
@@ -258,7 +266,10 @@ class FeedbackStore:
             malfunctions_q = await conn.execute(
                 select(func.count()).where(
                     (feedback_events_table.c.entity_id == entity_id)
-                    & (feedback_events_table.c.event_type == FeedbackEventType.ASSET_MALFUNCTION.value)
+                    & (
+                        feedback_events_table.c.event_type
+                        == FeedbackEventType.ASSET_MALFUNCTION.value
+                    )
                 )
             )
             malfunctions = malfunctions_q.scalar() or 0
@@ -266,7 +277,10 @@ class FeedbackStore:
             dispatches_q = await conn.execute(
                 select(func.count()).where(
                     (feedback_events_table.c.entity_id == entity_id)
-                    & (feedback_events_table.c.event_type == FeedbackEventType.ASSET_DISPATCHED.value)
+                    & (
+                        feedback_events_table.c.event_type
+                        == FeedbackEventType.ASSET_DISPATCHED.value
+                    )
                 )
             )
             dispatches = dispatches_q.scalar() or 0
@@ -296,23 +310,33 @@ class FeedbackStore:
             avg_distance = avg_distance_q.scalar()
 
         missions_attempted = dispatches or completed
-        failure_rate = (malfunctions / missions_attempted) if missions_attempted > 0 else 0.0
+        failure_rate = (
+            (malfunctions / missions_attempted) if missions_attempted > 0 else 0.0
+        )
 
         return {
-            "entity_id":          entity_id,
-            "total_events":       total,
+            "entity_id": entity_id,
+            "total_events": total,
             "missions_completed": completed,
             "missions_attempted": missions_attempted,
-            "malfunctions":       malfunctions,
-            "failure_rate":       round(failure_rate, 4),
-            "avg_duration_s":     round(avg_duration, 2) if avg_duration is not None else None,
-            "avg_battery_used_pct": round(avg_battery, 2) if avg_battery is not None else None,
-            "avg_distance_m":     round(avg_distance, 2) if avg_distance is not None else None,
+            "malfunctions": malfunctions,
+            "failure_rate": round(failure_rate, 4),
+            "avg_duration_s": (
+                round(avg_duration, 2) if avg_duration is not None else None
+            ),
+            "avg_battery_used_pct": (
+                round(avg_battery, 2) if avg_battery is not None else None
+            ),
+            "avg_distance_m": (
+                round(avg_distance, 2) if avg_distance is not None else None
+            ),
         }
 
     async def total_count(self) -> int:
         """Return total number of feedback events recorded."""
         engine = self._ensure_engine()
         async with engine.connect() as conn:
-            result = await conn.execute(select(func.count()).select_from(feedback_events_table))
+            result = await conn.execute(
+                select(func.count()).select_from(feedback_events_table)
+            )
             return result.scalar() or 0

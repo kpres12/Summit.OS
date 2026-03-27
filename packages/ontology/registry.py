@@ -30,15 +30,17 @@ class OntologyRegistry:
     """
 
     def __init__(self) -> None:
-        self._object_types: Dict[str, ObjectTypeDef]  = {}
-        self._link_types:   Dict[str, LinkTypeDef]    = {}
-        self._action_types: Dict[str, ActionTypeDef]  = {}
+        self._object_types: Dict[str, ObjectTypeDef] = {}
+        self._link_types: Dict[str, LinkTypeDef] = {}
+        self._action_types: Dict[str, ActionTypeDef] = {}
 
     # ── registration ──────────────────────────────────────────────────────────
 
     def register_object_type(self, defn: ObjectTypeDef) -> None:
         if defn.name in self._object_types:
-            logger.warning("ObjectType '%s' already registered — overwriting", defn.name)
+            logger.warning(
+                "ObjectType '%s' already registered — overwriting", defn.name
+            )
         self._object_types[defn.name] = defn
         logger.debug("Registered ObjectType: %s", defn.name)
 
@@ -50,7 +52,9 @@ class OntologyRegistry:
 
     def register_action_type(self, defn: ActionTypeDef) -> None:
         if defn.name in self._action_types:
-            logger.warning("ActionType '%s' already registered — overwriting", defn.name)
+            logger.warning(
+                "ActionType '%s' already registered — overwriting", defn.name
+            )
         self._action_types[defn.name] = defn
         logger.debug("Registered ActionType: %s", defn.name)
 
@@ -91,11 +95,11 @@ class OntologyRegistry:
     def summary(self) -> dict:
         return {
             "object_types": len(self._object_types),
-            "link_types":   len(self._link_types),
+            "link_types": len(self._link_types),
             "action_types": len(self._action_types),
             "types": {
                 "objects": [t.name for t in self.list_object_types()],
-                "links":   [t.name for t in self.list_link_types()],
+                "links": [t.name for t in self.list_link_types()],
                 "actions": [t.name for t in self.list_action_types()],
             },
         }
@@ -117,6 +121,7 @@ def get_registry() -> OntologyRegistry:
 def _bootstrap(registry: OntologyRegistry) -> None:
     """Load all Summit.OS definitions into the registry."""
     from .definitions import register_all
+
     register_all(registry)
     logger.info(
         "Ontology bootstrapped — %d object types, %d link types, %d action types",

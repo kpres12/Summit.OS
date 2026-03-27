@@ -8,6 +8,7 @@ incrementally with each completed mission.
 The key insight: manufacturer specs are the prior. Observed performance is the
 evidence. After enough missions, the model reflects reality — not the brochure.
 """
+
 from __future__ import annotations
 
 import json
@@ -45,39 +46,39 @@ UTC = timezone.utc
 
 _PRIORS: dict[str, dict] = {
     "drone": {
-        "estimated_range_m":     5000.0,
-        "estimated_endurance_s": 1800.0,   # 30 min
-        "battery_drain_rate":    2.5,       # % per minute
-        "reliability_score":     0.85,
-        "avg_speed_mps":         12.0,
+        "estimated_range_m": 5000.0,
+        "estimated_endurance_s": 1800.0,  # 30 min
+        "battery_drain_rate": 2.5,  # % per minute
+        "reliability_score": 0.85,
+        "avg_speed_mps": 12.0,
     },
     "uav": {
-        "estimated_range_m":     8000.0,
+        "estimated_range_m": 8000.0,
         "estimated_endurance_s": 3600.0,
-        "battery_drain_rate":    1.8,
-        "reliability_score":     0.88,
-        "avg_speed_mps":         18.0,
+        "battery_drain_rate": 1.8,
+        "reliability_score": 0.88,
+        "avg_speed_mps": 18.0,
     },
     "vehicle": {
-        "estimated_range_m":     50000.0,
+        "estimated_range_m": 50000.0,
         "estimated_endurance_s": 14400.0,  # 4 hrs
-        "battery_drain_rate":    0.3,
-        "reliability_score":     0.92,
-        "avg_speed_mps":         8.0,
+        "battery_drain_rate": 0.3,
+        "reliability_score": 0.92,
+        "avg_speed_mps": 8.0,
     },
     "sensor": {
-        "estimated_range_m":     500.0,
+        "estimated_range_m": 500.0,
         "estimated_endurance_s": 86400.0,  # 24 hrs
-        "battery_drain_rate":    0.1,
-        "reliability_score":     0.95,
-        "avg_speed_mps":         0.0,
+        "battery_drain_rate": 0.1,
+        "reliability_score": 0.95,
+        "avg_speed_mps": 0.0,
     },
     "default": {
-        "estimated_range_m":     3000.0,
+        "estimated_range_m": 3000.0,
         "estimated_endurance_s": 1800.0,
-        "battery_drain_rate":    2.0,
-        "reliability_score":     0.80,
-        "avg_speed_mps":         5.0,
+        "battery_drain_rate": 2.0,
+        "reliability_score": 0.80,
+        "avg_speed_mps": 5.0,
     },
 }
 
@@ -86,18 +87,19 @@ _PRIORS: dict[str, dict] = {
 # Data class
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AssetCapabilityEstimate:
-    entity_id:             str
-    entity_type:           str
-    estimated_range_m:     float
+    entity_id: str
+    entity_type: str
+    estimated_range_m: float
     estimated_endurance_s: float
-    battery_drain_rate:    float    # % per minute under load
-    reliability_score:     float    # 0–1, Bayesian mission completion rate
-    avg_speed_mps:         float
-    observations:          int      # number of missions that informed this
-    last_updated:          datetime
-    confidence:            float    # 0–1, grows with observations
+    battery_drain_rate: float  # % per minute under load
+    reliability_score: float  # 0–1, Bayesian mission completion rate
+    avg_speed_mps: float
+    observations: int  # number of missions that informed this
+    last_updated: datetime
+    confidence: float  # 0–1, grows with observations
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -114,17 +116,17 @@ _metadata = MetaData()
 asset_estimates_table = Table(
     "asset_capability_estimates",
     _metadata,
-    Column("id",                    Integer, primary_key=True, autoincrement=True),
-    Column("entity_id",             String(128), nullable=False, unique=True),
-    Column("entity_type",           String(64),  nullable=False, default="default"),
-    Column("estimated_range_m",     Float,       nullable=False),
-    Column("estimated_endurance_s", Float,       nullable=False),
-    Column("battery_drain_rate",    Float,       nullable=False),
-    Column("reliability_score",     Float,       nullable=False),
-    Column("avg_speed_mps",         Float,       nullable=False),
-    Column("observations",          Integer,     nullable=False, default=0),
-    Column("last_updated",          DateTime(timezone=True), nullable=False),
-    Column("confidence",            Float,       nullable=False, default=0.0),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("entity_id", String(128), nullable=False, unique=True),
+    Column("entity_type", String(64), nullable=False, default="default"),
+    Column("estimated_range_m", Float, nullable=False),
+    Column("estimated_endurance_s", Float, nullable=False),
+    Column("battery_drain_rate", Float, nullable=False),
+    Column("reliability_score", Float, nullable=False),
+    Column("avg_speed_mps", Float, nullable=False),
+    Column("observations", Integer, nullable=False, default=0),
+    Column("last_updated", DateTime(timezone=True), nullable=False),
+    Column("confidence", Float, nullable=False, default=0.0),
     Index("ix_ace_entity_id", "entity_id"),
 )
 
@@ -132,6 +134,7 @@ asset_estimates_table = Table(
 # ---------------------------------------------------------------------------
 # Model
 # ---------------------------------------------------------------------------
+
 
 class AssetPerformanceModel:
     """
@@ -191,7 +194,7 @@ class AssetPerformanceModel:
         alpha0, beta0 = 2.0, 0.5
         # Reconstruct implied alpha/beta from current estimate and n
         alpha = current * n + alpha0
-        beta  = (1.0 - current) * n + beta0
+        beta = (1.0 - current) * n + beta0
         if success:
             alpha += 1.0
         else:
@@ -203,7 +206,9 @@ class AssetPerformanceModel:
         t = (entity_type or "default").lower()
         return dict(_PRIORS.get(t, _PRIORS["default"]))
 
-    async def _load_or_create(self, entity_id: str, entity_type: str = "default") -> AssetCapabilityEstimate:
+    async def _load_or_create(
+        self, entity_id: str, entity_type: str = "default"
+    ) -> AssetCapabilityEstimate:
         engine = self._ensure_engine()
         async with engine.connect() as conn:
             result = await conn.execute(
@@ -245,15 +250,15 @@ class AssetPerformanceModel:
     async def _save(self, est: AssetCapabilityEstimate) -> None:
         engine = self._ensure_engine()
         row_data = {
-            "entity_type":           est.entity_type,
-            "estimated_range_m":     est.estimated_range_m,
+            "entity_type": est.entity_type,
+            "estimated_range_m": est.estimated_range_m,
             "estimated_endurance_s": est.estimated_endurance_s,
-            "battery_drain_rate":    est.battery_drain_rate,
-            "reliability_score":     est.reliability_score,
-            "avg_speed_mps":         est.avg_speed_mps,
-            "observations":          est.observations,
-            "last_updated":          est.last_updated,
-            "confidence":            est.confidence,
+            "battery_drain_rate": est.battery_drain_rate,
+            "reliability_score": est.reliability_score,
+            "avg_speed_mps": est.avg_speed_mps,
+            "observations": est.observations,
+            "last_updated": est.last_updated,
+            "confidence": est.confidence,
         }
         async with engine.begin() as conn:
             # Upsert pattern
@@ -270,7 +275,9 @@ class AssetPerformanceModel:
                 )
             else:
                 await conn.execute(
-                    insert(asset_estimates_table).values(entity_id=est.entity_id, **row_data)
+                    insert(asset_estimates_table).values(
+                        entity_id=est.entity_id, **row_data
+                    )
                 )
 
     async def update(self, event: FeedbackEvent) -> None:
@@ -310,13 +317,17 @@ class AssetPerformanceModel:
                 )
 
             # Successful return — update reliability positively
-            est.reliability_score = self._beta_reliability(est.reliability_score, n - 1, success=True)
+            est.reliability_score = self._beta_reliability(
+                est.reliability_score, n - 1, success=True
+            )
 
         elif event.event_type == FeedbackEventType.ASSET_MALFUNCTION:
             # Mission failure — reliability takes a hit
             est.observations += 1
             n = est.observations
-            est.reliability_score = self._beta_reliability(est.reliability_score, n - 1, success=False)
+            est.reliability_score = self._beta_reliability(
+                est.reliability_score, n - 1, success=False
+            )
             changed = True
 
         elif event.event_type == FeedbackEventType.ASSET_BATTERY_LOW:
@@ -337,11 +348,13 @@ class AssetPerformanceModel:
                 est.estimated_endurance_s = round(
                     self._ema(est.estimated_endurance_s, event.duration_seconds, n), 2
                 )
-                est.reliability_score = self._beta_reliability(est.reliability_score, n - 1, success=True)
+                est.reliability_score = self._beta_reliability(
+                    est.reliability_score, n - 1, success=True
+                )
                 changed = True
 
         if changed:
-            est.confidence   = self._confidence(est.observations)
+            est.confidence = self._confidence(est.observations)
             est.last_updated = datetime.now(UTC)
             await self._save(est)
             logger.debug(
@@ -395,11 +408,11 @@ class AssetPerformanceModel:
         for entity_id in candidates:
             est = await self._load_or_create(entity_id)
 
-            range_ratio      = est.estimated_range_m / max(required_range_m, 1.0)
-            endurance_ratio  = est.estimated_endurance_s / max(required_endurance_s, 1.0)
+            range_ratio = est.estimated_range_m / max(required_range_m, 1.0)
+            endurance_ratio = est.estimated_endurance_s / max(required_endurance_s, 1.0)
 
             # Headroom: clamped 0.1–1.0 (under-capability penalised, over-capability not rewarded)
-            range_headroom     = max(0.1, min(1.0, range_ratio))
+            range_headroom = max(0.1, min(1.0, range_ratio))
             endurance_headroom = max(0.1, min(1.0, endurance_ratio))
 
             score = est.reliability_score * range_headroom * endurance_headroom

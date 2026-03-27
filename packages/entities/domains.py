@@ -8,6 +8,7 @@ Extends the core Entity model with domain-specific attributes for:
 - Fixed: installations, towers, sensors
 - Sensor: radar, EO/IR, acoustic, SIGINT
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from enum import Enum
 
 
 # ── Aerial Domain ──────────────────────────────────────────
+
 
 class AircraftType(str, Enum):
     FIXED_WING = "fixed_wing"
@@ -39,6 +41,7 @@ class FlightMode(str, Enum):
 @dataclass
 class AerialAttributes:
     """Domain-specific attributes for aerial entities."""
+
     aircraft_type: AircraftType = AircraftType.UNKNOWN
     flight_mode: FlightMode = FlightMode.GROUND
     altitude_agl_m: float = 0.0
@@ -79,6 +82,7 @@ class AerialAttributes:
 
 # ── Ground Domain ──────────────────────────────────────────
 
+
 class GroundVehicleType(str, Enum):
     WHEELED = "wheeled"
     TRACKED = "tracked"
@@ -97,6 +101,7 @@ class MobilityState(str, Enum):
 @dataclass
 class GroundAttributes:
     """Domain-specific attributes for ground entities."""
+
     vehicle_type: GroundVehicleType = GroundVehicleType.UNKNOWN
     mobility_state: MobilityState = MobilityState.STATIONARY
     speed_mps: float = 0.0
@@ -120,6 +125,7 @@ class GroundAttributes:
 
 # ── Maritime Domain ────────────────────────────────────────
 
+
 class VesselType(str, Enum):
     SURFACE = "surface"
     SUBSURFACE = "subsurface"
@@ -131,6 +137,7 @@ class VesselType(str, Enum):
 @dataclass
 class MaritimeAttributes:
     """Domain-specific attributes for maritime entities."""
+
     vessel_type: VesselType = VesselType.UNKNOWN
     speed_knots: float = 0.0
     course_deg: float = 0.0
@@ -154,6 +161,7 @@ class MaritimeAttributes:
 
 # ── Fixed Site Domain ─────────────────────────────────────
 
+
 class SiteType(str, Enum):
     COMMAND_POST = "command_post"
     OBSERVATION_POST = "observation_post"
@@ -167,6 +175,7 @@ class SiteType(str, Enum):
 @dataclass
 class FixedSiteAttributes:
     """Domain-specific attributes for fixed installations."""
+
     site_type: SiteType = SiteType.UNKNOWN
     operational: bool = True
     coverage_radius_m: float = 0.0
@@ -185,6 +194,7 @@ class FixedSiteAttributes:
 
 # ── Sensor Platform Domain ────────────────────────────────
 
+
 class SensorType(str, Enum):
     RADAR = "radar"
     EO_IR = "eo_ir"
@@ -199,6 +209,7 @@ class SensorType(str, Enum):
 @dataclass
 class SensorPlatformAttributes:
     """Domain-specific attributes for sensor platforms."""
+
     sensor_type: SensorType = SensorType.UNKNOWN
     operational: bool = True
     azimuth_coverage_deg: float = 360.0
@@ -236,5 +247,7 @@ def create_domain_attributes(domain: str, **kwargs) -> Any:
     """Factory to create domain-specific attributes."""
     cls = DOMAIN_ATTRIBUTE_MAP.get(domain)
     if cls is None:
-        raise ValueError(f"Unknown domain: {domain}. Valid: {list(DOMAIN_ATTRIBUTE_MAP.keys())}")
+        raise ValueError(
+            f"Unknown domain: {domain}. Valid: {list(DOMAIN_ATTRIBUTE_MAP.keys())}"
+        )
     return cls(**kwargs)

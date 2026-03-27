@@ -4,13 +4,20 @@ Behavior Tree Executor for Summit.OS
 Manages the tick loop, tree lifecycle, and provides introspection
 for debugging and visualization.
 """
+
 from __future__ import annotations
 
 import time
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from packages.autonomy.bt.nodes import BTNode, Blackboard, NodeStatus, Composite, Decorator
+from packages.autonomy.bt.nodes import (
+    BTNode,
+    Blackboard,
+    NodeStatus,
+    Composite,
+    Decorator,
+)
 
 logger = logging.getLogger("autonomy.bt.tree")
 

@@ -20,12 +20,14 @@ import numpy as np
 # Optional backends
 try:
     import onnxruntime as ort  # type: ignore
+
     ORT_AVAILABLE = True
 except Exception:
     ORT_AVAILABLE = False
 
 try:
     import torch  # type: ignore
+
     TORCH_AVAILABLE = True
 except Exception:
     TORCH_AVAILABLE = False
@@ -34,10 +36,12 @@ import cv2  # OpenCV is in fusion requirements
 
 
 class VisionInference:
-    def __init__(self,
-                 model_path: Optional[str] = None,
-                 conf_threshold: float = 0.6,
-                 labels: Optional[List[str]] = None):
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        conf_threshold: float = 0.6,
+        labels: Optional[List[str]] = None,
+    ):
         self.conf_threshold = conf_threshold
         # Allow labels via env FUSION_LABELS="smoke,flame,human,..."
         env_labels = os.getenv("FUSION_LABELS")
@@ -52,7 +56,11 @@ class VisionInference:
         self.torch_model = None
 
         # Try ONNX first
-        if ORT_AVAILABLE and os.path.exists(self.model_path) and self.model_path.endswith(".onnx"):
+        if (
+            ORT_AVAILABLE
+            and os.path.exists(self.model_path)
+            and self.model_path.endswith(".onnx")
+        ):
             try:
                 self.session = ort.InferenceSession(self.model_path, providers=["CPUExecutionProvider"])  # type: ignore
                 self.backend = "onnx"
@@ -61,7 +69,12 @@ class VisionInference:
                 self.backend = None
 
         # Optionally try torch if model_path points to a torch model
-        if self.backend is None and TORCH_AVAILABLE and os.path.exists(self.model_path) and self.model_path.endswith(('.pt', '.pth')):
+        if (
+            self.backend is None
+            and TORCH_AVAILABLE
+            and os.path.exists(self.model_path)
+            and self.model_path.endswith((".pt", ".pth"))
+        ):
             try:
                 self.torch_model = torch.jit.load(self.model_path, map_location="cpu")  # type: ignore
                 self.torch_model.eval()
@@ -134,12 +147,14 @@ class VisionInference:
                         w = max(0.0, float(x2) - float(x1))
                         h = max(0.0, float(y2) - float(y1))
                         cid = int(cls_idx)
-                        detections.append({
-                            "class": self._label_from_idx(cid),
-                            "class_id": cid,
-                            "confidence": score,
-                            "bbox": [float(x1), float(y1), w, h],  # xywh
-                        })
+                        detections.append(
+                            {
+                                "class": self._label_from_idx(cid),
+                                "class_id": cid,
+                                "confidence": score,
+                                "bbox": [float(x1), float(y1), w, h],  # xywh
+                            }
+                        )
                     except Exception:
                         continue
                 return detections
@@ -165,12 +180,14 @@ class VisionInference:
                         w = max(0.0, float(x2) - float(x1))
                         h = max(0.0, float(y2) - float(y1))
                         cid = int(cls_idx[i])
-                        detections.append({
-                            "class": self._label_from_idx(cid),
-                            "class_id": cid,
-                            "confidence": score,
-                            "bbox": [float(x1), float(y1), w, h],
-                        })
+                        detections.append(
+                            {
+                                "class": self._label_from_idx(cid),
+                                "class_id": cid,
+                                "confidence": score,
+                                "bbox": [float(x1), float(y1), w, h],
+                            }
+                        )
                     except Exception:
                         continue
                 return detections
@@ -197,10 +214,12 @@ class VisionInference:
                 continue
             cx = (x + x + bw) / 2.0 / w
             cy = (y + y + bh) / 2.0 / h
-            detections.append({
-                "class": self.labels[0],
-                "confidence": 0.3,
-                "bbox": [float(x), float(y), float(bw), float(bh)],
-                "center_norm": [float(cx), float(cy)]
-            })
+            detections.append(
+                {
+                    "class": self.labels[0],
+                    "confidence": 0.3,
+                    "bbox": [float(x), float(y), float(bw), float(bh)],
+                    "center_norm": [float(cx), float(cy)],
+                }
+            )
         return detections

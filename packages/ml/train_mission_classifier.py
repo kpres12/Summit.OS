@@ -50,6 +50,7 @@ def load_real_csv(csv_path: str):
     label_inv = {v: k for k, v in MISSION_LABELS.items()}
     X, y = [], []
     from features import extract
+
     try:
         with open(csv_path, newline="") as f:
             reader = csv.DictReader(f)
@@ -59,10 +60,10 @@ def load_real_csv(csv_path: str):
                     continue
                 try:
                     obs = {
-                        "class":      row["class"],
+                        "class": row["class"],
                         "confidence": float(row["confidence"]),
-                        "lat":        float(row["lat"]),
-                        "lon":        float(row["lon"]),
+                        "lat": float(row["lat"]),
+                        "lon": float(row["lon"]),
                     }
                     X.append(extract(obs))
                     y.append(label)
@@ -70,37 +71,45 @@ def load_real_csv(csv_path: str):
                     continue
         print(f"  Loaded {len(X)} real observations from {os.path.basename(csv_path)}")
         from collections import Counter
+
         dist = Counter(MISSION_LABELS[i] for i in y)
         print(f"  Real class distribution: {dict(dist)}")
     except FileNotFoundError:
         print(f"  CSV not found: {csv_path}")
-    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+    return (
+        (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64))
+        if X
+        else (None, None)
+    )
 
 
 def load_real_data(pg_url: str):
     """Load operator-approved mission decisions from the tasking DB."""
     try:
         import psycopg2
+
         conn = psycopg2.connect(pg_url)
         cur = conn.cursor()
-        cur.execute("""
+        cur.execute(
+            """
             SELECT m.mission_type, o.class, o.confidence, o.lat, o.lon
             FROM missions m
             JOIN advisories a ON a.advisory_id = m.source_advisory_id
             WHERE m.operator_approved = TRUE
             LIMIT 50000
-        """)
+        """
+        )
         rows = cur.fetchall()
         conn.close()
         label_inv = {v: k for k, v in MISSION_LABELS.items()}
         X, y = [], []
         from features import extract
+
         for mission_type_str, cls, conf, lat, lon in rows:
             label = label_inv.get(mission_type_str)
             if label is None:
                 continue
-            obs = {"class": cls, "confidence": float(conf or 0),
-                   "lat": lat, "lon": lon}
+            obs = {"class": cls, "confidence": float(conf or 0), "lat": lat, "lon": lon}
             X.append(extract(obs))
             y.append(label)
         print(f"  Loaded {len(X)} real operator samples from DB")
@@ -116,7 +125,9 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
     print("Generating synthetic training data...")
     X_syn, y_syn = generate_mission_samples(n_synthetic)
     print(f"  {len(X_syn)} synthetic samples, {len(set(y_syn.tolist()))} classes")
-    print(f"  Class distribution: { {MISSION_LABELS[i]: int((y_syn==i).sum()) for i in sorted(MISSION_LABELS)} }")
+    print(
+        f"  Class distribution: { {MISSION_LABELS[i]: int((y_syn==i).sum()) for i in sorted(MISSION_LABELS)} }"
+    )
 
     X, y = X_syn, y_syn
 
@@ -126,6 +137,7 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
             # Cap each real class at 2× its synthetic count to prevent dominance
             from collections import defaultdict
             import random as _rand
+
             _rand.seed(42)
             syn_counts = defaultdict(int)
             for lbl in y:
@@ -143,7 +155,9 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
             if real_capped_X:
                 X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
                 y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
-                print(f"  Real data (capped): { {MISSION_LABELS[k]: v for k, v in real_counts.items()} }")
+                print(
+                    f"  Real data (capped): { {MISSION_LABELS[k]: v for k, v in real_counts.items()} }"
+                )
                 print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     if pg_url:
@@ -161,20 +175,25 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
 
     # HistGradientBoosting: faster than GBT, native class balancing,
     # handles sparse binary features better, supports early stopping.
-    pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", HistGradientBoostingClassifier(
-            max_iter=400,
-            max_depth=6,
-            learning_rate=0.05,
-            min_samples_leaf=8,
-            l2_regularization=0.1,
-            early_stopping=True,
-            validation_fraction=0.1,
-            n_iter_no_change=20,
-            random_state=42,
-        )),
-    ])
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            (
+                "clf",
+                HistGradientBoostingClassifier(
+                    max_iter=400,
+                    max_depth=6,
+                    learning_rate=0.05,
+                    min_samples_leaf=8,
+                    l2_regularization=0.1,
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                    n_iter_no_change=20,
+                    random_state=42,
+                ),
+            ),
+        ]
+    )
 
     print("Training HistGradientBoostingClassifier (balanced)...")
     pipe.fit(X_train, y_train)
@@ -183,7 +202,11 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
     y_pred = pipe.predict(X_test)
     target_names = [MISSION_LABELS[i] for i in sorted(MISSION_LABELS)]
     print("\nClassification report (test set):")
-    print(classification_report(y_test, y_pred, target_names=target_names, zero_division=0))
+    print(
+        classification_report(
+            y_test, y_pred, target_names=target_names, zero_division=0
+        )
+    )
 
     cv_scores = cross_val_score(pipe, X, y, cv=5, scoring="accuracy")
     print(f"5-fold CV accuracy: {cv_scores.mean():.3f} ± {cv_scores.std():.3f}")
@@ -204,6 +227,7 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
 
     # Quick smoke test
     import onnxruntime as ort
+
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
     test_obs = [
         {"class": "smoke plume", "confidence": 0.92, "lat": 34.05, "lon": -118.24},
@@ -216,6 +240,7 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
         {"class": "delivery waypoint", "confidence": 0.95, "lat": 37.8, "lon": -122.4},
     ]
     from features import extract as feat_extract
+
     print("\nSmoke test predictions:")
     for obs in test_obs:
         feat = np.array([feat_extract(obs)], dtype=np.float32)
@@ -227,10 +252,18 @@ def train(pg_url: str = None, real_csv: str = None, n_synthetic: int = 8000):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--real-data", dest="pg_url", default=None,
-                        help="PostgreSQL URL to blend real operator decisions")
-    parser.add_argument("--real-csv", dest="real_csv", default=None,
-                        help="CSV file from download_real_data.py")
+    parser.add_argument(
+        "--real-data",
+        dest="pg_url",
+        default=None,
+        help="PostgreSQL URL to blend real operator decisions",
+    )
+    parser.add_argument(
+        "--real-csv",
+        dest="real_csv",
+        default=None,
+        help="CSV file from download_real_data.py",
+    )
     parser.add_argument("--samples", type=int, default=8000)
     args = parser.parse_args()
     train(pg_url=args.pg_url, real_csv=args.real_csv, n_synthetic=args.samples)

@@ -25,6 +25,7 @@ Key management:
 
 Signature files: each `foo.rego` gets a `foo.rego.sig` file alongside it.
 """
+
 from __future__ import annotations
 
 import binascii
@@ -39,6 +40,7 @@ logger = logging.getLogger("summit.policy.signer")
 
 class PolicyVerificationError(Exception):
     """Raised when a policy file fails signature verification."""
+
     pass
 
 
@@ -200,6 +202,7 @@ class PolicySigner:
             return None
         try:
             from nacl.encoding import HexEncoder
+
             return self._verify_key.encode(encoder=HexEncoder).decode()
         except Exception:
             return None

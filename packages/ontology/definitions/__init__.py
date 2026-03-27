@@ -20,6 +20,7 @@ def register_all(registry) -> None:
 
     # Register property indexes on the store
     from ..store import get_store
+
     store = get_store()
     for obj_type in ALL_OBJECT_TYPES:
         for prop in obj_type.properties:

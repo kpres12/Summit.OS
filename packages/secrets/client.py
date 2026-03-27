@@ -25,6 +25,7 @@ Usage:
     db_password = await get_secret("POSTGRES_PASSWORD")
     jwt_secret  = await get_secret("FABRIC_JWT_SECRET", default="dev_secret_only")
 """
+
 from __future__ import annotations
 
 import logging
@@ -78,7 +79,9 @@ class SecretClient:
         if self._use_vault:
             logger.info(f"SecretClient: using Vault at {self.vault_addr}")
         else:
-            logger.info("SecretClient: using environment variables (no Vault configured)")
+            logger.info(
+                "SecretClient: using environment variables (no Vault configured)"
+            )
 
     def _should_use_vault(self, backend: str) -> bool:
         if backend == "env":
@@ -86,7 +89,9 @@ class SecretClient:
         if backend == "vault":
             return True
         # Auto: use Vault if VAULT_ADDR is set and either token or AppRole creds are present
-        return bool(self.vault_addr) and bool(self.vault_token or (self.role_id and self.secret_id))
+        return bool(self.vault_addr) and bool(
+            self.vault_token or (self.role_id and self.secret_id)
+        )
 
     async def _get_vault_token(self) -> Optional[str]:
         """Get Vault token, using AppRole auth if needed."""
@@ -147,7 +152,9 @@ class SecretClient:
             logger.debug(f"Secret '{key}' not found — using default")
             return default
 
-        logger.warning(f"Secret '{key}' not found in Vault or environment and no default provided")
+        logger.warning(
+            f"Secret '{key}' not found in Vault or environment and no default provided"
+        )
         return None
 
     async def _get_from_vault(self, key: str) -> Optional[str]:
@@ -157,7 +164,9 @@ class SecretClient:
             return None
 
         # Vault KV v2 path: /v1/{mount}/data/{prefix}/{key}
-        path = f"{self.vault_addr}/v1/{self.mount}/data/{self.path_prefix}/{key.lower()}"
+        path = (
+            f"{self.vault_addr}/v1/{self.mount}/data/{self.path_prefix}/{key.lower()}"
+        )
 
         try:
             headers = {"X-Vault-Token": token}
@@ -177,7 +186,9 @@ class SecretClient:
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
-                logger.error(f"Vault permission denied for secret '{key}' — check token policies")
+                logger.error(
+                    f"Vault permission denied for secret '{key}' — check token policies"
+                )
             else:
                 logger.warning(f"Vault error for '{key}': {e}")
             return None

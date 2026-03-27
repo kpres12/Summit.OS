@@ -1,7 +1,9 @@
 """World state org filtering test — uses FABRIC_TEST_MODE (set by conftest)."""
+
 import os
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
 from fastapi.testclient import TestClient

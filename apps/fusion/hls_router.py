@@ -14,6 +14,7 @@ Env vars:
   HLS_OUTPUT_DIR   — directory to write .m3u8 + .ts files (default /tmp/hls)
   FFMPEG_BIN       — path to ffmpeg binary (default: ffmpeg)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -29,7 +30,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 logger = logging.getLogger("fusion.hls")
 
 HLS_OUTPUT_DIR = Path(os.getenv("HLS_OUTPUT_DIR", "/tmp/hls"))
-FFMPEG_BIN     = os.getenv("FFMPEG_BIN", "ffmpeg")
+FFMPEG_BIN = os.getenv("FFMPEG_BIN", "ffmpeg")
 
 # Active transcoder processes: stream_id → asyncio.subprocess.Process
 _procs: Dict[str, asyncio.subprocess.Process] = {}
@@ -44,6 +45,7 @@ def _stream_dir(stream_id: str) -> Path:
 
 
 # ── Control endpoints ─────────────────────────────────────────────────────────
+
 
 @router.post("/hls/{stream_id}/start")
 async def start_hls(stream_id: str, payload: dict):
@@ -63,23 +65,35 @@ async def start_hls(stream_id: str, payload: dict):
         del _procs[stream_id]
 
     if not shutil.which(FFMPEG_BIN):
-        raise HTTPException(status_code=501, detail="ffmpeg not found — install ffmpeg to enable HLS")
+        raise HTTPException(
+            status_code=501, detail="ffmpeg not found — install ffmpeg to enable HLS"
+        )
 
     out_dir = _stream_dir(stream_id)
     playlist = str(out_dir / "index.m3u8")
 
     cmd = [
         FFMPEG_BIN,
-        "-rtsp_transport", "tcp",
-        "-i", rtsp_url,
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-tune", "zerolatency",
-        "-f", "hls",
-        "-hls_time", "2",
-        "-hls_list_size", "10",
-        "-hls_flags", "delete_segments",
-        "-hls_segment_filename", str(out_dir / "%05d.ts"),
+        "-rtsp_transport",
+        "tcp",
+        "-i",
+        rtsp_url,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "ultrafast",
+        "-tune",
+        "zerolatency",
+        "-f",
+        "hls",
+        "-hls_time",
+        "2",
+        "-hls_list_size",
+        "10",
+        "-hls_flags",
+        "delete_segments",
+        "-hls_segment_filename",
+        str(out_dir / "%05d.ts"),
         playlist,
     ]
 
@@ -92,8 +106,8 @@ async def start_hls(stream_id: str, payload: dict):
         _procs[stream_id] = proc
         logger.info(f"HLS transcoder started for {stream_id} → {rtsp_url}")
         return {
-            "status":      "started",
-            "stream_id":   stream_id,
+            "status": "started",
+            "stream_id": stream_id,
             "playlist_url": f"/api/v1/video/hls/{stream_id}/index.m3u8",
         }
     except Exception as e:
@@ -122,7 +136,9 @@ async def get_playlist(stream_id: str):
     """Serve the HLS playlist file."""
     path = HLS_OUTPUT_DIR / stream_id / "index.m3u8"
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Playlist not ready — stream may not be started")
+        raise HTTPException(
+            status_code=404, detail="Playlist not ready — stream may not be started"
+        )
     return FileResponse(str(path), media_type="application/vnd.apple.mpegurl")
 
 

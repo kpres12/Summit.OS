@@ -60,7 +60,7 @@ class ObjectStore:
         if existing:
             # Preserve created_at, bump version
             instance.created_at = existing.created_at
-            instance.version    = existing.version + 1
+            instance.version = existing.version + 1
             instance.updated_at = datetime.now(timezone.utc).isoformat()
             self._deindex(existing)
             self._objects[key] = instance
@@ -106,7 +106,9 @@ class ObjectStore:
                 idx = self._indexes.get(object_type, {}).get(prop)
                 if idx is not None:
                     matching = idx.get(value, set())
-                    candidate_ids = matching if candidate_ids is None else candidate_ids & matching
+                    candidate_ids = (
+                        matching if candidate_ids is None else candidate_ids & matching
+                    )
                 else:
                     unindexed_filters[prop] = value
 
@@ -118,20 +120,22 @@ class ObjectStore:
                 ]
             else:
                 candidates = [
-                    inst for (ot, _), inst in self._objects.items()
-                    if ot == object_type
+                    inst for (ot, _), inst in self._objects.items() if ot == object_type
                 ]
 
             # Apply unindexed filters
             if unindexed_filters:
                 candidates = [
-                    inst for inst in candidates
-                    if all(inst.properties.get(k) == v for k, v in unindexed_filters.items())
+                    inst
+                    for inst in candidates
+                    if all(
+                        inst.properties.get(k) == v
+                        for k, v in unindexed_filters.items()
+                    )
                 ]
         else:
             candidates = [
-                inst for (ot, _), inst in self._objects.items()
-                if ot == object_type
+                inst for (ot, _), inst in self._objects.items() if ot == object_type
             ]
 
         return candidates[offset : offset + limit]
@@ -151,7 +155,9 @@ class ObjectStore:
             self._emit("link.created", link)
         return self._links[key]
 
-    def get_link(self, link_type: str, source_id: str, target_id: str) -> Optional[LinkInstance]:
+    def get_link(
+        self, link_type: str, source_id: str, target_id: str
+    ) -> Optional[LinkInstance]:
         return self._links.get((link_type, source_id, target_id))
 
     def delete_link(self, link_type: str, source_id: str, target_id: str) -> bool:
@@ -167,7 +173,8 @@ class ObjectStore:
         link_type: Optional[str] = None,
     ) -> List[LinkInstance]:
         return [
-            link for (lt, src, _), link in self._links.items()
+            link
+            for (lt, src, _), link in self._links.items()
             if src == source_id and (link_type is None or lt == link_type)
         ]
 
@@ -177,7 +184,8 @@ class ObjectStore:
         link_type: Optional[str] = None,
     ) -> List[LinkInstance]:
         return [
-            link for (lt, _, tgt), link in self._links.items()
+            link
+            for (lt, _, tgt), link in self._links.items()
             if tgt == target_id and (link_type is None or lt == link_type)
         ]
 
@@ -195,7 +203,9 @@ class ObjectStore:
         for prop_name in type_idx:
             value = instance.properties.get(prop_name)
             if value is not None:
-                self._indexes[instance.object_type][prop_name][value].add(instance.object_id)
+                self._indexes[instance.object_type][prop_name][value].add(
+                    instance.object_id
+                )
 
     def _deindex(self, instance: ObjectInstance) -> None:
         type_idx = self._indexes.get(instance.object_type)
@@ -204,7 +214,9 @@ class ObjectStore:
         for prop_name in type_idx:
             value = instance.properties.get(prop_name)
             if value is not None:
-                self._indexes[instance.object_type][prop_name][value].discard(instance.object_id)
+                self._indexes[instance.object_type][prop_name][value].discard(
+                    instance.object_id
+                )
 
     # ── event system ──────────────────────────────────────────────────────────
 
@@ -222,16 +234,16 @@ class ObjectStore:
 
     def stats(self) -> dict:
         type_counts: Dict[str, int] = defaultdict(int)
-        for (ot, _) in self._objects:
+        for ot, _ in self._objects:
             type_counts[ot] += 1
         link_counts: Dict[str, int] = defaultdict(int)
-        for (lt, _, _) in self._links:
+        for lt, _, _ in self._links:
             link_counts[lt] += 1
         return {
             "total_objects": len(self._objects),
-            "total_links":   len(self._links),
-            "by_type":       dict(type_counts),
-            "by_link":       dict(link_counts),
+            "total_links": len(self._links),
+            "by_type": dict(type_counts),
+            "by_link": dict(link_counts),
         }
 
 

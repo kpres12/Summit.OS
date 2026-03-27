@@ -9,6 +9,7 @@ Provides a lightweight discrete-event simulation of:
 
 Used for testing, training, and mission rehearsal without hardware.
 """
+
 from __future__ import annotations
 
 import math
@@ -25,6 +26,7 @@ logger = logging.getLogger("simulation.world")
 @dataclass
 class SimEntity:
     """An entity in the simulated world."""
+
     entity_id: str
     lat: float = 0.0
     lon: float = 0.0
@@ -47,7 +49,7 @@ class SimEntity:
         """Approximate distance in meters using equirectangular projection."""
         dlat = (lat - self.lat) * 111320
         dlon = (lon - self.lon) * 111320 * math.cos(math.radians(self.lat))
-        return math.sqrt(dlat ** 2 + dlon ** 2)
+        return math.sqrt(dlat**2 + dlon**2)
 
     def bearing_to(self, lat: float, lon: float) -> float:
         """Bearing in degrees to a point."""
@@ -59,6 +61,7 @@ class SimEntity:
 @dataclass
 class SimSensor:
     """A simulated sensor."""
+
     sensor_id: str
     lat: float = 0.0
     lon: float = 0.0
@@ -78,6 +81,7 @@ class SimSensor:
 @dataclass
 class Detection:
     """A sensor detection event."""
+
     sensor_id: str
     entity_id: str
     lat: float
@@ -156,8 +160,14 @@ class WorldSimulator:
                     detections.append(det)
                     self._emit("detection", det)
 
-        self._emit("step", {"time": self.sim_time, "step": self._step_count,
-                            "detections": len(detections)})
+        self._emit(
+            "step",
+            {
+                "time": self.sim_time,
+                "step": self._step_count,
+                "detections": len(detections),
+            },
+        )
         return detections
 
     def run(self, duration_sec: float) -> List[Detection]:
@@ -180,9 +190,10 @@ class WorldSimulator:
                 ent.current_wp_idx += 1
                 if ent.current_wp_idx >= len(ent.waypoints) and ent.loop_waypoints:
                     ent.current_wp_idx = 0
-                self._emit("entity_reached_wp", {
-                    "entity_id": ent.entity_id, "wp_idx": ent.current_wp_idx - 1
-                })
+                self._emit(
+                    "entity_reached_wp",
+                    {"entity_id": ent.entity_id, "wp_idx": ent.current_wp_idx - 1},
+                )
             else:
                 # Navigate toward waypoint
                 ent.heading_deg = ent.bearing_to(target[0], target[1])
@@ -196,16 +207,21 @@ class WorldSimulator:
         dist_m = ent.speed_mps * self.dt
         heading_rad = math.radians(ent.heading_deg)
         dlat = dist_m * math.cos(heading_rad) / 111320
-        dlon = dist_m * math.sin(heading_rad) / (111320 * max(0.01, math.cos(math.radians(ent.lat))))
+        dlon = (
+            dist_m
+            * math.sin(heading_rad)
+            / (111320 * max(0.01, math.cos(math.radians(ent.lat))))
+        )
         ent.lat += dlat
         ent.lon += dlon
 
     def _try_detect(self, sensor: SimSensor, entity: SimEntity) -> Optional[Detection]:
         """Try to detect an entity with a sensor. Returns Detection or None."""
         dist = math.sqrt(
-            ((entity.lat - sensor.lat) * 111320) ** 2 +
-            ((entity.lon - sensor.lon) * 111320 * math.cos(math.radians(sensor.lat))) ** 2 +
-            (entity.alt - sensor.alt) ** 2
+            ((entity.lat - sensor.lat) * 111320) ** 2
+            + ((entity.lon - sensor.lon) * 111320 * math.cos(math.radians(sensor.lat)))
+            ** 2
+            + (entity.alt - sensor.alt) ** 2
         )
 
         # Range gate
@@ -214,17 +230,26 @@ class WorldSimulator:
 
         # FOV check
         if sensor.fov_deg < 360:
-            bearing = math.degrees(math.atan2(
-                (entity.lon - sensor.lon) * math.cos(math.radians(sensor.lat)),
-                entity.lat - sensor.lat
-            )) % 360
+            bearing = (
+                math.degrees(
+                    math.atan2(
+                        (entity.lon - sensor.lon) * math.cos(math.radians(sensor.lat)),
+                        entity.lat - sensor.lat,
+                    )
+                )
+                % 360
+            )
             delta = abs(((bearing - sensor.boresight_deg + 180) % 360) - 180)
             if delta > sensor.fov_deg / 2:
                 return None
 
         # Probabilistic detection (modified by RCS and range)
         range_factor = max(0.1, 1.0 - (dist / sensor.max_range_m) ** 2)
-        rcs_factor = min(2.0, entity.radar_cross_section_m2) if sensor.sensor_type == "radar" else 1.0
+        rcs_factor = (
+            min(2.0, entity.radar_cross_section_m2)
+            if sensor.sensor_type == "radar"
+            else 1.0
+        )
         pd = sensor.detection_probability * range_factor * min(1.0, rcs_factor)
 
         if self._rng.random() > pd:
@@ -233,7 +258,9 @@ class WorldSimulator:
         # Generate noisy measurement
         noise_m = sensor.position_noise_m * (1 + dist / sensor.max_range_m)
         noise_lat = self._rng.gauss(0, noise_m / 111320)
-        noise_lon = self._rng.gauss(0, noise_m / (111320 * max(0.01, math.cos(math.radians(entity.lat)))))
+        noise_lon = self._rng.gauss(
+            0, noise_m / (111320 * max(0.01, math.cos(math.radians(entity.lat))))
+        )
         noise_alt = self._rng.gauss(0, noise_m * 0.5)
 
         return Detection(
@@ -252,10 +279,24 @@ class WorldSimulator:
         return {
             "sim_time": self.sim_time,
             "step_count": self._step_count,
-            "entities": {eid: {"lat": e.lat, "lon": e.lon, "alt": e.alt,
-                               "heading": e.heading_deg, "type": e.entity_type}
-                         for eid, e in self.entities.items() if e.active},
-            "sensors": {sid: {"lat": s.lat, "lon": s.lon, "type": s.sensor_type,
-                              "active": s.active}
-                        for sid, s in self.sensors.items()},
+            "entities": {
+                eid: {
+                    "lat": e.lat,
+                    "lon": e.lon,
+                    "alt": e.alt,
+                    "heading": e.heading_deg,
+                    "type": e.entity_type,
+                }
+                for eid, e in self.entities.items()
+                if e.active
+            },
+            "sensors": {
+                sid: {
+                    "lat": s.lat,
+                    "lon": s.lon,
+                    "type": s.sensor_type,
+                    "active": s.active,
+                }
+                for sid, s in self.sensors.items()
+            },
         }

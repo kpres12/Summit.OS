@@ -48,6 +48,7 @@ class Advisory(BaseModel):
 
 class PlainviewInsight(BaseModel):
     """Enriched insight for Plainview domain."""
+
     type: str  # "flow_anomaly", "valve_health", "pipeline_integrity"
     severity: str  # "low", "medium", "high", "critical"
     title: str
@@ -62,21 +63,21 @@ class PlainviewInsight(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global redis_client, http_client
-    
+
     # Redis setup
     redis_client = await aioredis.from_url(REDIS_URL, decode_responses=True)
     logger.info(f"Connected to Redis: {REDIS_URL}")
-    
+
     # HTTP client for Intelligence and Plainview APIs
     http_client = httpx.AsyncClient(timeout=10.0)
     logger.info("HTTP client initialized")
-    
+
     # Start background processors
     advisory_task = asyncio.create_task(_advisory_processor())
     plainview_event_task = asyncio.create_task(_plainview_event_forwarder())
-    
+
     logger.info("Plainview Intelligence Adapter started")
-    
+
     try:
         yield
     finally:
@@ -90,7 +91,7 @@ async def lifespan(app: FastAPI):
             await plainview_event_task
         except asyncio.CancelledError:
             pass
-        
+
         if redis_client:
             await redis_client.close()
         if http_client:
@@ -99,12 +100,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Plainview Intelligence Adapter",
-    version="1.0.0",
-    lifespan=lifespan
+    title="Plainview Intelligence Adapter", version="1.0.0", lifespan=lifespan
 )
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in CORS_ORIGINS if o.strip()],
@@ -122,8 +123,8 @@ async def health():
         "connections": {
             "redis": redis_client is not None,
             "http_client": http_client is not None,
-            "plainview_ws": len(plainview_ws_connections)
-        }
+            "plainview_ws": len(plainview_ws_connections),
+        },
     }
 
 
@@ -138,6 +139,7 @@ async def readyz():
         return {"status": "ready"}
     except Exception as e:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=503, detail=f"Not ready: {e}")
 
 
@@ -146,29 +148,35 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket for Plainview dashboard to receive real-time insights."""
     await websocket.accept()
     plainview_ws_connections.add(websocket)
-    logger.info(f"Plainview WebSocket connected. Total: {len(plainview_ws_connections)}")
-    
+    logger.info(
+        f"Plainview WebSocket connected. Total: {len(plainview_ws_connections)}"
+    )
+
     try:
         # Send welcome message
-        await websocket.send_json({
-            "type": "connected",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "features": ["intelligence", "advisories", "insights"]
-        })
-        
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "features": ["intelligence", "advisories", "insights"],
+            }
+        )
+
         # Keep connection alive and handle incoming messages
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
             logger.info(f"Received from Plainview: {msg}")
-            
+
             # Handle commands from Plainview
             if msg.get("type") == "request_advisory":
                 await _send_latest_advisories(websocket)
-    
+
     except WebSocketDisconnect:
         plainview_ws_connections.discard(websocket)
-        logger.info(f"Plainview WebSocket disconnected. Remaining: {len(plainview_ws_connections)}")
+        logger.info(
+            f"Plainview WebSocket disconnected. Remaining: {len(plainview_ws_connections)}"
+        )
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         plainview_ws_connections.discard(websocket)
@@ -179,18 +187,17 @@ async def _send_latest_advisories(websocket: WebSocket):
     try:
         if not http_client:
             return
-        
-        resp = await http_client.get(f"{INTELLIGENCE_URL}/advisories", params={"limit": 10})
+
+        resp = await http_client.get(
+            f"{INTELLIGENCE_URL}/advisories", params={"limit": 10}
+        )
         resp.raise_for_status()
         advisories = resp.json()
-        
+
         for advisory_data in advisories:
             advisory = Advisory(**advisory_data)
             insight = _enrich_advisory(advisory)
-            await websocket.send_json({
-                "type": "insight",
-                "data": insight.model_dump()
-            })
+            await websocket.send_json({"type": "insight", "data": insight.model_dump()})
     except Exception as e:
         logger.error(f"Failed to fetch advisories: {e}")
 
@@ -204,43 +211,45 @@ async def _advisory_processor():
     """
     logger.info("Advisory processor started")
     seen_advisory_ids: set[str] = set()
-    
+
     while True:
         try:
             if not http_client:
                 await asyncio.sleep(1)
                 continue
-            
+
             # Poll Intelligence service
-            resp = await http_client.get(f"{INTELLIGENCE_URL}/advisories", params={"limit": 50})
+            resp = await http_client.get(
+                f"{INTELLIGENCE_URL}/advisories", params={"limit": 50}
+            )
             resp.raise_for_status()
             advisories_data = resp.json()
-            
+
             for advisory_data in advisories_data:
                 advisory = Advisory(**advisory_data)
-                
+
                 # Skip if already processed
                 if advisory.advisory_id in seen_advisory_ids:
                     continue
-                
+
                 seen_advisory_ids.add(advisory.advisory_id)
                 logger.info(f"Processing advisory: {advisory.advisory_id}")
-                
+
                 # Enrich for Plainview domain
                 insight = _enrich_advisory(advisory)
-                
+
                 # Forward to Plainview API
                 await _forward_to_plainview(insight)
-                
+
                 # Broadcast to WebSocket connections
                 await _broadcast_insight(insight)
-            
+
             # Cleanup old IDs (keep last 1000)
             if len(seen_advisory_ids) > 1000:
                 seen_advisory_ids = set(list(seen_advisory_ids)[-1000:])
-            
+
             await asyncio.sleep(5)  # Poll every 5 seconds
-        
+
         except Exception as e:
             logger.error(f"Advisory processor error: {e}")
             await asyncio.sleep(5)
@@ -253,7 +262,7 @@ def _enrich_advisory(advisory: Advisory) -> PlainviewInsight:
     """
     # Parse advisory message to extract domain context
     msg_lower = advisory.message.lower()
-    
+
     # Determine type and asset based on message content
     if "flow" in msg_lower or "pressure" in msg_lower or "temperature" in msg_lower:
         insight_type = "flow_anomaly"
@@ -261,7 +270,7 @@ def _enrich_advisory(advisory: Advisory) -> PlainviewInsight:
         recommendations = [
             "Monitor flow metrics for next 30 minutes",
             "Check pressure sensors for calibration",
-            "Review recent maintenance logs"
+            "Review recent maintenance logs",
         ]
     elif "valve" in msg_lower:
         insight_type = "valve_health"
@@ -269,7 +278,7 @@ def _enrich_advisory(advisory: Advisory) -> PlainviewInsight:
         recommendations = [
             "Schedule valve inspection within 24 hours",
             "Test actuator response time",
-            "Review torque readings"
+            "Review torque readings",
         ]
     elif "pipeline" in msg_lower or "leak" in msg_lower:
         insight_type = "pipeline_integrity"
@@ -277,25 +286,25 @@ def _enrich_advisory(advisory: Advisory) -> PlainviewInsight:
         recommendations = [
             "Deploy inspection drone to segment",
             "Increase monitoring frequency",
-            "Prepare repair crew standby"
+            "Prepare repair crew standby",
         ]
     else:
         insight_type = "general"
         asset_id = None
         recommendations = ["Review system logs", "Consult operations team"]
-    
+
     # Map risk level to severity
     severity_map = {
         "LOW": "low",
         "MEDIUM": "medium",
         "HIGH": "high",
-        "CRITICAL": "critical"
+        "CRITICAL": "critical",
     }
     severity = severity_map.get(advisory.risk_level, "medium")
-    
+
     # Generate title
     title = f"{advisory.risk_level} Risk: {insight_type.replace('_', ' ').title()}"
-    
+
     return PlainviewInsight(
         type=insight_type,
         severity=severity,
@@ -305,7 +314,7 @@ def _enrich_advisory(advisory: Advisory) -> PlainviewInsight:
         asset_id=asset_id,
         recommendations=recommendations,
         timestamp=advisory.ts,
-        source_advisory_id=advisory.advisory_id
+        source_advisory_id=advisory.advisory_id,
     )
 
 
@@ -314,7 +323,7 @@ async def _forward_to_plainview(insight: PlainviewInsight):
     try:
         if not http_client:
             return
-        
+
         # Map to Plainview's expected format
         payload = {
             "type": "intelligence.insight",
@@ -326,21 +335,19 @@ async def _forward_to_plainview(insight: PlainviewInsight):
             "asset_id": insight.asset_id,
             "recommendations": insight.recommendations,
             "timestamp": insight.timestamp,
-            "source": "summit-os-intelligence"
+            "source": "summit-os-intelligence",
         }
-        
+
         # Send to Plainview event endpoint (assuming it exists or will be added)
         resp = await http_client.post(
-            f"{PLAINVIEW_API_URL}/intelligence/insights",
-            json=payload,
-            timeout=5.0
+            f"{PLAINVIEW_API_URL}/intelligence/insights", json=payload, timeout=5.0
         )
-        
+
         if resp.status_code == 200:
             logger.info(f"Forwarded insight to Plainview: {insight.type}")
         else:
             logger.warning(f"Plainview API returned {resp.status_code}")
-    
+
     except httpx.ConnectError:
         logger.warning("Plainview API not reachable (expected if not running)")
     except Exception as e:
@@ -351,12 +358,9 @@ async def _broadcast_insight(insight: PlainviewInsight):
     """Broadcast insight to all connected Plainview WebSocket clients."""
     if not plainview_ws_connections:
         return
-    
-    message = {
-        "type": "insight",
-        "data": insight.model_dump()
-    }
-    
+
+    message = {"type": "insight", "data": insight.model_dump()}
+
     disconnected = set()
     for ws in plainview_ws_connections:
         try:
@@ -364,7 +368,7 @@ async def _broadcast_insight(insight: PlainviewInsight):
         except Exception as e:
             logger.error(f"Failed to send to WebSocket: {e}")
             disconnected.add(ws)
-    
+
     # Clean up disconnected clients
     plainview_ws_connections.difference_update(disconnected)
 
@@ -375,15 +379,15 @@ async def _plainview_event_forwarder():
     This creates bidirectional integration.
     """
     logger.info("Plainview event forwarder started")
-    
+
     while True:
         try:
             # This is a placeholder - would connect to Plainview's SSE /events endpoint
             # and forward relevant events to Summit.OS MQTT topics
-            
+
             # For now, just log and sleep
             await asyncio.sleep(10)
-        
+
         except Exception as e:
             logger.error(f"Event forwarder error: {e}")
             await asyncio.sleep(5)
@@ -391,4 +395,5 @@ async def _plainview_event_forwarder():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8005)

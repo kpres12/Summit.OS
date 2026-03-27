@@ -3,6 +3,7 @@ AdapterPublisher — handles MQTT connection and entity publishing for SDK adapt
 
 Wraps paho-mqtt with automatic reconnect, manifest validation, and rate tracking.
 """
+
 from __future__ import annotations
 
 import json
@@ -41,6 +42,7 @@ class AdapterPublisher:
         """Connect to MQTT broker. Call once before publishing."""
         try:
             import paho.mqtt.client as mqtt
+
             self._client = mqtt.Client(client_id=f"summit-adapter-{self.manifest.name}")
             if self.username and self.password:
                 self._client.username_pw_set(self.username, self.password)
@@ -49,12 +51,16 @@ class AdapterPublisher:
 
             # Announce adapter presence
             self._publish_manifest()
-            logger.info(f"Adapter '{self.manifest.name}' connected to MQTT {self.host}:{self.port}")
+            logger.info(
+                f"Adapter '{self.manifest.name}' connected to MQTT {self.host}:{self.port}"
+            )
         except ImportError:
             logger.error("paho-mqtt not installed. Run: pip install paho-mqtt")
             raise
         except Exception as e:
-            logger.error(f"MQTT connection failed for adapter '{self.manifest.name}': {e}")
+            logger.error(
+                f"MQTT connection failed for adapter '{self.manifest.name}': {e}"
+            )
             raise
 
     def disconnect(self):
@@ -88,7 +94,9 @@ class AdapterPublisher:
             payload = json.dumps(self.manifest.to_dict())
             self._client.publish(topic, payload, qos=1, retain=True)
         except Exception as e:
-            logger.warning(f"Could not publish manifest for '{self.manifest.name}': {e}")
+            logger.warning(
+                f"Could not publish manifest for '{self.manifest.name}': {e}"
+            )
 
     @property
     def stats(self) -> Dict[str, int]:

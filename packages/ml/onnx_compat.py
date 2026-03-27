@@ -22,6 +22,7 @@ that bypasses module-level patches applied afterward. We therefore:
 Import this module BEFORE importing skl2onnx in any training script:
     import onnx_compat  # noqa: F401 — must be first
 """
+
 import sys
 
 
@@ -68,8 +69,16 @@ try:
             kwargs["attr_type"] = attr_type
         return _orig_make_attribute(key, value, **kwargs)
 
-    def _patched_make_node(op_type, inputs, outputs, name=None, doc_string=None,
-                           domain=None, overload=None, **kwargs):
+    def _patched_make_node(
+        op_type,
+        inputs,
+        outputs,
+        name=None,
+        doc_string=None,
+        domain=None,
+        overload=None,
+        **kwargs
+    ):
         clean_kwargs = {k: _coerce_ints(v) for k, v in kwargs.items()}
         extra = {}
         if name is not None:

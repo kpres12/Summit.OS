@@ -47,6 +47,7 @@ billing_router = APIRouter(prefix="/v1/billing", tags=["billing"])
 # Request / response models
 # ---------------------------------------------------------------------------
 
+
 class CreateKeyRequest(BaseModel):
     org_id: str
     org_name: str
@@ -54,7 +55,7 @@ class CreateKeyRequest(BaseModel):
 
 
 class CreateKeyResponse(BaseModel):
-    api_key: str          # plaintext — shown ONCE, never stored
+    api_key: str  # plaintext — shown ONCE, never stored
     org_id: str
     tier: str
     entity_limit: int
@@ -71,7 +72,7 @@ class SubscriptionResponse(BaseModel):
 
 class CheckoutRequest(BaseModel):
     org_id: str
-    tier: str                        # "pro" | "enterprise"
+    tier: str  # "pro" | "enterprise"
     success_url: str
     cancel_url: str
 
@@ -84,6 +85,7 @@ class CheckoutResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # POST /v1/billing/keys
 # ---------------------------------------------------------------------------
+
 
 @billing_router.post("/keys", response_model=CreateKeyResponse, status_code=201)
 async def create_api_key(body: CreateKeyRequest) -> CreateKeyResponse:
@@ -150,6 +152,7 @@ async def create_api_key(body: CreateKeyRequest) -> CreateKeyResponse:
 # GET /v1/billing/subscription
 # ---------------------------------------------------------------------------
 
+
 @billing_router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
     ctx: OrgContext = Depends(require_api_key),
@@ -203,11 +206,14 @@ async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
     the webhook handler above.
     """
     try:
-        import sys as _sys_ck; from pathlib import Path as _Path_ck
+        import sys as _sys_ck
+        from pathlib import Path as _Path_ck
+
         _ck_root = str(_Path_ck(__file__).resolve().parents[3])
         if _ck_root not in _sys_ck.path:
             _sys_ck.path.insert(0, _ck_root)
         from packages.secrets.client import get_secret as _get_ck
+
         stripe_key = (await _get_ck("STRIPE_SECRET_KEY", default="")) or ""
     except Exception:
         stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
@@ -225,6 +231,7 @@ async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
     price_env_key = _TIER_PRICE_ENV[tier]
     try:
         from packages.secrets.client import get_secret as _get_price  # type: ignore[import]
+
         price_id = (await _get_price(price_env_key, default="")) or ""
     except Exception:
         price_id = os.getenv(price_env_key, "")
@@ -236,14 +243,16 @@ async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
         )
 
     # Build Stripe Checkout session via urllib (no SDK)
-    payload = urllib.parse.urlencode({
-        "mode": "subscription",
-        "line_items[0][price]": price_id,
-        "line_items[0][quantity]": "1",
-        "client_reference_id": body.org_id,
-        "success_url": body.success_url,
-        "cancel_url": body.cancel_url,
-    }).encode()
+    payload = urllib.parse.urlencode(
+        {
+            "mode": "subscription",
+            "line_items[0][price]": price_id,
+            "line_items[0][quantity]": "1",
+            "client_reference_id": body.org_id,
+            "success_url": body.success_url,
+            "cancel_url": body.cancel_url,
+        }
+    ).encode()
 
     req = urllib.request.Request(
         "https://api.stripe.com/v1/checkout/sessions",
@@ -275,13 +284,19 @@ async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
     if not checkout_url or not session_id:
         raise HTTPException(status_code=502, detail="Stripe response missing url or id")
 
-    logger.info("Created Stripe checkout session=%s org=%s tier=%s", session_id, body.org_id, tier)
+    logger.info(
+        "Created Stripe checkout session=%s org=%s tier=%s",
+        session_id,
+        body.org_id,
+        tier,
+    )
     return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
 
 
 # ---------------------------------------------------------------------------
 # POST /v1/billing/webhooks/stripe
 # ---------------------------------------------------------------------------
+
 
 def _verify_stripe_signature(payload: bytes, sig_header: str, secret: str) -> bool:
     """
@@ -333,11 +348,14 @@ async def stripe_webhook(
     import json as _json
 
     try:
-        import sys as _sys_sec; from pathlib import Path as _Path_sec
+        import sys as _sys_sec
+        from pathlib import Path as _Path_sec
+
         _sec_root = str(_Path_sec(__file__).resolve().parents[3])
         if _sec_root not in _sys_sec.path:
             _sys_sec.path.insert(0, _sec_root)
         from packages.secrets.client import get_secret as _get_sec
+
         webhook_secret = await _get_sec("STRIPE_WEBHOOK_SECRET", default="") or ""
     except Exception:
         webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -345,7 +363,9 @@ async def stripe_webhook(
 
     if webhook_secret:
         if not stripe_signature:
-            raise HTTPException(status_code=400, detail="Missing stripe-signature header")
+            raise HTTPException(
+                status_code=400, detail="Missing stripe-signature header"
+            )
         if not _verify_stripe_signature(raw_body, stripe_signature, webhook_secret):
             raise HTTPException(status_code=400, detail="Invalid Stripe signature")
 
@@ -358,7 +378,9 @@ async def stripe_webhook(
     data_object: dict = event.get("data", {}).get("object", {})
 
     if _SessionLocal is None:
-        logger.warning("Billing session factory not ready — ignoring Stripe event %s", event_type)
+        logger.warning(
+            "Billing session factory not ready — ignoring Stripe event %s", event_type
+        )
         return {"received": True}
 
     async with _SessionLocal() as session:
@@ -367,9 +389,9 @@ async def stripe_webhook(
             new_status: str = data_object.get("status", "active")
             # Map Stripe status → internal status
             internal_status = (
-                "cancelled" if new_status in ("canceled", "cancelled", "incomplete_expired")
-                else "past_due" if new_status == "past_due"
-                else "active"
+                "cancelled"
+                if new_status in ("canceled", "cancelled", "incomplete_expired")
+                else "past_due" if new_status == "past_due" else "active"
             )
             # Determine tier from price metadata if available
             plan_name: str = (
@@ -395,7 +417,10 @@ async def stripe_webhook(
                 await session.commit()
                 logger.info(
                     "stripe event=%s sub=%s -> status=%s tier=%s",
-                    event_type, stripe_sub_id, internal_status, tier,
+                    event_type,
+                    stripe_sub_id,
+                    internal_status,
+                    tier,
                 )
 
         elif event_type == "customer.subscription.deleted":
@@ -407,7 +432,9 @@ async def stripe_webhook(
                     .values(subscription_status="cancelled")
                 )
                 await session.commit()
-                logger.info("stripe event=%s sub=%s -> cancelled", event_type, stripe_sub_id)
+                logger.info(
+                    "stripe event=%s sub=%s -> cancelled", event_type, stripe_sub_id
+                )
 
         elif event_type == "invoice.payment_failed":
             stripe_customer_id: str = data_object.get("customer", "")
@@ -420,7 +447,8 @@ async def stripe_webhook(
                 await session.commit()
                 logger.info(
                     "stripe event=%s customer=%s -> past_due",
-                    event_type, stripe_customer_id,
+                    event_type,
+                    stripe_customer_id,
                 )
         else:
             logger.debug("Unhandled Stripe event type: %s", event_type)

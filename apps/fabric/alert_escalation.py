@@ -9,6 +9,7 @@ ESCALATION_UNACK_TIMEOUT_S is escalated:
 
 Runs as a background asyncio task inside the Fabric service.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -27,15 +28,15 @@ logger = logging.getLogger("fabric.escalation")
 
 @dataclass
 class EscalationConfig:
-    check_interval_s:  float = float(os.getenv("ESCALATION_CHECK_INTERVAL_S", "30"))
-    unack_timeout_s:   float = float(os.getenv("ESCALATION_UNACK_TIMEOUT_S", "120"))
-    webhook_url:       Optional[str] = os.getenv("ESCALATION_WEBHOOK_URL")
-    smtp_host:         Optional[str] = os.getenv("ESCALATION_SMTP_HOST")
-    smtp_port:         int   = int(os.getenv("ESCALATION_SMTP_PORT", "587"))
-    smtp_user:         Optional[str] = os.getenv("ESCALATION_SMTP_USER")
-    smtp_password:     Optional[str] = os.getenv("ESCALATION_SMTP_PASSWORD")
-    escalation_email:  Optional[str] = os.getenv("ESCALATION_EMAIL_TO")
-    escalation_from:   str   = os.getenv("ESCALATION_EMAIL_FROM", "alerts@summit.local")
+    check_interval_s: float = float(os.getenv("ESCALATION_CHECK_INTERVAL_S", "30"))
+    unack_timeout_s: float = float(os.getenv("ESCALATION_UNACK_TIMEOUT_S", "120"))
+    webhook_url: Optional[str] = os.getenv("ESCALATION_WEBHOOK_URL")
+    smtp_host: Optional[str] = os.getenv("ESCALATION_SMTP_HOST")
+    smtp_port: int = int(os.getenv("ESCALATION_SMTP_PORT", "587"))
+    smtp_user: Optional[str] = os.getenv("ESCALATION_SMTP_USER")
+    smtp_password: Optional[str] = os.getenv("ESCALATION_SMTP_PASSWORD")
+    escalation_email: Optional[str] = os.getenv("ESCALATION_EMAIL_TO")
+    escalation_from: str = os.getenv("ESCALATION_EMAIL_FROM", "alerts@summit.local")
 
 
 class AlertEscalationService:
@@ -44,9 +45,11 @@ class AlertEscalationService:
     unacknowledged alerts past the configured timeout.
     """
 
-    def __init__(self, alert_store: Dict[str, Any], config: Optional[EscalationConfig] = None):
-        self._alerts  = alert_store   # shared reference to Fabric's in-memory alert dict
-        self._config  = config or EscalationConfig()
+    def __init__(
+        self, alert_store: Dict[str, Any], config: Optional[EscalationConfig] = None
+    ):
+        self._alerts = alert_store  # shared reference to Fabric's in-memory alert dict
+        self._config = config or EscalationConfig()
         self._escalated: set = set()  # alert_ids already escalated this session
 
     async def run(self):
@@ -74,7 +77,9 @@ class AlertEscalationService:
             if not ts_iso:
                 continue
             try:
-                ts = datetime.fromisoformat(str(ts_iso).replace("Z", "+00:00")).timestamp()
+                ts = datetime.fromisoformat(
+                    str(ts_iso).replace("Z", "+00:00")
+                ).timestamp()
             except Exception:
                 continue
 
@@ -84,7 +89,7 @@ class AlertEscalationService:
 
     async def _escalate(self, alert_id: str, alert: Dict[str, Any], age_s: float):
         self._escalated.add(alert_id)
-        alert["status"]       = "escalated"
+        alert["status"] = "escalated"
         alert["escalated_at"] = datetime.now(timezone.utc).isoformat()
         logger.warning(
             f"ESCALATING alert {alert_id} "
@@ -92,13 +97,13 @@ class AlertEscalationService:
         )
 
         payload = {
-            "event":               "alert_escalated",
-            "alert_id":            alert_id,
-            "severity":            alert.get("severity", "UNKNOWN"),
-            "description":         alert.get("description", ""),
-            "source":              alert.get("source", ""),
+            "event": "alert_escalated",
+            "alert_id": alert_id,
+            "severity": alert.get("severity", "UNKNOWN"),
+            "description": alert.get("description", ""),
+            "source": alert.get("source", ""),
             "unacknowledged_for_s": round(age_s),
-            "ts_iso":              datetime.now(timezone.utc).isoformat(),
+            "ts_iso": datetime.now(timezone.utc).isoformat(),
         }
 
         await asyncio.gather(
@@ -122,6 +127,7 @@ class AlertEscalationService:
             return
         try:
             import aiosmtplib
+
             subject = f"[SUMMIT ALERT ESCALATED] {payload['severity']} — {payload['description'][:60]}"
             body = (
                 f"Alert ID:    {payload['alert_id']}\n"

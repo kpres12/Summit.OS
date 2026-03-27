@@ -5,6 +5,7 @@ A simulated vehicle driver for testing and development.
 Simulates realistic position, velocity, battery drain, and flight modes
 without requiring physical hardware or external simulators.
 """
+
 from __future__ import annotations
 
 import math
@@ -14,8 +15,11 @@ import logging
 from typing import Any, Dict, Optional
 
 from packages.hal.base import (
-    VehicleDriver, HardwareInfo, HardwareState,
-    Position, Velocity,
+    VehicleDriver,
+    HardwareInfo,
+    HardwareState,
+    Position,
+    Velocity,
 )
 
 logger = logging.getLogger("hal.sitl")
@@ -106,22 +110,19 @@ class SITLDriver(VehicleDriver):
     async def takeoff(self, altitude_m: float) -> bool:
         if not self._armed:
             return False
-        self._target = Position(
-            lat=self._pos.lat, lon=self._pos.lon, alt_m=altitude_m
-        )
+        self._target = Position(lat=self._pos.lat, lon=self._pos.lon, alt_m=altitude_m)
         self._mode = "GUIDED"
         self.state = HardwareState.ACTIVE
         return True
 
     async def land(self) -> bool:
-        self._target = Position(
-            lat=self._pos.lat, lon=self._pos.lon, alt_m=0.0
-        )
+        self._target = Position(lat=self._pos.lat, lon=self._pos.lon, alt_m=0.0)
         self._mode = "LAND"
         return True
 
-    async def goto(self, lat: float, lon: float, alt_m: float,
-                   speed_mps: float = 5.0) -> bool:
+    async def goto(
+        self, lat: float, lon: float, alt_m: float, speed_mps: float = 5.0
+    ) -> bool:
         if not self._armed:
             return False
         self._target = Position(lat=lat, lon=lon, alt_m=alt_m)
@@ -141,7 +142,11 @@ class SITLDriver(VehicleDriver):
         self._update_sim()
         # Add GPS noise
         noise_lat = random.gauss(0, self.gps_noise_m / 111320)
-        noise_lon = random.gauss(0, self.gps_noise_m / (111320 * max(0.01, math.cos(math.radians(self._pos.lat)))))
+        noise_lon = random.gauss(
+            0,
+            self.gps_noise_m
+            / (111320 * max(0.01, math.cos(math.radians(self._pos.lat)))),
+        )
         return Position(
             lat=self._pos.lat + noise_lat,
             lon=self._pos.lon + noise_lon,
@@ -155,9 +160,7 @@ class SITLDriver(VehicleDriver):
             north_mps=self._vel.north_mps,
             east_mps=self._vel.east_mps,
             down_mps=self._vel.down_mps,
-            ground_speed_mps=math.sqrt(
-                self._vel.north_mps ** 2 + self._vel.east_mps ** 2
-            ),
+            ground_speed_mps=math.sqrt(self._vel.north_mps**2 + self._vel.east_mps**2),
         )
 
     async def get_battery(self) -> Dict[str, float]:
@@ -189,12 +192,14 @@ class SITLDriver(VehicleDriver):
         # Navigation
         if self._target and self._armed:
             dlat = (self._target.lat - self._pos.lat) * 111320
-            dlon = (self._target.lon - self._pos.lon) * 111320 * math.cos(
-                math.radians(self._pos.lat)
+            dlon = (
+                (self._target.lon - self._pos.lon)
+                * 111320
+                * math.cos(math.radians(self._pos.lat))
             )
             dalt = self._target.alt_m - self._pos.alt_m
-            dist_h = math.sqrt(dlat ** 2 + dlon ** 2)
-            dist_3d = math.sqrt(dist_h ** 2 + dalt ** 2)
+            dist_h = math.sqrt(dlat**2 + dlon**2)
+            dist_3d = math.sqrt(dist_h**2 + dalt**2)
 
             if dist_3d < 0.5:
                 # Arrived

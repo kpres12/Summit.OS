@@ -46,51 +46,58 @@ class OntologySync:
         All others (TRACK, OBSERVATION) → Track object type.
         """
         entity_type = entity.get("entity_type", "TRACK").upper()
-        eid         = entity.get("id", entity.get("entity_id", ""))
-        domain      = entity.get("domain", "AERIAL").upper()
-        state       = entity.get("state", "ACTIVE")
-        kinematics  = entity.get("kinematics") or {}
-        position    = kinematics.get("position") or {}
+        eid = entity.get("id", entity.get("entity_id", ""))
+        domain = entity.get("domain", "AERIAL").upper()
+        state = entity.get("state", "ACTIVE")
+        kinematics = entity.get("kinematics") or {}
+        position = kinematics.get("position") or {}
 
         if entity_type == "ASSET":
             instance = ObjectInstance(
-                object_type = "Asset",
-                object_id   = eid,
-                properties  = {
-                    "id":          eid,
-                    "name":        entity.get("name", eid[:8]),
-                    "asset_type":  _map_asset_type(entity),
-                    "domain":      domain if domain in ("AERIAL", "GROUND", "MARITIME", "FIXED", "CYBER") else "AERIAL",
-                    "status":      _map_asset_status(state),
-                    "lat":         position.get("lat"),
-                    "lon":         position.get("lon"),
-                    "alt_m":       position.get("altitude_msl"),
+                object_type="Asset",
+                object_id=eid,
+                properties={
+                    "id": eid,
+                    "name": entity.get("name", eid[:8]),
+                    "asset_type": _map_asset_type(entity),
+                    "domain": (
+                        domain
+                        if domain in ("AERIAL", "GROUND", "MARITIME", "FIXED", "CYBER")
+                        else "AERIAL"
+                    ),
+                    "status": _map_asset_status(state),
+                    "lat": position.get("lat"),
+                    "lon": position.get("lon"),
+                    "alt_m": position.get("altitude_msl"),
                     "heading_deg": kinematics.get("heading"),
-                    "speed_mps":   kinematics.get("speed"),
-                    "battery_pct": entity.get("aerial", {}).get("battery_pct")
-                                   if isinstance(entity.get("aerial"), dict) else None,
-                    "org_id":      entity.get("provenance", {}).get("org_id", ""),
-                    "metadata":    {"_source": "fusion"},
+                    "speed_mps": kinematics.get("speed"),
+                    "battery_pct": (
+                        entity.get("aerial", {}).get("battery_pct")
+                        if isinstance(entity.get("aerial"), dict)
+                        else None
+                    ),
+                    "org_id": entity.get("provenance", {}).get("org_id", ""),
+                    "metadata": {"_source": "fusion"},
                 },
             )
         else:
             # Track
             instance = ObjectInstance(
-                object_type = "Track",
-                object_id   = eid,
-                properties  = {
-                    "id":          eid,
-                    "state":       _map_track_state(state),
+                object_type="Track",
+                object_id=eid,
+                properties={
+                    "id": eid,
+                    "state": _map_track_state(state),
                     "class_label": entity.get("class_label", "unknown"),
-                    "confidence":  entity.get("confidence", 0.0),
-                    "lat":         position.get("lat"),
-                    "lon":         position.get("lon"),
-                    "alt_m":       position.get("altitude_msl"),
-                    "speed_mps":   kinematics.get("speed"),
+                    "confidence": entity.get("confidence", 0.0),
+                    "lat": position.get("lat"),
+                    "lon": position.get("lon"),
+                    "alt_m": position.get("altitude_msl"),
+                    "speed_mps": kinematics.get("speed"),
                     "heading_deg": kinematics.get("heading"),
-                    "last_seen":   entity.get("provenance", {}).get("updated_at"),
-                    "org_id":      entity.get("provenance", {}).get("org_id", ""),
-                    "metadata":    {"_source": "fusion"},
+                    "last_seen": entity.get("provenance", {}).get("updated_at"),
+                    "org_id": entity.get("provenance", {}).get("org_id", ""),
+                    "metadata": {"_source": "fusion"},
                 },
             )
 
@@ -102,56 +109,62 @@ class OntologySync:
         """Sync a raw advisory/alert dict from the Intelligence service."""
         alert_id = alert.get("alert_id", alert.get("id", ""))
         instance = ObjectInstance(
-            object_type = "Alert",
-            object_id   = alert_id,
-            properties  = {
-                "id":           alert_id,
-                "severity":     alert.get("risk_level", alert.get("severity", "LOW")),
-                "description":  alert.get("message", alert.get("description", "")),
-                "source":       alert.get("source", ""),
+            object_type="Alert",
+            object_id=alert_id,
+            properties={
+                "id": alert_id,
+                "severity": alert.get("risk_level", alert.get("severity", "LOW")),
+                "description": alert.get("message", alert.get("description", "")),
+                "source": alert.get("source", ""),
                 "acknowledged": alert.get("acknowledged", False),
-                "ts":           alert.get("ts", alert.get("created_at",
-                                    datetime.now(timezone.utc).isoformat())),
-                "org_id":       alert.get("org_id", ""),
-                "metadata":     {"_source": "intelligence"},
+                "ts": alert.get(
+                    "ts",
+                    alert.get("created_at", datetime.now(timezone.utc).isoformat()),
+                ),
+                "org_id": alert.get("org_id", ""),
+                "metadata": {"_source": "intelligence"},
             },
         )
         return self._store._upsert(instance)
 
     # ── observation → Observation ─────────────────────────────────────────────
 
-    def from_observation(self, obs: Dict[str, Any], alert_id: Optional[str] = None) -> ObjectInstance:
+    def from_observation(
+        self, obs: Dict[str, Any], alert_id: Optional[str] = None
+    ) -> ObjectInstance:
         """Sync a raw observation dict. Optionally link it to an Alert."""
-        obs_id   = obs.get("id", obs.get("obs_id", ""))
+        obs_id = obs.get("id", obs.get("obs_id", ""))
         instance = ObjectInstance(
-            object_type = "Observation",
-            object_id   = obs_id,
-            properties  = {
-                "id":          obs_id,
+            object_type="Observation",
+            object_id=obs_id,
+            properties={
+                "id": obs_id,
                 "class_label": obs.get("class_label", obs.get("class", "unknown")),
-                "confidence":  float(obs.get("confidence", 0.0)),
-                "risk_level":  obs.get("risk_level", "LOW"),
-                "domain":      obs.get("domain", "other"),
-                "lat":         obs.get("lat"),
-                "lon":         obs.get("lon"),
-                "alt_m":       obs.get("alt_m"),
-                "sensor_id":   obs.get("sensor_id", ""),
-                "asset_id":    obs.get("asset_id", obs.get("source", "")),
-                "ts":          obs.get("ts", datetime.now(timezone.utc).isoformat()),
-                "is_fp":       obs.get("is_fp", False),
-                "features":    obs.get("features"),
-                "metadata":    {"_source": "intelligence"},
+                "confidence": float(obs.get("confidence", 0.0)),
+                "risk_level": obs.get("risk_level", "LOW"),
+                "domain": obs.get("domain", "other"),
+                "lat": obs.get("lat"),
+                "lon": obs.get("lon"),
+                "alt_m": obs.get("alt_m"),
+                "sensor_id": obs.get("sensor_id", ""),
+                "asset_id": obs.get("asset_id", obs.get("source", "")),
+                "ts": obs.get("ts", datetime.now(timezone.utc).isoformat()),
+                "is_fp": obs.get("is_fp", False),
+                "features": obs.get("features"),
+                "metadata": {"_source": "intelligence"},
             },
         )
         result = self._store._upsert(instance)
 
         # Create Observation → Alert link if provided
         if alert_id:
-            self._store._upsert_link(LinkInstance(
-                link_type = "observation_triggered_alert",
-                source_id = obs_id,
-                target_id = alert_id,
-            ))
+            self._store._upsert_link(
+                LinkInstance(
+                    link_type="observation_triggered_alert",
+                    source_id=obs_id,
+                    target_id=alert_id,
+                )
+            )
 
         return result
 
@@ -160,26 +173,26 @@ class OntologySync:
     def from_mission(self, mission: Dict[str, Any]) -> ObjectInstance:
         """Sync a MissionPlan/MissionStatus dict from the Tasking service."""
         mission_id = mission.get("id", mission.get("mission_id", ""))
-        raw_obs    = mission.get("raw_observation", {})
-        instance   = ObjectInstance(
-            object_type = "Mission",
-            object_id   = mission_id,
-            properties  = {
-                "id":            mission_id,
-                "mission_type":  mission.get("mission_type", "SURVEY"),
-                "status":        mission.get("status", "PENDING"),
-                "priority":      mission.get("priority", "ROUTINE"),
-                "lat":           mission.get("lat", 0.0),
-                "lon":           mission.get("lon", 0.0),
-                "alt_m":         mission.get("alt_m", 80.0),
-                "asset_id":      mission.get("asset_id", raw_obs.get("asset_id", "")),
-                "swarm_id":      raw_obs.get("_swarm_id", mission.get("swarm_id", "")),
-                "sector_id":     raw_obs.get("_sector_id", ""),
-                "rationale":     mission.get("rationale", ""),
-                "outcome_prob":  mission.get("kofa_outcome_prob"),
-                "org_id":        mission.get("org_id", ""),
-                "waypoints":     raw_obs.get("_waypoints", []),
-                "metadata":      {"_source": "tasking"},
+        raw_obs = mission.get("raw_observation", {})
+        instance = ObjectInstance(
+            object_type="Mission",
+            object_id=mission_id,
+            properties={
+                "id": mission_id,
+                "mission_type": mission.get("mission_type", "SURVEY"),
+                "status": mission.get("status", "PENDING"),
+                "priority": mission.get("priority", "ROUTINE"),
+                "lat": mission.get("lat", 0.0),
+                "lon": mission.get("lon", 0.0),
+                "alt_m": mission.get("alt_m", 80.0),
+                "asset_id": mission.get("asset_id", raw_obs.get("asset_id", "")),
+                "swarm_id": raw_obs.get("_swarm_id", mission.get("swarm_id", "")),
+                "sector_id": raw_obs.get("_sector_id", ""),
+                "rationale": mission.get("rationale", ""),
+                "outcome_prob": mission.get("kofa_outcome_prob"),
+                "org_id": mission.get("org_id", ""),
+                "waypoints": raw_obs.get("_waypoints", []),
+                "metadata": {"_source": "tasking"},
             },
         )
         result = self._store._upsert(instance)
@@ -187,20 +200,24 @@ class OntologySync:
         # Auto-create Asset → Mission link
         asset_id = instance.properties.get("asset_id")
         if asset_id:
-            self._store._upsert_link(LinkInstance(
-                link_type = "asset_executing_mission",
-                source_id = asset_id,
-                target_id = mission_id,
-            ))
+            self._store._upsert_link(
+                LinkInstance(
+                    link_type="asset_executing_mission",
+                    source_id=asset_id,
+                    target_id=mission_id,
+                )
+            )
 
         # Auto-create Mission → Swarm link
         swarm_id = instance.properties.get("swarm_id")
         if swarm_id:
-            self._store._upsert_link(LinkInstance(
-                link_type = "mission_part_of_swarm",
-                source_id = mission_id,
-                target_id = swarm_id,
-            ))
+            self._store._upsert_link(
+                LinkInstance(
+                    link_type="mission_part_of_swarm",
+                    source_id=mission_id,
+                    target_id=swarm_id,
+                )
+            )
 
         return result
 
@@ -209,27 +226,28 @@ class OntologySync:
     def from_sitrep(self, sitrep: Dict[str, Any]) -> ObjectInstance:
         """Sync a SitRep dict from the Intelligence /sitrep endpoint."""
         sitrep_id = sitrep.get("sitrep_id", sitrep.get("id", ""))
-        instance  = ObjectInstance(
-            object_type = "SitRep",
-            object_id   = sitrep_id,
-            properties  = {
-                "id":                 sitrep_id,
-                "generated_at":       sitrep.get("generated_at", ""),
-                "generated_by":       sitrep.get("generated_by", "kofa-template"),
-                "time_window_s":      sitrep.get("time_window_s"),
-                "advisory_count":     sitrep.get("advisory_count"),
-                "highest_risk":       sitrep.get("highest_risk", "LOW"),
-                "summary":            sitrep.get("summary", ""),
+        instance = ObjectInstance(
+            object_type="SitRep",
+            object_id=sitrep_id,
+            properties={
+                "id": sitrep_id,
+                "generated_at": sitrep.get("generated_at", ""),
+                "generated_by": sitrep.get("generated_by", "kofa-template"),
+                "time_window_s": sitrep.get("time_window_s"),
+                "advisory_count": sitrep.get("advisory_count"),
+                "highest_risk": sitrep.get("highest_risk", "LOW"),
+                "summary": sitrep.get("summary", ""),
                 "recommended_action": sitrep.get("recommended_action", ""),
-                "findings":           sitrep.get("findings", []),
-                "org_id":             sitrep.get("org_id", ""),
-                "metadata":           {"_source": "intelligence"},
+                "findings": sitrep.get("findings", []),
+                "org_id": sitrep.get("org_id", ""),
+                "metadata": {"_source": "intelligence"},
             },
         )
         return self._store._upsert(instance)
 
 
 # ── mapping helpers ────────────────────────────────────────────────────────────
+
 
 def _map_asset_type(entity: dict) -> str:
     aerial = entity.get("aerial") or {}
@@ -238,7 +256,7 @@ def _map_asset_type(entity: dict) -> str:
         mapping = {
             "MULTIROTOR": "UAV_MULTIROTOR",
             "FIXED_WING": "UAV_FIXED_WING",
-            "VTOL":       "UAV_VTOL",
+            "VTOL": "UAV_VTOL",
         }
         if ac_type in mapping:
             return mapping[ac_type]
@@ -252,12 +270,12 @@ def _map_asset_type(entity: dict) -> str:
 
 def _map_asset_status(state: str) -> str:
     mapping = {
-        "ACTIVE":    "IN_FLIGHT",
-        "INACTIVE":  "OFFLINE",
+        "ACTIVE": "IN_FLIGHT",
+        "INACTIVE": "OFFLINE",
         "TENTATIVE": "AVAILABLE",
         "COMPLETED": "RETURNING",
-        "DELETED":   "OFFLINE",
-        "COASTING":  "IN_FLIGHT",
+        "DELETED": "OFFLINE",
+        "COASTING": "IN_FLIGHT",
     }
     return mapping.get(state.upper(), "AVAILABLE")
 

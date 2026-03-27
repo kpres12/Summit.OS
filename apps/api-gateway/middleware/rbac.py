@@ -17,6 +17,7 @@ Recognised role names (case-insensitive):
 Role hierarchy (each role inherits everything below):
   SUPER_ADMIN > ADMIN > MISSION_COMMANDER > OPERATOR > VIEWER
 """
+
 from __future__ import annotations
 
 import base64
@@ -35,23 +36,23 @@ RBAC_ENFORCE = os.getenv("RBAC_ENFORCE", "false").lower() == "true"
 # Role hierarchy — maps role → set of roles it inherits
 # ---------------------------------------------------------------------------
 _HIERARCHY: dict[str, frozenset[str]] = {
-    "SUPER_ADMIN":       frozenset({"ADMIN", "MISSION_COMMANDER", "OPERATOR", "VIEWER"}),
-    "ADMIN":             frozenset({"MISSION_COMMANDER", "OPERATOR", "VIEWER"}),
+    "SUPER_ADMIN": frozenset({"ADMIN", "MISSION_COMMANDER", "OPERATOR", "VIEWER"}),
+    "ADMIN": frozenset({"MISSION_COMMANDER", "OPERATOR", "VIEWER"}),
     "MISSION_COMMANDER": frozenset({"OPERATOR", "VIEWER"}),
-    "OPERATOR":          frozenset({"VIEWER"}),
-    "VIEWER":            frozenset(),
+    "OPERATOR": frozenset({"VIEWER"}),
+    "VIEWER": frozenset(),
 }
 
 # UI / OIDC group name aliases → canonical role
 _ALIAS_MAP: dict[str, str] = {
-    "ops":          "OPERATOR",
-    "command":      "MISSION_COMMANDER",
-    "dev":          "ADMIN",
-    "admin":        "ADMIN",
-    "superadmin":   "SUPER_ADMIN",
-    "super_admin":  "SUPER_ADMIN",
-    "viewer":       "VIEWER",
-    "operator":     "OPERATOR",
+    "ops": "OPERATOR",
+    "command": "MISSION_COMMANDER",
+    "dev": "ADMIN",
+    "admin": "ADMIN",
+    "superadmin": "SUPER_ADMIN",
+    "super_admin": "SUPER_ADMIN",
+    "viewer": "VIEWER",
+    "operator": "OPERATOR",
     "mission_commander": "MISSION_COMMANDER",
 }
 
@@ -126,7 +127,9 @@ def require_role(*roles: str):
         try:
             claims = _decode_jwt_payload(authorization)
         except Exception as exc:
-            raise HTTPException(status_code=403, detail=f"Cannot decode token: {exc}") from exc
+            raise HTTPException(
+                status_code=403, detail=f"Cannot decode token: {exc}"
+            ) from exc
 
         user_roles = _extract_roles(claims)
         if not (required & _effective_roles(user_roles)):

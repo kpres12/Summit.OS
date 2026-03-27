@@ -40,6 +40,7 @@ calling ``_record_observation()`` and ``_publish()`` on each yielded dict.
 If the generator raises, the framework disconnects, waits with backoff, and
 reconnects automatically.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -61,6 +62,7 @@ logger = logging.getLogger("summit.adapters")
 # Configuration model
 # ---------------------------------------------------------------------------
 
+
 class AdapterConfig(BaseModel):
     """
     Configuration for a single adapter instance.
@@ -69,6 +71,7 @@ class AdapterConfig(BaseModel):
     OpenSky, TLE group for CelesTrak, RTSP URL for a camera).  This keeps
     the base config schema stable as new adapter types are added.
     """
+
     adapter_id: str
     """Unique slug identifying this adapter instance, e.g. ``opensky-us-west``."""
 
@@ -109,18 +112,21 @@ class AdapterConfig(BaseModel):
 # Status constants
 # ---------------------------------------------------------------------------
 
+
 class AdapterStatus:
     """String constants for adapter operational status."""
+
     DISCONNECTED = "DISCONNECTED"
-    CONNECTING   = "CONNECTING"
-    CONNECTED    = "CONNECTED"
-    ERROR        = "ERROR"
-    DISABLED     = "DISABLED"
+    CONNECTING = "CONNECTING"
+    CONNECTED = "CONNECTED"
+    ERROR = "ERROR"
+    DISABLED = "DISABLED"
 
 
 # ---------------------------------------------------------------------------
 # Health snapshot
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AdapterHealth:
@@ -130,6 +136,7 @@ class AdapterHealth:
     Returned by ``BaseAdapter.health()`` and collected by the registry for
     the ``GET /adapters`` API endpoint.
     """
+
     status: str
     """Current ``AdapterStatus`` value."""
 
@@ -193,6 +200,7 @@ class AdapterHealth:
 # Base adapter
 # ---------------------------------------------------------------------------
 
+
 class BaseAdapter(ABC):
     """
     Abstract base for all Summit.OS signal adapters.
@@ -214,25 +222,25 @@ class BaseAdapter(ABC):
 
     # Backoff parameters
     _BACKOFF_BASE: float = 1.0
-    _BACKOFF_MAX:  float = 60.0
+    _BACKOFF_MAX: float = 60.0
 
     def __init__(
         self,
         config: AdapterConfig,
         mqtt_client=None,
     ) -> None:
-        self.config      = config
-        self.mqtt        = mqtt_client
+        self.config = config
+        self.mqtt = mqtt_client
 
-        self._status: str                        = AdapterStatus.DISCONNECTED
-        self._obs_count: int                     = 0
-        self._obs_window: deque[float]           = deque(maxlen=120)  # timestamps (up to 2 min)
+        self._status: str = AdapterStatus.DISCONNECTED
+        self._obs_count: int = 0
+        self._obs_window: deque[float] = deque(maxlen=120)  # timestamps (up to 2 min)
         self._last_connected: Optional[datetime] = None
         self._last_observation: Optional[datetime] = None
-        self._connected_at: Optional[float]      = None  # monotonic time
-        self._error_message: Optional[str]       = None
-        self._task: Optional[asyncio.Task]       = None
-        self._stop_event: asyncio.Event          = asyncio.Event()
+        self._connected_at: Optional[float] = None  # monotonic time
+        self._error_message: Optional[str] = None
+        self._task: Optional[asyncio.Task] = None
+        self._stop_event: asyncio.Event = asyncio.Event()
 
         self._log = logging.getLogger(
             f"summit.adapters.{config.adapter_type}.{config.adapter_id}"
@@ -316,7 +324,7 @@ class BaseAdapter(ABC):
                 await self.connect()
                 self._status = AdapterStatus.CONNECTED
                 self._last_connected = datetime.now(timezone.utc)
-                self._connected_at   = time.monotonic()
+                self._connected_at = time.monotonic()
                 backoff = self._BACKOFF_BASE  # reset on success
                 self._log.info("Adapter connected.")
             except asyncio.CancelledError:
@@ -388,17 +396,18 @@ class BaseAdapter(ABC):
         now_mono = time.monotonic()
         uptime = (
             now_mono - self._connected_at
-            if self._connected_at is not None and self._status == AdapterStatus.CONNECTED
+            if self._connected_at is not None
+            and self._status == AdapterStatus.CONNECTED
             else 0.0
         )
         return AdapterHealth(
-            status               = self._status,
-            last_connected       = self._last_connected,
-            last_observation     = self._last_observation,
-            observations_total   = self._obs_count,
-            observations_per_minute = self._obs_per_minute(),
-            error_message        = self._error_message,
-            uptime_seconds       = uptime,
+            status=self._status,
+            last_connected=self._last_connected,
+            last_observation=self._last_observation,
+            observations_total=self._obs_count,
+            observations_per_minute=self._obs_per_minute(),
+            error_message=self._error_message,
+            uptime_seconds=uptime,
         )
 
     # -------------------------------------------------------------------------

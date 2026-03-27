@@ -10,6 +10,7 @@ Dependencies
 ------------
     pip install aiohttp
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,16 +38,16 @@ DEFAULT_CAP_FEEDS: list[str] = [
 # CAP XML namespaces
 _NS = {
     "atom": "http://www.w3.org/2005/Atom",
-    "cap":  "urn:oasis:names:tc:emergency:cap:1.2",
+    "cap": "urn:oasis:names:tc:emergency:cap:1.2",
     "cap11": "urn:oasis:names:tc:emergency:cap:1.1",
 }
 
 _SEVERITY_MAP = {
-    "extreme":  "CRITICAL",
-    "severe":   "HIGH",
+    "extreme": "CRITICAL",
+    "severe": "HIGH",
     "moderate": "MEDIUM",
-    "minor":    "LOW",
-    "unknown":  "INFO",
+    "minor": "LOW",
+    "unknown": "INFO",
 }
 
 
@@ -124,9 +125,7 @@ class CAPAdapter(BaseAdapter):
         self._poll_interval: float = float(
             ex.get("poll_interval_seconds", config.poll_interval_seconds or 60.0)
         )
-        self._event_filter: list[str] = [
-            e.lower() for e in ex.get("event_filter", [])
-        ]
+        self._event_filter: list[str] = [e.lower() for e in ex.get("event_filter", [])]
         self._bbox: Optional[dict] = ex.get("bbox", None)
 
         self._session: Optional[aiohttp.ClientSession] = None
@@ -136,9 +135,7 @@ class CAPAdapter(BaseAdapter):
         self._session = aiohttp.ClientSession(
             headers={"User-Agent": "SummitOS-CAPAdapter/1.0"}
         )
-        self._log.info(
-            "CAP adapter ready — polling %d feed(s)", len(self._feed_urls)
-        )
+        self._log.info("CAP adapter ready — polling %d feed(s)", len(self._feed_urls))
 
     async def disconnect(self) -> None:
         try:

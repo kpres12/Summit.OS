@@ -15,6 +15,7 @@ Environment variables:
     OLLAMA_URL              - Ollama base URL
     OLLAMA_MODEL            - Llama model to use
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -103,7 +104,9 @@ class MissionAgent:
     async def start(self) -> None:
         """Start the agent loop as a background task."""
         if self.status != AgentStatus.PENDING:
-            logger.warning(f"Agent {self.mission_id} already started (status={self.status})")
+            logger.warning(
+                f"Agent {self.mission_id} already started (status={self.status})"
+            )
             return
         self.status = AgentStatus.RUNNING
         self.started_at = time.time()
@@ -152,7 +155,9 @@ class MissionAgent:
                 if step_num >= 3:
                     recent_steps = self.steps[-2:]
                     if all(not s.tool_calls for s in recent_steps):
-                        logger.info(f"Agent {self.mission_id}: idle for 2 steps — marking complete")
+                        logger.info(
+                            f"Agent {self.mission_id}: idle for 2 steps — marking complete"
+                        )
                         self.status = AgentStatus.COMPLETED
                         break
 
@@ -238,8 +243,10 @@ class AgentRegistry:
     def prune_finished(self, keep: int = 50) -> int:
         """Remove old finished agents, keeping the most recent `keep` active ones."""
         finished = [
-            a for a in self._agents.values()
-            if a.status in (AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.CANCELLED)
+            a
+            for a in self._agents.values()
+            if a.status
+            in (AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.CANCELLED)
         ]
         # Sort by finish time, remove oldest
         finished.sort(key=lambda a: a.finished_at or 0)

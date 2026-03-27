@@ -15,6 +15,7 @@ Usage:
     tree = MissionTreeBuilder.survey_area(lat, lon, radius_m, asset_id)
     result = await run_tree(tree, opa_url="http://localhost:8181")
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,6 +29,7 @@ logger = logging.getLogger("summit.tasking.behavior_tree")
 
 try:
     import py_trees  # type: ignore
+
     _PYTREES = True
 except ImportError:
     _PYTREES = False
@@ -38,6 +40,7 @@ TASKING_URL = os.getenv("TASKING_URL", "http://localhost:8004")
 
 
 # ── Node status (mirrors py-trees) ───────────────────────────────────────────
+
 
 class NodeStatus(Enum):
     SUCCESS = "SUCCESS"
@@ -54,8 +57,10 @@ class NodeResult:
 
 # ── Base node types ───────────────────────────────────────────────────────────
 
+
 class BehaviorNode:
     """Abstract behavior tree node."""
+
     name: str = "node"
 
     async def tick(self, blackboard: Dict) -> NodeResult:
@@ -73,7 +78,9 @@ class SequenceNode(BehaviorNode):
         for child in self.children:
             result = await child.tick(blackboard)
             if result.status == NodeStatus.FAILURE:
-                logger.debug(f"Sequence '{self.name}' failed at '{child.name}': {result.message}")
+                logger.debug(
+                    f"Sequence '{self.name}' failed at '{child.name}': {result.message}"
+                )
                 return result
             if result.status == NodeStatus.RUNNING:
                 return result
@@ -94,7 +101,9 @@ class SelectorNode(BehaviorNode):
                 return result
             if result.status == NodeStatus.RUNNING:
                 return result
-        return NodeResult(NodeStatus.FAILURE, f"Selector '{self.name}': all children failed")
+        return NodeResult(
+            NodeStatus.FAILURE, f"Selector '{self.name}': all children failed"
+        )
 
 
 class ParallelNode(BehaviorNode):
@@ -108,11 +117,14 @@ class ParallelNode(BehaviorNode):
         results = await asyncio.gather(*[c.tick(blackboard) for c in self.children])
         failed = [r for r in results if r.status == NodeStatus.FAILURE]
         if failed:
-            return NodeResult(NodeStatus.FAILURE, f"Parallel '{self.name}': {failed[0].message}")
+            return NodeResult(
+                NodeStatus.FAILURE, f"Parallel '{self.name}': {failed[0].message}"
+            )
         return NodeResult(NodeStatus.SUCCESS, f"Parallel '{self.name}' complete")
 
 
 # ── Condition nodes ───────────────────────────────────────────────────────────
+
 
 class AssetAvailableCondition(BehaviorNode):
     """Check that the target asset is ACTIVE and not already tasked."""
@@ -125,10 +137,13 @@ class AssetAvailableCondition(BehaviorNode):
     async def tick(self, blackboard: Dict) -> NodeResult:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(f"{self.fabric_url}/entities/{self.asset_id}")
                 if r.status_code == 404:
-                    return NodeResult(NodeStatus.FAILURE, f"Asset {self.asset_id} not found")
+                    return NodeResult(
+                        NodeStatus.FAILURE, f"Asset {self.asset_id} not found"
+                    )
                 entity = r.json()
                 state = entity.get("state", "")
                 if state not in ("ACTIVE", "IDLE"):
@@ -137,7 +152,9 @@ class AssetAvailableCondition(BehaviorNode):
                         f"Asset {self.asset_id} not available (state={state})",
                     )
                 blackboard["asset"] = entity
-                return NodeResult(NodeStatus.SUCCESS, f"Asset {self.asset_id} available")
+                return NodeResult(
+                    NodeStatus.SUCCESS, f"Asset {self.asset_id} available"
+                )
         except Exception as e:
             return NodeResult(NodeStatus.FAILURE, f"Asset check failed: {e}")
 
@@ -162,6 +179,7 @@ class OPASafetyCondition(BehaviorNode):
     async def tick(self, blackboard: Dict) -> NodeResult:
         try:
             import httpx
+
             opa_input = self.input_fn(blackboard)
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.post(
@@ -186,7 +204,9 @@ class OPASafetyCondition(BehaviorNode):
         except Exception as e:
             # OPA unreachable — fail safe (deny)
             logger.error(f"OPA check failed (network/error): {e}")
-            return NodeResult(NodeStatus.FAILURE, f"OPA unreachable — failing safe: {e}")
+            return NodeResult(
+                NodeStatus.FAILURE, f"OPA unreachable — failing safe: {e}"
+            )
 
 
 class BatteryCondition(BehaviorNode):
@@ -214,7 +234,9 @@ class BatteryCondition(BehaviorNode):
 class GeofenceContainmentCondition(BehaviorNode):
     """Check target position is inside inclusion zones and outside exclusion zones."""
 
-    def __init__(self, lat: float, lon: float, fabric_url: str = "http://localhost:8001"):
+    def __init__(
+        self, lat: float, lon: float, fabric_url: str = "http://localhost:8001"
+    ):
         self.name = "geofence_containment"
         self.lat = lat
         self.lon = lon
@@ -223,6 +245,7 @@ class GeofenceContainmentCondition(BehaviorNode):
     async def tick(self, blackboard: Dict) -> NodeResult:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(
                     f"{self.fabric_url}/geofences/check",
@@ -238,10 +261,13 @@ class GeofenceContainmentCondition(BehaviorNode):
             return NodeResult(NodeStatus.SUCCESS, "Target within allowed zones")
         except Exception as e:
             logger.debug(f"Geofence check failed: {e} — allowing (non-critical)")
-            return NodeResult(NodeStatus.SUCCESS, "Geofence check skipped (unavailable)")
+            return NodeResult(
+                NodeStatus.SUCCESS, "Geofence check skipped (unavailable)"
+            )
 
 
 # ── Action nodes ──────────────────────────────────────────────────────────────
+
 
 class DispatchMissionAction(BehaviorNode):
     """Create and dispatch a mission task via the Tasking service."""
@@ -270,6 +296,7 @@ class DispatchMissionAction(BehaviorNode):
     async def tick(self, blackboard: Dict) -> NodeResult:
         try:
             import httpx
+
             payload: Dict[str, Any] = {
                 "task_type": self.task_type,
                 "target_lat": self.lat,
@@ -290,7 +317,11 @@ class DispatchMissionAction(BehaviorNode):
                 result = r.json()
                 blackboard["mission_result"] = result
                 logger.info(f"Mission dispatched: {result.get('mission_id', '?')}")
-                return NodeResult(NodeStatus.SUCCESS, f"Mission created: {result.get('mission_id')}", result)
+                return NodeResult(
+                    NodeStatus.SUCCESS,
+                    f"Mission created: {result.get('mission_id')}",
+                    result,
+                )
         except Exception as e:
             return NodeResult(NodeStatus.FAILURE, f"Dispatch failed: {e}")
 
@@ -298,7 +329,9 @@ class DispatchMissionAction(BehaviorNode):
 class RaiseAlertAction(BehaviorNode):
     """Raise an alert in the fabric."""
 
-    def __init__(self, severity: str, description: str, fabric_url: str = "http://localhost:8001"):
+    def __init__(
+        self, severity: str, description: str, fabric_url: str = "http://localhost:8001"
+    ):
         self.name = f"raise_alert({severity})"
         self.severity = severity
         self.description = description
@@ -307,10 +340,15 @@ class RaiseAlertAction(BehaviorNode):
     async def tick(self, blackboard: Dict) -> NodeResult:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.post(
                     f"{self.fabric_url}/alerts",
-                    json={"severity": self.severity, "description": self.description, "source": "behavior_tree"},
+                    json={
+                        "severity": self.severity,
+                        "description": self.description,
+                        "source": "behavior_tree",
+                    },
                 )
                 return NodeResult(NodeStatus.SUCCESS, f"Alert raised: {self.severity}")
         except Exception as e:
@@ -328,17 +366,21 @@ class ReturnHomeAction(BehaviorNode):
     async def tick(self, blackboard: Dict) -> NodeResult:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.post(
                     f"{self.tasking_url}/assets/{self.asset_id}/command",
                     json={"action": "RETURN_HOME", "reason": "behavior_tree"},
                 )
-                return NodeResult(NodeStatus.SUCCESS, f"Return home sent to {self.asset_id}")
+                return NodeResult(
+                    NodeStatus.SUCCESS, f"Return home sent to {self.asset_id}"
+                )
         except Exception as e:
             return NodeResult(NodeStatus.FAILURE, f"Return home failed: {e}")
 
 
 # ── Mission tree builder ──────────────────────────────────────────────────────
+
 
 class MissionTreeBuilder:
     """Factory for common mission tree patterns."""
@@ -366,7 +408,11 @@ class MissionTreeBuilder:
         preconditions: List[BehaviorNode] = [
             OPASafetyCondition(
                 policy_path="summit/geofence/allow",
-                input_fn=lambda bb: {"lat": lat, "lon": lon, "asset_id": asset_id or ""},
+                input_fn=lambda bb: {
+                    "lat": lat,
+                    "lon": lon,
+                    "asset_id": asset_id or "",
+                },
             ),
         ]
         if asset_id:
@@ -390,7 +436,9 @@ class MissionTreeBuilder:
         )
 
         fallback_actions: List[BehaviorNode] = [
-            RaiseAlertAction("WARNING", f"Survey dispatch blocked at {lat:.4f},{lon:.4f}"),
+            RaiseAlertAction(
+                "WARNING", f"Survey dispatch blocked at {lat:.4f},{lon:.4f}"
+            ),
         ]
         if asset_id:
             fallback_actions.append(ReturnHomeAction(asset_id))
@@ -414,19 +462,27 @@ class MissionTreeBuilder:
             - Raise CRITICAL alert
             - Sequence: OPA → asset available → dispatch MONITOR
         """
-        alert = RaiseAlertAction("CRITICAL", f"Emergency response initiated at {lat:.4f},{lon:.4f}")
+        alert = RaiseAlertAction(
+            "CRITICAL", f"Emergency response initiated at {lat:.4f},{lon:.4f}"
+        )
 
         response_seq = SequenceNode(
             "emergency_dispatch",
             [
                 OPASafetyCondition(
                     policy_path="summit/geofence/allow",
-                    input_fn=lambda bb: {"lat": lat, "lon": lon, "asset_id": asset_id, "emergency": True},
+                    input_fn=lambda bb: {
+                        "lat": lat,
+                        "lon": lon,
+                        "asset_id": asset_id,
+                        "emergency": True,
+                    },
                 ),
                 AssetAvailableCondition(asset_id),
                 DispatchMissionAction(
                     task_type="MONITOR",
-                    lat=lat, lon=lon,
+                    lat=lat,
+                    lon=lon,
                     asset_id=asset_id,
                     priority=5,
                     description="Emergency AI response",
@@ -438,6 +494,7 @@ class MissionTreeBuilder:
 
 
 # ── Tree executor ─────────────────────────────────────────────────────────────
+
 
 async def run_tree(root: BehaviorNode, blackboard: Optional[Dict] = None) -> NodeResult:
     """Execute a behavior tree from the root node."""

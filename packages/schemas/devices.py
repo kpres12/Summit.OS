@@ -8,6 +8,7 @@ from enum import Enum
 
 class DeviceStatus(str, Enum):
     """Device status values."""
+
     ONLINE = "online"
     OFFLINE = "offline"
     ERROR = "error"
@@ -17,6 +18,7 @@ class DeviceStatus(str, Enum):
 
 class DeviceSchema(BaseModel):
     """Device definition schema."""
+
     device_id: str = Field(..., description="Unique device identifier")
     device_type: str = Field(..., description="Type of device")
     name: Optional[str] = None

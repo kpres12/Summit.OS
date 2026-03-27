@@ -8,6 +8,7 @@ JWT and API Key authentication:
 
 Compatible with FastAPI dependency injection.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,6 +28,7 @@ logger = logging.getLogger("security.auth")
 @dataclass
 class AuthResult:
     """Result of an authentication attempt."""
+
     authenticated: bool
     identity: str = ""
     roles: List[str] = field(default_factory=list)
@@ -49,6 +51,7 @@ class AuthResult:
 
 # ── JWT Auth ────────────────────────────────────────────────
 
+
 class JWTAuth:
     """
     JWT token issuer and verifier.
@@ -63,17 +66,22 @@ class JWTAuth:
     - Refresh token support
     """
 
-    def __init__(self, secret: str = "", issuer: str = "summit-os",
-                 default_ttl: int = 3600):
+    def __init__(
+        self, secret: str = "", issuer: str = "summit-os", default_ttl: int = 3600
+    ):
         self.secret = secret or secrets.token_hex(32)
         self.issuer = issuer
         self.default_ttl = default_ttl
         self._blacklist: Set[str] = set()
 
-    def issue(self, subject: str, roles: Optional[List[str]] = None,
-              scopes: Optional[List[str]] = None,
-              ttl: Optional[int] = None,
-              extra_claims: Optional[Dict] = None) -> str:
+    def issue(
+        self,
+        subject: str,
+        roles: Optional[List[str]] = None,
+        scopes: Optional[List[str]] = None,
+        ttl: Optional[int] = None,
+        extra_claims: Optional[Dict] = None,
+    ) -> str:
         """Issue a JWT token."""
         now = time.time()
         payload = {
@@ -193,9 +201,11 @@ class JWTAuth:
 
 # ── API Key Auth ────────────────────────────────────────────
 
+
 @dataclass
 class APIKey:
     """An API key with metadata."""
+
     key_id: str
     key_hash: str  # SHA-256 hash of the actual key
     owner: str
@@ -218,10 +228,14 @@ class APIKeyAuth:
     def __init__(self):
         self._keys: Dict[str, APIKey] = {}
 
-    def create_key(self, owner: str, scopes: Optional[List[str]] = None,
-                   roles: Optional[List[str]] = None,
-                   ttl_days: int = 0,
-                   description: str = "") -> Tuple[str, APIKey]:
+    def create_key(
+        self,
+        owner: str,
+        scopes: Optional[List[str]] = None,
+        roles: Optional[List[str]] = None,
+        ttl_days: int = 0,
+        description: str = "",
+    ) -> Tuple[str, APIKey]:
         """
         Create a new API key.
 
@@ -257,12 +271,14 @@ class APIKeyAuth:
             if api_key.key_hash == key_hash:
                 if not api_key.active:
                     return AuthResult(
-                        authenticated=False, error="Key deactivated",
+                        authenticated=False,
+                        error="Key deactivated",
                         method="api_key",
                     )
                 if api_key.expires_at > 0 and time.time() > api_key.expires_at:
                     return AuthResult(
-                        authenticated=False, error="Key expired",
+                        authenticated=False,
+                        error="Key expired",
                         method="api_key",
                     )
                 return AuthResult(
@@ -274,7 +290,9 @@ class APIKeyAuth:
                     expires_at=api_key.expires_at,
                 )
 
-        return AuthResult(authenticated=False, error="Invalid API key", method="api_key")
+        return AuthResult(
+            authenticated=False, error="Invalid API key", method="api_key"
+        )
 
     def revoke(self, key_id: str) -> bool:
         """Revoke an API key."""
@@ -292,7 +310,9 @@ class APIKeyAuth:
 
         self.revoke(key_id)
         return self.create_key(
-            owner=old.owner, scopes=old.scopes, roles=old.roles,
+            owner=old.owner,
+            scopes=old.scopes,
+            roles=old.roles,
             description=f"Rotated from {key_id}",
         )
 

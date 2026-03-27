@@ -18,6 +18,7 @@ Usage (programmatic):
     from summit_os.conformance import run_conformance
     results = await run_conformance(adapter_instance)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -122,7 +123,7 @@ class ConformanceRunner:
 
     def _setup_capture(self):
         """Monkey-patch MQTT publish to capture messages."""
-        if hasattr(self.adapter, '_mqtt') and self.adapter._mqtt:
+        if hasattr(self.adapter, "_mqtt") and self.adapter._mqtt:
             self._original_publish = self.adapter._mqtt.publish
 
             def _capture_publish(topic, payload, qos=0, retain=False):
@@ -130,14 +131,22 @@ class ConformanceRunner:
                     data = json.loads(payload) if isinstance(payload, str) else payload
                 except Exception:
                     data = {"raw": str(payload)}
-                self.captured_messages.append({"topic": topic, "data": data, "ts": time.time()})
+                self.captured_messages.append(
+                    {"topic": topic, "data": data, "ts": time.time()}
+                )
                 if self._original_publish:
-                    return self._original_publish(topic, payload, qos=qos, retain=retain)
+                    return self._original_publish(
+                        topic, payload, qos=qos, retain=retain
+                    )
 
             self.adapter._mqtt.publish = _capture_publish
 
     def _teardown_capture(self):
-        if self._original_publish and hasattr(self.adapter, '_mqtt') and self.adapter._mqtt:
+        if (
+            self._original_publish
+            and hasattr(self.adapter, "_mqtt")
+            and self.adapter._mqtt
+        ):
             self.adapter._mqtt.publish = self._original_publish
 
     # ── Test 1: Heartbeat ──────────────────────────────────
@@ -148,7 +157,7 @@ class ConformanceRunner:
 
         # Trigger a heartbeat cycle
         try:
-            if hasattr(self.adapter, '_mqtt') and self.adapter._mqtt:
+            if hasattr(self.adapter, "_mqtt") and self.adapter._mqtt:
                 payload = {
                     "ts": time.time(),
                     "status": "OK",
@@ -162,13 +171,14 @@ class ConformanceRunner:
                 await asyncio.sleep(0.1)
 
             heartbeats = [
-                m for m in self.captured_messages
-                if "heartbeat" in m["topic"]
+                m for m in self.captured_messages if "heartbeat" in m["topic"]
             ]
 
             if not heartbeats:
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message="No heartbeat messages captured",
                 )
 
@@ -188,7 +198,9 @@ class ConformanceRunner:
                 if not has_device:
                     missing.append("device_id")
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message=f"Heartbeat missing fields: {missing}",
                 )
         except Exception as e:
@@ -203,7 +215,9 @@ class ConformanceRunner:
 
             if not isinstance(telem, dict):
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message=f"get_telemetry() returned {type(telem)}, expected dict",
                 )
 
@@ -211,7 +225,9 @@ class ConformanceRunner:
             missing = required - set(telem.keys())
             if missing:
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message=f"Telemetry missing required fields: {missing}",
                 )
 
@@ -219,7 +235,9 @@ class ConformanceRunner:
             for k in required:
                 if not isinstance(telem[k], (int, float)):
                     return TestResult(
-                        name="", passed=False, duration_ms=0,
+                        name="",
+                        passed=False,
+                        duration_ms=0,
                         message=f"Field '{k}' should be numeric, got {type(telem[k])}",
                     )
 
@@ -227,7 +245,9 @@ class ConformanceRunner:
 
         except NotImplementedError:
             return TestResult(
-                name="", passed=False, duration_ms=0,
+                name="",
+                passed=False,
+                duration_ms=0,
                 message="get_telemetry() not implemented",
             )
 
@@ -236,30 +256,38 @@ class ConformanceRunner:
     async def _test_registration(self) -> TestResult:
         """Verify adapter has registration capability."""
         try:
-            has_register = hasattr(self.adapter, '_register')
+            has_register = hasattr(self.adapter, "_register")
             has_device_id = bool(self.adapter.device_id)
             has_device_type = bool(self.adapter.device_type)
 
             if not has_register:
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message="Missing _register method",
                 )
             if not has_device_id:
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message="device_id not set",
                 )
             if not has_device_type:
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message="device_type not set",
                 )
 
             caps = self.adapter.get_capabilities()
             if not isinstance(caps, list):
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message="get_capabilities() must return a list",
                 )
 
@@ -272,13 +300,15 @@ class ConformanceRunner:
     async def _test_disconnect_reconnect(self) -> TestResult:
         """Verify adapter has disconnect/reconnect hooks."""
         try:
-            has_on_connect = hasattr(self.adapter, 'on_connect')
-            has_on_disconnect = hasattr(self.adapter, 'on_disconnect')
-            has_stop = hasattr(self.adapter, 'stop')
+            has_on_connect = hasattr(self.adapter, "on_connect")
+            has_on_disconnect = hasattr(self.adapter, "on_disconnect")
+            has_stop = hasattr(self.adapter, "stop")
 
             if not (has_on_connect and has_on_disconnect and has_stop):
                 return TestResult(
-                    name="", passed=False, duration_ms=0,
+                    name="",
+                    passed=False,
+                    duration_ms=0,
                     message="Missing lifecycle methods (on_connect/on_disconnect/stop)",
                 )
 
@@ -295,17 +325,23 @@ class ConformanceRunner:
             result = await self.adapter.handle_command("ping", {})
             # Any response (True/False) is acceptable — just verify it doesn't crash
             return TestResult(
-                name="", passed=True, duration_ms=0,
+                name="",
+                passed=True,
+                duration_ms=0,
                 message=f"handle_command('ping') returned {result}",
             )
         except NotImplementedError:
             return TestResult(
-                name="", passed=False, duration_ms=0,
+                name="",
+                passed=False,
+                duration_ms=0,
                 message="handle_command() not implemented",
             )
         except Exception as e:
             return TestResult(
-                name="", passed=False, duration_ms=0,
+                name="",
+                passed=False,
+                duration_ms=0,
                 message=f"handle_command() raised: {e}",
             )
 
@@ -318,6 +354,7 @@ async def run_conformance(adapter) -> ConformanceReport:
 
 # ── CLI Entry Point ────────────────────────────────────────
 
+
 def main():
     """CLI entry point: python -m summit_os.conformance"""
     import argparse
@@ -325,8 +362,14 @@ def main():
     import sys
 
     parser = argparse.ArgumentParser(description="Summit.OS Adapter Conformance Tests")
-    parser.add_argument("--adapter", required=True, help="Dotted path to adapter class (e.g., my_pkg.MyDrone)")
-    parser.add_argument("--device-id", default="conformance-test-01", help="Device ID for testing")
+    parser.add_argument(
+        "--adapter",
+        required=True,
+        help="Dotted path to adapter class (e.g., my_pkg.MyDrone)",
+    )
+    parser.add_argument(
+        "--device-id", default="conformance-test-01", help="Device ID for testing"
+    )
     parser.add_argument("--device-type", default="GENERIC", help="Device type")
     args = parser.parse_args()
 

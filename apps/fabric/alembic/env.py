@@ -16,6 +16,7 @@ if config.config_file_name is not None:
 
 # Import target metadata from the application
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -24,9 +25,13 @@ try:
 except Exception:
     metadata = None
 
+
 def get_url():
-    url = os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os")
+    url = os.getenv(
+        "POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"
+    )
     return url
+
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -34,6 +39,7 @@ def get_url():
 # target_metadata = mymodel.Base.metadata
 
 target_metadata = metadata
+
 
 def run_migrations_offline() -> None:
     url = get_url()

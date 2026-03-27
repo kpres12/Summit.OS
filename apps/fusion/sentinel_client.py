@@ -4,6 +4,7 @@ Sentinel prediction client for Summit.OS Fusion.
 Provides an async helper to invoke Sentinel's fire spread simulation API
 whenever a smoke/ignition detection is confirmed.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,7 +14,9 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 
 
-SENTINEL_API_URL = os.getenv("SENTINEL_API_URL", os.getenv("API_BASE_URL", "http://localhost:8000")).rstrip("/")
+SENTINEL_API_URL = os.getenv(
+    "SENTINEL_API_URL", os.getenv("API_BASE_URL", "http://localhost:8000")
+).rstrip("/")
 SENTINEL_API_KEY = os.getenv("SENTINEL_API_KEY")  # optional
 DEFAULT_FUEL_MODEL = int(os.getenv("SENTINEL_DEFAULT_FUEL_MODEL", "4"))  # Chaparral
 DEFAULT_MC_RUNS = int(os.getenv("SENTINEL_DEFAULT_MC_RUNS", "50"))
@@ -47,7 +50,9 @@ async def simulate_spread(
         "temperature_c": float(c.get("temperature_c", c.get("temperature", 28.0))),
         "relative_humidity": float(c.get("relative_humidity", c.get("humidity", 30.0))),
         "wind_speed_mps": float(c.get("wind_speed_mps", c.get("wind_speed", 5.0))),
-        "wind_direction_deg": float(c.get("wind_direction_deg", c.get("wind_direction", 270.0))),
+        "wind_direction_deg": float(
+            c.get("wind_direction_deg", c.get("wind_direction", 270.0))
+        ),
         "fuel_moisture": float(c.get("fuel_moisture", 0.15)),
         "soil_moisture": float(c.get("soil_moisture", 0.1)),
         "fuel_model": int(c.get("fuel_model", DEFAULT_FUEL_MODEL)),
@@ -59,7 +64,11 @@ async def simulate_spread(
 
     body = {
         "ignition_points": [
-            {"latitude": lat, "longitude": lon, "altitude": float(c.get("altitude", 0.0))}
+            {
+                "latitude": lat,
+                "longitude": lon,
+                "altitude": float(c.get("altitude", 0.0)),
+            }
         ],
         "conditions": env,
         "simulation_hours": int(c.get("simulation_hours", DEFAULT_SIM_HOURS)),

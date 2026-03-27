@@ -10,6 +10,7 @@ Toggle behavior via env:
   OPA_TIMEOUT=3.0
   OPA_AUDIT_DB=policy_audit.db
 """
+
 from __future__ import annotations
 
 import httpx
@@ -29,20 +30,24 @@ DEFAULT_OPA_URL = os.getenv("OPA_URL", "http://opa:8181")
 _policy_signer = None
 _POLICY_DIR = os.getenv("POLICY_DIR", "/infra/policy")
 
+
 def _get_policy_signer():
     global _policy_signer
     if _policy_signer is None:
         try:
             import sys as _sys
             from pathlib import Path as _Path
+
             _pkgs = str(_Path(__file__).resolve().parents[2] / "packages")
             if _pkgs not in _sys.path:
                 _sys.path.insert(0, _pkgs)
             from policy.signer import PolicySigner
+
             _policy_signer = PolicySigner()
         except Exception:
             pass
     return _policy_signer
+
 
 def verify_policies(policy_dir: str = _POLICY_DIR) -> bool:
     """
@@ -53,6 +58,7 @@ def verify_policies(policy_dir: str = _POLICY_DIR) -> bool:
     Raises PolicyVerificationError if any policy is tampered (enforce mode).
     """
     import os
+
     if not os.path.isdir(policy_dir):
         logger.debug(f"Policy dir not found at {policy_dir} — skipping verification")
         return True
@@ -67,6 +73,8 @@ def verify_policies(policy_dir: str = _POLICY_DIR) -> bool:
     except Exception as e:
         logger.critical(f"Policy verification FAILED: {e}")
         raise
+
+
 OPA_FAIL_MODE = os.getenv("OPA_FAIL_MODE", "closed").lower()  # "closed" or "open"
 OPA_TIMEOUT = float(os.getenv("OPA_TIMEOUT", "3.0"))
 OPA_AUDIT_DB = os.getenv("OPA_AUDIT_DB", "policy_audit.db")
@@ -75,7 +83,8 @@ OPA_AUDIT_DB = os.getenv("OPA_AUDIT_DB", "policy_audit.db")
 def _init_audit_db(db_path: str):
     """Create audit table if it doesn't exist."""
     conn = sqlite3.connect(db_path)
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS policy_audit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts TEXT NOT NULL,
@@ -88,13 +97,18 @@ def _init_audit_db(db_path: str):
             latency_ms REAL,
             error TEXT
         )
-    """)
-    conn.execute("""
+    """
+    )
+    conn.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_policy_audit_ts ON policy_audit (ts)
-    """)
-    conn.execute("""
+    """
+    )
+    conn.execute(
+        """
         CREATE INDEX IF NOT EXISTS idx_policy_audit_allowed ON policy_audit (allowed)
-    """)
+    """
+    )
     conn.commit()
     conn.close()
 
@@ -161,9 +175,7 @@ class OPAClient:
         self.policy_path = policy_path
         self.fail_mode = fail_mode or OPA_FAIL_MODE
 
-    async def evaluate(
-        self, rule: str, input_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def evaluate(self, rule: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Evaluate an OPA policy rule.
 

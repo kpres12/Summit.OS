@@ -9,6 +9,7 @@ Summit.OS Automatic Recognition (AR) pipeline:
 
 Both classifiers produce ClassificationResult which can be fused.
 """
+
 from __future__ import annotations
 
 import math
@@ -23,6 +24,7 @@ logger = logging.getLogger("ai.classification")
 
 
 # ── Domain Taxonomy ─────────────────────────────────────────
+
 
 class EntityTaxonomy:
     """
@@ -103,9 +105,11 @@ class EntityTaxonomy:
 
 # ── Data Classes ────────────────────────────────────────────
 
+
 @dataclass
 class ClassificationResult:
     """Result of classifying an entity."""
+
     entity_id: str
     top_class: str
     top_confidence: float
@@ -123,10 +127,11 @@ class ClassificationResult:
             "entity_id": self.entity_id,
             "top_class": self.top_class,
             "top_confidence": self.top_confidence,
-            "class_probabilities": dict(sorted(
-                self.class_probabilities.items(),
-                key=lambda x: x[1], reverse=True
-            )[:10]),  # Top 10
+            "class_probabilities": dict(
+                sorted(
+                    self.class_probabilities.items(), key=lambda x: x[1], reverse=True
+                )[:10]
+            ),  # Top 10
             "domain": self.domain,
             "category": self.category,
             "classifier": self.classifier_name,
@@ -137,6 +142,7 @@ class ClassificationResult:
 @dataclass
 class Evidence:
     """A piece of evidence for classification."""
+
     source: str  # "visual", "radar", "adsb", "behavioral", "acoustic"
     feature_name: str
     value: Any
@@ -146,12 +152,14 @@ class Evidence:
 
 # ── Abstract Classifier ────────────────────────────────────
 
+
 class EntityClassifier(ABC):
     """Base class for entity classifiers."""
 
     @abstractmethod
-    def classify(self, entity_id: str, evidence: List[Evidence]) -> ClassificationResult:
-        ...
+    def classify(
+        self, entity_id: str, evidence: List[Evidence]
+    ) -> ClassificationResult: ...
 
     @abstractmethod
     def update(self, entity_id: str, evidence: Evidence) -> ClassificationResult:
@@ -165,6 +173,7 @@ class EntityClassifier(ABC):
 
 
 # ── Bayesian Classifier ────────────────────────────────────
+
 
 class BayesianClassifier(EntityClassifier):
     """
@@ -190,32 +199,113 @@ class BayesianClassifier(EntityClassifier):
         # Visual detection class → entity class mapping
         visual_map: Dict[str, Dict[str, float]] = {
             "person": {"SOLDIER": 0.4, "SENTRY": 0.2, "PEDESTRIAN": 0.4},
-            "vehicle": {"SEDAN": 0.3, "SUV": 0.2, "PICKUP": 0.2, "STRYKER": 0.1, "HEMTT": 0.1, "KAMAZ": 0.1},
-            "aircraft": {"CESSNA-172": 0.3, "B737": 0.2, "A320": 0.2, "C-130": 0.1, "F-16": 0.1, "F-35": 0.1},
-            "vessel": {"CONTAINER-SHIP": 0.3, "TANKER": 0.2, "TRAWLER": 0.2, "LONGLINER": 0.1,
-                       "ARLEIGH-BURKE": 0.1, "TYPE-055": 0.1},
-            "drone": {"DJI-MATRICE": 0.4, "RQ-11": 0.2, "SWITCHBLADE": 0.1, "MQ-9": 0.1,
-                      "BAYRAKTAR-TB2": 0.1, "SHAHED-136": 0.1},
+            "vehicle": {
+                "SEDAN": 0.3,
+                "SUV": 0.2,
+                "PICKUP": 0.2,
+                "STRYKER": 0.1,
+                "HEMTT": 0.1,
+                "KAMAZ": 0.1,
+            },
+            "aircraft": {
+                "CESSNA-172": 0.3,
+                "B737": 0.2,
+                "A320": 0.2,
+                "C-130": 0.1,
+                "F-16": 0.1,
+                "F-35": 0.1,
+            },
+            "vessel": {
+                "CONTAINER-SHIP": 0.3,
+                "TANKER": 0.2,
+                "TRAWLER": 0.2,
+                "LONGLINER": 0.1,
+                "ARLEIGH-BURKE": 0.1,
+                "TYPE-055": 0.1,
+            },
+            "drone": {
+                "DJI-MATRICE": 0.4,
+                "RQ-11": 0.2,
+                "SWITCHBLADE": 0.1,
+                "MQ-9": 0.1,
+                "BAYRAKTAR-TB2": 0.1,
+                "SHAHED-136": 0.1,
+            },
         }
         self._likelihood_tables[("visual", "class_name")] = visual_map
 
         # Speed ranges → entity classes
         speed_map: Dict[str, Dict[str, float]] = {
-            "stationary": {"SENTRY": 0.3, "PEDESTRIAN": 0.3, "TRAWLER": 0.2, "CONTAINER-SHIP": 0.1, "M1A2": 0.1},
-            "slow": {"PEDESTRIAN": 0.3, "TRAWLER": 0.2, "SEDAN": 0.2, "SOLDIER": 0.2, "DJI-MATRICE": 0.1},
-            "medium": {"SEDAN": 0.2, "SUV": 0.2, "HEMTT": 0.15, "STRYKER": 0.15, "M1A2": 0.15, "BMP-3": 0.15},
-            "fast": {"F-16": 0.2, "F-35": 0.2, "SU-27": 0.15, "MIG-29": 0.15, "B737": 0.15, "A320": 0.15},
-            "very_fast": {"F-16": 0.25, "F-35": 0.25, "SU-27": 0.2, "MIG-29": 0.2, "B-2": 0.1},
+            "stationary": {
+                "SENTRY": 0.3,
+                "PEDESTRIAN": 0.3,
+                "TRAWLER": 0.2,
+                "CONTAINER-SHIP": 0.1,
+                "M1A2": 0.1,
+            },
+            "slow": {
+                "PEDESTRIAN": 0.3,
+                "TRAWLER": 0.2,
+                "SEDAN": 0.2,
+                "SOLDIER": 0.2,
+                "DJI-MATRICE": 0.1,
+            },
+            "medium": {
+                "SEDAN": 0.2,
+                "SUV": 0.2,
+                "HEMTT": 0.15,
+                "STRYKER": 0.15,
+                "M1A2": 0.15,
+                "BMP-3": 0.15,
+            },
+            "fast": {
+                "F-16": 0.2,
+                "F-35": 0.2,
+                "SU-27": 0.15,
+                "MIG-29": 0.15,
+                "B737": 0.15,
+                "A320": 0.15,
+            },
+            "very_fast": {
+                "F-16": 0.25,
+                "F-35": 0.25,
+                "SU-27": 0.2,
+                "MIG-29": 0.2,
+                "B-2": 0.1,
+            },
         }
         self._likelihood_tables[("behavioral", "speed_category")] = speed_map
 
         # Radar cross-section ranges
         rcs_map: Dict[str, Dict[str, float]] = {
-            "tiny": {"DJI-MATRICE": 0.3, "RQ-11": 0.3, "SWITCHBLADE": 0.2, "HERO-30": 0.2},
-            "small": {"CESSNA-172": 0.2, "MQ-9": 0.2, "F-35": 0.2, "BAYRAKTAR-TB2": 0.2, "LANCET": 0.2},
-            "medium": {"F-16": 0.2, "C-130": 0.15, "SU-27": 0.15, "MIG-29": 0.15, "AH-64": 0.15, "UH-60": 0.2},
+            "tiny": {
+                "DJI-MATRICE": 0.3,
+                "RQ-11": 0.3,
+                "SWITCHBLADE": 0.2,
+                "HERO-30": 0.2,
+            },
+            "small": {
+                "CESSNA-172": 0.2,
+                "MQ-9": 0.2,
+                "F-35": 0.2,
+                "BAYRAKTAR-TB2": 0.2,
+                "LANCET": 0.2,
+            },
+            "medium": {
+                "F-16": 0.2,
+                "C-130": 0.15,
+                "SU-27": 0.15,
+                "MIG-29": 0.15,
+                "AH-64": 0.15,
+                "UH-60": 0.2,
+            },
             "large": {"B737": 0.2, "A320": 0.2, "C-17": 0.2, "B-52": 0.2, "IL-76": 0.2},
-            "very_large": {"NIMITZ": 0.3, "FORD": 0.3, "CONTAINER-SHIP": 0.2, "TANKER": 0.2},
+            "very_large": {
+                "NIMITZ": 0.3,
+                "FORD": 0.3,
+                "CONTAINER-SHIP": 0.2,
+                "TANKER": 0.2,
+            },
         }
         self._likelihood_tables[("radar", "rcs_category")] = rcs_map
 
@@ -241,7 +331,9 @@ class BayesianClassifier(EntityClassifier):
 
         return value_map.get(class_name, 1e-6)  # Small probability for unseen
 
-    def classify(self, entity_id: str, evidence: List[Evidence]) -> ClassificationResult:
+    def classify(
+        self, entity_id: str, evidence: List[Evidence]
+    ) -> ClassificationResult:
         """Full classification from a batch of evidence."""
         self.reset(entity_id)
         for ev in evidence:
@@ -265,9 +357,9 @@ class BayesianClassifier(EntityClassifier):
 
         # Normalize in log space
         max_log = max(posteriors.values())
-        log_sum = max_log + math.log(sum(
-            math.exp(v - max_log) for v in posteriors.values()
-        ))
+        log_sum = max_log + math.log(
+            sum(math.exp(v - max_log) for v in posteriors.values())
+        )
         for cls in posteriors:
             posteriors[cls] -= log_sum
 
@@ -277,8 +369,10 @@ class BayesianClassifier(EntityClassifier):
         posteriors = self._posteriors.get(entity_id, {})
         if not posteriors:
             return ClassificationResult(
-                entity_id=entity_id, top_class="UNKNOWN",
-                top_confidence=0.0, class_probabilities={},
+                entity_id=entity_id,
+                top_class="UNKNOWN",
+                top_confidence=0.0,
+                class_probabilities={},
                 classifier_name="bayesian",
             )
 
@@ -302,13 +396,15 @@ class BayesianClassifier(EntityClassifier):
         self._posteriors.pop(entity_id, None)
         self._evidence_counts.pop(entity_id, None)
 
-    def add_likelihood_table(self, source: str, feature: str,
-                             table: Dict[Any, Dict[str, float]]) -> None:
+    def add_likelihood_table(
+        self, source: str, feature: str, table: Dict[Any, Dict[str, float]]
+    ) -> None:
         """Register a custom likelihood table."""
         self._likelihood_tables[(source, feature)] = table
 
 
 # ── Rule-Based Classifier ──────────────────────────────────
+
 
 class RuleBasedClassifier(EntityClassifier):
     """
@@ -341,7 +437,9 @@ class RuleBasedClassifier(EntityClassifier):
             ("altitude_category", "very_high", "HIGH_ALT_AIRCRAFT", 0.7),
         ]
 
-    def classify(self, entity_id: str, evidence: List[Evidence]) -> ClassificationResult:
+    def classify(
+        self, entity_id: str, evidence: List[Evidence]
+    ) -> ClassificationResult:
         """Apply rules to evidence batch."""
         best_class = "UNKNOWN"
         best_confidence = 0.0
@@ -385,13 +483,15 @@ class RuleBasedClassifier(EntityClassifier):
     def reset(self, entity_id: str) -> None:
         self._results.pop(entity_id, None)
 
-    def add_rule(self, feature_name: str, value: Any,
-                 class_name: str, confidence: float) -> None:
+    def add_rule(
+        self, feature_name: str, value: Any, class_name: str, confidence: float
+    ) -> None:
         """Add a custom classification rule."""
         self._rules.append((feature_name, value, class_name, confidence))
 
 
 # ── Fusion Classifier ──────────────────────────────────────
+
 
 class FusionClassifier(EntityClassifier):
     """
@@ -407,7 +507,9 @@ class FusionClassifier(EntityClassifier):
         self.rule_based = RuleBasedClassifier()
         self._rule_priority_threshold = 0.85
 
-    def classify(self, entity_id: str, evidence: List[Evidence]) -> ClassificationResult:
+    def classify(
+        self, entity_id: str, evidence: List[Evidence]
+    ) -> ClassificationResult:
         rule_result = self.rule_based.classify(entity_id, evidence)
         bayes_result = self.bayesian.classify(entity_id, evidence)
 
@@ -417,8 +519,10 @@ class FusionClassifier(EntityClassifier):
 
         # Merge probabilities: weighted combination
         merged: Dict[str, float] = {}
-        all_classes = set(list(rule_result.class_probabilities.keys()) +
-                         list(bayes_result.class_probabilities.keys()))
+        all_classes = set(
+            list(rule_result.class_probabilities.keys())
+            + list(bayes_result.class_probabilities.keys())
+        )
         for cls in all_classes:
             r = rule_result.class_probabilities.get(cls, 0.0)
             b = bayes_result.class_probabilities.get(cls, 0.0)

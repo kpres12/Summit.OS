@@ -12,6 +12,7 @@ Dependencies
 ------------
     pip install pyais aiohttp
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -105,10 +106,15 @@ class AISAdapter(BaseAdapter):
         self._tcp_host: str = ex.get("tcp_host", "")
         self._tcp_port: int = int(ex.get("tcp_port", 9999))
         self._aishub_username: str = ex.get("aishub_username", "")
-        self._bbox: dict = ex.get("bbox", {
-            "min_lat": -90, "max_lat": 90,
-            "min_lon": -180, "max_lon": 180,
-        })
+        self._bbox: dict = ex.get(
+            "bbox",
+            {
+                "min_lat": -90,
+                "max_lat": 90,
+                "min_lon": -180,
+                "max_lon": 180,
+            },
+        )
 
         self._reader: Optional[asyncio.StreamReader] = None
         self._writer: Optional[asyncio.StreamWriter] = None
@@ -231,11 +237,13 @@ class AISAdapter(BaseAdapter):
             nav_status = _NAV_STATUS.get(int(status_code), "undefined")
 
             meta = self._vessel_meta.get(mmsi, {})
-            meta.update({
-                "mmsi": mmsi,
-                "nav_status": nav_status,
-                "rot": getattr(decoded, "rot", None),
-            })
+            meta.update(
+                {
+                    "mmsi": mmsi,
+                    "nav_status": nav_status,
+                    "rot": getattr(decoded, "rot", None),
+                }
+            )
             self._vessel_meta[mmsi] = meta
 
             callsign = meta.get("vessel_name") or mmsi
@@ -249,14 +257,16 @@ class AISAdapter(BaseAdapter):
             destination = (getattr(decoded, "destination", "") or "").strip()
 
             meta = self._vessel_meta.get(mmsi, {})
-            meta.update({
-                "mmsi": mmsi,
-                "vessel_name": vessel_name or mmsi,
-                "ship_type": _ship_type_name(ship_type_code),
-                "ship_type_code": ship_type_code,
-                "draught": float(draught) / 10 if draught else None,
-                "destination": destination,
-            })
+            meta.update(
+                {
+                    "mmsi": mmsi,
+                    "vessel_name": vessel_name or mmsi,
+                    "ship_type": _ship_type_name(ship_type_code),
+                    "ship_type_code": ship_type_code,
+                    "draught": float(draught) / 10 if draught else None,
+                    "destination": destination,
+                }
+            )
             self._vessel_meta[mmsi] = meta
             return None  # No position in type 5, don't emit yet
 
@@ -285,7 +295,9 @@ class AISAdapter(BaseAdapter):
             f"&latmin={bbox['min_lat']}&latmax={bbox['max_lat']}"
             f"&lonmin={bbox['min_lon']}&lonmax={bbox['max_lon']}"
         )
-        async with self._session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+        async with self._session.get(
+            url, timeout=aiohttp.ClientTimeout(total=30)
+        ) as resp:
             resp.raise_for_status()
             data = await resp.json(content_type=None)
 
@@ -331,8 +343,7 @@ class AISAdapter(BaseAdapter):
     def _in_bbox(self, lat: float, lon: float) -> bool:
         b = self._bbox
         return (
-            b["min_lat"] <= lat <= b["max_lat"]
-            and b["min_lon"] <= lon <= b["max_lon"]
+            b["min_lat"] <= lat <= b["max_lat"] and b["min_lon"] <= lon <= b["max_lon"]
         )
 
     def _build_obs(

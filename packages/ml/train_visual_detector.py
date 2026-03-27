@@ -41,27 +41,27 @@ import sys
 from pathlib import Path
 
 # ── paths ─────────────────────────────────────────────────────────────────────
-SCRIPT_DIR  = Path(__file__).parent
-DATA_DIR    = SCRIPT_DIR / "data"
-MODELS_DIR  = SCRIPT_DIR / "models"
+SCRIPT_DIR = Path(__file__).parent
+DATA_DIR = SCRIPT_DIR / "data"
+MODELS_DIR = SCRIPT_DIR / "models"
 DATASET_DIR = DATA_DIR / "summit_detector"
-YAML_PATH   = DATASET_DIR / "summit_detector.yaml"
+YAML_PATH = DATASET_DIR / "summit_detector.yaml"
 
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── class taxonomy ─────────────────────────────────────────────────────────────
 # Must stay in sync with download_visual_datasets.py VISUAL_CLASSES
 VISUAL_CLASSES = {
-    0:  "smoke",
-    1:  "fire",
-    2:  "fire_front",
-    3:  "person",
-    4:  "person_water",
-    5:  "life_raft",
-    6:  "oil_spill",
-    7:  "pipeline_damage",
-    8:  "chemical_plume",
-    9:  "crop_disease",
+    0: "smoke",
+    1: "fire",
+    2: "fire_front",
+    3: "person",
+    4: "person_water",
+    5: "life_raft",
+    6: "oil_spill",
+    7: "pipeline_damage",
+    8: "chemical_plume",
+    9: "crop_disease",
     10: "pest_damage",
     11: "dry_field",
     12: "vessel",
@@ -74,13 +74,13 @@ VISUAL_CLASSES = {
 
 # Domain groupings — used for per-domain augmentation strategies
 DOMAIN_CLASSES = {
-    "wildfire":        [0, 1, 2],           # smoke, fire, fire_front
-    "search_rescue":   [3, 4, 5],           # person, person_water, life_raft
-    "hazmat_pipeline": [6, 7, 8],           # oil_spill, pipeline_damage, chemical_plume
-    "agriculture":     [9, 10, 11],         # crop_disease, pest_damage, dry_field
-    "maritime":        [12, 13],            # vessel, vessel_distress
-    "infrastructure":  [14, 15, 16],        # power_line_damage, structural_crack, solar_defect
-    "wildlife":        [17],                # dangerous_animal
+    "wildfire": [0, 1, 2],  # smoke, fire, fire_front
+    "search_rescue": [3, 4, 5],  # person, person_water, life_raft
+    "hazmat_pipeline": [6, 7, 8],  # oil_spill, pipeline_damage, chemical_plume
+    "agriculture": [9, 10, 11],  # crop_disease, pest_damage, dry_field
+    "maritime": [12, 13],  # vessel, vessel_distress
+    "infrastructure": [14, 15, 16],  # power_line_damage, structural_crack, solar_defect
+    "wildlife": [17],  # dangerous_animal
 }
 
 
@@ -100,19 +100,19 @@ def _augmentation_kwargs() -> dict:
       - Perspective=0.001: simulates lens tilt on oblique aerial angles.
     """
     return dict(
-        hsv_h=0.02,        # hue jitter — fire/hazmat colour variance
-        hsv_s=0.7,         # saturation — smoke opacity varies
-        hsv_v=0.4,         # value — altitude/lighting variation
-        degrees=30,        # rotation — top-down has no canonical orientation
+        hsv_h=0.02,  # hue jitter — fire/hazmat colour variance
+        hsv_s=0.7,  # saturation — smoke opacity varies
+        hsv_v=0.4,  # value — altitude/lighting variation
+        degrees=30,  # rotation — top-down has no canonical orientation
         translate=0.1,
-        scale=0.6,         # extreme zoom range for altitude variance
+        scale=0.6,  # extreme zoom range for altitude variance
         shear=0.0,
-        perspective=0.001, # oblique UAV angles
-        flipud=0.5,        # UAV: vertical flip is valid
+        perspective=0.001,  # oblique UAV angles
+        flipud=0.5,  # UAV: vertical flip is valid
         fliplr=0.5,
-        mosaic=1.0,        # always-on: critical for partial objects
-        mixup=0.1,         # gentle mixup for domain blending
-        copy_paste=0.1,    # copy-paste augmentation for rare classes
+        mosaic=1.0,  # always-on: critical for partial objects
+        mixup=0.1,  # gentle mixup for domain blending
+        copy_paste=0.1,  # copy-paste augmentation for rare classes
     )
 
 
@@ -139,7 +139,7 @@ def _ensure_dataset() -> None:
 
     # Count images
     train_count = len(list((DATASET_DIR / "images" / "train").iterdir()))
-    val_count   = len(list((DATASET_DIR / "images" / "val").iterdir()))
+    val_count = len(list((DATASET_DIR / "images" / "val").iterdir()))
     print(f"[dataset] train={train_count} images  val={val_count} images")
 
 
@@ -166,7 +166,9 @@ def train(
         sys.exit(1)
 
     base_model = f"yolov8{model_size}.pt"
-    print(f"\n[train] base={base_model}  epochs={epochs}  device={device}  imgsz={imgsz}")
+    print(
+        f"\n[train] base={base_model}  epochs={epochs}  device={device}  imgsz={imgsz}"
+    )
     print(f"[train] dataset={YAML_PATH}")
 
     model = YOLO(base_model)
@@ -184,7 +186,7 @@ def train(
         resume=resume,
         patience=patience,
         save=True,
-        save_period=10,         # checkpoint every 10 epochs
+        save_period=10,  # checkpoint every 10 epochs
         val=True,
         plots=True,
         # Augmentation
@@ -196,7 +198,7 @@ def train(
         # Optimizer
         optimizer="AdamW",
         lr0=1e-3,
-        lrf=0.01,               # final LR = lr0 * lrf
+        lrf=0.01,  # final LR = lr0 * lrf
         warmup_epochs=3,
         weight_decay=5e-4,
         # Misc
@@ -210,6 +212,7 @@ def train(
     if not best_pt.exists():
         # Fallback: find in ultralytics default run dir
         import glob
+
         candidates = glob.glob(f"{project}/{name}*/weights/best.pt")
         if candidates:
             best_pt = Path(sorted(candidates)[-1])
@@ -236,20 +239,23 @@ def export_onnx(checkpoint: Path, imgsz: int) -> Path:
     model.export(
         format="onnx",
         imgsz=imgsz,
-        dynamic=False,          # static shapes for ONNX Runtime compatibility
-        simplify=True,          # onnx-simplifier reduces node count
-        opset=17,               # opset 17 = broad ONNX Runtime support
-        half=False,             # FP32 — maximises CPU compatibility for edge devices
-        nms=True,               # bake NMS into the graph for single-pass inference
+        dynamic=False,  # static shapes for ONNX Runtime compatibility
+        simplify=True,  # onnx-simplifier reduces node count
+        opset=17,  # opset 17 = broad ONNX Runtime support
+        half=False,  # FP32 — maximises CPU compatibility for edge devices
+        nms=True,  # bake NMS into the graph for single-pass inference
     )
 
     exported_onnx = checkpoint.with_suffix(".onnx")
-    dest_onnx     = MODELS_DIR / "summit_detector.onnx"
+    dest_onnx = MODELS_DIR / "summit_detector.onnx"
 
     if not exported_onnx.exists():
-        print(f"[WARN] ONNX export not found at {exported_onnx} — check ultralytics output")
+        print(
+            f"[WARN] ONNX export not found at {exported_onnx} — check ultralytics output"
+        )
     else:
         import shutil
+
         shutil.copy2(exported_onnx, dest_onnx)
         size_mb = dest_onnx.stat().st_size / 1e6
         print(f"[export] {dest_onnx}  ({size_mb:.1f} MB)")
@@ -272,14 +278,18 @@ def validate(checkpoint: Path, imgsz: int) -> None:
         return
 
     print(f"\n[validate] {checkpoint}")
-    model   = YOLO(str(checkpoint))
+    model = YOLO(str(checkpoint))
     metrics = model.val(data=str(YAML_PATH), imgsz=imgsz, verbose=True)
 
     print("\n[validate] Per-class mAP50:")
     if hasattr(metrics, "ap_class_index") and hasattr(metrics, "box"):
         for i, cls_idx in enumerate(metrics.ap_class_index):
             cls_name = VISUAL_CLASSES.get(int(cls_idx), str(cls_idx))
-            ap50     = float(metrics.box.ap50[i]) if i < len(metrics.box.ap50) else float("nan")
+            ap50 = (
+                float(metrics.box.ap50[i])
+                if i < len(metrics.box.ap50)
+                else float("nan")
+            )
             print(f"  {cls_name:25s}  mAP50={ap50:.3f}")
 
     map50 = getattr(getattr(metrics, "box", None), "map50", None)
@@ -305,9 +315,9 @@ def smoke_test_onnx(onnx_path: Path, imgsz: int) -> None:
         return
 
     print(f"\n[smoke-test] {onnx_path}")
-    sess    = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
-    inp     = sess.get_inputs()[0]
-    dummy   = np.random.rand(1, 3, imgsz, imgsz).astype(np.float32)
+    sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
+    inp = sess.get_inputs()[0]
+    dummy = np.random.rand(1, 3, imgsz, imgsz).astype(np.float32)
     outputs = sess.run(None, {inp.name: dummy})
     print(f"[smoke-test] output shapes: {[o.shape for o in outputs]}")
     print("[smoke-test] PASS")
@@ -318,43 +328,77 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Train Summit.OS visual detector (YOLOv8) across all operational domains"
     )
-    parser.add_argument("--epochs",       type=int,   default=100,
-                        help="Training epochs (default 100; use 5 for quick smoke-test)")
-    parser.add_argument("--device",       type=str,   default="",
-                        help="'cpu', '0', '0,1', 'mps' — empty = auto-detect")
-    parser.add_argument("--batch",        type=int,   default=16,
-                        help="Batch size (reduce if OOM; -1 = auto)")
-    parser.add_argument("--imgsz",        type=int,   default=640,
-                        help="Input image size (default 640)")
-    parser.add_argument("--model",        type=str,   default="n",
-                        choices=["n", "s", "m", "l", "x"],
-                        help="YOLOv8 model size: n=nano, s=small, m=medium (default: n)")
-    parser.add_argument("--project",      type=str,   default="runs/detect",
-                        help="Output directory for training runs")
-    parser.add_argument("--name",         type=str,   default="summit_detector",
-                        help="Run name within --project")
-    parser.add_argument("--resume",       action="store_true",
-                        help="Resume interrupted training from last checkpoint")
-    parser.add_argument("--patience",     type=int,   default=50,
-                        help="Early-stopping patience in epochs (0 = disabled)")
-    parser.add_argument("--export-only",  action="store_true",
-                        help="Skip training — export existing checkpoint to ONNX")
-    parser.add_argument("--checkpoint",   type=str,   default=None,
-                        help="Path to .pt checkpoint for --export-only or post-train export")
-    parser.add_argument("--no-validate",  action="store_true",
-                        help="Skip validation after training")
-    parser.add_argument("--no-smoke-test", action="store_true",
-                        help="Skip ONNX smoke-test after export")
-    parser.add_argument("--list-classes", action="store_true",
-                        help="Print class taxonomy and exit")
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=100,
+        help="Training epochs (default 100; use 5 for quick smoke-test)",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="",
+        help="'cpu', '0', '0,1', 'mps' — empty = auto-detect",
+    )
+    parser.add_argument(
+        "--batch", type=int, default=16, help="Batch size (reduce if OOM; -1 = auto)"
+    )
+    parser.add_argument(
+        "--imgsz", type=int, default=640, help="Input image size (default 640)"
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="n",
+        choices=["n", "s", "m", "l", "x"],
+        help="YOLOv8 model size: n=nano, s=small, m=medium (default: n)",
+    )
+    parser.add_argument(
+        "--project",
+        type=str,
+        default="runs/detect",
+        help="Output directory for training runs",
+    )
+    parser.add_argument(
+        "--name", type=str, default="summit_detector", help="Run name within --project"
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume interrupted training from last checkpoint",
+    )
+    parser.add_argument(
+        "--patience",
+        type=int,
+        default=50,
+        help="Early-stopping patience in epochs (0 = disabled)",
+    )
+    parser.add_argument(
+        "--export-only",
+        action="store_true",
+        help="Skip training — export existing checkpoint to ONNX",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=None,
+        help="Path to .pt checkpoint for --export-only or post-train export",
+    )
+    parser.add_argument(
+        "--no-validate", action="store_true", help="Skip validation after training"
+    )
+    parser.add_argument(
+        "--no-smoke-test", action="store_true", help="Skip ONNX smoke-test after export"
+    )
+    parser.add_argument(
+        "--list-classes", action="store_true", help="Print class taxonomy and exit"
+    )
     args = parser.parse_args()
 
     if args.list_classes:
         print("Summit.OS visual detector — 18 classes:\n")
         for idx, name in VISUAL_CLASSES.items():
-            domain = next(
-                (d for d, ids in DOMAIN_CLASSES.items() if idx in ids), "—"
-            )
+            domain = next((d for d, ids in DOMAIN_CLASSES.items() if idx in ids), "—")
             print(f"  {idx:2d}  {name:25s}  [{domain}]")
         return
 
@@ -376,15 +420,15 @@ def main() -> None:
     _ensure_dataset()
 
     best_pt = train(
-        epochs   = args.epochs,
-        device   = args.device,
-        batch    = args.batch,
-        imgsz    = args.imgsz,
-        model_size = args.model,
-        project  = args.project,
-        name     = args.name,
-        resume   = args.resume,
-        patience = args.patience,
+        epochs=args.epochs,
+        device=args.device,
+        batch=args.batch,
+        imgsz=args.imgsz,
+        model_size=args.model,
+        project=args.project,
+        name=args.name,
+        resume=args.resume,
+        patience=args.patience,
     )
 
     # Use user-supplied checkpoint if provided (e.g. after manual export decision)
@@ -399,7 +443,8 @@ def main() -> None:
     if not args.no_smoke_test:
         smoke_test_onnx(onnx_path, args.imgsz)
 
-    print(f"""
+    print(
+        f"""
 ╔══════════════════════════════════════════════════════════╗
 ║  Summit.OS visual detector training complete             ║
 ║                                                          ║
@@ -409,7 +454,8 @@ def main() -> None:
 ║  Inference service will hot-swap automatically.          ║
 ║  Restart apps/inference to pick up new model.            ║
 ╚══════════════════════════════════════════════════════════╝
-""")
+"""
+    )
 
 
 if __name__ == "__main__":

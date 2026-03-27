@@ -22,7 +22,10 @@ def test_base_publish_serializes_json(monkeypatch):
 
     payload = {"device_id": "dev-1", "location": {"lat": 1, "lon": 2}}
     import asyncio
-    asyncio.get_event_loop().run_until_complete(adapter.publish("telemetry/dev-1", payload))
+
+    asyncio.get_event_loop().run_until_complete(
+        adapter.publish("telemetry/dev-1", payload)
+    )
 
     assert stub.published and stub.published[0][0] == "telemetry/dev-1"
     assert stub.published[0][1]["location"]["lat"] == 1

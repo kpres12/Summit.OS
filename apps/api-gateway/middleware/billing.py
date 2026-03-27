@@ -28,8 +28,13 @@ try:
         sys.path.insert(0, _pkg_root)
     from packages.security.field_encryption import encrypt_field, decrypt_field
 except Exception:
-    def encrypt_field(v: str) -> str: return v  # type: ignore[misc]
-    def decrypt_field(v: str) -> str: return v  # type: ignore[misc]
+
+    def encrypt_field(v: str) -> str:
+        return v  # type: ignore[misc]
+
+    def decrypt_field(v: str) -> str:
+        return v  # type: ignore[misc]
+
 
 from fastapi import HTTPException, Request
 from sqlalchemy import (
@@ -84,10 +89,10 @@ orgs_table = Table(
 # ---------------------------------------------------------------------------
 
 TIER_DEFAULTS: dict[str, dict] = {
-    "free":       {"entity_limit": 10,   "operator_limit": 1},
-    "pro":        {"entity_limit": 500,  "operator_limit": 5},
-    "org":        {"entity_limit": 5000, "operator_limit": -1},
-    "enterprise": {"entity_limit": -1,   "operator_limit": -1},
+    "free": {"entity_limit": 10, "operator_limit": 1},
+    "pro": {"entity_limit": 500, "operator_limit": 5},
+    "org": {"entity_limit": 5000, "operator_limit": -1},
+    "enterprise": {"entity_limit": -1, "operator_limit": -1},
 }
 
 _FREE_DEFAULTS = TIER_DEFAULTS["free"]
@@ -96,6 +101,7 @@ _FREE_DEFAULTS = TIER_DEFAULTS["free"]
 # ---------------------------------------------------------------------------
 # OrgContext
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OrgContext:
@@ -123,6 +129,7 @@ _SessionLocal: Optional[sessionmaker] = None  # type: ignore[type-arg]
 # Init
 # ---------------------------------------------------------------------------
 
+
 async def init_billing_tables(engine: AsyncEngine) -> None:
     """Create billing tables and store a session factory for later use."""
     global _SessionLocal
@@ -136,6 +143,7 @@ async def init_billing_tables(engine: AsyncEngine) -> None:
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _hash_key(plaintext: str) -> str:
     return hashlib.sha256(plaintext.encode()).hexdigest()
 
@@ -143,6 +151,7 @@ def _hash_key(plaintext: str) -> str:
 # ---------------------------------------------------------------------------
 # Dependency
 # ---------------------------------------------------------------------------
+
 
 async def require_api_key(request: Request) -> OrgContext:
     """
@@ -170,7 +179,9 @@ async def require_api_key(request: Request) -> OrgContext:
     if x_api_key:
         raw_key = x_api_key
     else:
-        auth = request.headers.get("Authorization") or request.headers.get("authorization")
+        auth = request.headers.get("Authorization") or request.headers.get(
+            "authorization"
+        )
         if auth and auth.lower().startswith("bearer "):
             token = auth.split(" ", 1)[1]
             if token.startswith("sk_"):
@@ -180,7 +191,9 @@ async def require_api_key(request: Request) -> OrgContext:
         raise HTTPException(status_code=401, detail="Missing API key")
 
     if _SessionLocal is None:
-        logger.warning("Billing session factory not initialised — falling back to free tier")
+        logger.warning(
+            "Billing session factory not initialised — falling back to free tier"
+        )
         return _FREE_ORG_CONTEXT
 
     key_hash = _hash_key(raw_key)
@@ -235,6 +248,14 @@ async def require_api_key(request: Request) -> OrgContext:
     return OrgContext(
         org_id=org_id,
         tier=tier,
-        entity_limit=org_row.entity_limit if org_row.entity_limit is not None else defaults["entity_limit"],
-        operator_limit=org_row.operator_limit if org_row.operator_limit is not None else defaults["operator_limit"],
+        entity_limit=(
+            org_row.entity_limit
+            if org_row.entity_limit is not None
+            else defaults["entity_limit"]
+        ),
+        operator_limit=(
+            org_row.operator_limit
+            if org_row.operator_limit is not None
+            else defaults["operator_limit"]
+        ),
     )

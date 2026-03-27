@@ -44,6 +44,7 @@ try:
     import torch.nn as nn
     import torch.nn.functional as F
     from torch.utils.data import DataLoader, Dataset
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -57,8 +58,9 @@ if TORCH_AVAILABLE:
 
         def __init__(self, in_ch: int, out_ch: int, stride: int = 1):
             super().__init__()
-            self.dw = nn.Conv2d(in_ch, in_ch, 3, stride=stride, padding=1,
-                                groups=in_ch, bias=False)
+            self.dw = nn.Conv2d(
+                in_ch, in_ch, 3, stride=stride, padding=1, groups=in_ch, bias=False
+            )
             self.pw = nn.Conv2d(in_ch, out_ch, 1, bias=False)
             self.bn_dw = nn.BatchNorm2d(in_ch)
             self.bn_pw = nn.BatchNorm2d(out_ch)
@@ -71,11 +73,12 @@ if TORCH_AVAILABLE:
     class _InvertedResidual(nn.Module):
         """MobileNetV2-style inverted residual block."""
 
-        def __init__(self, in_ch: int, out_ch: int, stride: int = 1,
-                     expansion: int = 6):
+        def __init__(
+            self, in_ch: int, out_ch: int, stride: int = 1, expansion: int = 6
+        ):
             super().__init__()
             mid_ch = in_ch * expansion
-            self.use_residual = (stride == 1 and in_ch == out_ch)
+            self.use_residual = stride == 1 and in_ch == out_ch
 
             layers = []
             if expansion != 1:
@@ -85,8 +88,15 @@ if TORCH_AVAILABLE:
                     nn.ReLU6(inplace=True),
                 ]
             layers += [
-                nn.Conv2d(mid_ch, mid_ch, 3, stride=stride, padding=1,
-                          groups=mid_ch, bias=False),
+                nn.Conv2d(
+                    mid_ch,
+                    mid_ch,
+                    3,
+                    stride=stride,
+                    padding=1,
+                    groups=mid_ch,
+                    bias=False,
+                ),
                 nn.BatchNorm2d(mid_ch),
                 nn.ReLU6(inplace=True),
                 nn.Conv2d(mid_ch, out_ch, 1, bias=False),
@@ -120,8 +130,8 @@ if TORCH_AVAILABLE:
             )
             # InvertedResidual blocks: 32 → 64 → 128 → 128
             self.blocks = nn.Sequential(
-                _InvertedResidual(32, 64,  stride=2, expansion=6),
-                _InvertedResidual(64, 64,  stride=1, expansion=6),
+                _InvertedResidual(32, 64, stride=2, expansion=6),
+                _InvertedResidual(64, 64, stride=1, expansion=6),
                 _InvertedResidual(64, 128, stride=2, expansion=6),
                 _InvertedResidual(128, 128, stride=1, expansion=6),
             )
@@ -138,16 +148,18 @@ if TORCH_AVAILABLE:
             x = F.normalize(x, p=2, dim=1)
             return x
 
+
 # ── Synthetic data generation ─────────────────────────────────────────────────
 
-def _make_identity_base_colors(n_ids: int, rng: np.random.Generator
-                               ) -> np.ndarray:
+
+def _make_identity_base_colors(n_ids: int, rng: np.random.Generator) -> np.ndarray:
     """Each identity gets a unique base RGB color (float32, 0-1)."""
     return rng.uniform(0.0, 1.0, size=(n_ids, 3)).astype(np.float32)
 
 
-def _generate_crop(base_color: np.ndarray, rng: np.random.Generator,
-                   h: int = 128, w: int = 64) -> np.ndarray:
+def _generate_crop(
+    base_color: np.ndarray, rng: np.random.Generator, h: int = 128, w: int = 64
+) -> np.ndarray:
     """
     Synthesize a (3, H, W) float32 image patch for one identity.
 
@@ -188,7 +200,7 @@ def _augment_crop(patch: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     cw = int(w * scale)
     y0 = rng.integers(0, h - ch + 1)
     x0 = rng.integers(0, w - cw + 1)
-    cropped = patch[:, y0:y0 + ch, x0:x0 + cw]
+    cropped = patch[:, y0 : y0 + ch, x0 : x0 + cw]
 
     # Resize back to original size via simple repeat (no cv2 dependency)
     # Use numpy resize (wraps) then crop to correct size
@@ -216,8 +228,7 @@ if TORCH_AVAILABLE:
         negative is an augmented crop of a different identity.
         """
 
-        def __init__(self, n_ids: int, triplets_per_epoch: int,
-                     rng_seed: int = 42):
+        def __init__(self, n_ids: int, triplets_per_epoch: int, rng_seed: int = 42):
             self.n_ids = n_ids
             self.triplets_per_epoch = triplets_per_epoch
             self._rng = np.random.default_rng(rng_seed)
@@ -240,9 +251,7 @@ if TORCH_AVAILABLE:
             base = self._bases[anchor_id]
             anchor = _augment_crop(_generate_crop(base, rng), rng)
             positive = _augment_crop(_generate_crop(base, rng), rng)
-            negative = _augment_crop(
-                _generate_crop(self._bases[neg_id], rng), rng
-            )
+            negative = _augment_crop(_generate_crop(self._bases[neg_id], rng), rng)
 
             return (
                 torch.from_numpy(anchor),
@@ -253,8 +262,13 @@ if TORCH_AVAILABLE:
 
 # ── Training ──────────────────────────────────────────────────────────────────
 
-def _recall_at_1(model: "nn.Module", n_ids: int = 50, crops_per_id: int = 10,
-                 device: "torch.device" = None) -> float:
+
+def _recall_at_1(
+    model: "nn.Module",
+    n_ids: int = 50,
+    crops_per_id: int = 10,
+    device: "torch.device" = None,
+) -> float:
     """
     Estimate Recall@1 on a small held-out identity set.
 
@@ -277,9 +291,7 @@ def _recall_at_1(model: "nn.Module", n_ids: int = 50, crops_per_id: int = 10,
                 _augment_crop(_generate_crop(bases[iid], rng), rng)
                 for _ in range(crops_per_id)
             ]
-            batch = torch.from_numpy(
-                np.stack(crops, axis=0)
-            ).to(device)
+            batch = torch.from_numpy(np.stack(crops, axis=0)).to(device)
             embs = model(batch).cpu().numpy()
             query_embs.append(embs[0])
             query_ids.append(iid)
@@ -288,18 +300,17 @@ def _recall_at_1(model: "nn.Module", n_ids: int = 50, crops_per_id: int = 10,
                 gallery_ids.append(iid)
 
     gallery_embs = np.stack(gallery_embs)  # (G, 128)
-    query_embs   = np.stack(query_embs)    # (Q, 128)
+    query_embs = np.stack(query_embs)  # (Q, 128)
 
     # Cosine similarity: dot product (embeddings are L2-normalized)
-    sims = query_embs @ gallery_embs.T     # (Q, G)
+    sims = query_embs @ gallery_embs.T  # (Q, G)
     preds = np.argmax(sims, axis=1)
     predicted_ids = [gallery_ids[p] for p in preds]
     correct = sum(p == q for p, q in zip(predicted_ids, query_ids))
     return correct / len(query_ids)
 
 
-def _train_torch(n_ids: int, epochs: int, batch_size: int,
-                 output_dir: Path) -> Path:
+def _train_torch(n_ids: int, epochs: int, batch_size: int, output_dir: Path) -> Path:
     """Train with PyTorch and export to ONNX."""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"  Device: {device}")
@@ -309,16 +320,23 @@ def _train_torch(n_ids: int, epochs: int, batch_size: int,
     triplets_per_epoch = min(triplets_per_epoch, 20000)
 
     dataset = TripletDataset(n_ids=n_ids, triplets_per_epoch=triplets_per_epoch)
-    loader  = DataLoader(dataset, batch_size=batch_size, shuffle=True,
-                         num_workers=0, pin_memory=(device.type == "cuda"))
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        pin_memory=(device.type == "cuda"),
+    )
 
     model = ReIDEmbedder(embedding_dim=128).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     criterion = nn.TripletMarginLoss(margin=0.3, p=2, reduction="mean")
 
-    print(f"\n  Training ReIDEmbedder | {epochs} epochs | "
-          f"{triplets_per_epoch} triplets/epoch | batch={batch_size}")
+    print(
+        f"\n  Training ReIDEmbedder | {epochs} epochs | "
+        f"{triplets_per_epoch} triplets/epoch | batch={batch_size}"
+    )
     print(f"  Parameters: {sum(p.numel() for p in model.parameters()):,}")
     print()
 
@@ -329,7 +347,7 @@ def _train_torch(n_ids: int, epochs: int, batch_size: int,
         epoch_losses = []
 
         for anchor, positive, negative in loader:
-            anchor   = anchor.to(device)
+            anchor = anchor.to(device)
             positive = positive.to(device)
             negative = negative.to(device)
 
@@ -349,8 +367,10 @@ def _train_torch(n_ids: int, epochs: int, batch_size: int,
 
         if epoch % 10 == 0 or epoch == 1 or epoch == epochs:
             lr = scheduler.get_last_lr()[0]
-            print(f"  Epoch {epoch:>4}/{epochs}  "
-                  f"triplet_loss={mean_loss:.4f}  lr={lr:.6f}")
+            print(
+                f"  Epoch {epoch:>4}/{epochs}  "
+                f"triplet_loss={mean_loss:.4f}  lr={lr:.6f}"
+            )
 
     # Recall@1 on held-out set
     recall = _recall_at_1(model, n_ids=100, crops_per_id=10, device=device)
@@ -370,7 +390,7 @@ def _train_torch(n_ids: int, epochs: int, batch_size: int,
             input_names=["image"],
             output_names=["embedding"],
             dynamic_axes={
-                "image":     {0: "batch"},
+                "image": {0: "batch"},
                 "embedding": {0: "batch"},
             },
             opset_version=17,
@@ -382,6 +402,7 @@ def _train_torch(n_ids: int, epochs: int, batch_size: int,
 
 
 # ── Fallback: PCA stub via skl2onnx ──────────────────────────────────────────
+
 
 def _train_pca_stub(output_dir: Path) -> Path:
     """
@@ -417,11 +438,15 @@ def _train_pca_stub(output_dir: Path) -> Path:
         X.append(crop.flatten())
     X = np.array(X, dtype=np.float32)
 
-    print(f"  Fitting PCA ({embedding_dim} components) on {n_samples} synthetic crops ...")
-    pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("pca",    PCA(n_components=embedding_dim, whiten=True, random_state=42)),
-    ])
+    print(
+        f"  Fitting PCA ({embedding_dim} components) on {n_samples} synthetic crops ..."
+    )
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("pca", PCA(n_components=embedding_dim, whiten=True, random_state=42)),
+        ]
+    )
     pipe.fit(X)
 
     onnx_path = output_dir / "reid_embedder.onnx"
@@ -439,14 +464,16 @@ def _train_pca_stub(output_dir: Path) -> Path:
 
 # ── Config JSON ───────────────────────────────────────────────────────────────
 
-def _save_config(output_dir: Path, *, input_size: list, embedding_dim: int,
-                 backend: str) -> Path:
+
+def _save_config(
+    output_dir: Path, *, input_size: list, embedding_dim: int, backend: str
+) -> Path:
     cfg = {
-        "input_size":    input_size,   # [H, W]
+        "input_size": input_size,  # [H, W]
         "embedding_dim": embedding_dim,
-        "channels":      3,
-        "normalize":     True,
-        "backend":       backend,
+        "channels": 3,
+        "normalize": True,
+        "backend": backend,
         "note": (
             "reid.py _ONNXEmbedder resizes crops to (W=128, H=256). "
             "Retrain with input_size=[256,128] once real labeled crops are available."
@@ -461,25 +488,31 @@ def _save_config(output_dir: Path, *, input_size: list, embedding_dim: int,
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Train Summit.OS re-ID appearance embedder"
     )
     parser.add_argument(
-        "--samples", type=int, default=500,
-        help="Number of synthetic identities to generate (default: 500)"
+        "--samples",
+        type=int,
+        default=500,
+        help="Number of synthetic identities to generate (default: 500)",
     )
     parser.add_argument(
-        "--epochs", type=int, default=50,
-        help="Training epochs (PyTorch path only, default: 50)"
+        "--epochs",
+        type=int,
+        default=50,
+        help="Training epochs (PyTorch path only, default: 50)",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=64,
-        help="Triplet batch size (default: 64)"
+        "--batch-size", type=int, default=64, help="Triplet batch size (default: 64)"
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
-        help=f"Output directory for .onnx + .json (default: {DEFAULT_OUTPUT_DIR})"
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help=f"Output directory for .onnx + .json (default: {DEFAULT_OUTPUT_DIR})",
     )
     args = parser.parse_args()
 
@@ -523,7 +556,9 @@ def main():
     print(f"  Model:  {onnx_path}")
     print(f"  Config: {output_dir / 'reid_embedder_config.json'}")
     print()
-    print("To use: set REID_MODEL_PATH to the .onnx path before starting the fusion service.")
+    print(
+        "To use: set REID_MODEL_PATH to the .onnx path before starting the fusion service."
+    )
 
 
 if __name__ == "__main__":

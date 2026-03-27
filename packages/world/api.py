@@ -11,6 +11,7 @@ Usage in a FastAPI app:
     world_store = WorldStore()
     app.include_router(create_world_router(world_store), prefix="/api/v1")
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -38,6 +39,7 @@ logger = logging.getLogger("world.api")
 
 
 # ── Request / Response Models ──────────────────────────────────
+
 
 class EntityCreateRequest(BaseModel):
     entity_type: str = "ASSET"
@@ -88,7 +90,9 @@ class EntityUpdateRequest(BaseModel):
 
 class RelationshipRequest(BaseModel):
     related_entity_id: str
-    relationship_type: str  # "assigned_to", "observed_by", "correlated_with", "parent", "child"
+    relationship_type: (
+        str  # "assigned_to", "observed_by", "correlated_with", "parent", "child"
+    )
 
 
 class BulkUpsertRequest(BaseModel):
@@ -96,6 +100,7 @@ class BulkUpsertRequest(BaseModel):
 
 
 # ── Router Factory ─────────────────────────────────────────────
+
 
 def create_world_router(store: WorldStore) -> APIRouter:
     """Create a FastAPI router wired to the given WorldStore."""
@@ -119,8 +124,12 @@ def create_world_router(store: WorldStore) -> APIRouter:
         ls = LifecycleState(state) if state else None
 
         entities = store.query(
-            entity_type=et, domain=ed, state=ls,
-            org_id=org_id, class_label=class_label, limit=limit,
+            entity_type=et,
+            domain=ed,
+            state=ls,
+            org_id=org_id,
+            class_label=class_label,
+            limit=limit,
         )
         return {
             "entities": [e.to_dict() for e in entities],
@@ -146,8 +155,7 @@ def create_world_router(store: WorldStore) -> APIRouter:
         results = store.query_nearby(lat, lon, radius_m, entity_type=et, limit=limit)
         return {
             "entities": [
-                {**e.to_dict(), "_distance_m": round(d, 1)}
-                for e, d in results
+                {**e.to_dict(), "_distance_m": round(d, 1)} for e, d in results
             ],
             "total": len(results),
         }
@@ -375,6 +383,7 @@ def create_world_router(store: WorldStore) -> APIRouter:
 
 
 # ── Helpers ────────────────────────────────────────────────────
+
 
 def _request_to_entity(req: EntityCreateRequest) -> Entity:
     """Convert API request to Entity dataclass."""

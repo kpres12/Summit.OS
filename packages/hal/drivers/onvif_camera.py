@@ -9,6 +9,7 @@ Interfaces with ONVIF-compatible IP cameras for:
 
 Falls back to simulation when onvif-zeep is not available.
 """
+
 from __future__ import annotations
 
 import time
@@ -22,6 +23,7 @@ logger = logging.getLogger("hal.onvif")
 @dataclass
 class CameraProfile:
     """Camera media profile."""
+
     name: str
     token: str
     resolution: Tuple[int, int] = (1920, 1080)
@@ -33,14 +35,16 @@ class CameraProfile:
 @dataclass
 class PTZPosition:
     """PTZ position."""
-    pan: float = 0.0    # -1.0 to 1.0
-    tilt: float = 0.0   # -1.0 to 1.0
-    zoom: float = 0.0   # 0.0 to 1.0
+
+    pan: float = 0.0  # -1.0 to 1.0
+    tilt: float = 0.0  # -1.0 to 1.0
+    zoom: float = 0.0  # 0.0 to 1.0
 
 
 @dataclass
 class CameraStatus:
     """Camera status."""
+
     online: bool = False
     recording: bool = False
     ptz_position: PTZPosition = field(default_factory=PTZPosition)
@@ -57,8 +61,9 @@ class ONVIFCameraDriver:
     Supports discovery, streaming, and PTZ control.
     """
 
-    def __init__(self, host: str, port: int = 80,
-                 username: str = "admin", password: str = ""):
+    def __init__(
+        self, host: str, port: int = 80, username: str = "admin", password: str = ""
+    ):
         self.host = host
         self.port = port
         self.username = username
@@ -74,6 +79,7 @@ class ONVIFCameraDriver:
     def _check_onvif() -> bool:
         try:
             from onvif import ONVIFCamera
+
             return True
         except ImportError:
             return False
@@ -83,7 +89,10 @@ class ONVIFCameraDriver:
         if self._onvif_available:
             try:
                 from onvif import ONVIFCamera
-                self._camera = ONVIFCamera(self.host, self.port, self.username, self.password)
+
+                self._camera = ONVIFCamera(
+                    self.host, self.port, self.username, self.password
+                )
                 await self._camera.update_xaddrs()
                 self._connected = True
                 await self._discover_profiles()
@@ -97,13 +106,17 @@ class ONVIFCameraDriver:
             self._connected = True
             self._profiles = [
                 CameraProfile(
-                    name="MainStream", token="main",
-                    resolution=(1920, 1080), fps=30,
+                    name="MainStream",
+                    token="main",
+                    resolution=(1920, 1080),
+                    fps=30,
                     rtsp_uri=f"rtsp://{self.host}:554/stream1",
                 ),
                 CameraProfile(
-                    name="SubStream", token="sub",
-                    resolution=(640, 480), fps=15,
+                    name="SubStream",
+                    token="sub",
+                    resolution=(640, 480),
+                    fps=15,
                     rtsp_uri=f"rtsp://{self.host}:554/stream2",
                 ),
             ]
@@ -126,7 +139,7 @@ class ONVIFCameraDriver:
                     name=p.Name,
                     token=p.token,
                 )
-                if hasattr(p, 'VideoEncoderConfiguration'):
+                if hasattr(p, "VideoEncoderConfiguration"):
                     vec = p.VideoEncoderConfiguration
                     profile.resolution = (vec.Resolution.Width, vec.Resolution.Height)
                     profile.fps = vec.RateControl.FrameRateLimit
@@ -134,8 +147,8 @@ class ONVIFCameraDriver:
 
                 # Get stream URI
                 stream_setup = {
-                    'Stream': 'RTP-Unicast',
-                    'Transport': {'Protocol': 'RTSP'},
+                    "Stream": "RTP-Unicast",
+                    "Transport": {"Protocol": "RTSP"},
                 }
                 uri_response = await media_service.GetStreamUri(stream_setup, p.token)
                 profile.rtsp_uri = uri_response.Uri
@@ -144,17 +157,20 @@ class ONVIFCameraDriver:
         except Exception as e:
             logger.error(f"Profile discovery failed: {e}")
 
-    async def ptz_move(self, pan: float = 0.0, tilt: float = 0.0,
-                       zoom: float = 0.0, speed: float = 0.5) -> bool:
+    async def ptz_move(
+        self, pan: float = 0.0, tilt: float = 0.0, zoom: float = 0.0, speed: float = 0.5
+    ) -> bool:
         """Move PTZ camera (continuous)."""
         if self._camera and self._onvif_available:
             try:
                 ptz_service = self._camera.create_ptz_service()
-                request = ptz_service.create_type('ContinuousMove')
-                request.ProfileToken = self._profiles[0].token if self._profiles else "main"
+                request = ptz_service.create_type("ContinuousMove")
+                request.ProfileToken = (
+                    self._profiles[0].token if self._profiles else "main"
+                )
                 request.Velocity = {
-                    'PanTilt': {'x': pan * speed, 'y': tilt * speed},
-                    'Zoom': {'x': zoom * speed},
+                    "PanTilt": {"x": pan * speed, "y": tilt * speed},
+                    "Zoom": {"x": zoom * speed},
                 }
                 await ptz_service.ContinuousMove(request)
                 return True
@@ -162,9 +178,15 @@ class ONVIFCameraDriver:
                 logger.error(f"PTZ move failed: {e}")
                 return False
 
-        self._status.ptz_position.pan = max(-1, min(1, self._status.ptz_position.pan + pan * 0.1))
-        self._status.ptz_position.tilt = max(-1, min(1, self._status.ptz_position.tilt + tilt * 0.1))
-        self._status.ptz_position.zoom = max(0, min(1, self._status.ptz_position.zoom + zoom * 0.1))
+        self._status.ptz_position.pan = max(
+            -1, min(1, self._status.ptz_position.pan + pan * 0.1)
+        )
+        self._status.ptz_position.tilt = max(
+            -1, min(1, self._status.ptz_position.tilt + tilt * 0.1)
+        )
+        self._status.ptz_position.zoom = max(
+            0, min(1, self._status.ptz_position.zoom + zoom * 0.1)
+        )
         return True
 
     async def ptz_stop(self) -> bool:
@@ -172,7 +194,7 @@ class ONVIFCameraDriver:
             try:
                 ptz_service = self._camera.create_ptz_service()
                 token = self._profiles[0].token if self._profiles else "main"
-                await ptz_service.Stop({'ProfileToken': token})
+                await ptz_service.Stop({"ProfileToken": token})
                 return True
             except Exception:
                 return False
@@ -183,10 +205,12 @@ class ONVIFCameraDriver:
             try:
                 ptz_service = self._camera.create_ptz_service()
                 token = self._profiles[0].token if self._profiles else "main"
-                await ptz_service.GotoPreset({
-                    'ProfileToken': token,
-                    'PresetToken': preset_token,
-                })
+                await ptz_service.GotoPreset(
+                    {
+                        "ProfileToken": token,
+                        "PresetToken": preset_token,
+                    }
+                )
                 return True
             except Exception:
                 return False

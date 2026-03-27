@@ -9,6 +9,7 @@ from paho.mqtt.client import MQTTMessage
 
 try:
     from rate_limiter import MQTTRateLimiter, extract_source_id
+
     _RATE_LIMITER = MQTTRateLimiter()
     _RATE_LIMIT_AVAILABLE = True
 except ImportError:
@@ -25,7 +26,7 @@ class MQTTClient:
         port: int = 1883,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        keepalive: int = 60
+        keepalive: int = 60,
     ):
         self.broker = broker
         self.port = port
@@ -44,7 +45,7 @@ class MQTTClient:
 
         self.connected = False
         self.subscriptions: Dict[str, Callable] = {}
-        
+
     def _on_connect(self, client, userdata, flags, rc):
         """MQTT connection callback."""
         if rc == 0:
@@ -52,23 +53,25 @@ class MQTTClient:
             logging.info(f"Connected to MQTT broker {self.broker}:{self.port}")
         else:
             logging.error(f"Failed to connect to MQTT broker: {rc}")
-    
+
     def _on_disconnect(self, client, userdata, rc):
         """MQTT disconnection callback."""
         self.connected = False
         logging.info(f"Disconnected from MQTT broker: {rc}")
-    
+
     def _on_message(self, client, userdata, msg: MQTTMessage):
         """MQTT message callback — rate-limited per source."""
         topic = msg.topic
-        payload = msg.payload.decode('utf-8')
+        payload = msg.payload.decode("utf-8")
 
         # Rate limit check: parse payload once to extract source_id
         if _RATE_LIMIT_AVAILABLE and _RATE_LIMITER is not None:
             try:
                 data = json.loads(payload)
             except json.JSONDecodeError:
-                logging.error(f"Invalid JSON in MQTT message on {topic}: {payload[:200]}")
+                logging.error(
+                    f"Invalid JSON in MQTT message on {topic}: {payload[:200]}"
+                )
                 return
             source_id = extract_source_id(topic, data)
             if not _RATE_LIMITER.allow(source_id):
@@ -77,7 +80,9 @@ class MQTTClient:
             try:
                 data = json.loads(payload)
             except json.JSONDecodeError:
-                logging.error(f"Invalid JSON in MQTT message on {topic}: {payload[:200]}")
+                logging.error(
+                    f"Invalid JSON in MQTT message on {topic}: {payload[:200]}"
+                )
                 return
 
         # Find and call subscription handler
@@ -88,12 +93,14 @@ class MQTTClient:
                 except Exception as e:
                     logging.error(f"Error handling MQTT message: {e}")
                 break
-    
+
     def _on_publish(self, client, userdata, mid):
         """MQTT publish callback."""
         logging.debug(f"Published message with mid: {mid}")
-    
-    async def _handle_message(self, handler: Callable, topic: str, data: Dict[str, Any]):
+
+    async def _handle_message(
+        self, handler: Callable, topic: str, data: Dict[str, Any]
+    ):
         """Handle incoming MQTT message."""
         try:
             if asyncio.iscoroutinefunction(handler):
@@ -102,51 +109,51 @@ class MQTTClient:
                 handler(topic, data)
         except Exception as e:
             logging.error(f"Error in message handler: {e}")
-    
+
     def _topic_matches(self, topic: str, pattern: str) -> bool:
         """Check if topic matches pattern (supports + and # wildcards)."""
         if pattern == topic:
             return True
-        
+
         # Simple wildcard matching
-        if '+' in pattern or '#' in pattern:
-            pattern_parts = pattern.split('/')
-            topic_parts = topic.split('/')
-            
-            if len(pattern_parts) != len(topic_parts) and '#' not in pattern:
+        if "+" in pattern or "#" in pattern:
+            pattern_parts = pattern.split("/")
+            topic_parts = topic.split("/")
+
+            if len(pattern_parts) != len(topic_parts) and "#" not in pattern:
                 return False
-            
+
             for i, pattern_part in enumerate(pattern_parts):
-                if pattern_part == '#':
+                if pattern_part == "#":
                     return True
-                elif pattern_part == '+':
+                elif pattern_part == "+":
                     continue
                 elif i >= len(topic_parts) or pattern_part != topic_parts[i]:
                     return False
-            
+
             return True
-        
+
         return False
-    
+
     async def connect(self):
         """Connect to MQTT broker."""
         try:
             self.client.connect(self.broker, self.port, self.keepalive)
             self.client.loop_start()
-            
+
             # Wait for connection
             timeout = 10
             while not self.connected and timeout > 0:
                 await asyncio.sleep(0.1)
                 timeout -= 0.1
-            
+
             if not self.connected:
                 raise ConnectionError("Failed to connect to MQTT broker")
-                
+
         except Exception as e:
             logging.error(f"Error connecting to MQTT broker: {e}")
             raise
-    
+
     async def disconnect(self):
         """Disconnect from MQTT broker."""
         try:
@@ -156,52 +163,54 @@ class MQTTClient:
             logging.info("Disconnected from MQTT broker")
         except Exception as e:
             logging.error(f"Error disconnecting from MQTT broker: {e}")
-    
-    async def publish(self, topic: str, message: str, qos: int = 0, retain: bool = False):
+
+    async def publish(
+        self, topic: str, message: str, qos: int = 0, retain: bool = False
+    ):
         """Publish message to MQTT topic."""
         if not self.connected:
             raise ConnectionError("Not connected to MQTT broker")
-        
+
         try:
             result = self.client.publish(topic, message, qos=qos, retain=retain)
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 raise Exception(f"Failed to publish message: {result.rc}")
-            
+
             logging.debug(f"Published to {topic}: {message[:100]}...")
-            
+
         except Exception as e:
             logging.error(f"Error publishing to MQTT: {e}")
             raise
-    
+
     async def subscribe(self, topic: str, handler: Callable):
         """Subscribe to MQTT topic with handler."""
         if not self.connected:
             raise ConnectionError("Not connected to MQTT broker")
-        
+
         try:
             result = self.client.subscribe(topic)
             if result[0] != mqtt.MQTT_ERR_SUCCESS:
                 raise Exception(f"Failed to subscribe to topic: {result[0]}")
-            
+
             self.subscriptions[topic] = handler
             logging.info(f"Subscribed to topic: {topic}")
-            
+
         except Exception as e:
             logging.error(f"Error subscribing to MQTT topic: {e}")
             raise
-    
+
     async def unsubscribe(self, topic: str):
         """Unsubscribe from MQTT topic."""
         if not self.connected:
             return
-        
+
         try:
             result = self.client.unsubscribe(topic)
             if result[0] != mqtt.MQTT_ERR_SUCCESS:
                 logging.warning(f"Failed to unsubscribe from topic: {result[0]}")
-            
+
             self.subscriptions.pop(topic, None)
             logging.info(f"Unsubscribed from topic: {topic}")
-            
+
         except Exception as e:
             logging.error(f"Error unsubscribing from MQTT topic: {e}")

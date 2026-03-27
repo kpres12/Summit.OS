@@ -13,6 +13,7 @@ Implements:
 
 References: Wan & Van Der Merwe (2000), Julier & Uhlmann (2004)
 """
+
 from __future__ import annotations
 
 import math
@@ -52,9 +53,9 @@ class UnscentedKalmanFilter:
 
         # Measurement noise (lat, lon, alt)
         self.R_pos = [
-            [1e-10, 0, 0],      # ~10m lat noise
-            [0, 1e-10, 0],      # ~10m lon noise
-            [0, 0, 25.0],       # 5m alt noise
+            [1e-10, 0, 0],  # ~10m lat noise
+            [0, 1e-10, 0],  # ~10m lon noise
+            [0, 0, 25.0],  # 5m alt noise
         ]
 
         # Sigma point weights
@@ -74,25 +75,25 @@ class UnscentedKalmanFilter:
         # Position noise
         self.Q[0][0] = 1e-12  # lat
         self.Q[1][1] = 1e-12  # lon
-        self.Q[2][2] = 1.0    # alt
+        self.Q[2][2] = 1.0  # alt
         # Velocity noise
-        self.Q[3][3] = 0.5    # vn
-        self.Q[4][4] = 0.5    # ve
-        self.Q[5][5] = 0.5    # vd
+        self.Q[3][3] = 0.5  # vn
+        self.Q[4][4] = 0.5  # ve
+        self.Q[5][5] = 0.5  # vd
         # Acceleration noise
-        self.Q[6][6] = 2.0    # ax
-        self.Q[7][7] = 2.0    # ay
+        self.Q[6][6] = 2.0  # ax
+        self.Q[7][7] = 2.0  # ay
 
     def _compute_weights(self):
         """Compute sigma point weights for the unscented transform."""
-        lam = self.alpha ** 2 * (self.n + self.kappa) - self.n
+        lam = self.alpha**2 * (self.n + self.kappa) - self.n
 
         self.n_sigma = 2 * self.n + 1
         self.wm = [0.0] * self.n_sigma  # Mean weights
         self.wc = [0.0] * self.n_sigma  # Covariance weights
 
         self.wm[0] = lam / (self.n + lam)
-        self.wc[0] = lam / (self.n + lam) + (1 - self.alpha ** 2 + self.beta)
+        self.wc[0] = lam / (self.n + lam) + (1 - self.alpha**2 + self.beta)
 
         w = 1.0 / (2 * (self.n + lam))
         for i in range(1, self.n_sigma):
@@ -101,8 +102,7 @@ class UnscentedKalmanFilter:
 
         self._gamma = math.sqrt(self.n + lam)
 
-    def initialize(self, lat: float, lon: float, alt: float,
-                   timestamp: float) -> None:
+    def initialize(self, lat: float, lon: float, alt: float, timestamp: float) -> None:
         """Initialize filter with first measurement."""
         self.x = [lat, lon, alt, 0.0, 0.0, 0.0, 0.0, 0.0]
         self._initialized = True
@@ -127,9 +127,14 @@ class UnscentedKalmanFilter:
         for i in range(self.n):
             self.P[i][i] += self.Q[i][i] * dt
 
-    def update(self, lat: float, lon: float, alt: float,
-               timestamp: float,
-               R: Optional[List[List[float]]] = None) -> None:
+    def update(
+        self,
+        lat: float,
+        lon: float,
+        alt: float,
+        timestamp: float,
+        R: Optional[List[List[float]]] = None,
+    ) -> None:
         """Update step with position measurement."""
         if not self._initialized:
             self.initialize(lat, lon, alt, timestamp)
@@ -197,25 +202,33 @@ class UnscentedKalmanFilter:
         vd_new = vd  # Assume constant vertical rate
 
         # Update positions
-        dlat = (vn * dt + 0.5 * ax * dt ** 2) / self.EARTH_R * (180 / math.pi)
+        dlat = (vn * dt + 0.5 * ax * dt**2) / self.EARTH_R * (180 / math.pi)
         cos_lat = math.cos(math.radians(lat))
-        dlon = (ve * dt + 0.5 * ay * dt ** 2) / (self.EARTH_R * max(cos_lat, 1e-10)) * (180 / math.pi)
+        dlon = (
+            (ve * dt + 0.5 * ay * dt**2)
+            / (self.EARTH_R * max(cos_lat, 1e-10))
+            * (180 / math.pi)
+        )
         dalt = -vd * dt
 
         return [
             lat + dlat,
             lon + dlon,
             alt + dalt,
-            vn_new, ve_new, vd_new,
-            ax, ay,
+            vn_new,
+            ve_new,
+            vd_new,
+            ax,
+            ay,
         ]
 
     def _measurement_model(self, state: List[float]) -> List[float]:
         """Extract position from state (identity for position states)."""
         return [state[0], state[1], state[2]]
 
-    def _generate_sigma_points(self, x: List[float],
-                                P: List[List[float]]) -> List[List[float]]:
+    def _generate_sigma_points(
+        self, x: List[float], P: List[List[float]]
+    ) -> List[List[float]]:
         """Generate 2n+1 sigma points."""
         # Cholesky-like decomposition (simple sqrt for diagonal-dominant)
         L = self._cholesky(P)
@@ -245,8 +258,9 @@ class UnscentedKalmanFilter:
 
         return L
 
-    def _weighted_mean(self, points: List[List[float]],
-                       weights: List[float]) -> List[float]:
+    def _weighted_mean(
+        self, points: List[List[float]], weights: List[float]
+    ) -> List[float]:
         n = len(points[0])
         mean = [0.0] * n
         for k, pt in enumerate(points):
@@ -254,9 +268,9 @@ class UnscentedKalmanFilter:
                 mean[i] += weights[k] * pt[i]
         return mean
 
-    def _weighted_covariance(self, points: List[List[float]],
-                             mean: List[float],
-                             weights: List[float]) -> List[List[float]]:
+    def _weighted_covariance(
+        self, points: List[List[float]], mean: List[float], weights: List[float]
+    ) -> List[List[float]]:
         n = len(mean)
         cov = [[0.0] * n for _ in range(n)]
         for k, pt in enumerate(points):
@@ -271,14 +285,26 @@ class UnscentedKalmanFilter:
         a, b, c = M[0]
         d, e, f = M[1]
         g, h, k = M[2]
-        det = a*(e*k - f*h) - b*(d*k - f*g) + c*(d*h - e*g)
+        det = a * (e * k - f * h) - b * (d * k - f * g) + c * (d * h - e * g)
         if abs(det) < 1e-30:
             return self._eye(3)
         inv_det = 1.0 / det
         return [
-            [(e*k - f*h)*inv_det, (c*h - b*k)*inv_det, (b*f - c*e)*inv_det],
-            [(f*g - d*k)*inv_det, (a*k - c*g)*inv_det, (c*d - a*f)*inv_det],
-            [(d*h - e*g)*inv_det, (b*g - a*h)*inv_det, (a*e - b*d)*inv_det],
+            [
+                (e * k - f * h) * inv_det,
+                (c * h - b * k) * inv_det,
+                (b * f - c * e) * inv_det,
+            ],
+            [
+                (f * g - d * k) * inv_det,
+                (a * k - c * g) * inv_det,
+                (c * d - a * f) * inv_det,
+            ],
+            [
+                (d * h - e * g) * inv_det,
+                (b * g - a * h) * inv_det,
+                (a * e - b * d) * inv_det,
+            ],
         ]
 
     def _mat_mul(self, A: List[List[float]], B: List[List[float]]) -> List[List[float]]:
@@ -303,7 +329,7 @@ class UnscentedKalmanFilter:
 
     @property
     def speed(self) -> float:
-        return math.sqrt(self.x[3]**2 + self.x[4]**2)
+        return math.sqrt(self.x[3] ** 2 + self.x[4] ** 2)
 
     @property
     def heading(self) -> float:

@@ -14,6 +14,7 @@ Wire-format for encrypted values:
   Base64URL( version_byte || nonce[12] || ciphertext || tag[16] )
   version_byte = 0x01
 """
+
 from __future__ import annotations
 
 import base64
@@ -70,6 +71,7 @@ def encrypt_field(plaintext: str) -> str:
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         import os as _os
+
         nonce = _os.urandom(12)
         aesgcm = AESGCM(key)
         ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
@@ -100,11 +102,14 @@ def decrypt_field(stored: str) -> str:
 
     key = _get_key()
     if key is None:
-        logger.warning("Cannot decrypt field — FIELD_ENCRYPTION_KEY not set; returning ciphertext as-is")
+        logger.warning(
+            "Cannot decrypt field — FIELD_ENCRYPTION_KEY not set; returning ciphertext as-is"
+        )
         return stored
 
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
         nonce = raw[1:13]
         ciphertext = raw[13:]
         aesgcm = AESGCM(key)

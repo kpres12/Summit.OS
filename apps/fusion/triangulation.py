@@ -2,11 +2,13 @@
 Triangulation helpers: compute intersection point of two bearings from two observer points.
 Approximates on small distances using rhumb line to convert bearing to a ray in lat/lon.
 """
+
 from math import radians, degrees, sin, cos, tan, atan2
 from typing import Optional
 
 # Earth radius in meters
 R = 6371000.0
+
 
 def _to_vector(lat: float, lon: float, bearing_deg: float):
     b = radians(bearing_deg)
@@ -14,10 +16,13 @@ def _to_vector(lat: float, lon: float, bearing_deg: float):
     return cos(b), sin(b)
 
 
-def bearing_intersection(lat1: float, lon1: float, b1_deg: float, lat2: float, lon2: float, b2_deg: float) -> Optional[tuple[float, float]]:
+def bearing_intersection(
+    lat1: float, lon1: float, b1_deg: float, lat2: float, lon2: float, b2_deg: float
+) -> Optional[tuple[float, float]]:
     # Convert to local tangent plane (meters) with origin at point1
     # Equirectangular approximation
     import math
+
     lat1r = radians(lat1)
     x1, y1 = 0.0, 0.0
     x2 = (radians(lon2 - lon1)) * cos(lat1r) * R

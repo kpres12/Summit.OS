@@ -94,15 +94,15 @@ VISUAL_CLASSES: Dict[int, str] = {
 
 # COCO category_id → VISUAL_CLASSES id.  Only categories we care about.
 COCO_TO_VISUAL: Dict[int, int] = {
-    1:  3,   # person           → person
-    9:  12,  # boat             → vessel
+    1: 3,  # person           → person
+    9: 12,  # boat             → vessel
     21: 17,  # cow              → dangerous_animal  (proxy for livestock / large animal)
     22: 17,  # elephant         → dangerous_animal
     23: 17,  # bear             → dangerous_animal
     24: 17,  # zebra            → dangerous_animal
     # The following are kept for scene-level usefulness but mapped to person / vessel
-    3:  12,  # car              → vessel (surface vehicle proxy; filtered later)
-    8:  12,  # truck            → vessel
+    3: 12,  # car              → vessel (surface vehicle proxy; filtered later)
+    8: 12,  # truck            → vessel
     16: 17,  # bird             → dangerous_animal (raptor / UAV hazard proxy)
     17: 17,  # cat              → dangerous_animal
     18: 17,  # dog              → dangerous_animal
@@ -112,6 +112,7 @@ COCO_TO_VISUAL: Dict[int, int] = {
 # ---------------------------------------------------------------------------
 # HTTP helper (mirrors download_real_data.py pattern)
 # ---------------------------------------------------------------------------
+
 
 def _fetch(url: str, timeout: int = 60, retries: int = 3) -> Optional[bytes]:
     """Fetch a URL, returning raw bytes or None on failure."""
@@ -126,7 +127,7 @@ def _fetch(url: str, timeout: int = 60, retries: int = 3) -> Optional[bytes]:
             return None
         except Exception as exc:
             if attempt < retries - 1:
-                wait = 2 ** attempt
+                wait = 2**attempt
                 print(f"  Attempt {attempt + 1} failed ({exc}), retrying in {wait}s…")
                 time.sleep(wait)
             else:
@@ -153,7 +154,11 @@ def _fetch_stream(url: str, dest_path: str, timeout: int = 120) -> bool:
                     downloaded += len(block)
                     if total:
                         pct = downloaded * 100 // total
-                        print(f"\r  {pct:3d}%  {downloaded // 1048576} / {total // 1048576} MB", end="", flush=True)
+                        print(
+                            f"\r  {pct:3d}%  {downloaded // 1048576} / {total // 1048576} MB",
+                            end="",
+                            flush=True,
+                        )
             print()
         return True
     except Exception as exc:
@@ -165,6 +170,7 @@ def _fetch_stream(url: str, dest_path: str, timeout: int = 120) -> bool:
 # Minimal PNG writer (stdlib only — no Pillow)
 # Used by synthetic generator to write tiny solid-color patches.
 # ---------------------------------------------------------------------------
+
 
 def _write_png(path: str, width: int, height: int, rgb: Tuple[int, int, int]) -> None:
     """Write a single-color PNG using only stdlib (zlib + struct)."""
@@ -185,11 +191,13 @@ def _write_png(path: str, width: int, height: int, rgb: Tuple[int, int, int]) ->
     ihdr_data = (
         _u32be(width)
         + _u32be(height)
-        + bytes([8, 2, 0, 0, 0])  # bit depth=8, colour=RGB, compression, filter, interlace
+        + bytes(
+            [8, 2, 0, 0, 0]
+        )  # bit depth=8, colour=RGB, compression, filter, interlace
     )
 
     data = (
-        b"\x89PNG\r\n\x1a\n"      # PNG signature
+        b"\x89PNG\r\n\x1a\n"  # PNG signature
         + _chunk(b"IHDR", ihdr_data)
         + _chunk(b"IDAT", compressed)
         + _chunk(b"IEND", b"")
@@ -273,7 +281,11 @@ def download_dfire() -> Dict[str, int]:
                         tgt.write(src.read())
                     images_extracted += 1
                 # Labels — .txt files that are YOLO annotations (skip README etc.)
-                elif lower.endswith(".txt") and fname.lower() not in ("readme.txt", "license.txt", "classes.txt"):
+                elif lower.endswith(".txt") and fname.lower() not in (
+                    "readme.txt",
+                    "license.txt",
+                    "classes.txt",
+                ):
                     prefix = "train_" if "train" in lower else "test_"
                     label_path = os.path.join(dest, "labels", prefix + fname)
                     os.makedirs(os.path.dirname(label_path), exist_ok=True)
@@ -295,7 +307,9 @@ def download_dfire() -> Dict[str, int]:
                             str(visual_cls) + " " + " ".join(parts[1:])
                         )
                     with open(label_path, "w") as lf:
-                        lf.write("\n".join(remapped_lines) + "\n" if remapped_lines else "")
+                        lf.write(
+                            "\n".join(remapped_lines) + "\n" if remapped_lines else ""
+                        )
                     labels_extracted += 1
 
     except zipfile.BadZipFile as exc:
@@ -314,7 +328,9 @@ def download_dfire() -> Dict[str, int]:
 # ---------------------------------------------------------------------------
 
 COCO_VAL_IMAGES_URL = "http://images.cocodataset.org/zips/val2017.zip"
-COCO_VAL_ANNOT_URL  = "http://images.cocodataset.org/annotations/annotations_trainval2017.zip"
+COCO_VAL_ANNOT_URL = (
+    "http://images.cocodataset.org/annotations/annotations_trainval2017.zip"
+)
 
 
 def download_coco_subset() -> Dict[str, int]:
@@ -368,7 +384,11 @@ def download_coco_subset() -> Dict[str, int]:
 
     # Build {image_id: [{class_id, bbox:[x,y,w,h], img_w, img_h}]}
     id_to_info: Dict[int, Dict] = {
-        img["id"]: {"file_name": img["file_name"], "w": img["width"], "h": img["height"]}
+        img["id"]: {
+            "file_name": img["file_name"],
+            "w": img["width"],
+            "h": img["height"],
+        }
         for img in coco["images"]
     }
 
@@ -383,10 +403,15 @@ def download_coco_subset() -> Dict[str, int]:
         if img_id not in image_annotations:
             image_annotations[img_id] = []
         x, y, bw, bh = ann["bbox"]
-        image_annotations[img_id].append({
-            "visual_cls": COCO_TO_VISUAL[cat_id],
-            "x": x, "y": y, "bw": bw, "bh": bh,
-        })
+        image_annotations[img_id].append(
+            {
+                "visual_cls": COCO_TO_VISUAL[cat_id],
+                "x": x,
+                "y": y,
+                "bw": bw,
+                "bh": bh,
+            }
+        )
 
     print(f"  Found {len(relevant_image_ids)} relevant COCO val images.")
 
@@ -417,7 +442,9 @@ def download_coco_subset() -> Dict[str, int]:
         print("  COCO val images archive cached.")
     else:
         print(f"Downloading COCO 2017 val images (~778 MB)…")
-        print("  This is a large download. Press Ctrl-C to skip and place images manually.")
+        print(
+            "  This is a large download. Press Ctrl-C to skip and place images manually."
+        )
         print(f"  URL: {COCO_VAL_IMAGES_URL}")
         if not _fetch_stream(COCO_VAL_IMAGES_URL, images_zip, timeout=600):
             print(
@@ -458,7 +485,9 @@ def download_coco_subset() -> Dict[str, int]:
 # 3. SeaDronesSee  (person-in-water from UAV)
 # ---------------------------------------------------------------------------
 
-SEADRONESSEE_BASE = "https://cloud.cs.uni-tuebingen.de/index.php/s/yMmqkNLMJKPHbx8/download"
+SEADRONESSEE_BASE = (
+    "https://cloud.cs.uni-tuebingen.de/index.php/s/yMmqkNLMJKPHbx8/download"
+)
 SEADRONESSEE_GITHUB = "https://github.com/Ben93kie/SeaDronesSee"
 
 
@@ -604,8 +633,8 @@ def download_aerial_sar() -> Dict[str, int]:
     # AIDER GitHub repo structure: AIDER-master/{fire_smoke,flood,collapsed,normal}/...
     aider_class_map = {
         "fire_smoke": (1, "fire"),
-        "collapsed":  (15, "structural_crack"),
-        "flood":      (None, None),   # background diversity — no annotation
+        "collapsed": (15, "structural_crack"),
+        "flood": (None, None),  # background diversity — no annotation
     }
 
     counts: Dict[str, int] = {}
@@ -642,7 +671,9 @@ def download_aerial_sar() -> Dict[str, int]:
                     stem = os.path.splitext(safe_name)[0]
                     lbl_path = os.path.join(lbl_dir, stem + ".txt")
                     with open(lbl_path, "w") as lf:
-                        lf.write(f"{visual_cls_id} 0.500000 0.500000 0.800000 0.800000\n")
+                        lf.write(
+                            f"{visual_cls_id} 0.500000 0.500000 0.800000 0.800000\n"
+                        )
                     counts[visual_cls_name] = counts.get(visual_cls_name, 0) + 1
 
                 images_extracted += 1
@@ -663,26 +694,86 @@ def download_aerial_sar() -> Dict[str, int]:
 # Domain definitions: (visual_class_id, primary_rgb, secondary_rgb, description)
 _SYNTHETIC_DOMAINS = [
     # Pipeline / Hazmat
-    (6,  (40,  60,  20),  (180, 120,  30), "oil_spill",        "Dark oily sheen patches on soil/water"),
-    (7,  (80,  80,  80),  (200,  50,  50), "pipeline_damage",  "Rust-coloured breach on grey pipe cross-section"),
-    (8,  (200, 230, 200), (120, 200, 100), "chemical_plume",   "Pale yellow-green smoke/plume pattern"),
+    (
+        6,
+        (40, 60, 20),
+        (180, 120, 30),
+        "oil_spill",
+        "Dark oily sheen patches on soil/water",
+    ),
+    (
+        7,
+        (80, 80, 80),
+        (200, 50, 50),
+        "pipeline_damage",
+        "Rust-coloured breach on grey pipe cross-section",
+    ),
+    (
+        8,
+        (200, 230, 200),
+        (120, 200, 100),
+        "chemical_plume",
+        "Pale yellow-green smoke/plume pattern",
+    ),
     # Agricultural
-    (9,  (100, 140,  40), (200,  80,  80), "crop_disease",     "Brown/red lesion patches on green canopy"),
-    (10, (120, 160,  50), (180, 120,  20), "pest_damage",      "Irregular brown spots on crop canopy"),
-    (11, (180, 160,  80), (220, 200, 100), "dry_field",        "Uniform straw-yellow parched soil"),
+    (
+        9,
+        (100, 140, 40),
+        (200, 80, 80),
+        "crop_disease",
+        "Brown/red lesion patches on green canopy",
+    ),
+    (
+        10,
+        (120, 160, 50),
+        (180, 120, 20),
+        "pest_damage",
+        "Irregular brown spots on crop canopy",
+    ),
+    (
+        11,
+        (180, 160, 80),
+        (220, 200, 100),
+        "dry_field",
+        "Uniform straw-yellow parched soil",
+    ),
     # Maritime distress
-    (13, (200,  60,  60), (255, 120,  30), "vessel_distress",  "Red/orange distress signal flare on dark water"),
+    (
+        13,
+        (200, 60, 60),
+        (255, 120, 30),
+        "vessel_distress",
+        "Red/orange distress signal flare on dark water",
+    ),
     # Infrastructure
-    (14, (60,   60,  60), (200,  40,  40), "power_line_damage","Burned/broken conductor segment"),
-    (15, (150, 150, 150), (80,   80,  80), "structural_crack", "Linear crack on concrete surface"),
-    (16, (240, 200,  20), (80,   80,  60), "solar_defect",     "Dark cell patch on bright panel surface"),
+    (
+        14,
+        (60, 60, 60),
+        (200, 40, 40),
+        "power_line_damage",
+        "Burned/broken conductor segment",
+    ),
+    (
+        15,
+        (150, 150, 150),
+        (80, 80, 80),
+        "structural_crack",
+        "Linear crack on concrete surface",
+    ),
+    (
+        16,
+        (240, 200, 20),
+        (80, 80, 60),
+        "solar_defect",
+        "Dark cell patch on bright panel surface",
+    ),
 ]
 
 # Sizes of synthetic images and bounding boxes
 _IMG_W = 416
 _IMG_H = 416
-_MIN_BOX_FRAC = 0.10   # minimum box side as fraction of image
-_MAX_BOX_FRAC = 0.50   # maximum box side
+_MIN_BOX_FRAC = 0.10  # minimum box side as fraction of image
+_MAX_BOX_FRAC = 0.50  # maximum box side
 
 
 def _make_synthetic_image(
@@ -730,7 +821,7 @@ def _make_synthetic_image(
                 g = max(0, min(255, fg_rgb[1] + noise))
                 b = max(0, min(255, fg_rgb[2] + noise))
                 idx = (row * W + col) * 3
-                pixels[idx]     = r
+                pixels[idx] = r
                 pixels[idx + 1] = g
                 pixels[idx + 2] = b
 
@@ -752,7 +843,7 @@ def _make_synthetic_image(
     for row in range(H):
         raw_rows.append(0)  # filter type None
         base = row * W * 3
-        raw_rows.extend(pixels[base: base + W * 3])
+        raw_rows.extend(pixels[base : base + W * 3])
 
     compressed = zlib.compress(bytes(raw_rows), 1)  # level 1 = fast
 
@@ -792,7 +883,9 @@ def generate_synthetic_crops(n_per_class: int = 200, seed: int = 42) -> Dict[str
     os.makedirs(img_dir, exist_ok=True)
     os.makedirs(lbl_dir, exist_ok=True)
 
-    print(f"Generating {n_per_class} synthetic images per class ({len(_SYNTHETIC_DOMAINS)} classes)…")
+    print(
+        f"Generating {n_per_class} synthetic images per class ({len(_SYNTHETIC_DOMAINS)} classes)…"
+    )
 
     rng = random.Random(seed)
     counts: Dict[str, int] = {}
@@ -812,9 +905,10 @@ def generate_synthetic_crops(n_per_class: int = 200, seed: int = 42) -> Dict[str
             bg_var = tuple(max(0, min(255, c + rng.randint(-20, 20))) for c in bg_rgb)
 
             _make_synthetic_image(
-                img_path, lbl_path,
+                img_path,
+                lbl_path,
                 visual_cls=visual_cls,
-                bg_rgb=bg_var,     # type: ignore[arg-type]
+                bg_rgb=bg_var,  # type: ignore[arg-type]
                 fg_rgb=fg_rgb,
                 n_boxes=n_boxes,
                 rng=rng,
@@ -830,6 +924,7 @@ def generate_synthetic_crops(n_per_class: int = 200, seed: int = 42) -> Dict[str
 # ---------------------------------------------------------------------------
 # 6. Build combined YOLO dataset
 # ---------------------------------------------------------------------------
+
 
 def build_combined_dataset(val_fraction: float = 0.20, seed: int = 42) -> None:
     """
@@ -886,7 +981,7 @@ def build_combined_dataset(val_fraction: float = 0.20, seed: int = 42) -> None:
     rng = random.Random(seed)
     rng.shuffle(all_pairs)
     n_val = max(1, int(len(all_pairs) * val_fraction))
-    val_pairs  = all_pairs[:n_val]
+    val_pairs = all_pairs[:n_val]
     train_pairs = all_pairs[n_val:]
 
     print(f"  Split: {len(train_pairs)} train / {len(val_pairs)} val")
@@ -931,7 +1026,7 @@ def build_combined_dataset(val_fraction: float = 0.20, seed: int = 42) -> None:
 
     # Class distribution summary
     class_counts: Dict[int, int] = {i: 0 for i in VISUAL_CLASSES}
-    for _, lbl_path in (train_pairs + val_pairs):
+    for _, lbl_path in train_pairs + val_pairs:
         with open(lbl_path) as lf:
             for line in lf:
                 parts = line.strip().split()
@@ -963,6 +1058,7 @@ def build_combined_dataset(val_fraction: float = 0.20, seed: int = 42) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _print_summary(source: str, n_images: int, counts: Dict[str, int]) -> None:
     print(f"\n  [{source}] Summary:")
     print(f"    Images: {n_images:,}")
@@ -987,16 +1083,17 @@ def _print_manual_instructions(dataset: str, steps: List[str], dest: str) -> Non
 # ---------------------------------------------------------------------------
 
 SOURCES = {
-    "dfire":            download_dfire,
-    "coco_subset":      download_coco_subset,
-    "seadronessee":     download_seadronessee,
-    "aerial_sar":       download_aerial_sar,
-    "synthetic":        generate_synthetic_crops,
+    "dfire": download_dfire,
+    "coco_subset": download_coco_subset,
+    "seadronessee": download_seadronessee,
+    "aerial_sar": download_aerial_sar,
+    "synthetic": generate_synthetic_crops,
 }
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -1055,7 +1152,7 @@ def main() -> None:
         print(f"Source: {source_name}")
         print(f"{'─' * 60}")
         if source_name == "synthetic":
-            fn(n_per_class=args.synthetic_n)    # type: ignore[call-arg]
+            fn(n_per_class=args.synthetic_n)  # type: ignore[call-arg]
         else:
             fn()
 

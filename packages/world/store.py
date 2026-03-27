@@ -17,6 +17,7 @@ This replaces:
 - packages/grpc_services/entity_service.py's EntityStore
 - Direct world_entities table access across services
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -120,7 +121,9 @@ class WorldStore:
         from sqlalchemy import text
 
         async with self._engine.begin() as conn:
-            await conn.execute(text("""
+            await conn.execute(
+                text(
+                    """
                 CREATE TABLE IF NOT EXISTS world_entities_v2 (
                     entity_id   VARCHAR(128) PRIMARY KEY,
                     entity_type VARCHAR(64)  NOT NULL,
@@ -135,30 +138,50 @@ class WorldStore:
                     created_at  TIMESTAMPTZ DEFAULT NOW(),
                     updated_at  TIMESTAMPTZ DEFAULT NOW()
                 )
-            """))
-            await conn.execute(text("""
+            """
+                )
+            )
+            await conn.execute(
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_we2_type ON world_entities_v2 (entity_type)
-            """))
-            await conn.execute(text("""
+            """
+                )
+            )
+            await conn.execute(
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_we2_domain ON world_entities_v2 (domain)
-            """))
-            await conn.execute(text("""
+            """
+                )
+            )
+            await conn.execute(
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_we2_org ON world_entities_v2 (org_id)
-            """))
-            await conn.execute(text("""
+            """
+                )
+            )
+            await conn.execute(
+                text(
+                    """
                 CREATE INDEX IF NOT EXISTS idx_we2_state ON world_entities_v2 (state)
-            """))
+            """
+                )
+            )
 
     async def _load_from_db(self):
         """Load active entities from Postgres into memory on startup."""
         from sqlalchemy import text
 
         async with self._session_factory() as session:
-            result = await session.execute(text(
-                "SELECT entity_id, entity_type, domain, state, name, class_label, "
-                "confidence, properties, org_id, version "
-                "FROM world_entities_v2 WHERE state != 'DELETED'"
-            ))
+            result = await session.execute(
+                text(
+                    "SELECT entity_id, entity_type, domain, state, name, class_label, "
+                    "confidence, properties, org_id, version "
+                    "FROM world_entities_v2 WHERE state != 'DELETED'"
+                )
+            )
             for row in result.all():
                 m = dict(row._mapping)
                 props = m.get("properties") or {}
@@ -435,9 +458,7 @@ class WorldStore:
         if self._ws_manager:
             try:
                 ws_msg = self._to_ws_entity_message(event_type, entity)
-                asyncio.ensure_future(
-                    self._ws_manager.broadcast(json.dumps(ws_msg))
-                )
+                asyncio.ensure_future(self._ws_manager.broadcast(json.dumps(ws_msg)))
             except Exception:
                 pass
 
@@ -471,12 +492,20 @@ class WorldStore:
                 "lat": pos.latitude if pos else 0,
                 "lon": pos.longitude if pos else 0,
                 "alt": pos.altitude_msl if pos else 0,
-                "heading_deg": entity.kinematics.heading_deg if entity.kinematics else 0,
+                "heading_deg": (
+                    entity.kinematics.heading_deg if entity.kinematics else 0
+                ),
             },
             "speed_mps": entity.kinematics.speed_mps if entity.kinematics else 0,
             "confidence": entity.confidence,
-            "last_seen": entity.provenance.updated_at if entity.provenance else time.time(),
-            "source_sensors": [entity.provenance.source_id] if entity.provenance and entity.provenance.source_id else [],
+            "last_seen": (
+                entity.provenance.updated_at if entity.provenance else time.time()
+            ),
+            "source_sensors": (
+                [entity.provenance.source_id]
+                if entity.provenance and entity.provenance.source_id
+                else []
+            ),
             "callsign": entity.name or None,
             "battery_pct": entity.aerial.battery_pct if entity.aerial else None,
         }
@@ -498,7 +527,9 @@ class WorldStore:
             props_json = json.dumps(props, default=str)
 
             async with self._session_factory() as session:
-                await session.execute(text("""
+                await session.execute(
+                    text(
+                        """
                     INSERT INTO world_entities_v2
                         (entity_id, entity_type, domain, state, name, class_label,
                          confidence, properties, org_id, version, updated_at)
@@ -516,18 +547,25 @@ class WorldStore:
                         org_id = EXCLUDED.org_id,
                         version = EXCLUDED.version,
                         updated_at = NOW()
-                """), {
-                    "eid": entity.id,
-                    "etype": entity.entity_type.value,
-                    "domain": entity.domain.value,
-                    "state": entity.state.value,
-                    "name": entity.name,
-                    "label": entity.class_label,
-                    "conf": entity.confidence,
-                    "props": props_json,
-                    "org": entity.provenance.org_id if entity.provenance else self.org_id,
-                    "ver": self._version,
-                })
+                """
+                    ),
+                    {
+                        "eid": entity.id,
+                        "etype": entity.entity_type.value,
+                        "domain": entity.domain.value,
+                        "state": entity.state.value,
+                        "name": entity.name,
+                        "label": entity.class_label,
+                        "conf": entity.confidence,
+                        "props": props_json,
+                        "org": (
+                            entity.provenance.org_id
+                            if entity.provenance
+                            else self.org_id
+                        ),
+                        "ver": self._version,
+                    },
+                )
                 await session.commit()
         except Exception as e:
             logger.error(f"Persist failed for {entity.id}: {e}")
@@ -540,10 +578,13 @@ class WorldStore:
             from sqlalchemy import text
 
             async with self._session_factory() as session:
-                await session.execute(text(
-                    "UPDATE world_entities_v2 SET state = 'DELETED', updated_at = NOW() "
-                    "WHERE entity_id = :eid"
-                ), {"eid": entity_id})
+                await session.execute(
+                    text(
+                        "UPDATE world_entities_v2 SET state = 'DELETED', updated_at = NOW() "
+                        "WHERE entity_id = :eid"
+                    ),
+                    {"eid": entity_id},
+                )
                 await session.commit()
         except Exception as e:
             logger.error(f"Persist delete failed for {entity_id}: {e}")

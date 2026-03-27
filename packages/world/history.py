@@ -7,6 +7,7 @@ with optional Postgres persistence.
 
 API routes are registered on the FastAPI app by calling `register_routes(app, store)`.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,7 +29,7 @@ DEFAULT_MIN_DISTANCE_M = 2.0
 
 @dataclass
 class PositionSample:
-    ts: float          # Unix epoch seconds
+    ts: float  # Unix epoch seconds
     lat: float
     lon: float
     alt: Optional[float] = None
@@ -45,10 +46,14 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance in metres."""
     R = 6_371_000.0
     import math
+
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
     dlam = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    a = (
+        math.sin(dphi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    )
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
@@ -66,9 +71,15 @@ class EntityHistory:
         self.min_distance_m = min_distance_m
         self._trail: Deque[PositionSample] = deque(maxlen=max_points)
 
-    def record(self, lat: float, lon: float, alt: Optional[float] = None,
-               speed: Optional[float] = None, heading: Optional[float] = None,
-               ts: Optional[float] = None) -> bool:
+    def record(
+        self,
+        lat: float,
+        lon: float,
+        alt: Optional[float] = None,
+        speed: Optional[float] = None,
+        heading: Optional[float] = None,
+        ts: Optional[float] = None,
+    ) -> bool:
         """Record a position. Returns True if a new point was added."""
         if ts is None:
             ts = time.time()
@@ -80,10 +91,16 @@ class EntityHistory:
             if dist < self.min_distance_m:
                 return False
 
-        self._trail.append(PositionSample(
-            ts=ts, lat=lat, lon=lon, alt=alt,
-            speed=speed, heading=heading,
-        ))
+        self._trail.append(
+            PositionSample(
+                ts=ts,
+                lat=lat,
+                lon=lon,
+                alt=alt,
+                speed=speed,
+                heading=heading,
+            )
+        )
         return True
 
     def trail(self, limit: Optional[int] = None) -> List[dict]:
@@ -120,9 +137,16 @@ class HistoryStore:
             )
         return self._histories[entity_id]
 
-    def record(self, entity_id: str, lat: float, lon: float,
-               alt: Optional[float] = None, speed: Optional[float] = None,
-               heading: Optional[float] = None, ts: Optional[float] = None) -> bool:
+    def record(
+        self,
+        entity_id: str,
+        lat: float,
+        lon: float,
+        alt: Optional[float] = None,
+        speed: Optional[float] = None,
+        heading: Optional[float] = None,
+        ts: Optional[float] = None,
+    ) -> bool:
         return self._get_or_create(entity_id).record(lat, lon, alt, speed, heading, ts)
 
     def record_from_entity(self, entity: dict) -> bool:
@@ -144,6 +168,7 @@ class HistoryStore:
         if isinstance(ts, str):
             try:
                 from datetime import datetime
+
                 ts = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
             except Exception:
                 ts = None
@@ -169,6 +194,7 @@ class HistoryStore:
 
 
 # ── FastAPI route registration ────────────────────────────────────────────────
+
 
 def register_routes(app, history_store: HistoryStore) -> None:
     """Mount history endpoints onto an existing FastAPI app."""

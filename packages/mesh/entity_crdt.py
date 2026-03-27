@@ -20,6 +20,7 @@ Usage:
     for entity in emap.values():
         world_store.merge_remote(entity.to_dict(), source="mesh")
 """
+
 from __future__ import annotations
 
 import json
@@ -103,7 +104,7 @@ class EntityCRDTMap:
         ids = []
         for key, reg in self._store.registers.items():
             if key.startswith("entity:") and reg.get() is not None:
-                ids.append(key[len("entity:"):])
+                ids.append(key[len("entity:") :])
         return ids
 
     @property
@@ -209,7 +210,9 @@ class EntityCRDTMap:
                 self._store.registers[key] = merged
             else:
                 self._store.registers[key] = LWWRegister(
-                    self.node_id, remote_reg.value, remote_reg.timestamp,
+                    self.node_id,
+                    remote_reg.value,
+                    remote_reg.timestamp,
                 )
                 updated += 1
 

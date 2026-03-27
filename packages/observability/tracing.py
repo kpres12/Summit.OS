@@ -10,6 +10,7 @@ the opentelemetry SDK. Provides:
 
 Falls back to a lightweight in-process tracer when OTel is not installed.
 """
+
 from __future__ import annotations
 
 import time
@@ -30,6 +31,7 @@ _current_trace: ContextVar[str] = ContextVar("current_trace", default="")
 @dataclass
 class Span:
     """A trace span."""
+
     trace_id: str
     span_id: str
     parent_id: str = ""
@@ -51,11 +53,13 @@ class Span:
         self.attributes[key] = value
 
     def add_event(self, name: str, attributes: Optional[Dict] = None) -> None:
-        self.events.append({
-            "name": name,
-            "timestamp": time.time(),
-            "attributes": attributes or {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": time.time(),
+                "attributes": attributes or {},
+            }
+        )
 
     def set_error(self, error: Exception) -> None:
         self.status = "error"
@@ -110,7 +114,7 @@ class InMemoryExporter(SpanExporter):
     def export(self, spans: List[Span]) -> None:
         self.spans.extend(spans)
         if len(self.spans) > self.max_spans:
-            self.spans = self.spans[-self.max_spans:]
+            self.spans = self.spans[-self.max_spans :]
 
     def get_traces(self) -> Dict[str, List[Span]]:
         traces: Dict[str, List[Span]] = {}
@@ -132,8 +136,9 @@ class Tracer:
     in-process tracing.
     """
 
-    def __init__(self, service_name: str = "summit-os",
-                 exporter: Optional[SpanExporter] = None):
+    def __init__(
+        self, service_name: str = "summit-os", exporter: Optional[SpanExporter] = None
+    ):
         self.service_name = service_name
         self._exporter = exporter or ConsoleExporter()
         self._otel_available = self._check_otel()
@@ -147,17 +152,23 @@ class Tracer:
         try:
             from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
+
             return True
         except ImportError:
             return False
 
     def _init_otel(self):
         import os
+
         try:
             from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.resources import Resource
-            from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor, ConsoleSpanExporter
+            from opentelemetry.sdk.trace.export import (
+                BatchSpanProcessor,
+                SimpleSpanProcessor,
+                ConsoleSpanExporter,
+            )
 
             resource = Resource.create({"service.name": self.service_name})
             provider = TracerProvider(resource=resource)
@@ -165,13 +176,20 @@ class Tracer:
             otlp_endpoint = os.getenv("OTLP_ENDPOINT", "")
             if otlp_endpoint:
                 try:
-                    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+                    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                        OTLPSpanExporter,
+                    )
+
                     otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
                     provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
                     logger.info(f"OTLP exporter configured: {otlp_endpoint}")
                 except ImportError:
-                    logger.warning("opentelemetry-exporter-otlp-proto-grpc not installed — using console exporter")
-                    provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+                    logger.warning(
+                        "opentelemetry-exporter-otlp-proto-grpc not installed — using console exporter"
+                    )
+                    provider.add_span_processor(
+                        SimpleSpanProcessor(ConsoleSpanExporter())
+                    )
             else:
                 provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
 
@@ -182,8 +200,9 @@ class Tracer:
             logger.warning(f"OTel init failed, using fallback: {e}")
 
     @contextlib.contextmanager
-    def start_span(self, operation: str,
-                   attributes: Optional[Dict] = None) -> Generator[Span, None, None]:
+    def start_span(
+        self, operation: str, attributes: Optional[Dict] = None
+    ) -> Generator[Span, None, None]:
         """Start a new span (context manager)."""
         parent = _current_span.get()
         trace_id = _current_trace.get() or uuid.uuid4().hex[:32]
@@ -223,8 +242,10 @@ class Tracer:
 
 # ── FastAPI Middleware ──────────────────────────────────────
 
+
 def create_tracing_middleware(tracer: Tracer):
     """Create FastAPI middleware for automatic request tracing."""
+
     async def middleware(request, call_next):
         # Extract trace context from incoming headers
         trace_id = request.headers.get("X-Trace-ID", "")
@@ -232,14 +253,18 @@ def create_tracing_middleware(tracer: Tracer):
             _current_trace.set(trace_id)
 
         operation = f"{request.method} {request.url.path}"
-        with tracer.start_span(operation, attributes={
-            "http.method": request.method,
-            "http.url": str(request.url),
-            "http.route": request.url.path,
-        }) as span:
+        with tracer.start_span(
+            operation,
+            attributes={
+                "http.method": request.method,
+                "http.url": str(request.url),
+                "http.route": request.url.path,
+            },
+        ) as span:
             # Bind trace_id to structlog context so all log lines in this request carry it
             try:
                 import structlog
+
                 structlog.contextvars.clear_contextvars()
                 structlog.contextvars.bind_contextvars(
                     trace_id=span.trace_id,

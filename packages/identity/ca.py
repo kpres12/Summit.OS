@@ -20,6 +20,7 @@ Usage:
     # cert.cert_pem -> PEM string to send to device
     # cert.fingerprint -> store this in DeviceRegistry for validation
 """
+
 from __future__ import annotations
 
 import datetime
@@ -33,9 +34,9 @@ from typing import Optional
 logger = logging.getLogger("summit.identity.ca")
 
 CA_CERT_PATH = os.getenv("SUMMIT_CA_CERT", "/certs/summit-ca.crt")
-CA_KEY_PATH  = os.getenv("SUMMIT_CA_KEY",  "/certs/summit-ca.key")
+CA_KEY_PATH = os.getenv("SUMMIT_CA_KEY", "/certs/summit-ca.key")
 CERT_VALIDITY_DAYS = int(os.getenv("DEVICE_CERT_VALIDITY_DAYS", "365"))
-CA_VALIDITY_YEARS  = int(os.getenv("CA_VALIDITY_YEARS", "10"))
+CA_VALIDITY_YEARS = int(os.getenv("CA_VALIDITY_YEARS", "10"))
 
 
 @dataclass
@@ -44,7 +45,7 @@ class DeviceCert:
     device_type: str
     cert_pem: str
     key_pem: str
-    fingerprint: str        # SHA-256 of DER-encoded cert
+    fingerprint: str  # SHA-256 of DER-encoded cert
     serial_number: int
     not_before: datetime.datetime
     not_after: datetime.datetime
@@ -125,11 +126,13 @@ class DeviceCA:
         logger.info("Creating new Summit CA certificate")
         key = ec.generate_private_key(ec.SECP256R1())
 
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Summit.OS"),
-            x509.NameAttribute(NameOID.COMMON_NAME, "Summit.OS Device CA"),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Summit.OS"),
+                x509.NameAttribute(NameOID.COMMON_NAME, "Summit.OS Device CA"),
+            ]
+        )
 
         now = datetime.datetime.now(datetime.timezone.utc)
         cert = (
@@ -143,10 +146,15 @@ class DeviceCA:
             .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
             .add_extension(
                 x509.KeyUsage(
-                    digital_signature=True, key_cert_sign=True,
-                    crl_sign=True, content_commitment=False,
-                    key_encipherment=False, data_encipherment=False,
-                    key_agreement=False, encipher_only=False, decipher_only=False,
+                    digital_signature=True,
+                    key_cert_sign=True,
+                    crl_sign=True,
+                    content_commitment=False,
+                    key_encipherment=False,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    encipher_only=False,
+                    decipher_only=False,
                 ),
                 critical=True,
             )
@@ -194,12 +202,16 @@ class DeviceCA:
 
             key = ec.generate_private_key(ec.SECP256R1())
 
-            subject = x509.Name([
-                x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-                x509.NameAttribute(NameOID.ORGANIZATION_NAME, org_id or "Summit.OS"),
-                x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, device_type),
-                x509.NameAttribute(NameOID.COMMON_NAME, device_id),
-            ])
+            subject = x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                    x509.NameAttribute(
+                        NameOID.ORGANIZATION_NAME, org_id or "Summit.OS"
+                    ),
+                    x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, device_type),
+                    x509.NameAttribute(NameOID.COMMON_NAME, device_id),
+                ]
+            )
 
             now = datetime.datetime.now(datetime.timezone.utc)
             not_after = now + datetime.timedelta(days=CERT_VALIDITY_DAYS)
@@ -213,12 +225,16 @@ class DeviceCA:
                 .serial_number(serial)
                 .not_valid_before(now)
                 .not_valid_after(not_after)
-                .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
                 .add_extension(
-                    x509.SubjectAlternativeName([
-                        x509.DNSName(device_id),
-                        x509.DNSName(f"{device_type}.summit.local"),
-                    ]),
+                    x509.BasicConstraints(ca=False, path_length=None), critical=True
+                )
+                .add_extension(
+                    x509.SubjectAlternativeName(
+                        [
+                            x509.DNSName(device_id),
+                            x509.DNSName(f"{device_type}.summit.local"),
+                        ]
+                    ),
                     critical=False,
                 )
                 .add_extension(
@@ -235,9 +251,13 @@ class DeviceCA:
                 serialization.NoEncryption(),
             ).decode()
 
-            fingerprint = hashlib.sha256(cert.public_bytes(serialization.Encoding.DER)).hexdigest()
+            fingerprint = hashlib.sha256(
+                cert.public_bytes(serialization.Encoding.DER)
+            ).hexdigest()
 
-            logger.info(f"Issued cert for device '{device_id}' (fp={fingerprint[:16]}...)")
+            logger.info(
+                f"Issued cert for device '{device_id}' (fp={fingerprint[:16]}...)"
+            )
 
             return DeviceCert(
                 device_id=device_id,
@@ -276,9 +296,16 @@ class DeviceCA:
             pub_key = self._ca_cert.public_key()
             hash_alg = cert.signature_hash_algorithm
             if isinstance(pub_key, ec.EllipticCurvePublicKey):
-                pub_key.verify(cert.signature, cert.tbs_certificate_bytes, ec.ECDSA(hash_alg))
+                pub_key.verify(
+                    cert.signature, cert.tbs_certificate_bytes, ec.ECDSA(hash_alg)
+                )
             elif isinstance(pub_key, rsa.RSAPublicKey):
-                pub_key.verify(cert.signature, cert.tbs_certificate_bytes, padding.PKCS1v15(), hash_alg)
+                pub_key.verify(
+                    cert.signature,
+                    cert.tbs_certificate_bytes,
+                    padding.PKCS1v15(),
+                    hash_alg,
+                )
             else:
                 raise ValueError(f"Unsupported CA key type: {type(pub_key).__name__}")
 
@@ -289,12 +316,28 @@ class DeviceCA:
                 return None
 
             subject = cert.subject
-            fingerprint = hashlib.sha256(cert.public_bytes(__import__("cryptography").hazmat.primitives.serialization.Encoding.DER)).hexdigest()
+            fingerprint = hashlib.sha256(
+                cert.public_bytes(
+                    __import__(
+                        "cryptography"
+                    ).hazmat.primitives.serialization.Encoding.DER
+                )
+            ).hexdigest()
 
             return {
-                "device_id": subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value,
-                "device_type": subject.get_attributes_for_oid(NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value if subject.get_attributes_for_oid(NameOID.ORGANIZATIONAL_UNIT_NAME) else "unknown",
-                "org_id": subject.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)[0].value,
+                "device_id": subject.get_attributes_for_oid(NameOID.COMMON_NAME)[
+                    0
+                ].value,
+                "device_type": (
+                    subject.get_attributes_for_oid(NameOID.ORGANIZATIONAL_UNIT_NAME)[
+                        0
+                    ].value
+                    if subject.get_attributes_for_oid(NameOID.ORGANIZATIONAL_UNIT_NAME)
+                    else "unknown"
+                ),
+                "org_id": subject.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)[
+                    0
+                ].value,
                 "fingerprint": fingerprint,
                 "not_after": cert.not_valid_after_utc.isoformat(),
             }

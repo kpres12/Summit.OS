@@ -5,6 +5,7 @@ Simple IOU-based multi-object tracker for Fusion service.
 - Optional velocity estimation in pixels/second based on bbox centers.
 - Designed as a lightweight fallback when ByteTrack/DeepSORT are unavailable.
 """
+
 from __future__ import annotations
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
@@ -12,7 +13,9 @@ from time import time
 import math
 
 
-def _iou_xywh(a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]) -> float:
+def _iou_xywh(
+    a: Tuple[float, float, float, float], b: Tuple[float, float, float, float]
+) -> float:
     ax, ay, aw, ah = a
     bx, by, bw, bh = b
     ax2, ay2 = ax + aw, ay + ah
@@ -48,10 +51,16 @@ class SimpleTracker:
         self._tracks: Dict[int, _Track] = {}
         self._next_id = 1
 
-    def update(self, detections: List[Dict[str, Any]], timestamp: Optional[float] = None) -> List[Dict[str, Any]]:
+    def update(
+        self, detections: List[Dict[str, Any]], timestamp: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
         now = timestamp or time()
         # Remove stale tracks
-        self._tracks = {tid: tr for tid, tr in self._tracks.items() if (now - tr.last_ts) <= self.max_age_s}
+        self._tracks = {
+            tid: tr
+            for tid, tr in self._tracks.items()
+            if (now - tr.last_ts) <= self.max_age_s
+        }
 
         # Build matching between current detections and existing tracks
         unmatched_dets = list(range(len(detections)))
@@ -96,7 +105,12 @@ class SimpleTracker:
             bbox = tuple(det.get("bbox", [0, 0, 0, 0]))
             tid = self._next_id
             self._next_id += 1
-            self._tracks[tid] = _Track(track_id=tid, bbox=bbox, last_ts=now, class_id=int(det.get("class_id", 0)))
+            self._tracks[tid] = _Track(
+                track_id=tid,
+                bbox=bbox,
+                last_ts=now,
+                class_id=int(det.get("class_id", 0)),
+            )
             det["track_id"] = tid
             det.setdefault("velocity_px_per_s", 0.0)
 

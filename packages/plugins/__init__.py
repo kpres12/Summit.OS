@@ -7,15 +7,15 @@ from .base import (
     PluginRegistry,
     PluginLoader,
     plugin_registry,
-    plugin_loader
+    plugin_loader,
 )
 
 __all__ = [
     "PluginType",
     "PluginMetadata",
-    "BasePlugin", 
+    "BasePlugin",
     "PluginRegistry",
     "PluginLoader",
     "plugin_registry",
-    "plugin_loader"
+    "plugin_loader",
 ]

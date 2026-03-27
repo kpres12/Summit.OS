@@ -6,6 +6,7 @@ Endpoints (all under /v1/audit, all require ADMIN role):
   GET /v1/audit/logs/{event_id}   — single event by UUID
   GET /v1/audit/stats             — event-type summary for a time window
 """
+
 from __future__ import annotations
 
 import json
@@ -26,6 +27,7 @@ audit_router = APIRouter(prefix="/v1/audit", tags=["audit"])
 # ---------------------------------------------------------------------------
 # Response models
 # ---------------------------------------------------------------------------
+
 
 class AuditEntry(BaseModel):
     id: int
@@ -62,6 +64,7 @@ class AuditStats(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_extra(raw: Any) -> dict:
     if isinstance(raw, dict):
         return raw
@@ -94,13 +97,18 @@ def _row_to_entry(row: Any) -> AuditEntry:
 # GET /v1/audit/logs
 # ---------------------------------------------------------------------------
 
+
 @audit_router.get("/logs", response_model=AuditPage)
 async def query_audit_logs(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=500, description="Results per page"),
     user_id: Optional[str] = Query(None, description="Filter by user_id"),
-    event_type: Optional[str] = Query(None, description="Filter by event_type (e.g. AUTH_FAILURE)"),
-    from_ts: Optional[datetime] = Query(None, description="Start of time range (ISO 8601)"),
+    event_type: Optional[str] = Query(
+        None, description="Filter by event_type (e.g. AUTH_FAILURE)"
+    ),
+    from_ts: Optional[datetime] = Query(
+        None, description="Start of time range (ISO 8601)"
+    ),
     to_ts: Optional[datetime] = Query(None, description="End of time range (ISO 8601)"),
     _role: Any = Depends(require_role("ADMIN")),
 ) -> AuditPage:
@@ -172,6 +180,7 @@ async def query_audit_logs(
 # GET /v1/audit/logs/{event_id}
 # ---------------------------------------------------------------------------
 
+
 @audit_router.get("/logs/{event_id}", response_model=AuditEntry)
 async def get_audit_event(
     event_id: str,
@@ -202,6 +211,7 @@ async def get_audit_event(
 # ---------------------------------------------------------------------------
 # GET /v1/audit/stats
 # ---------------------------------------------------------------------------
+
 
 @audit_router.get("/stats", response_model=AuditStats)
 async def audit_stats(

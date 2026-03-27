@@ -10,6 +10,7 @@ from .telemetry import LocationSchema
 
 class SeverityLevel(str, Enum):
     """Alert severity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -18,6 +19,7 @@ class SeverityLevel(str, Enum):
 
 class AlertCategory(str, Enum):
     """Alert categories."""
+
     FIRE = "fire"
     SMOKE = "smoke"
     WEATHER = "weather"
@@ -31,6 +33,7 @@ class AlertCategory(str, Enum):
 
 class AlertStatus(str, Enum):
     """Alert status values."""
+
     ACTIVE = "active"
     ACKNOWLEDGED = "acknowledged"
     RESOLVED = "resolved"
@@ -40,6 +43,7 @@ class AlertStatus(str, Enum):
 
 class AlertSchema(BaseModel):
     """Alert message schema."""
+
     alert_id: str = Field(..., description="Unique alert identifier")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     severity: SeverityLevel
@@ -49,34 +53,35 @@ class AlertSchema(BaseModel):
     title: str = Field(..., description="Alert title")
     description: str = Field(..., description="Detailed alert description")
     source: str = Field(..., description="Alert source (device, system, etc.)")
-    tags: List[str] = Field(default_factory=list, description="Alert tags for categorization")
+    tags: List[str] = Field(
+        default_factory=list, description="Alert tags for categorization"
+    )
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+
     # Acknowledgment fields
     acknowledged: bool = False
     acknowledged_by: Optional[str] = None
     acknowledged_at: Optional[datetime] = None
     acknowledgment_notes: Optional[str] = None
-    
+
     # Resolution fields
     resolved: bool = False
     resolved_by: Optional[str] = None
     resolved_at: Optional[datetime] = None
     resolution_notes: Optional[str] = None
-    
+
     # Escalation fields
     escalated: bool = False
     escalated_at: Optional[datetime] = None
     escalated_to: Optional[str] = None
-    
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
+        json_encoders = {datetime: lambda v: v.isoformat()}
 
 
 class AlertUpdate(BaseModel):
     """Alert update schema."""
+
     alert_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     update_type: str  # status_change, acknowledgment, resolution, escalation
@@ -87,18 +92,22 @@ class AlertUpdate(BaseModel):
 
 class AlertFilter(BaseModel):
     """Alert filtering criteria."""
+
     severity: Optional[List[SeverityLevel]] = None
     category: Optional[List[AlertCategory]] = None
     status: Optional[List[AlertStatus]] = None
     source: Optional[List[str]] = None
     tags: Optional[List[str]] = None
-    location_bounds: Optional[Dict[str, float]] = None  # min_lat, max_lat, min_lon, max_lon
+    location_bounds: Optional[Dict[str, float]] = (
+        None  # min_lat, max_lat, min_lon, max_lon
+    )
     time_range: Optional[Dict[str, datetime]] = None  # start_time, end_time
     limit: Optional[int] = Field(100, ge=1, le=1000)
 
 
 class AlertSummary(BaseModel):
     """Alert summary statistics."""
+
     total_alerts: int
     active_alerts: int
     acknowledged_alerts: int

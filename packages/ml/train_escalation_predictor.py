@@ -62,9 +62,9 @@ MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 
 SEVERITY_MAP = {
     "CRITICAL": 1.00,
-    "HIGH":     0.75,
-    "MEDIUM":   0.50,
-    "LOW":      0.25,
+    "HIGH": 0.75,
+    "MEDIUM": 0.50,
+    "LOW": 0.25,
 }
 SEVERITY_LEVELS = list(SEVERITY_MAP.keys())
 
@@ -84,6 +84,7 @@ EXTENDED_FEATURE_DIM = len(EXTENDED_FEATURE_NAMES)  # 21
 # Synthetic data generation
 # ---------------------------------------------------------------------------
 
+
 def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
     """
     Generate n synthetic (X, y) samples for the escalation predictor.
@@ -97,10 +98,19 @@ def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
 
     # Domain-keyword feature indices (2-14) for fire/smoke detection
     cls_to_idx = {
-        "fire_smoke": 2, "person": 3, "flood_water": 4, "structural": 5,
-        "vehicle": 6, "hazmat": 7, "wildlife": 8, "infrastructure": 9,
-        "agricultural": 10, "medical": 11, "security": 12,
-        "search_target": 13, "logistics": 14,
+        "fire_smoke": 2,
+        "person": 3,
+        "flood_water": 4,
+        "structural": 5,
+        "vehicle": 6,
+        "hazmat": 7,
+        "wildlife": 8,
+        "infrastructure": 9,
+        "agricultural": 10,
+        "medical": 11,
+        "security": 12,
+        "search_target": 13,
+        "logistics": 14,
     }
     cls_names = ["none"] + list(cls_to_idx.keys())
 
@@ -112,7 +122,7 @@ def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
         conf = float(rng.beta(4, 2))
         has_location = float(rng.random() > 0.25)
         hour = int(rng.integers(0, 24))
-        dow = int(rng.integers(0, 7))          # 0=Mon … 6=Sun
+        dow = int(rng.integers(0, 7))  # 0=Mon … 6=Sun
         severity = rng.choice(SEVERITY_LEVELS, p=[0.10, 0.25, 0.45, 0.20])
         sev_enc = SEVERITY_MAP[severity]
         active_missions_norm = float(rng.beta(1.5, 4))  # mostly low workload
@@ -122,10 +132,10 @@ def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
         dow_sin = np.sin(2 * np.pi * dow / 7.0)
         dow_cos = np.cos(2 * np.pi * dow / 7.0)
 
-        is_nighttime = (hour >= 22 or hour <= 6)
-        is_weekend = (dow >= 5)
-        high_workload = (active_missions_norm > 0.5)
-        is_fire_smoke = (cls == "fire_smoke")
+        is_nighttime = hour >= 22 or hour <= 6
+        is_weekend = dow >= 5
+        high_workload = active_missions_norm > 0.5
+        is_fire_smoke = cls == "fire_smoke"
 
         # ------------------------------------------------------------------
         # Decision rules — determine p_escalate
@@ -134,9 +144,9 @@ def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
         # Base escalation rate by severity
         base_esc = {
             "CRITICAL": 0.45,
-            "HIGH":     0.35,
-            "MEDIUM":   0.25,
-            "LOW":      0.10,
+            "HIGH": 0.35,
+            "MEDIUM": 0.25,
+            "LOW": 0.10,
         }[severity]
 
         p_esc = base_esc
@@ -206,10 +216,12 @@ def generate_escalation_samples(n: int, seed: int = 42) -> tuple:
 # Training
 # ---------------------------------------------------------------------------
 
+
 def load_real_csv(csv_path: str):
     """Load real observations and map to escalation predictor feature space (21 floats)."""
     import csv as _csv
     from features import extract as _extract
+
     X, y = [], []
     # Map risk_level → severity encoding (proxy for escalation label)
     risk_to_sev = {"LOW": 0.25, "MEDIUM": 0.50, "HIGH": 0.75, "CRITICAL": 1.00}
@@ -226,8 +238,12 @@ def load_real_csv(csv_path: str):
                     risk = row.get("risk_level", "MEDIUM").strip().upper()
                     if risk not in risk_to_sev:
                         continue
-                    obs = {"class": row["class"], "confidence": conf,
-                           "lat": lat, "lon": lon}
+                    obs = {
+                        "class": row["class"],
+                        "confidence": conf,
+                        "lat": lat,
+                        "lon": lon,
+                    }
                     base_vec = _extract(obs)  # 15 floats
                     sev_enc = risk_to_sev[risk]
                     # Use midday weekday as default temporal context (unknown)
@@ -237,8 +253,14 @@ def load_real_csv(csv_path: str):
                     dow_sin = float(np.sin(2 * np.pi * dow / 7.0))
                     dow_cos = float(np.cos(2 * np.pi * dow / 7.0))
                     active_missions_norm = 0.3  # moderate workload default
-                    feat = base_vec + [sev_enc, hour_sin, hour_cos,
-                                       dow_sin, dow_cos, active_missions_norm]
+                    feat = base_vec + [
+                        sev_enc,
+                        hour_sin,
+                        hour_cos,
+                        dow_sin,
+                        dow_cos,
+                        active_missions_norm,
+                    ]
                     label = risk_to_label[risk]
                     X.append(feat)
                     y.append(label)
@@ -247,10 +269,16 @@ def load_real_csv(csv_path: str):
         print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
     except FileNotFoundError:
         print(f"  CSV not found: {csv_path}")
-    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+    return (
+        (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64))
+        if X
+        else (None, None)
+    )
 
 
-def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = None) -> str:
+def train(
+    n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = None
+) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"Generating {n_samples:,} synthetic samples...")
@@ -261,6 +289,7 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
         if X_real is not None:
             from collections import defaultdict
             import random as _rand
+
             _rand.seed(42)
             syn_counts = defaultdict(int)
             for lbl in y:
@@ -279,11 +308,15 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
                 X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
                 y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
                 label_map = {0: "acknowledged", 1: "escalated"}
-                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(
+                    f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }"
+                )
                 print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     esc_rate = y.mean()
-    print(f"  Class balance: {esc_rate:.1%} escalate  |  {1 - esc_rate:.1%} acknowledged")
+    print(
+        f"  Class balance: {esc_rate:.1%} escalate  |  {1 - esc_rate:.1%} acknowledged"
+    )
     print(f"  Feature dim: {X.shape[1]}")
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -304,10 +337,12 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
 
     calibrated = CalibratedClassifierCV(base_clf, cv=5, method="isotonic")
 
-    pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", calibrated),
-    ])
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("clf", calibrated),
+        ]
+    )
 
     print("Training CalibratedClassifierCV(HistGradientBoostingClassifier)...")
     pipe.fit(X_train, y_train)
@@ -330,9 +365,11 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
     print(f"  AUC-ROC   : {auc:.4f}")
 
     print("\n--- Classification Report ---")
-    print(classification_report(y_test, y_pred,
-                                target_names=["acknowledged", "escalated"],
-                                zero_division=0))
+    print(
+        classification_report(
+            y_test, y_pred, target_names=["acknowledged", "escalated"], zero_division=0
+        )
+    )
 
     # ------------------------------------------------------------------
     # Escalation rate by hour-of-day — illustrates the nighttime pattern
@@ -344,15 +381,17 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
         n_h = 300
         # Use MEDIUM severity, moderate workload, weekday — isolate hour effect
         row = np.zeros((n_h, EXTENDED_FEATURE_DIM), dtype=np.float32)
-        row[:, 0] = rng_hour.beta(4, 2, n_h).astype(np.float32)     # conf
+        row[:, 0] = rng_hour.beta(4, 2, n_h).astype(np.float32)  # conf
         row[:, 1] = (rng_hour.random(n_h) > 0.25).astype(np.float32)  # has_loc
-        row[:, 2] = (rng_hour.random(n_h) > 0.5).astype(np.float32)   # fire_smoke keyword
-        row[:, 15] = 0.50   # MEDIUM severity
+        row[:, 2] = (rng_hour.random(n_h) > 0.5).astype(
+            np.float32
+        )  # fire_smoke keyword
+        row[:, 15] = 0.50  # MEDIUM severity
         row[:, 16] = np.sin(2 * np.pi * h / 24.0)
         row[:, 17] = np.cos(2 * np.pi * h / 24.0)
-        row[:, 18] = np.sin(2 * np.pi * 2 / 7.0)   # Wednesday
+        row[:, 18] = np.sin(2 * np.pi * 2 / 7.0)  # Wednesday
         row[:, 19] = np.cos(2 * np.pi * 2 / 7.0)
-        row[:, 20] = 0.30   # moderate workload
+        row[:, 20] = 0.30  # moderate workload
         preds = pipe.predict(row)
         rate = preds.mean()
         hour_stats.append((h, rate))
@@ -373,7 +412,9 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
     print(f"\nModel saved:    {onnx_path}")
 
     # Save feature names
-    feat_names_path = os.path.join(output_dir, "escalation_predictor_feature_names.json")
+    feat_names_path = os.path.join(
+        output_dir, "escalation_predictor_feature_names.json"
+    )
     with open(feat_names_path, "w") as f:
         json.dump(EXTENDED_FEATURE_NAMES, f, indent=2)
     print(f"Features saved: {feat_names_path}")
@@ -387,12 +428,12 @@ def train(n_samples: int = 50000, output_dir: str = MODELS_DIR, real_csv: str = 
         sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
         smoke_cases = [
             # (description, conf, has_loc, cls_idx, severity, hour, dow, workload)
-            ("CRITICAL fire  night  high workload",   0.92, 1, 2,  1.00, 23, 2, 0.8),
-            ("CRITICAL fire  day    low workload",    0.92, 1, 2,  1.00, 10, 2, 0.1),
-            ("LOW alert  day  no-loc",                0.60, 0, -1, 0.25, 11, 1, 0.2),
-            ("HIGH structural night weekend",         0.75, 1, 5,  0.75, 2,  6, 0.6),
-            ("MEDIUM hazmat night weekday",           0.78, 1, 7,  0.50, 3,  3, 0.4),
-            ("HIGH person day low workload",          0.85, 1, 3,  0.75, 14, 0, 0.2),
+            ("CRITICAL fire  night  high workload", 0.92, 1, 2, 1.00, 23, 2, 0.8),
+            ("CRITICAL fire  day    low workload", 0.92, 1, 2, 1.00, 10, 2, 0.1),
+            ("LOW alert  day  no-loc", 0.60, 0, -1, 0.25, 11, 1, 0.2),
+            ("HIGH structural night weekend", 0.75, 1, 5, 0.75, 2, 6, 0.6),
+            ("MEDIUM hazmat night weekday", 0.78, 1, 7, 0.50, 3, 3, 0.4),
+            ("HIGH person day low workload", 0.85, 1, 3, 0.75, 14, 0, 0.2),
         ]
         print("\nSmoke test:")
         for desc, conf, has_loc, cls_idx, sev, hour, dow, workload in smoke_cases:
@@ -425,16 +466,22 @@ if __name__ == "__main__":
         description="Train the Summit.OS escalation predictor model."
     )
     parser.add_argument(
-        "--samples", type=int, default=50000,
-        help="Number of synthetic training samples (default: 50000)"
+        "--samples",
+        type=int,
+        default=50000,
+        help="Number of synthetic training samples (default: 50000)",
     )
     parser.add_argument(
-        "--output-dir", dest="output_dir", default=MODELS_DIR,
-        help="Directory to write .onnx and .json files (default: packages/ml/models/)"
+        "--output-dir",
+        dest="output_dir",
+        default=MODELS_DIR,
+        help="Directory to write .onnx and .json files (default: packages/ml/models/)",
     )
     parser.add_argument(
-        "--real-csv", dest="real_csv", default=None,
-        help="Path to real observations CSV to blend with synthetic data"
+        "--real-csv",
+        dest="real_csv",
+        default=None,
+        help="Path to real observations CSV to blend with synthetic data",
     )
     args = parser.parse_args()
     train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

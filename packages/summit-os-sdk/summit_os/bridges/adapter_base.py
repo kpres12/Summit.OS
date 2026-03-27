@@ -1,6 +1,7 @@
 """
 Base adapter interface and MQTT publisher helpers.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -65,11 +66,18 @@ class BaseAdapter:
             raise RuntimeError("MQTT not connected")
         self._mqtt.publish(topic, json.dumps(payload), qos=0)
 
-    def register_with_gateway(self, api_base: str, node_type: str = "GENERIC", capabilities: list[str] | None = None, comm: list[str] | None = None) -> dict:
+    def register_with_gateway(
+        self,
+        api_base: str,
+        node_type: str = "GENERIC",
+        capabilities: list[str] | None = None,
+        comm: list[str] | None = None,
+    ) -> dict:
         """Register device with API Gateway → Fabric registry.
         Returns response dict and caches token (if provided).
         """
         import requests
+
         payload = {
             "id": self.cfg.device_id,
             "type": node_type,
@@ -80,7 +88,12 @@ class BaseAdapter:
             "comm": comm or [],
         }
         headers = {"X-Org-ID": self.cfg.org_id} if self.cfg.org_id else None
-        r = requests.post(f"{api_base.rstrip('/')}/api/v1/nodes/register", json=payload, headers=headers, timeout=5)
+        r = requests.post(
+            f"{api_base.rstrip('/')}/api/v1/nodes/register",
+            json=payload,
+            headers=headers,
+            timeout=5,
+        )
         r.raise_for_status()
         data = r.json()
         self._token = data.get("token") if isinstance(data, dict) else None

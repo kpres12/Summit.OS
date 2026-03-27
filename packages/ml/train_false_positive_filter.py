@@ -71,20 +71,20 @@ _STRUCTURAL_IDX = 5
 
 # Base false-positive rates by class (used to shape synthetic data)
 _CLASS_FP_RATES = {
-    "fire_smoke":     0.15,   # well-calibrated sensors, low FP rate
-    "person":         0.25,
-    "flood_water":    0.20,
-    "structural":     0.40,   # highest FP rate — debris vs. real collapse ambiguous
-    "vehicle":        0.30,
-    "hazmat":         0.18,
-    "wildlife":       0.35,
+    "fire_smoke": 0.15,  # well-calibrated sensors, low FP rate
+    "person": 0.25,
+    "flood_water": 0.20,
+    "structural": 0.40,  # highest FP rate — debris vs. real collapse ambiguous
+    "vehicle": 0.30,
+    "hazmat": 0.18,
+    "wildlife": 0.35,
     "infrastructure": 0.28,
-    "agricultural":   0.32,
-    "medical":        0.20,
-    "security":       0.25,
-    "search_target":  0.18,
-    "logistics":      0.30,
-    "none":           0.55,   # no keyword match → high FP
+    "agricultural": 0.32,
+    "medical": 0.20,
+    "security": 0.25,
+    "search_target": 0.18,
+    "logistics": 0.30,
+    "none": 0.55,  # no keyword match → high FP
 }
 
 _CLASS_NAMES = list(_CLASS_FP_RATES.keys())
@@ -93,6 +93,7 @@ _CLASS_NAMES = list(_CLASS_FP_RATES.keys())
 # ---------------------------------------------------------------------------
 # Synthetic data generation
 # ---------------------------------------------------------------------------
+
 
 def _sample_class(rng: np.random.Generator) -> tuple:
     """Return (class_name, base_fp_rate, keyword_feature_vec_15).
@@ -105,10 +106,19 @@ def _sample_class(rng: np.random.Generator) -> tuple:
     base_vec = [0.0] * FEATURE_DIM
     # Map class name → feature index (indices 2-14 in order of _CLASS_NAMES minus "none")
     cls_to_idx = {
-        "fire_smoke": 2, "person": 3, "flood_water": 4, "structural": 5,
-        "vehicle": 6, "hazmat": 7, "wildlife": 8, "infrastructure": 9,
-        "agricultural": 10, "medical": 11, "security": 12,
-        "search_target": 13, "logistics": 14,
+        "fire_smoke": 2,
+        "person": 3,
+        "flood_water": 4,
+        "structural": 5,
+        "vehicle": 6,
+        "hazmat": 7,
+        "wildlife": 8,
+        "infrastructure": 9,
+        "agricultural": 10,
+        "medical": 11,
+        "security": 12,
+        "search_target": 13,
+        "logistics": 14,
     }
     if cls in cls_to_idx:
         base_vec[cls_to_idx[cls]] = 1.0
@@ -134,7 +144,9 @@ def generate_false_positive_samples(n: int, seed: int = 42) -> tuple:
         conf = float(rng.beta(4, 2))  # skewed toward higher confidence
         has_location = float(rng.random() > 0.25)  # 75% of detections have location
         hour = float(rng.integers(0, 24))
-        detection_frequency = float(rng.beta(1.5, 3))  # skewed low (most are single-shot)
+        detection_frequency = float(
+            rng.beta(1.5, 3)
+        )  # skewed low (most are single-shot)
 
         hour_sin = np.sin(2 * np.pi * hour / 24.0)
         hour_cos = np.cos(2 * np.pi * hour / 24.0)
@@ -143,7 +155,7 @@ def generate_false_positive_samples(n: int, seed: int = 42) -> tuple:
         keyword_vec[1] = has_location
 
         has_domain_keyword = any(keyword_vec[2:])
-        is_nighttime = (hour >= 22 or hour <= 5)
+        is_nighttime = hour >= 22 or hour <= 5
 
         # ------------------------------------------------------------------
         # Decision rules — determine is_real probability
@@ -171,7 +183,11 @@ def generate_false_positive_samples(n: int, seed: int = 42) -> tuple:
         if 0.35 <= conf <= 0.55 and not has_location and not has_domain_keyword:
             p_real = min(p_real, 0.20)
 
-        if detection_frequency < 0.05 and conf < 0.50 and cls in ("none", "structural", "wildlife"):
+        if (
+            detection_frequency < 0.05
+            and conf < 0.50
+            and cls in ("none", "structural", "wildlife")
+        ):
             p_real = min(p_real, 0.18)  # single isolated ambiguous detection
 
         # Add calibration noise
@@ -193,18 +209,30 @@ def generate_false_positive_samples(n: int, seed: int = 42) -> tuple:
 # Training
 # ---------------------------------------------------------------------------
 
+
 def load_real_csv(csv_path: str):
     """Load real observations from download_real_data.py CSV and map to FP filter features."""
     import csv as _csv
+
     X, y = [], []
     cls_to_idx = {
-        "fire_smoke": 2, "person": 3, "flood_water": 4, "structural": 5,
-        "vehicle": 6, "hazmat": 7, "wildlife": 8, "infrastructure": 9,
-        "agricultural": 10, "medical": 11, "security": 12,
-        "search_target": 13, "logistics": 14,
+        "fire_smoke": 2,
+        "person": 3,
+        "flood_water": 4,
+        "structural": 5,
+        "vehicle": 6,
+        "hazmat": 7,
+        "wildlife": 8,
+        "infrastructure": 9,
+        "agricultural": 10,
+        "medical": 11,
+        "security": 12,
+        "search_target": 13,
+        "logistics": 14,
     }
     # Map class string → feature index via features.extract keyword groups
     from features import extract as _extract
+
     try:
         with open(csv_path, newline="") as f:
             reader = _csv.DictReader(f)
@@ -213,8 +241,12 @@ def load_real_csv(csv_path: str):
                     conf = float(row["confidence"])
                     lat = float(row["lat"])
                     lon = float(row["lon"])
-                    obs = {"class": row["class"], "confidence": conf,
-                           "lat": lat, "lon": lon}
+                    obs = {
+                        "class": row["class"],
+                        "confidence": conf,
+                        "lat": lat,
+                        "lon": lon,
+                    }
                     base_vec = _extract(obs)  # 15 floats
                     # Extend to 18 floats: detection_frequency=0.5 (unknown), hour=12 (midday)
                     hour = 12.0
@@ -232,10 +264,16 @@ def load_real_csv(csv_path: str):
         print(f"  Loaded {len(X)} real samples from {os.path.basename(csv_path)}")
     except FileNotFoundError:
         print(f"  CSV not found: {csv_path}")
-    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+    return (
+        (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64))
+        if X
+        else (None, None)
+    )
 
 
-def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = None) -> str:
+def train(
+    n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = None
+) -> str:
     os.makedirs(output_dir, exist_ok=True)
 
     print(f"Generating {n_samples:,} synthetic samples...")
@@ -246,6 +284,7 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
         if X_real is not None:
             from collections import defaultdict
             import random as _rand
+
             _rand.seed(42)
             syn_counts = defaultdict(int)
             for lbl in y:
@@ -264,7 +303,9 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
                 X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
                 y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
                 label_map = {0: "false_positive", 1: "real"}
-                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(
+                    f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }"
+                )
                 print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     fp_rate = 1.0 - y.mean()
@@ -289,10 +330,12 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
 
     calibrated = CalibratedClassifierCV(base_clf, cv=5, method="isotonic")
 
-    pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", calibrated),
-    ])
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            ("clf", calibrated),
+        ]
+    )
 
     print("Training CalibratedClassifierCV(HistGradientBoostingClassifier)...")
     pipe.fit(X_train, y_train)
@@ -315,9 +358,11 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
     print(f"  AUC-ROC   : {auc:.4f}")
 
     print("\n--- Classification Report ---")
-    print(classification_report(y_test, y_pred,
-                                target_names=["false_positive", "real"],
-                                zero_division=0))
+    print(
+        classification_report(
+            y_test, y_pred, target_names=["false_positive", "real"], zero_division=0
+        )
+    )
 
     # ------------------------------------------------------------------
     # FP rate by class (use test portion of the synthetic data)
@@ -328,10 +373,19 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
     analysis_rows = []
     for cls in _CLASS_NAMES:
         cls_to_idx = {
-            "fire_smoke": 2, "person": 3, "flood_water": 4, "structural": 5,
-            "vehicle": 6, "hazmat": 7, "wildlife": 8, "infrastructure": 9,
-            "agricultural": 10, "medical": 11, "security": 12,
-            "search_target": 13, "logistics": 14,
+            "fire_smoke": 2,
+            "person": 3,
+            "flood_water": 4,
+            "structural": 5,
+            "vehicle": 6,
+            "hazmat": 7,
+            "wildlife": 8,
+            "infrastructure": 9,
+            "agricultural": 10,
+            "medical": 11,
+            "security": 12,
+            "search_target": 13,
+            "logistics": 14,
         }
         # Build 500 samples of a single class
         n_cls = 500
@@ -371,7 +425,9 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
     print(f"\nModel saved:    {onnx_path}")
 
     # Save feature names
-    feat_names_path = os.path.join(output_dir, "false_positive_filter_feature_names.json")
+    feat_names_path = os.path.join(
+        output_dir, "false_positive_filter_feature_names.json"
+    )
     with open(feat_names_path, "w") as f:
         json.dump(EXTENDED_FEATURE_NAMES, f, indent=2)
     print(f"Features saved: {feat_names_path}")
@@ -385,12 +441,12 @@ def train(n_samples: int = 60000, output_dir: str = MODELS_DIR, real_csv: str = 
         sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
         smoke_cases = [
             # (description, conf, has_loc, cls_idx, freq, hour)
-            ("fire conf=0.92 night loc",   0.92, 1, 2,  0.6, 23),
-            ("smoke conf=0.40 no-loc",     0.40, 0, 2,  0.0,  9),
-            ("structural conf=0.31",       0.31, 0, 5,  0.0, 14),
-            ("person conf=0.88 loc",       0.88, 1, 3,  0.4, 10),
-            ("unknown conf=0.28",          0.28, 0, -1, 0.0, 15),
-            ("vehicle conf=0.72 repeated", 0.72, 1, 6,  0.8, 12),
+            ("fire conf=0.92 night loc", 0.92, 1, 2, 0.6, 23),
+            ("smoke conf=0.40 no-loc", 0.40, 0, 2, 0.0, 9),
+            ("structural conf=0.31", 0.31, 0, 5, 0.0, 14),
+            ("person conf=0.88 loc", 0.88, 1, 3, 0.4, 10),
+            ("unknown conf=0.28", 0.28, 0, -1, 0.0, 15),
+            ("vehicle conf=0.72 repeated", 0.72, 1, 6, 0.8, 12),
         ]
         print("\nSmoke test:")
         for desc, conf, has_loc, cls_idx, freq, hour in smoke_cases:
@@ -420,16 +476,22 @@ if __name__ == "__main__":
         description="Train the Summit.OS false-positive filter model."
     )
     parser.add_argument(
-        "--samples", type=int, default=60000,
-        help="Number of synthetic training samples (default: 60000)"
+        "--samples",
+        type=int,
+        default=60000,
+        help="Number of synthetic training samples (default: 60000)",
     )
     parser.add_argument(
-        "--output-dir", dest="output_dir", default=MODELS_DIR,
-        help="Directory to write .onnx and .json files (default: packages/ml/models/)"
+        "--output-dir",
+        dest="output_dir",
+        default=MODELS_DIR,
+        help="Directory to write .onnx and .json files (default: packages/ml/models/)",
     )
     parser.add_argument(
-        "--real-csv", dest="real_csv", default=None,
-        help="Path to real observations CSV to blend with synthetic data"
+        "--real-csv",
+        dest="real_csv",
+        default=None,
+        help="Path to real observations CSV to blend with synthetic data",
     )
     args = parser.parse_args()
     train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

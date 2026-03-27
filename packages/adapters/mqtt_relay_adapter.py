@@ -10,6 +10,7 @@ Dependencies
 ------------
     pip install asyncio-mqtt
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -144,6 +145,7 @@ class MQTTRelayAdapter(BaseAdapter):
     ) -> Optional[dict]:
         try:
             import json
+
             data = json.loads(payload_bytes.decode("utf-8"))
         except Exception as exc:
             self._log.debug("MQTT JSON parse error on topic %s: %s", topic, exc)
@@ -155,7 +157,9 @@ class MQTTRelayAdapter(BaseAdapter):
         # Allow entity_id override from payload
         entity_id = str(data.get("entity_id", data.get("id", entity_id)))
         callsign = data.get("callsign") or data.get("name") or entity_id
-        entity_type = data.get("entity_type") or data.get("type") or self._entity_type_default
+        entity_type = (
+            data.get("entity_type") or data.get("type") or self._entity_type_default
+        )
 
         lat = _extract_float(data, *_LAT_ALIASES)
         lon = _extract_float(data, *_LON_ALIASES)
@@ -175,12 +179,31 @@ class MQTTRelayAdapter(BaseAdapter):
                 "vertical_mps": _extract_float(data, "vertical_mps", "climb_rate"),
             }
 
-        metadata = {k: v for k, v in data.items() if k not in {
-            "entity_id", "id", "callsign", "name", "entity_type", "type",
-            *_LAT_ALIASES, *_LON_ALIASES, *_ALT_ALIASES,
-            "heading", "heading_deg", "course", "cog",
-            "speed", "speed_mps", "sog", "vertical_mps", "climb_rate",
-        }}
+        metadata = {
+            k: v
+            for k, v in data.items()
+            if k
+            not in {
+                "entity_id",
+                "id",
+                "callsign",
+                "name",
+                "entity_type",
+                "type",
+                *_LAT_ALIASES,
+                *_LON_ALIASES,
+                *_ALT_ALIASES,
+                "heading",
+                "heading_deg",
+                "course",
+                "cog",
+                "speed",
+                "speed_mps",
+                "sog",
+                "vertical_mps",
+                "climb_rate",
+            }
+        }
         metadata["mqtt_topic"] = topic
 
         return {
@@ -211,6 +234,7 @@ class MQTTRelayAdapter(BaseAdapter):
         sentence = payload_bytes.decode("ascii", errors="ignore").strip()
         try:
             import pynmea2
+
             msg = pynmea2.parse(sentence)
             lat = getattr(msg, "latitude", None)
             lon = getattr(msg, "longitude", None)
