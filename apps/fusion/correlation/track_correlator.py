@@ -6,6 +6,7 @@ Correlates observations from multiple sensors to existing tracks using:
 2. Hungarian algorithm — optimal global assignment
 3. Covariance intersection — fuse track-to-track without cross-correlation
 """
+
 from __future__ import annotations
 
 import math
@@ -19,6 +20,7 @@ from apps.fusion.filters.kalman import EKFState, ExtendedKalmanFilter
 @dataclass
 class Association:
     """Result of observation-to-track association."""
+
     observation_idx: int
     track_id: str
     distance: float  # Mahalanobis distance
@@ -58,11 +60,13 @@ def mahalanobis_gate(
     H = np.zeros((3, 6))
     H[0, 0] = H[1, 1] = H[2, 2] = 1.0
 
-    R = np.diag([
-        (sigma_m / m_lat) ** 2,
-        (sigma_m / m_lon) ** 2,
-        sigma_m ** 2,
-    ])
+    R = np.diag(
+        [
+            (sigma_m / m_lat) ** 2,
+            (sigma_m / m_lon) ** 2,
+            sigma_m**2,
+        ]
+    )
 
     S = H @ state.P @ H.T + R
 
@@ -151,8 +155,10 @@ def hungarian_assignment(cost_matrix: np.ndarray) -> List[Tuple[int, int]]:
 
 
 def covariance_intersection(
-    x_a: np.ndarray, P_a: np.ndarray,
-    x_b: np.ndarray, P_b: np.ndarray,
+    x_a: np.ndarray,
+    P_a: np.ndarray,
+    x_b: np.ndarray,
+    P_b: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Covariance Intersection (CI) fusion of two estimates.
@@ -222,21 +228,23 @@ class TrackCorrelator:
     def __init__(
         self,
         gate_threshold: float = 9.21,  # chi-squared 3DoF, 99%
-        max_distance: float = 50.0,    # Max Mahalanobis distance to consider
+        max_distance: float = 50.0,  # Max Mahalanobis distance to consider
     ):
         self.gate_threshold = gate_threshold
         self.max_distance = max_distance
 
     def correlate(
         self,
-        observations: List[Tuple[float, float, float, float, str]],  # (lat, lon, alt, sigma_m, sensor_id)
+        observations: List[
+            Tuple[float, float, float, float, str]
+        ],  # (lat, lon, alt, sigma_m, sensor_id)
         tracks: Dict[str, EKFState],
         t: float,
         ekf: ExtendedKalmanFilter,
     ) -> Tuple[
         List[Tuple[int, str, float]],  # matched: (obs_idx, track_id, distance)
-        List[int],                      # unmatched_observations
-        List[str],                      # unmatched_tracks
+        List[int],  # unmatched_observations
+        List[str],  # unmatched_tracks
     ]:
         """
         Correlate observations to tracks.
@@ -265,7 +273,10 @@ class TrackCorrelator:
         for i, (lat, lon, alt, sigma, sid) in enumerate(observations):
             for j, tid in enumerate(track_ids):
                 dist, passed = mahalanobis_gate(
-                    predicted[tid], lat, lon, alt,
+                    predicted[tid],
+                    lat,
+                    lon,
+                    alt,
                     sigma_m=sigma,
                     gate_threshold=self.gate_threshold,
                 )

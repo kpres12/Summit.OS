@@ -9,6 +9,7 @@ Usage:
     builder = ContextBuilder(world_url="http://localhost:8001")
     ctx = await builder.build(mission_objective="Find and track the fire perimeter")
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,6 +33,7 @@ def _age_str(ts_iso: Optional[str]) -> str:
         return "unknown age"
     try:
         from datetime import datetime
+
         dt = datetime.fromisoformat(ts_iso.replace("Z", "+00:00"))
         age = (datetime.now(timezone.utc) - dt).total_seconds()
         if age < 60:
@@ -71,7 +73,7 @@ def _summarise_entity(e: Dict) -> str:
     # Sanitize all entity-sourced strings before embedding in LLM context
     etype = _safe_str(etype, 32)
     state = _safe_str(state, 32)
-    name  = _safe_str(name, 80)
+    name = _safe_str(name, 80)
     domain = _safe_str(domain, 40)
 
     parts = [f"[{etype}/{state}] {name}"]
@@ -118,6 +120,7 @@ class ContextBuilder:
     async def _fetch_entities(self) -> List[Dict]:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(f"{self.world_url}/entities")
                 if r.status_code == 200:
@@ -132,6 +135,7 @@ class ContextBuilder:
     async def _fetch_alerts(self) -> List[Dict]:
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(f"{self.world_url}/alerts?limit=20")
                 if r.status_code == 200:
@@ -149,7 +153,7 @@ class ContextBuilder:
             key=lambda e: (
                 _STATE_PRIORITY.get(e.get("state", ""), 99),
                 e.get("entity_type", ""),
-            )
+            ),
         )
 
     def _format_alerts(self, alerts: List[Dict]) -> str:
@@ -190,20 +194,27 @@ class ContextBuilder:
         # Build sections
         ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         header = f"SUMMIT.OS OPERATOR AI | {ts_now}\n"
-        mission_section = f"CURRENT MISSION: {mission_objective}\n" if mission_objective else ""
+        mission_section = (
+            f"CURRENT MISSION: {mission_objective}\n" if mission_objective else ""
+        )
         alert_section = self._format_alerts(alerts)
         entity_section = self._format_entities(prioritised)
 
         sections = [header, mission_section, alert_section, entity_section]
         if additional_context:
-            safe_ctx = sanitize_text(additional_context, max_len=500, label="additional_context")
+            safe_ctx = sanitize_text(
+                additional_context, max_len=500, label="additional_context"
+            )
             sections.append(f"\nADDITIONAL CONTEXT:\n{safe_ctx}")
 
         full = "\n".join(s for s in sections if s)
 
         # Trim to char budget
         if len(full) > self._char_budget:
-            full = full[: self._char_budget - 200] + "\n...[context truncated for token budget]"
+            full = (
+                full[: self._char_budget - 200]
+                + "\n...[context truncated for token budget]"
+            )
 
         return full
 

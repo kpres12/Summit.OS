@@ -9,6 +9,7 @@ Provides a high-level Python API for Summit.OS services:
 
 REST + WebSocket transports for Summit.OS services.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,6 +28,7 @@ logger = logging.getLogger("summit.sdk")
 @dataclass
 class SDKConfig:
     """SDK configuration."""
+
     api_url: str = "http://localhost:8000"
     ws_url: str = "ws://localhost:8000/ws"
     api_key: str = ""
@@ -55,12 +57,15 @@ class SummitClient:
         )
     """
 
-    def __init__(self, api_url: str = "http://localhost:8000",
-                 ws_url: str = "",
-                 api_key: str = "",
-                 jwt_token: str = "",
-                 retry_policy: Optional[RetryPolicy] = None,
-                 circuit_breaker: Optional[CircuitBreaker] = None):
+    def __init__(
+        self,
+        api_url: str = "http://localhost:8000",
+        ws_url: str = "",
+        api_key: str = "",
+        jwt_token: str = "",
+        retry_policy: Optional[RetryPolicy] = None,
+        circuit_breaker: Optional[CircuitBreaker] = None,
+    ):
         self.config = SDKConfig(
             api_url=api_url.rstrip("/"),
             ws_url=ws_url or api_url.replace("http", "ws") + "/ws",
@@ -84,6 +89,7 @@ class SummitClient:
     def _check_aiohttp() -> bool:
         try:
             import aiohttp
+
             return True
         except ImportError:
             return False
@@ -92,10 +98,12 @@ class SummitClient:
         """Connect to Summit.OS API."""
         if self._aiohttp_available:
             import aiohttp
+
             timeout = aiohttp.ClientTimeout(total=self.config.timeout)
             headers = self._auth_headers()
             self._session = aiohttp.ClientSession(
-                headers=headers, timeout=timeout,
+                headers=headers,
+                timeout=timeout,
             )
             self._connected = True
             logger.info(f"SDK connected to {self.config.api_url}")
@@ -160,26 +168,37 @@ class SummitClient:
 
     async def _get(self, path: str, params: Optional[Dict] = None) -> Dict:
         return await retry_with_circuit(
-            self._raw_get, path, params,
-            retry=self._retry, breaker=self._breaker,
+            self._raw_get,
+            path,
+            params,
+            retry=self._retry,
+            breaker=self._breaker,
         )
 
     async def _post(self, path: str, data: Dict) -> Dict:
         return await retry_with_circuit(
-            self._raw_post, path, data,
-            retry=self._retry, breaker=self._breaker,
+            self._raw_post,
+            path,
+            data,
+            retry=self._retry,
+            breaker=self._breaker,
         )
 
     async def _put(self, path: str, data: Dict) -> Dict:
         return await retry_with_circuit(
-            self._raw_put, path, data,
-            retry=self._retry, breaker=self._breaker,
+            self._raw_put,
+            path,
+            data,
+            retry=self._retry,
+            breaker=self._breaker,
         )
 
     async def _delete(self, path: str) -> Dict:
         return await retry_with_circuit(
-            self._raw_delete, path,
-            retry=self._retry, breaker=self._breaker,
+            self._raw_delete,
+            path,
+            retry=self._retry,
+            breaker=self._breaker,
         )
 
     async def health(self) -> Dict:
@@ -193,17 +212,22 @@ class SummitClient:
 
 # ── Sub-clients ─────────────────────────────────────────────
 
+
 class EntityClient:
     """Entity operations."""
+
     def __init__(self, client: SummitClient):
         self._c = client
 
     async def get(self, entity_id: str) -> Dict:
         return await self._c._get(f"/api/v1/entities/{entity_id}")
 
-    async def list(self, domain: Optional[str] = None,
-                   entity_type: Optional[str] = None,
-                   limit: int = 100) -> List[Dict]:
+    async def list(
+        self,
+        domain: Optional[str] = None,
+        entity_type: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[Dict]:
         params = {"limit": limit}
         if domain:
             params["domain"] = domain
@@ -227,14 +251,16 @@ class EntityClient:
 
 class TaskClient:
     """Task operations."""
+
     def __init__(self, client: SummitClient):
         self._c = client
 
     async def get(self, task_id: str) -> Dict:
         return await self._c._get(f"/api/v1/tasks/{task_id}")
 
-    async def list(self, state: Optional[str] = None,
-                   mission_id: Optional[str] = None) -> List[Dict]:
+    async def list(
+        self, state: Optional[str] = None, mission_id: Optional[str] = None
+    ) -> List[Dict]:
         params = {}
         if state:
             params["state"] = state
@@ -247,12 +273,14 @@ class TaskClient:
         return await self._c._post("/api/v1/tasks", task_data)
 
     async def assign(self, task_id: str, assignee_id: str) -> Dict:
-        return await self._c._post(f"/api/v1/tasks/{task_id}/assign",
-                                    {"assignee_id": assignee_id})
+        return await self._c._post(
+            f"/api/v1/tasks/{task_id}/assign", {"assignee_id": assignee_id}
+        )
 
     async def complete(self, task_id: str, result: Optional[Dict] = None) -> Dict:
-        return await self._c._post(f"/api/v1/tasks/{task_id}/complete",
-                                    {"result": result or {}})
+        return await self._c._post(
+            f"/api/v1/tasks/{task_id}/complete", {"result": result or {}}
+        )
 
     async def cancel(self, task_id: str) -> Dict:
         return await self._c._post(f"/api/v1/tasks/{task_id}/cancel", {})
@@ -260,6 +288,7 @@ class TaskClient:
 
 class MeshClient:
     """Mesh status operations."""
+
     def __init__(self, client: SummitClient):
         self._c = client
 
@@ -273,12 +302,14 @@ class MeshClient:
 
 class SensorClient:
     """Sensor data ingestion."""
+
     def __init__(self, client: SummitClient):
         self._c = client
 
     async def ingest(self, sensor_id: str, readings: List[Dict]) -> Dict:
-        return await self._c._post(f"/api/v1/sensors/{sensor_id}/data",
-                                    {"readings": readings})
+        return await self._c._post(
+            f"/api/v1/sensors/{sensor_id}/data", {"readings": readings}
+        )
 
     async def list(self) -> List[Dict]:
         resp = await self._c._get("/api/v1/sensors")

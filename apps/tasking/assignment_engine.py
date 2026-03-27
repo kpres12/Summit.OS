@@ -16,6 +16,7 @@ Intent types:
   - "respond"   → direct approach + verification
   - "contain"   → containment ring
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,28 +32,28 @@ logger = logging.getLogger("tasking.assignment")
 # ── Intent → Pattern mapping ──────────────────────────────────
 
 INTENT_PATTERN_MAP = {
-    "survey":       "grid",
+    "survey": "grid",
     "surveillance": "grid",
-    "mapping":      "grid",
-    "monitor":      "perimeter",
-    "patrol":       "perimeter",
-    "search":       "expanding_square",
-    "sar":          "expanding_square",
-    "observe":      "orbit",
-    "loiter":       "orbit",
-    "overwatch":    "orbit",
-    "respond":      "direct",
-    "verify":       "direct",
-    "contain":      "containment",
-    "suppress":     "direct",
+    "mapping": "grid",
+    "monitor": "perimeter",
+    "patrol": "perimeter",
+    "search": "expanding_square",
+    "sar": "expanding_square",
+    "observe": "orbit",
+    "loiter": "orbit",
+    "overwatch": "orbit",
+    "respond": "direct",
+    "verify": "direct",
+    "contain": "containment",
+    "suppress": "direct",
 }
 
 # Capability weights for scoring
 CAPABILITY_WEIGHTS = {
-    "thermal":      0.3,
-    "rgb_camera":   0.2,
-    "lidar":        0.15,
-    "gas_sensor":   0.1,
+    "thermal": 0.3,
+    "rgb_camera": 0.2,
+    "lidar": 0.15,
+    "gas_sensor": 0.1,
     "payload_drop": 0.25,
 }
 
@@ -60,6 +61,7 @@ CAPABILITY_WEIGHTS = {
 @dataclass
 class AssetScore:
     """Scoring result for a single asset."""
+
     asset_id: str
     entity: Entity
     total_score: float = 0.0
@@ -73,6 +75,7 @@ class AssetScore:
 @dataclass
 class AssignmentResult:
     """Result of the assignment engine."""
+
     selected_assets: List[AssetScore]
     pattern: str
     intent: str
@@ -124,14 +127,21 @@ class AssignmentEngine:
             candidates = self._assets_to_entities(available_assets)
         else:
             return AssignmentResult(
-                selected_assets=[], pattern=pattern, intent=intent, all_scores=[],
+                selected_assets=[],
+                pattern=pattern,
+                intent=intent,
+                all_scores=[],
             )
 
         # Score each candidate
         scores = []
         for entity in candidates:
             score = self._score_asset(
-                entity, intent, target_lat, target_lon, required_capabilities,
+                entity,
+                intent,
+                target_lat,
+                target_lon,
+                required_capabilities,
             )
             scores.append(score)
 
@@ -166,8 +176,14 @@ class AssignmentEngine:
     def _assets_to_entities(self, assets: List[Dict[str, Any]]) -> List[Entity]:
         """Convert raw asset dicts (from DB) to Entity objects for scoring."""
         from packages.entities.core import (
-            Entity, EntityType, EntityDomain, LifecycleState,
-            Kinematics, GeoPoint, Provenance, AerialData,
+            Entity,
+            EntityType,
+            EntityDomain,
+            LifecycleState,
+            Kinematics,
+            GeoPoint,
+            Provenance,
+            AerialData,
         )
 
         entities = []
@@ -175,6 +191,7 @@ class AssignmentEngine:
             caps = a.get("capabilities") or {}
             if isinstance(caps, str):
                 import json
+
                 try:
                     caps = json.loads(caps) or {}
                 except Exception:
@@ -191,7 +208,11 @@ class AssignmentEngine:
                 metadata={
                     "type": a.get("type", ""),
                     "link": a.get("link", ""),
-                    **{k: str(v) for k, v in caps.items() if isinstance(v, (str, int, float, bool))},
+                    **{
+                        k: str(v)
+                        for k, v in caps.items()
+                        if isinstance(v, (str, int, float, bool))
+                    },
                 },
             )
 
@@ -204,6 +225,7 @@ class AssignmentEngine:
             constraints = a.get("constraints") or {}
             if isinstance(constraints, str):
                 import json
+
                 try:
                     constraints = json.loads(constraints) or {}
                 except Exception:
@@ -229,7 +251,9 @@ class AssignmentEngine:
         score = AssetScore(asset_id=entity.id, entity=entity)
 
         # 1. Capability score (0-1)
-        score.capability_score = self._score_capability(entity, intent, required_capabilities)
+        score.capability_score = self._score_capability(
+            entity, intent, required_capabilities
+        )
 
         # 2. Proximity score (0-1) — closer is better
         score.proximity_score = self._score_proximity(entity, target_lat, target_lon)
@@ -265,12 +289,12 @@ class AssignmentEngine:
         """Score based on asset capabilities matching the intent."""
         # Intent-based capability mapping
         intent_needs = {
-            "survey":   ["rgb_camera", "thermal"],
-            "monitor":  ["rgb_camera", "thermal"],
-            "search":   ["thermal", "rgb_camera"],
-            "observe":  ["rgb_camera"],
-            "respond":  ["thermal", "rgb_camera"],
-            "contain":  ["payload_drop", "thermal"],
+            "survey": ["rgb_camera", "thermal"],
+            "monitor": ["rgb_camera", "thermal"],
+            "search": ["thermal", "rgb_camera"],
+            "observe": ["rgb_camera"],
+            "respond": ["thermal", "rgb_camera"],
+            "contain": ["payload_drop", "thermal"],
             "suppress": ["payload_drop"],
         }
 

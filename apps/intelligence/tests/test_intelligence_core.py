@@ -2,16 +2,25 @@
 
 Uses INTELLIGENCE_TEST_MODE=true (SQLite backend, no Redis).
 """
+
 import os
+
 os.environ["INTELLIGENCE_TEST_MODE"] = "true"
 
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fastapi.testclient import TestClient
-from main import app, _calculate_risk_level, _generate_advisory_message, _extract_features
+from main import (
+    app,
+    _calculate_risk_level,
+    _generate_advisory_message,
+    _extract_features,
+)
 
 import pytest
+
 
 @pytest.fixture(scope="module")
 def client():
@@ -19,28 +28,44 @@ def client():
         yield c
 
 
-
-
-
-
 # --- Pure function tests (no DB needed) ---
+
 
 def test_risk_level_critical(client):
     # High-confidence life-safety events are always CRITICAL
-    assert _calculate_risk_level({"class": "active fire", "confidence": 0.95, "lat": 34.0, "lon": -118.0}) == "CRITICAL"
-    assert _calculate_risk_level({"class": "mass casualty", "confidence": 0.92, "lat": 33.0, "lon": -117.0}) == "CRITICAL"
+    assert (
+        _calculate_risk_level(
+            {"class": "active fire", "confidence": 0.95, "lat": 34.0, "lon": -118.0}
+        )
+        == "CRITICAL"
+    )
+    assert (
+        _calculate_risk_level(
+            {"class": "mass casualty", "confidence": 0.92, "lat": 33.0, "lon": -117.0}
+        )
+        == "CRITICAL"
+    )
 
 
 def test_risk_level_high(client):
     # Elevated but not life-threatening, or moderate confidence on serious class
-    result = _calculate_risk_level({"class": "suspicious activity", "confidence": 0.65, "lat": 40.0, "lon": -74.0})
-    assert result in ("HIGH", "MEDIUM", "CRITICAL", "LOW")  # model trained on real data; any non-trivial response valid
+    result = _calculate_risk_level(
+        {"class": "suspicious activity", "confidence": 0.65, "lat": 40.0, "lon": -74.0}
+    )
+    assert result in (
+        "HIGH",
+        "MEDIUM",
+        "CRITICAL",
+        "LOW",
+    )  # model trained on real data; any non-trivial response valid
 
 
 def test_risk_level_medium(client):
     # Routine observation at moderate confidence
-    result = _calculate_risk_level({"class": "crop survey", "confidence": 0.80, "lat": 38.0, "lon": -122.0})
-    assert result in ("LOW", "MEDIUM", "HIGH")   # valid response
+    result = _calculate_risk_level(
+        {"class": "crop survey", "confidence": 0.80, "lat": 38.0, "lon": -122.0}
+    )
+    assert result in ("LOW", "MEDIUM", "HIGH")  # valid response
 
 
 def test_risk_level_low(client):
@@ -80,9 +105,14 @@ def test_advisory_message_unknown_class(client):
 
 
 def test_extract_features_basic(client):
-    features = _extract_features({
-        "class": "smoke", "lat": 34.0, "lon": -118.0, "confidence": 0.9,
-    })
+    features = _extract_features(
+        {
+            "class": "smoke",
+            "lat": 34.0,
+            "lon": -118.0,
+            "confidence": 0.9,
+        }
+    )
     assert len(features) == 7
     assert features[0] == 34.0  # lat
     assert features[1] == -118.0  # lon
@@ -97,6 +127,7 @@ def test_extract_features_empty(client):
 
 
 # --- API endpoint tests ---
+
 
 def test_health(client):
     r = client.get("/health")

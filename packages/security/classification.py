@@ -13,6 +13,7 @@ Enforces classification policies:
 - Need-to-know: users can only access data at or below their clearance
 - Marking: all data objects carry classification labels
 """
+
 from __future__ import annotations
 
 import time
@@ -26,8 +27,9 @@ logger = logging.getLogger("security.classification")
 
 class ClassificationLevel(IntEnum):
     """Classification levels in ascending order of sensitivity."""
+
     UNCLASSIFIED = 0
-    CUI = 1          # Controlled Unclassified Information
+    CUI = 1  # Controlled Unclassified Information
     CONFIDENTIAL = 2
     SECRET = 3
     TOP_SECRET = 4
@@ -70,6 +72,7 @@ class ClassificationLevel(IntEnum):
 @dataclass
 class DataClassification:
     """Classification label for a data object."""
+
     level: ClassificationLevel = ClassificationLevel.UNCLASSIFIED
     caveats: List[str] = field(default_factory=list)  # e.g., ["NOFORN", "REL TO USA"]
     compartments: List[str] = field(default_factory=list)  # SCI compartments
@@ -160,10 +163,15 @@ class ClassificationPolicy:
         obj_label = self.get_label(object_id)
 
         granted = user_level >= obj_label.level
-        self._log("access_check", object_id, obj_label, extra={
-            "user_clearance": user_clearance,
-            "granted": granted,
-        })
+        self._log(
+            "access_check",
+            object_id,
+            obj_label,
+            extra={
+                "user_clearance": user_clearance,
+                "granted": granted,
+            },
+        )
 
         return granted
 
@@ -180,8 +188,9 @@ class ClassificationPolicy:
                 max_level = label.level
         return max_level
 
-    def upgrade(self, object_id: str, new_level: ClassificationLevel,
-                reason: str = "") -> DataClassification:
+    def upgrade(
+        self, object_id: str, new_level: ClassificationLevel, reason: str = ""
+    ) -> DataClassification:
         """
         Upgrade (reclassify higher) an object's classification.
 
@@ -204,9 +213,13 @@ class ClassificationPolicy:
         self._log("upgraded", object_id, upgraded, extra={"reason": reason})
         return upgraded
 
-    def _log(self, event: str, object_id: str,
-             classification: DataClassification,
-             extra: Optional[Dict] = None) -> None:
+    def _log(
+        self,
+        event: str,
+        object_id: str,
+        classification: DataClassification,
+        extra: Optional[Dict] = None,
+    ) -> None:
         entry = {
             "timestamp": time.time(),
             "event": event,

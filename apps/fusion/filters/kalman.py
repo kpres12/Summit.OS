@@ -9,6 +9,7 @@ State vector x = [lat, lon, alt, vn, ve, vd]  (6-state)
 The filter operates in a local tangent plane (ENU) for prediction,
 then converts back to geodetic for the state output.
 """
+
 from __future__ import annotations
 
 import math
@@ -30,13 +31,18 @@ def _meters_per_deg_lat(lat_deg: float) -> float:
 def _meters_per_deg_lon(lat_deg: float) -> float:
     """Meters per degree of longitude at given latitude."""
     lat = math.radians(lat_deg)
-    return math.pi / 180.0 * _A * math.cos(lat) / math.sqrt(1 - _E2 * math.sin(lat) ** 2)
+    return (
+        math.pi / 180.0 * _A * math.cos(lat) / math.sqrt(1 - _E2 * math.sin(lat) ** 2)
+    )
 
 
 @dataclass
 class EKFState:
     """Extended Kalman Filter state."""
-    x: np.ndarray = field(default_factory=lambda: np.zeros(6))  # [lat, lon, alt, vn, ve, vd]
+
+    x: np.ndarray = field(
+        default_factory=lambda: np.zeros(6)
+    )  # [lat, lon, alt, vn, ve, vd]
     P: np.ndarray = field(default_factory=lambda: np.eye(6) * 100.0)  # Covariance
     last_update_time: float = 0.0
     initialized: bool = False
@@ -52,25 +58,39 @@ class ExtendedKalmanFilter:
 
     def __init__(
         self,
-        process_noise_pos: float = 0.5,    # m²/s³ position process noise spectral density
-        process_noise_vel: float = 2.0,     # m²/s³ velocity process noise spectral density
-        initial_pos_var: float = 100.0,     # m² initial position variance
-        initial_vel_var: float = 25.0,      # m² initial velocity variance
+        process_noise_pos: float = 0.5,  # m²/s³ position process noise spectral density
+        process_noise_vel: float = 2.0,  # m²/s³ velocity process noise spectral density
+        initial_pos_var: float = 100.0,  # m² initial position variance
+        initial_vel_var: float = 25.0,  # m² initial velocity variance
     ):
         self.q_pos = process_noise_pos
         self.q_vel = process_noise_vel
         self.initial_pos_var = initial_pos_var
         self.initial_vel_var = initial_vel_var
 
-    def initialize(self, lat: float, lon: float, alt: float, t: float,
-                   vn: float = 0.0, ve: float = 0.0, vd: float = 0.0) -> EKFState:
+    def initialize(
+        self,
+        lat: float,
+        lon: float,
+        alt: float,
+        t: float,
+        vn: float = 0.0,
+        ve: float = 0.0,
+        vd: float = 0.0,
+    ) -> EKFState:
         """Initialize the filter with a first measurement."""
         state = EKFState()
         state.x = np.array([lat, lon, alt, vn, ve, vd], dtype=np.float64)
-        state.P = np.diag([
-            self.initial_pos_var, self.initial_pos_var, self.initial_pos_var,
-            self.initial_vel_var, self.initial_vel_var, self.initial_vel_var,
-        ])
+        state.P = np.diag(
+            [
+                self.initial_pos_var,
+                self.initial_pos_var,
+                self.initial_pos_var,
+                self.initial_vel_var,
+                self.initial_vel_var,
+                self.initial_vel_var,
+            ]
+        )
         state.last_update_time = t
         state.initialized = True
         return state
@@ -99,14 +119,16 @@ class ExtendedKalmanFilter:
         dalt = -vd * dt  # positive vd = descending
 
         # State transition (constant velocity)
-        x_pred = np.array([
-            lat + dlat,
-            lon + dlon,
-            alt + dalt,
-            vn,
-            ve,
-            vd,
-        ])
+        x_pred = np.array(
+            [
+                lat + dlat,
+                lon + dlon,
+                alt + dalt,
+                vn,
+                ve,
+                vd,
+            ]
+        )
 
         # State transition Jacobian F
         F = np.eye(6)
@@ -120,8 +142,8 @@ class ExtendedKalmanFilter:
         dt4 = dt3 * dt
         Q = np.zeros((6, 6))
         # Position blocks
-        Q[0, 0] = self.q_pos * dt3 / 3 / (m_per_deg_lat ** 2)
-        Q[1, 1] = self.q_pos * dt3 / 3 / (m_per_deg_lon ** 2)
+        Q[0, 0] = self.q_pos * dt3 / 3 / (m_per_deg_lat**2)
+        Q[1, 1] = self.q_pos * dt3 / 3 / (m_per_deg_lon**2)
         Q[2, 2] = self.q_pos * dt3 / 3
         # Velocity blocks
         Q[3, 3] = self.q_vel * dt
@@ -167,11 +189,13 @@ class ExtendedKalmanFilter:
         H[2, 2] = 1.0
 
         # Measurement noise R (convert m to degrees)
-        R = np.diag([
-            (sigma_pos_m / m_per_deg_lat) ** 2,
-            (sigma_pos_m / m_per_deg_lon) ** 2,
-            sigma_pos_m ** 2,
-        ])
+        R = np.diag(
+            [
+                (sigma_pos_m / m_per_deg_lat) ** 2,
+                (sigma_pos_m / m_per_deg_lon) ** 2,
+                sigma_pos_m**2,
+            ]
+        )
 
         z = np.array([lat_meas, lon_meas, alt_meas])
         y = z - H @ state.x  # Innovation
@@ -209,14 +233,16 @@ class ExtendedKalmanFilter:
         m_per_deg_lon = _meters_per_deg_lon(lat)
 
         H = np.eye(6)
-        R = np.diag([
-            (sigma_pos_m / m_per_deg_lat) ** 2,
-            (sigma_pos_m / m_per_deg_lon) ** 2,
-            sigma_pos_m ** 2,
-            sigma_vel_mps ** 2,
-            sigma_vel_mps ** 2,
-            sigma_vel_mps ** 2,
-        ])
+        R = np.diag(
+            [
+                (sigma_pos_m / m_per_deg_lat) ** 2,
+                (sigma_pos_m / m_per_deg_lon) ** 2,
+                sigma_pos_m**2,
+                sigma_vel_mps**2,
+                sigma_vel_mps**2,
+                sigma_vel_mps**2,
+            ]
+        )
 
         z = np.array([lat_meas, lon_meas, alt_meas, vn_meas, ve_meas, vd_meas])
         y = z - H @ state.x
@@ -258,7 +284,7 @@ class ExtendedKalmanFilter:
         du = alt - observer_alt
 
         # Predicted bearing and range
-        pred_range = math.sqrt(dn ** 2 + de ** 2 + du ** 2) + 1e-10
+        pred_range = math.sqrt(dn**2 + de**2 + du**2) + 1e-10
         pred_bearing = math.degrees(math.atan2(de, dn)) % 360
 
         # Innovation
@@ -274,7 +300,7 @@ class ExtendedKalmanFilter:
 
         # Jacobian of [bearing, range] w.r.t. [lat, lon, alt, vn, ve, vd]
         H = np.zeros((2, 6))
-        horiz_dist_sq = dn ** 2 + de ** 2 + 1e-10
+        horiz_dist_sq = dn**2 + de**2 + 1e-10
         horiz_dist = math.sqrt(horiz_dist_sq)
 
         # d(bearing)/d(lat) = d(atan2(de,dn))/d(dn) * d(dn)/d(lat)
@@ -285,7 +311,7 @@ class ExtendedKalmanFilter:
         H[1, 1] = de / pred_range * m_per_deg_lon
         H[1, 2] = du / pred_range
 
-        R = np.diag([sigma_bearing_deg ** 2, sigma_range_m ** 2])
+        R = np.diag([sigma_bearing_deg**2, sigma_range_m**2])
 
         S = H @ state.P @ H.T + R
         K = state.P @ H.T @ np.linalg.inv(S)
@@ -313,8 +339,8 @@ class ExtendedKalmanFilter:
         lat = state.x[0]
         m_lat = _meters_per_deg_lat(lat)
         m_lon = _meters_per_deg_lon(lat)
-        var_n = state.P[0, 0] * m_lat ** 2
-        var_e = state.P[1, 1] * m_lon ** 2
+        var_n = state.P[0, 0] * m_lat**2
+        var_e = state.P[1, 1] * m_lon**2
         return math.sqrt(var_n + var_e)
 
     @staticmethod

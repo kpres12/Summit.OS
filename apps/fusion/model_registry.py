@@ -1,6 +1,7 @@
 """
 Simple model registry helpers for Fusion.
 """
+
 import os
 from typing import List
 
@@ -22,9 +23,13 @@ def list_models(root: str) -> List[str]:
 def select_model(path: str) -> None:
     # Reinitialize global vision object if present
     import main as fusion_main  # circular import safe for attribute access
+
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     if fusion_main.vision is None:
-        fusion_main.vision = VisionInference(model_path=path, conf_threshold=float(os.getenv("FUSION_CONF_THRESHOLD", "0.6")))
+        fusion_main.vision = VisionInference(
+            model_path=path,
+            conf_threshold=float(os.getenv("FUSION_CONF_THRESHOLD", "0.6")),
+        )
     else:
         fusion_main.vision.load(path)

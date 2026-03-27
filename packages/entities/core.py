@@ -6,6 +6,7 @@ supports JSON serialization via .to_dict() / .from_dict() for backward
 compatibility with the existing REST services, while the protobuf wire
 format is used for gRPC inter-service calls.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -17,62 +18,64 @@ from typing import Any, Dict, List, Optional
 
 # ─── Enums ───────────────────────────────────────────────────
 
+
 class EntityType(str, Enum):
-    ASSET          = "ASSET"
-    TRACK          = "TRACK"
-    OBSERVATION    = "OBSERVATION"
-    ALERT          = "ALERT"
-    GEOFENCE       = "GEOFENCE"
-    MISSION        = "MISSION"
-    OBJECTIVE      = "OBJECTIVE"
-    SENSOR         = "SENSOR"
+    ASSET = "ASSET"
+    TRACK = "TRACK"
+    OBSERVATION = "OBSERVATION"
+    ALERT = "ALERT"
+    GEOFENCE = "GEOFENCE"
+    MISSION = "MISSION"
+    OBJECTIVE = "OBJECTIVE"
+    SENSOR = "SENSOR"
     INFRASTRUCTURE = "INFRASTRUCTURE"
-    ZONE           = "ZONE"
+    ZONE = "ZONE"
 
 
 class EntityDomain(str, Enum):
-    AERIAL    = "AERIAL"
-    GROUND    = "GROUND"
-    MARITIME  = "MARITIME"
-    FIXED     = "FIXED"
-    CYBER     = "CYBER"
+    AERIAL = "AERIAL"
+    GROUND = "GROUND"
+    MARITIME = "MARITIME"
+    FIXED = "FIXED"
+    CYBER = "CYBER"
 
 
 class LifecycleState(str, Enum):
-    ACTIVE     = "ACTIVE"
-    INACTIVE   = "INACTIVE"
-    TENTATIVE  = "TENTATIVE"
-    COASTING   = "COASTING"
-    COMPLETED  = "COMPLETED"
-    DELETED    = "DELETED"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    TENTATIVE = "TENTATIVE"
+    COASTING = "COASTING"
+    COMPLETED = "COMPLETED"
+    DELETED = "DELETED"
 
 
 class TaskStatus(str, Enum):
-    PENDING          = "PENDING"
-    ASSIGNED         = "ASSIGNED"
-    IN_PROGRESS      = "IN_PROGRESS"
-    PAUSED           = "PAUSED"
-    COMPLETED        = "COMPLETED"
-    FAILED           = "FAILED"
-    CANCELLED        = "CANCELLED"
+    PENDING = "PENDING"
+    ASSIGNED = "ASSIGNED"
+    IN_PROGRESS = "IN_PROGRESS"
+    PAUSED = "PAUSED"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
     PENDING_APPROVAL = "PENDING_APPROVAL"
 
 
 class TaskPriority(str, Enum):
-    ROUTINE   = "ROUTINE"
+    ROUTINE = "ROUTINE"
     IMPORTANT = "IMPORTANT"
-    URGENT    = "URGENT"
-    CRITICAL  = "CRITICAL"
+    URGENT = "URGENT"
+    CRITICAL = "CRITICAL"
 
 
 class TrackState(str, Enum):
     TENTATIVE = "TENTATIVE"
     CONFIRMED = "CONFIRMED"
-    COASTING  = "COASTING"
-    DELETED   = "DELETED"
+    COASTING = "COASTING"
+    DELETED = "DELETED"
 
 
 # ─── Geometric Types ─────────────────────────────────────────
+
 
 @dataclass
 class GeoPoint:
@@ -86,7 +89,13 @@ class GeoPoint:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "GeoPoint":
-        return cls(**{k: d[k] for k in ("latitude", "longitude", "altitude_msl", "altitude_agl") if k in d})
+        return cls(
+            **{
+                k: d[k]
+                for k in ("latitude", "longitude", "altitude_msl", "altitude_agl")
+                if k in d
+            }
+        )
 
 
 @dataclass
@@ -107,7 +116,10 @@ class GeoCircle:
     radius_m: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"center": self.center.to_dict() if self.center else None, "radius_m": self.radius_m}
+        return {
+            "center": self.center.to_dict() if self.center else None,
+            "radius_m": self.radius_m,
+        }
 
 
 @dataclass
@@ -138,6 +150,7 @@ class BoundingBox:
 
 # ─── Entity Components ───────────────────────────────────────
 
+
 @dataclass
 class Provenance:
     source_id: str = ""
@@ -154,6 +167,7 @@ class Provenance:
 @dataclass
 class CovarianceMatrix:
     """6x6 covariance stored as upper-triangle (21 elements)."""
+
     values: List[float] = field(default_factory=lambda: [0.0] * 21)
 
 
@@ -187,6 +201,7 @@ class Relationship:
 
 
 # ─── Domain Data ─────────────────────────────────────────────
+
 
 @dataclass
 class AerialData:
@@ -229,6 +244,7 @@ class SensorData:
 
 
 # ─── The Entity ──────────────────────────────────────────────
+
 
 @dataclass
 class Entity:
@@ -319,8 +335,15 @@ class Entity:
             kwargs["domain"] = EntityDomain(d["domain"])
         if "state" in d:
             kwargs["state"] = LifecycleState(d["state"])
-        for simple in ("name", "class_label", "confidence", "ttl_seconds",
-                        "severity", "description", "mission_status"):
+        for simple in (
+            "name",
+            "class_label",
+            "confidence",
+            "ttl_seconds",
+            "severity",
+            "description",
+            "mission_status",
+        ):
             if simple in d:
                 kwargs[simple] = d[simple]
         if "metadata" in d:
@@ -332,7 +355,8 @@ class Entity:
             pos = GeoPoint.from_dict(k["position"]) if "position" in k else None
             vel = Vector3(**k["velocity"]) if "velocity" in k else None
             kwargs["kinematics"] = Kinematics(
-                position=pos, velocity=vel,
+                position=pos,
+                velocity=vel,
                 heading_deg=k.get("heading_deg", 0),
                 speed_mps=k.get("speed_mps", 0),
                 climb_rate=k.get("climb_rate", 0),
@@ -355,6 +379,7 @@ class EntityBatch:
 
 
 # ─── Telemetry ───────────────────────────────────────────────
+
 
 @dataclass
 class SensorReading:
@@ -391,6 +416,7 @@ class TelemetryReport:
 
 
 # ─── Tracks ──────────────────────────────────────────────────
+
 
 @dataclass
 class TrackObservation:
@@ -457,6 +483,7 @@ class Track:
 
 
 # ─── Tasks ───────────────────────────────────────────────────
+
 
 @dataclass
 class Objective:

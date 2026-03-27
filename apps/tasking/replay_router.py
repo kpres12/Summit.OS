@@ -18,6 +18,7 @@ API endpoints:
   GET  /api/v1/missions/{mission_id}/replay/snapshot?ts={iso}
   POST /api/v1/missions/{mission_id}/replay/record   (internal — called by ExecutionMonitor)
 """
+
 from __future__ import annotations
 
 import json
@@ -32,7 +33,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger("tasking.replay")
 
-FABRIC_URL     = os.getenv("FABRIC_URL", "http://fabric:8001")
+FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
 REPLAY_MAX_PTS = int(os.getenv("REPLAY_MAX_SNAPSHOTS_PER_MISSION", "3600"))  # 1 h @ 1/s
 
 # In-memory replay store: mission_id → sorted list of snapshot dicts
@@ -41,6 +42,7 @@ _replay_store: Dict[str, List[Dict[str, Any]]] = {}
 
 
 # ── Recording ────────────────────────────────────────────────────────────────
+
 
 def record_snapshot(mission_id: str, snapshot: Dict[str, Any]):
     """
@@ -62,11 +64,13 @@ def record_event(mission_id: str, event_type: str, description: str):
     """Append a lightweight event to the last snapshot for this mission."""
     store = _replay_store.get(mission_id)
     if store:
-        store[-1].setdefault("events", []).append({
-            "type":        event_type,
-            "description": description,
-            "ts_iso":      datetime.now(timezone.utc).isoformat(),
-        })
+        store[-1].setdefault("events", []).append(
+            {
+                "type": event_type,
+                "description": description,
+                "ts_iso": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
 
 # ── Router ───────────────────────────────────────────────────────────────────
@@ -84,14 +88,16 @@ async def get_timeline(mission_id: str):
     """
     store = _replay_store.get(mission_id)
     if store is None:
-        raise HTTPException(status_code=404, detail=f"No replay data for mission {mission_id}")
+        raise HTTPException(
+            status_code=404, detail=f"No replay data for mission {mission_id}"
+        )
 
     timestamps = [s["ts_iso"] for s in store]
     return {
         "mission_id": mission_id,
-        "count":      len(timestamps),
-        "start":      timestamps[0] if timestamps else None,
-        "end":        timestamps[-1] if timestamps else None,
+        "count": len(timestamps),
+        "start": timestamps[0] if timestamps else None,
+        "end": timestamps[-1] if timestamps else None,
         "timestamps": timestamps,
     }
 
@@ -99,7 +105,9 @@ async def get_timeline(mission_id: str):
 @router.get("/{mission_id}/replay/snapshot")
 async def get_snapshot(
     mission_id: str,
-    ts: Optional[str] = Query(None, description="ISO timestamp; returns nearest snapshot"),
+    ts: Optional[str] = Query(
+        None, description="ISO timestamp; returns nearest snapshot"
+    ),
     index: Optional[int] = Query(None, description="Zero-based snapshot index"),
 ):
     """
@@ -109,7 +117,9 @@ async def get_snapshot(
     """
     store = _replay_store.get(mission_id)
     if not store:
-        raise HTTPException(status_code=404, detail=f"No replay data for mission {mission_id}")
+        raise HTTPException(
+            status_code=404, detail=f"No replay data for mission {mission_id}"
+        )
 
     if index is not None:
         idx = max(0, min(index, len(store) - 1))
@@ -119,14 +129,22 @@ async def get_snapshot(
         try:
             target = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
         except Exception:
-            raise HTTPException(status_code=400, detail="Invalid ts format (expected ISO 8601)")
+            raise HTTPException(
+                status_code=400, detail="Invalid ts format (expected ISO 8601)"
+            )
         # Linear scan — good enough for ≤3600 points; binary search if needed
         best = store[0]
-        best_dt = abs(datetime.fromisoformat(
-            best["ts_iso"].replace("Z", "+00:00")).timestamp() - target)
+        best_dt = abs(
+            datetime.fromisoformat(best["ts_iso"].replace("Z", "+00:00")).timestamp()
+            - target
+        )
         for snap in store[1:]:
-            dt = abs(datetime.fromisoformat(
-                snap["ts_iso"].replace("Z", "+00:00")).timestamp() - target)
+            dt = abs(
+                datetime.fromisoformat(
+                    snap["ts_iso"].replace("Z", "+00:00")
+                ).timestamp()
+                - target
+            )
             if dt < best_dt:
                 best, best_dt = snap, dt
         return best

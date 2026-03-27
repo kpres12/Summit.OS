@@ -13,6 +13,7 @@ Usage:
         tracks = tracker.update(frame_dets)
         # Each track: {track_id, bbox, score, class_id, state, ...}
 """
+
 from __future__ import annotations
 
 import math
@@ -23,16 +24,17 @@ from typing import Dict, List, Optional, Tuple
 
 try:
     import numpy as np
+
     _NUMPY = True
 except ImportError:
     _NUMPY = False
 
 
 class TrackState(Enum):
-    NEW = "new"           # Seen once, not yet confirmed
-    TRACKED = "tracked"   # Active confirmed track
-    LOST = "lost"         # Not matched recently, still buffered
-    REMOVED = "removed"   # Expired — removed from tracker
+    NEW = "new"  # Seen once, not yet confirmed
+    TRACKED = "tracked"  # Active confirmed track
+    LOST = "lost"  # Not matched recently, still buffered
+    REMOVED = "removed"  # Expired — removed from tracker
 
 
 @dataclass
@@ -42,9 +44,12 @@ class KalmanState:
     State vector: [cx, cy, aspect, height, dcx, dcy, daspect, dheight]
     Observation:  [cx, cy, aspect, height]
     """
+
     # Mean and covariance
     mean: List[float] = field(default_factory=lambda: [0.0] * 8)
-    cov: List[List[float]] = field(default_factory=lambda: [[0.0] * 8 for _ in range(8)])
+    cov: List[List[float]] = field(
+        default_factory=lambda: [[0.0] * 8 for _ in range(8)]
+    )
 
     def predict(self) -> None:
         """Constant-velocity predict step."""
@@ -61,10 +66,12 @@ class KalmanState:
             innovation = obs[i] - self.mean[i]
             k = self.cov[i][i] / max(1e-6, self.cov[i][i] + 10.0)
             self.mean[i] += k * innovation
-            self.cov[i][i] *= (1.0 - k)
+            self.cov[i][i] *= 1.0 - k
 
 
-def _bbox_xywh_to_obs(bbox: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+def _bbox_xywh_to_obs(
+    bbox: Tuple[float, float, float, float]
+) -> Tuple[float, float, float, float]:
     x, y, w, h = bbox
     cx = x + w / 2.0
     cy = y + h / 2.0
@@ -151,7 +158,7 @@ def _new_id() -> int:
 class Track:
     track_id: int
     state: TrackState
-    bbox: Tuple[float, float, float, float]   # xywh
+    bbox: Tuple[float, float, float, float]  # xywh
     score: float
     class_id: int
     class_label: str
@@ -270,8 +277,18 @@ class ByteTracker:
         """
         self._frame_id += 1
 
-        high_dets = [d for d in detections if d.get("score", d.get("confidence", 1.0)) >= self.high_thresh]
-        low_dets = [d for d in detections if self.low_thresh <= d.get("score", d.get("confidence", 1.0)) < self.high_thresh]
+        high_dets = [
+            d
+            for d in detections
+            if d.get("score", d.get("confidence", 1.0)) >= self.high_thresh
+        ]
+        low_dets = [
+            d
+            for d in detections
+            if self.low_thresh
+            <= d.get("score", d.get("confidence", 1.0))
+            < self.high_thresh
+        ]
 
         # Predict all existing tracks
         for tr in list(self._tracked.values()) + list(self._lost.values()):
@@ -296,12 +313,18 @@ class ByteTracker:
             matched_det_ids.add(d_idx)
 
         # --- Stage 2: low-confidence dets vs unmatched tracked tracks ---
-        unmatched_tracks = [tr for tr in all_tracks if tr.track_id not in matched_track_ids]
-        unmatched_high_dets = [d for i, d in enumerate(high_dets) if i not in matched_det_ids]
+        unmatched_tracks = [
+            tr for tr in all_tracks if tr.track_id not in matched_track_ids
+        ]
+        unmatched_high_dets = [
+            d for i, d in enumerate(high_dets) if i not in matched_det_ids
+        ]
         low_det_bboxes = [tuple(d.get("bbox", [0, 0, 0, 0])) for d in low_dets]
 
         if unmatched_tracks and low_dets:
-            cost2 = _cost_matrix([tr.predicted_bbox for tr in unmatched_tracks], low_det_bboxes)
+            cost2 = _cost_matrix(
+                [tr.predicted_bbox for tr in unmatched_tracks], low_det_bboxes
+            )
             matches_2 = _hungarian(cost2, 1.0 - self.iou_threshold)
             for t_idx, d_idx in matches_2.items():
                 tr = unmatched_tracks[t_idx]

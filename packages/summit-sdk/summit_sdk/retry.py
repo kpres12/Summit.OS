@@ -5,6 +5,7 @@ Provides:
 - RetryPolicy: exponential backoff with jitter
 - CircuitBreaker: fail-fast when a service is down
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,29 +31,32 @@ T = TypeVar("T")
 
 # ── Retry Policy ────────────────────────────────────────────
 
+
 @dataclass
 class RetryPolicy:
     """Configurable retry with exponential backoff + jitter."""
+
     max_retries: int = 3
-    base_delay: float = 0.5       # seconds
-    max_delay: float = 30.0       # seconds
+    base_delay: float = 0.5  # seconds
+    max_delay: float = 30.0  # seconds
     backoff_factor: float = 2.0
-    jitter: float = 0.25          # ± 25%
+    jitter: float = 0.25  # ± 25%
     retryable_status: Set[int] = field(
         default_factory=lambda: {408, 429, 500, 502, 503, 504}
     )
 
     def delay_for_attempt(self, attempt: int) -> float:
         """Calculate delay for a given attempt number (0-indexed)."""
-        delay = self.base_delay * (self.backoff_factor ** attempt)
+        delay = self.base_delay * (self.backoff_factor**attempt)
         delay = min(delay, self.max_delay)
         # Add jitter
         jitter_range = delay * self.jitter
         delay += random.uniform(-jitter_range, jitter_range)
         return max(0, delay)
 
-    def should_retry(self, attempt: int, status: int = 0,
-                     error: Optional[Exception] = None) -> bool:
+    def should_retry(
+        self, attempt: int, status: int = 0, error: Optional[Exception] = None
+    ) -> bool:
         """Decide whether to retry based on attempt count and error type."""
         if attempt >= self.max_retries:
             return False
@@ -67,10 +71,11 @@ class RetryPolicy:
 
 # ── Circuit Breaker ─────────────────────────────────────────
 
+
 class CircuitState(str, Enum):
-    CLOSED = "closed"         # Normal operation
-    OPEN = "open"             # Failing — reject calls
-    HALF_OPEN = "half_open"   # Testing recovery
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing — reject calls
+    HALF_OPEN = "half_open"  # Testing recovery
 
 
 @dataclass
@@ -84,9 +89,10 @@ class CircuitBreaker:
     - HALF_OPEN: after recovery timeout, allow one probe request.
       If it succeeds → CLOSED. If it fails → OPEN again.
     """
+
     failure_threshold: int = 5
-    recovery_timeout: float = 30.0   # seconds
-    window_s: float = 60.0           # sliding window
+    recovery_timeout: float = 30.0  # seconds
+    window_s: float = 60.0  # sliding window
 
     state: CircuitState = field(default=CircuitState.CLOSED, init=False)
     _failures: list = field(default_factory=list, init=False)
@@ -157,6 +163,7 @@ class CircuitBreaker:
 
 # ── Retry executor ──────────────────────────────────────────
 
+
 async def retry_with_circuit(
     fn: Callable[..., Any],
     *args: Any,
@@ -193,8 +200,10 @@ async def retry_with_circuit(
             if isinstance(e, RateLimitError):
                 server_delay = e.details.get("retry_after_s", 0)
                 delay = max(delay, server_delay)
-            logger.debug(f"Retry {attempt+1}/{retry.max_retries} "
-                         f"after {delay:.1f}s — {e.code.value}")
+            logger.debug(
+                f"Retry {attempt+1}/{retry.max_retries} "
+                f"after {delay:.1f}s — {e.code.value}"
+            )
             await asyncio.sleep(delay)
 
         except (OSError, asyncio.TimeoutError) as e:
@@ -204,8 +213,10 @@ async def retry_with_circuit(
             if attempt >= retry.max_retries:
                 raise SummitTimeout(str(e))
             delay = retry.delay_for_attempt(attempt)
-            logger.debug(f"Retry {attempt+1}/{retry.max_retries} "
-                         f"after {delay:.1f}s — {type(e).__name__}")
+            logger.debug(
+                f"Retry {attempt+1}/{retry.max_retries} "
+                f"after {delay:.1f}s — {type(e).__name__}"
+            )
             await asyncio.sleep(delay)
 
     raise last_error or SummitTimeout("All retries exhausted")

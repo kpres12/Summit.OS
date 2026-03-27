@@ -48,7 +48,7 @@ class ActionRunner:
         actor_id:    operator id or service name (for audit trail)
         """
         registry = get_registry()
-        store    = get_store()
+        store = get_store()
 
         action = registry.get_action(action_name)
         if action is None:
@@ -61,8 +61,13 @@ class ActionRunner:
         schema_error = self._validate_schema(action.input_properties, inputs)
         if schema_error:
             audit = self._write_audit(
-                action_name, action.target_type, object_id, actor_id,
-                inputs, "rejected", schema_error,
+                action_name,
+                action.target_type,
+                object_id,
+                actor_id,
+                inputs,
+                "rejected",
+                schema_error,
             )
             return ActionResult(success=False, error=schema_error, audit_entry=audit)
 
@@ -71,16 +76,16 @@ class ActionRunner:
         if instance is None and object_id:
             # Auto-create a stub instance for new objects
             instance = ObjectInstance(
-                object_type = action.target_type,
-                object_id   = object_id,
-                properties  = {"id": object_id},
+                object_type=action.target_type,
+                object_id=object_id,
+                properties={"id": object_id},
             )
         elif instance is None and not object_id:
-            new_id   = str(uuid.uuid4())
+            new_id = str(uuid.uuid4())
             instance = ObjectInstance(
-                object_type = action.target_type,
-                object_id   = new_id,
-                properties  = {"id": new_id},
+                object_type=action.target_type,
+                object_id=new_id,
+                properties={"id": new_id},
             )
 
         # ── 3. Business-rule validators ────────────────────────────────────────
@@ -91,8 +96,13 @@ class ActionRunner:
                 error = f"Validator exception: {exc}"
             if error:
                 audit = self._write_audit(
-                    action_name, action.target_type, instance.object_id, actor_id,
-                    inputs, "rejected", error,
+                    action_name,
+                    action.target_type,
+                    instance.object_id,
+                    actor_id,
+                    inputs,
+                    "rejected",
+                    error,
                 )
                 return ActionResult(success=False, error=error, audit_entry=audit)
 
@@ -115,20 +125,28 @@ class ActionRunner:
 
         # ── 6. Audit ───────────────────────────────────────────────────────────
         audit = self._write_audit(
-            action_name, action.target_type, instance.object_id, actor_id,
-            inputs, "success", "",
+            action_name,
+            action.target_type,
+            instance.object_id,
+            actor_id,
+            inputs,
+            "success",
+            "",
         )
 
         logger.info(
             "Action '%s' on %s/%s by %s — success",
-            action_name, action.target_type, instance.object_id, actor_id,
+            action_name,
+            action.target_type,
+            instance.object_id,
+            actor_id,
         )
 
         return ActionResult(
-            success          = True,
-            object_instance  = instance,
-            audit_entry      = audit,
-            side_effect_log  = side_effect_log,
+            success=True,
+            object_instance=instance,
+            audit_entry=audit,
+            side_effect_log=side_effect_log,
         )
 
     # ── internal helpers ──────────────────────────────────────────────────────
@@ -143,7 +161,9 @@ class ActionRunner:
             if prop.name in inputs:
                 val = inputs[prop.name]
                 if prop.kind == PropertyKind.ENUM and val not in prop.enum_values:
-                    return f"'{prop.name}' must be one of {prop.enum_values}, got '{val}'"
+                    return (
+                        f"'{prop.name}' must be one of {prop.enum_values}, got '{val}'"
+                    )
                 if prop.kind == PropertyKind.FLOAT:
                     try:
                         inputs[prop.name] = float(val)
@@ -167,13 +187,13 @@ class ActionRunner:
         reason: str,
     ) -> AuditEntry:
         entry = AuditEntry(
-            action_name      = action_name,
-            target_type      = target_type,
-            object_id        = object_id,
-            actor_id         = actor_id,
-            inputs           = inputs,
-            outcome          = outcome,
-            rejection_reason = reason,
+            action_name=action_name,
+            target_type=target_type,
+            object_id=object_id,
+            actor_id=actor_id,
+            inputs=inputs,
+            outcome=outcome,
+            rejection_reason=reason,
         )
         get_audit_log().append(entry)
         return entry

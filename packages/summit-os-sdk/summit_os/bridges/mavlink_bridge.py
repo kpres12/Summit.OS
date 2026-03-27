@@ -3,6 +3,7 @@ Minimal MAVLink adapter template.
 Usage:
   python -m summit_os.bridges.mavlink_bridge --device-id drone-001 --udp 127.0.0.1:14550
 """
+
 from __future__ import annotations
 import argparse
 import asyncio
@@ -24,7 +25,9 @@ class MavlinkAdapter(BaseAdapter):
 
     async def run(self):
         if mavutil is None:
-            raise RuntimeError("pymavlink not installed; install summit-os-sdk[adapters]")
+            raise RuntimeError(
+                "pymavlink not installed; install summit-os-sdk[adapters]"
+            )
         # open MAVLink
         self._conn = mavutil.mavlink_connection(f"udp:{self._udp}")
         self._conn.wait_heartbeat(timeout=10)

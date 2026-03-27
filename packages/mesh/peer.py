@@ -12,6 +12,7 @@ Designed for contested/degraded environments where:
 - No central coordinator is available
 - State must converge eventually when partitions heal
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -39,6 +40,7 @@ class PeerState(str, Enum):
 @dataclass
 class PeerInfo:
     """Information about a known peer."""
+
     peer_id: str
     address: Tuple[str, int]  # (host, port)
     state: PeerState = PeerState.ALIVE
@@ -136,20 +138,18 @@ class MeshPeer:
         self._transport_mgr.schedule_periodic(
             self._heartbeat_loop, self.heartbeat_interval
         )
-        self._transport_mgr.schedule_periodic(
-            self._sync_loop, self.sync_interval
-        )
+        self._transport_mgr.schedule_periodic(self._sync_loop, self.sync_interval)
         self._transport_mgr.schedule_periodic(
             self._liveness_loop, self.heartbeat_interval
         )
 
         # Connect to seed peers
         for addr in self.seed_peers:
-            self._transport_mgr.send(
-                MessageType.JOIN, self._make_heartbeat(), addr
-            )
+            self._transport_mgr.send(MessageType.JOIN, self._make_heartbeat(), addr)
 
-        logger.info(f"MeshPeer {self.node_id} started on {self.bind_host}:{self.bind_port}")
+        logger.info(
+            f"MeshPeer {self.node_id} started on {self.bind_host}:{self.bind_port}"
+        )
 
     async def stop(self) -> None:
         """Stop the mesh peer."""
@@ -174,6 +174,7 @@ class MeshPeer:
     async def _sync_loop(self) -> None:
         """Trigger anti-entropy sync with a random alive peer."""
         import random
+
         alive = self.alive_peers()
         if alive and self._transport_mgr:
             target = random.choice(alive)
@@ -308,7 +309,9 @@ class MeshPeer:
 
             if peer.state == PeerState.ALIVE and elapsed > self.suspicion_timeout:
                 peer.state = PeerState.SUSPECT
-                logger.warning(f"Peer {pid} is SUSPECT (no heartbeat for {elapsed:.1f}s)")
+                logger.warning(
+                    f"Peer {pid} is SUSPECT (no heartbeat for {elapsed:.1f}s)"
+                )
 
             elif peer.state == PeerState.SUSPECT and elapsed > self.dead_timeout:
                 peer.state = PeerState.DEAD
@@ -318,7 +321,11 @@ class MeshPeer:
 
         # Partition detection
         alive = len(self.alive_peers())
-        if self._last_reachable_count > 0 and alive == 0 and not self._partition_detected:
+        if (
+            self._last_reachable_count > 0
+            and alive == 0
+            and not self._partition_detected
+        ):
             self._partition_detected = True
             logger.error("NETWORK PARTITION DETECTED — all peers unreachable")
         elif alive > 0 and self._partition_detected:
@@ -337,9 +344,9 @@ class MeshPeer:
             if entry["type"] == "register":
                 remote_reg = LWWRegister.from_dict(entry["data"])
                 if key in self.crdt_store.registers:
-                    self.crdt_store.registers[key] = (
-                        self.crdt_store.registers[key].merge(remote_reg)
-                    )
+                    self.crdt_store.registers[key] = self.crdt_store.registers[
+                        key
+                    ].merge(remote_reg)
                 else:
                     self.crdt_store.registers[key] = LWWRegister(
                         self.node_id, remote_reg.value, remote_reg.timestamp
@@ -383,13 +390,15 @@ class MeshPeer:
             "peers": {
                 "alive": len(self.alive_peers()),
                 "suspect": len(self.suspect_peers()),
-                "dead": len([p for p in self.peers.values() if p.state == PeerState.DEAD]),
+                "dead": len(
+                    [p for p in self.peers.values() if p.state == PeerState.DEAD]
+                ),
             },
             "partitioned": self._partition_detected,
             "version": self.version,
             "crdt_keys": (
-                list(self.crdt_store.registers.keys()) +
-                list(self.crdt_store.counters.keys()) +
-                list(self.crdt_store.sets.keys())
+                list(self.crdt_store.registers.keys())
+                + list(self.crdt_store.counters.keys())
+                + list(self.crdt_store.sets.keys())
             ),
         }

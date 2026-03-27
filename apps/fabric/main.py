@@ -22,14 +22,23 @@ from config import Settings
 from mqtt_client import MQTTClient
 from redis_client import RedisClient
 from websocket_manager import WebSocketManager
-from models import TelemetryMessage, AlertMessage, MissionUpdate, Location, SeverityLevel, MissionStatus
+from models import (
+    TelemetryMessage,
+    AlertMessage,
+    MissionUpdate,
+    Location,
+    SeverityLevel,
+    MissionStatus,
+)
 
 # WorldStore (unified entity store)
 try:
     import sys as _sys
+
     _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
     from packages.world.store import WorldStore
     from packages.world.api import create_world_router
+
     WORLD_STORE_AVAILABLE = True
 except Exception:
     WORLD_STORE_AVAILABLE = False
@@ -38,19 +47,30 @@ except Exception:
 try:
     from packages.mesh.peer import MeshPeer
     from packages.mesh.entity_crdt import EntityCRDTMap
+
     MESH_AVAILABLE = True
 except Exception:
     MESH_AVAILABLE = False
 
 # SQLAlchemy (async) for registry persistence
 from sqlalchemy import (
-    MetaData, Table, Column, Integer, String, DateTime, Boolean, JSON, text
+    MetaData,
+    Table,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Boolean,
+    JSON,
+    text,
 )
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
 # Optional geometry
 try:
     from geoalchemy2 import Geometry
+
     GEO_AVAILABLE = True
 except Exception:
     Geometry = None  # type: ignore
@@ -75,7 +95,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -98,7 +118,7 @@ entity_crdt = None
 # In-memory world state cache (thin-slice)
 world_state: Dict[str, Any] = {
     "devices": {},  # device_id -> {lat, lon, alt, ts_iso, status, sensors}
-    "alerts": [],   # recent alerts (most recent first)
+    "alerts": [],  # recent alerts (most recent first)
 }
 MAX_ALERTS = int(os.getenv("FABRIC_MAX_ALERTS", "200"))
 
@@ -153,7 +173,11 @@ world_entities = Table(
     Column("updated_at", DateTime(timezone=True)),
     Column("org_id", String(128)),
     # geometry point WGS84 if available
-    *( [Column("geom", Geometry(geometry_type="POINT", srid=4326))] if GEO_AVAILABLE else [] ),
+    *(
+        [Column("geom", Geometry(geometry_type="POINT", srid=4326))]
+        if GEO_AVAILABLE
+        else []
+    ),
 )
 
 world_alerts = Table(
@@ -167,13 +191,18 @@ world_alerts = Table(
     Column("ts", DateTime(timezone=True)),
     Column("properties", JSON),
     Column("org_id", String(128)),
-    *( [Column("geom", Geometry(geometry_type="POINT", srid=4326))] if GEO_AVAILABLE else [] ),
+    *(
+        [Column("geom", Geometry(geometry_type="POINT", srid=4326))]
+        if GEO_AVAILABLE
+        else []
+    ),
 )
 
 # Settings
 HEARTBEAT_STALE_SECS = 120  # 2 minutes
 HEARTBEAT_OFFLINE_SECS = 600  # 10 minutes
 FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -190,7 +219,10 @@ async def lifespan(app: FastAPI):
         if _root not in sys.path:
             sys.path.insert(0, _root)
         from packages.secrets.client import get_secret as _get_secret_fabric
-        _resolved_jwt = await _get_secret_fabric("FABRIC_JWT_SECRET", default=FABRIC_JWT_SECRET)
+
+        _resolved_jwt = await _get_secret_fabric(
+            "FABRIC_JWT_SECRET", default=FABRIC_JWT_SECRET
+        )
         if _resolved_jwt:
             FABRIC_JWT_SECRET = _resolved_jwt
         logger.info("Fabric secrets resolved")
@@ -201,7 +233,10 @@ async def lifespan(app: FastAPI):
     if FABRIC_TEST_MODE:
         pg_url = "sqlite+aiosqlite://"
     else:
-        pg_url = os.getenv("POSTGRES_URL", "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os")
+        pg_url = os.getenv(
+            "POSTGRES_URL",
+            "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os",
+        )
         if pg_url.startswith("postgresql://"):
             pg_url = pg_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     engine = create_async_engine(pg_url, echo=False, future=True)
@@ -219,13 +254,37 @@ async def lifespan(app: FastAPI):
         # Create geospatial and org_id indexes if available (skip if migrations disabled)
         if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
             async with engine.begin() as conn:
-                await conn.execute(text("ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
-                await conn.execute(text("ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"))
-                await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"))
+                await conn.execute(
+                    text(
+                        "ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"
+                    )
+                )
                 if GEO_AVAILABLE:
-                    await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"))
-                    await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"))
+                    await conn.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"
+                        )
+                    )
+                    await conn.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"
+                        )
+                    )
 
     # WebSocket manager
     websocket_manager = WebSocketManager()
@@ -275,18 +334,30 @@ async def lifespan(app: FastAPI):
             try:
                 mesh_bind = os.getenv("MESH_BIND", "0.0.0.0")
                 mesh_port = int(os.getenv("MESH_PORT", "7946"))
-                mesh_seeds = [s.strip() for s in os.getenv("MESH_SEEDS", "").split(",") if s.strip()]
+                mesh_seeds = [
+                    s.strip()
+                    for s in os.getenv("MESH_SEEDS", "").split(",")
+                    if s.strip()
+                ]
                 mesh_peer = MeshPeer(
                     node_id=os.getenv("FABRIC_NODE_ID", "fabric-primary"),
                     bind_addr=mesh_bind,
                     bind_port=mesh_port,
-                    seed_nodes=[(s.split(":")[0], int(s.split(":")[1])) for s in mesh_seeds if ":" in s],
+                    seed_nodes=[
+                        (s.split(":")[0], int(s.split(":")[1]))
+                        for s in mesh_seeds
+                        if ":" in s
+                    ],
                 )
                 entity_crdt = EntityCRDTMap(node_id=mesh_peer.node_id)
                 # When mesh receives remote entity state, merge into WorldStore
                 if world_store:
+
                     def _on_mesh_merge(entity_id, entity_dict):
-                        asyncio.create_task(world_store.merge_remote(entity_id, entity_dict))
+                        asyncio.create_task(
+                            world_store.merge_remote(entity_id, entity_dict)
+                        )
+
                     entity_crdt.on_merge(_on_mesh_merge)
                 await mesh_peer.start()
                 logger.info(f"Mesh peer started on {mesh_bind}:{mesh_port}")
@@ -301,6 +372,7 @@ async def lifespan(app: FastAPI):
         # Alert escalation service (uses live shared dict, updated as alerts arrive)
         try:
             from alert_escalation import AlertEscalationService
+
             _esc_svc = AlertEscalationService(_escalation_alerts)
             asyncio.create_task(_esc_svc.run())
             logger.info("AlertEscalationService started")
@@ -330,6 +402,7 @@ async def lifespan(app: FastAPI):
         await engine.dispose()
     logger.info("Shutting down Summit.OS Data Fabric Service")
 
+
 app = FastAPI(
     title="Summit.OS Data Fabric",
     description="Real-time message bus and synchronization layer",
@@ -341,6 +414,7 @@ app = FastAPI(
 # The router is added inside lifespan; see _mount_world_router below.
 _world_router_mounted = False
 
+
 def _mount_world_router():
     global _world_router_mounted
     if WORLD_STORE_AVAILABLE and world_store and not _world_router_mounted:
@@ -348,8 +422,11 @@ def _mount_world_router():
         app.include_router(router, prefix="/api/v1", tags=["world"])
         _world_router_mounted = True
 
+
 # CORS middleware
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in CORS_ORIGINS if o.strip()],
@@ -357,6 +434,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Pydantic models for API
 class TelemetryData(BaseModel):
@@ -366,6 +444,7 @@ class TelemetryData(BaseModel):
     sensors: Dict[str, Any]
     status: str
 
+
 class AlertData(BaseModel):
     alert_id: str
     timestamp: datetime
@@ -374,12 +453,14 @@ class AlertData(BaseModel):
     description: str
     source: str
 
+
 class MissionData(BaseModel):
     mission_id: str
     timestamp: datetime
     status: str
     assets: List[str]
     objectives: List[str]
+
 
 # Registry models
 class NodeRegisterRequest(BaseModel):
@@ -391,22 +472,27 @@ class NodeRegisterRequest(BaseModel):
     capabilities: List[str] = []
     comm: List[str] = []
 
+
 class NodeRegisterResponse(BaseModel):
     status: str
     mqtt_topics: Dict[str, List[str]]
     policy: Dict[str, Any]
     token: str
 
+
 # Org helper
 from fastapi import Request as _Req
 
+
 async def _get_org_id(req: _Req) -> str | None:
     return req.headers.get("X-Org-ID") or req.headers.get("x-org-id")
+
 
 # API Endpoints
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "fabric"}
+
 
 @app.get("/readyz")
 async def readyz():
@@ -421,9 +507,11 @@ async def readyz():
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Not ready: {e}")
 
+
 @app.get("/livez")
 async def livez():
     return {"status": "alive"}
+
 
 # WebSocket endpoint for real-time multiplexed events
 @app.websocket("/ws")
@@ -439,9 +527,14 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
 
+
 # Simple COP/world-state endpoint (thin-slice)
 @app.get("/api/v1/worldstate")
-async def get_world_state(limit_devices: int = 200, limit_alerts: int = 200, org_id: str | None = Depends(_get_org_id)):
+async def get_world_state(
+    limit_devices: int = 200,
+    limit_alerts: int = 200,
+    org_id: str | None = Depends(_get_org_id),
+):
     """Aggregate world state from DB (latest position per entity) and recent alerts. Optional org filtering."""
     assert SessionLocal is not None
     devices: list[dict] = []
@@ -458,15 +551,33 @@ async def get_world_state(limit_devices: int = 200, limit_alerts: int = 200, org
                 {where}
                 ORDER BY entity_id, updated_at DESC
                 LIMIT :lim
-                """.format(geom=", ST_X(geom) AS lon, ST_Y(geom) AS lat" if GEO_AVAILABLE else "", where="WHERE org_id = :org_id" if org_id else "")
+                """.format(
+                    geom=(
+                        ", ST_X(geom) AS lon, ST_Y(geom) AS lat"
+                        if GEO_AVAILABLE
+                        else ""
+                    ),
+                    where="WHERE org_id = :org_id" if org_id else "",
+                )
             )
             params = {"lim": limit_devices}
             if org_id:
                 params["org_id"] = org_id
             drows = (await session.execute(q_devices, params)).mappings().all()
             for r in drows:
-                d = {"device_id": r["entity_id"], "type": r.get("type"), "properties": r.get("properties"), "ts_iso": r.get("updated_at").isoformat() if r.get("updated_at") else None}
-                if GEO_AVAILABLE and r.get("lon") is not None and r.get("lat") is not None:
+                d = {
+                    "device_id": r["entity_id"],
+                    "type": r.get("type"),
+                    "properties": r.get("properties"),
+                    "ts_iso": (
+                        r.get("updated_at").isoformat() if r.get("updated_at") else None
+                    ),
+                }
+                if (
+                    GEO_AVAILABLE
+                    and r.get("lon") is not None
+                    and r.get("lat") is not None
+                ):
                     d.update({"lon": float(r["lon"]), "lat": float(r["lat"])})
                 devices.append(d)
             # Recent alerts
@@ -478,7 +589,14 @@ async def get_world_state(limit_devices: int = 200, limit_alerts: int = 200, org
                 {where}
                 ORDER BY id DESC
                 LIMIT :lim
-                """.format(geom=", ST_X(geom) AS lon, ST_Y(geom) AS lat" if GEO_AVAILABLE else "", where="WHERE org_id = :org_id" if org_id else "")
+                """.format(
+                    geom=(
+                        ", ST_X(geom) AS lon, ST_Y(geom) AS lat"
+                        if GEO_AVAILABLE
+                        else ""
+                    ),
+                    where="WHERE org_id = :org_id" if org_id else "",
+                )
             )
             aparams = {"lim": limit_alerts}
             if org_id:
@@ -492,7 +610,11 @@ async def get_world_state(limit_devices: int = 200, limit_alerts: int = 200, org
                     "source": r.get("source"),
                     "ts_iso": r.get("ts").isoformat() if r.get("ts") else None,
                 }
-                if GEO_AVAILABLE and r.get("lon") is not None and r.get("lat") is not None:
+                if (
+                    GEO_AVAILABLE
+                    and r.get("lon") is not None
+                    and r.get("lat") is not None
+                ):
                     a.update({"lon": float(r["lon"]), "lat": float(r["lat"])})
                 alerts.append(a)
     except Exception:
@@ -509,13 +631,16 @@ async def get_world_state(limit_devices: int = 200, limit_alerts: int = 200, org
         "ts_iso": datetime.now(timezone.utc).isoformat(),
     }
 
+
 # Replay endpoint for observations stream
 @app.get("/api/v1/replay/observations")
 async def replay_observations(from_id: str = "$", count: int = 100):
     if not redis_client or not redis_client.redis:
         raise HTTPException(status_code=503, detail="Redis not connected")
     try:
-        records = await redis_client.redis.xread({"observations_stream": from_id}, count=count, block=100)
+        records = await redis_client.redis.xread(
+            {"observations_stream": from_id}, count=count, block=100
+        )
         result: list[dict] = []
         for stream, msgs in records:
             for msg_id, fields in msgs:
@@ -524,16 +649,22 @@ async def replay_observations(from_id: str = "$", count: int = 100):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Optional OIDC enforcement
 OIDC_ENFORCE = os.getenv("OIDC_ENFORCE", "false").lower() == "true"
 try:
     from jose import jwt as _jwt
+
     OIDC_JOSE_AVAILABLE = True
 except Exception:
     OIDC_JOSE_AVAILABLE = False
 
 from fastapi import Header
-async def _verify_bearer_fabric(authorization: str | None = Header(default=None)) -> dict | None:
+
+
+async def _verify_bearer_fabric(
+    authorization: str | None = Header(default=None),
+) -> dict | None:
     if not OIDC_ENFORCE:
         return None
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -548,7 +679,11 @@ async def _verify_bearer_fabric(authorization: str | None = Header(default=None)
 
 
 @app.post("/telemetry")
-async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: dict | None = Depends(_verify_bearer_fabric)):
+async def publish_telemetry(
+    telemetry: "TelemetryData",
+    request: _Req,
+    _claims: dict | None = Depends(_verify_bearer_fabric),
+):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
@@ -586,7 +721,11 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
             async with SessionLocal() as session:
                 org_id = None
                 try:
-                    org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
+                    org_id = (
+                        (_claims or {}).get("org")
+                        or (_claims or {}).get("org_id")
+                        or (_claims or {}).get("tenant")
+                    )
                 except Exception:
                     org_id = None
                 # Fallback to mTLS client DN parsing (e.g., 'OU=org-123, CN=device')
@@ -594,10 +733,10 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
                     try:
                         x_client_dn = request.headers.get("X-Client-DN")
                         if x_client_dn:
-                            parts = [p.strip() for p in str(x_client_dn).split(',')]
+                            parts = [p.strip() for p in str(x_client_dn).split(",")]
                             for p in parts:
-                                if p.startswith('OU='):
-                                    org_id = p.split('=',1)[1]
+                                if p.startswith("OU="):
+                                    org_id = p.split("=", 1)[1]
                                     break
                     except Exception as e:
                         logger.debug("Suppressed error", exc_info=True)  # was: pass
@@ -606,10 +745,15 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
                         world_entities.insert().values(
                             entity_id=telemetry.device_id,
                             type="DEVICE",
-                            properties={"status": telemetry.status, "sensors": telemetry.sensors},
+                            properties={
+                                "status": telemetry.status,
+                                "sensors": telemetry.sensors,
+                            },
                             updated_at=telemetry.timestamp,
                             org_id=org_id,
-                            geom=text(f"ST_SetSRID(ST_MakePoint({float(loc.longitude)}, {float(loc.latitude)}), 4326)")
+                            geom=text(
+                                f"ST_SetSRID(ST_MakePoint({float(loc.longitude)}, {float(loc.latitude)}), 4326)"
+                            ),
                         )
                     )
                 else:
@@ -617,7 +761,12 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
                         world_entities.insert().values(
                             entity_id=telemetry.device_id,
                             type="DEVICE",
-                            properties={"status": telemetry.status, "sensors": telemetry.sensors, "lon": float(loc.longitude), "lat": float(loc.latitude)},
+                            properties={
+                                "status": telemetry.status,
+                                "sensors": telemetry.sensors,
+                                "lon": float(loc.longitude),
+                                "lat": float(loc.latitude),
+                            },
                             updated_at=telemetry.timestamp,
                             org_id=org_id,
                         )
@@ -626,22 +775,36 @@ async def publish_telemetry(telemetry: "TelemetryData", request: _Req, _claims: 
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "telemetry", "data": tm.model_dump()}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "telemetry", "data": tm.model_dump()})
+            )
         return {"status": "published", "device_id": telemetry.device_id}
     except Exception as e:
         logger.error("Failed to publish telemetry", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to publish telemetry")
 
+
 @app.post("/alerts")
-async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None = Depends(_verify_bearer_fabric)):
+async def publish_alert(
+    alert: "AlertData",
+    request: _Req,
+    _claims: dict | None = Depends(_verify_bearer_fabric),
+):
     if not mqtt_client or not redis_client:
         raise HTTPException(status_code=503, detail="Services not connected")
     try:
         topic = f"alerts/{alert.alert_id}"
         await mqtt_client.publish(topic, alert.model_dump_json())
         # Convert to internal model for Redis
-        aloc = Location(latitude=float(alert.location.get("lat")), longitude=float(alert.location.get("lon")))
-        sev = SeverityLevel(alert.severity.lower()) if isinstance(alert.severity, str) else alert.severity
+        aloc = Location(
+            latitude=float(alert.location.get("lat")),
+            longitude=float(alert.location.get("lon")),
+        )
+        sev = (
+            SeverityLevel(alert.severity.lower())
+            if isinstance(alert.severity, str)
+            else alert.severity
+        )
         am = AlertMessage(
             alert_id=alert.alert_id,
             timestamp=alert.timestamp,
@@ -674,17 +837,21 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
             async with SessionLocal() as session:
                 org_id = None
                 try:
-                    org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
+                    org_id = (
+                        (_claims or {}).get("org")
+                        or (_claims or {}).get("org_id")
+                        or (_claims or {}).get("tenant")
+                    )
                 except Exception:
                     org_id = None
                 if not org_id:
                     try:
                         x_client_dn = request.headers.get("X-Client-DN")
                         if x_client_dn:
-                            parts = [p.strip() for p in str(x_client_dn).split(',')]
+                            parts = [p.strip() for p in str(x_client_dn).split(",")]
                             for p in parts:
-                                if p.startswith('OU='):
-                                    org_id = p.split('=',1)[1]
+                                if p.startswith("OU="):
+                                    org_id = p.split("=", 1)[1]
                                     break
                     except Exception as e:
                         logger.debug("Suppressed error", exc_info=True)  # was: pass
@@ -698,7 +865,9 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
                             ts=alert.timestamp,
                             properties={"source": alert.source},
                             org_id=org_id,
-                            geom=text(f"ST_SetSRID(ST_MakePoint({float(aloc.longitude)}, {float(aloc.latitude)}), 4326)")
+                            geom=text(
+                                f"ST_SetSRID(ST_MakePoint({float(aloc.longitude)}, {float(aloc.latitude)}), 4326)"
+                            ),
                         )
                     )
                 else:
@@ -709,7 +878,11 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
                             description=alert.description,
                             source=alert.source,
                             ts=alert.timestamp,
-                            properties={"source": alert.source, "lon": float(aloc.longitude), "lat": float(aloc.latitude)},
+                            properties={
+                                "source": alert.source,
+                                "lon": float(aloc.longitude),
+                                "lat": float(aloc.latitude),
+                            },
                             org_id=org_id,
                         )
                     )
@@ -717,11 +890,14 @@ async def publish_alert(alert: "AlertData", request: _Req, _claims: dict | None 
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "alert", "data": am.model_dump()})
+            )
         return {"status": "published", "alert_id": alert.alert_id}
     except Exception as e:
         logger.error("Failed to publish alert", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to publish alert")
+
 
 @app.post("/api/v1/alerts/{alert_id}/acknowledge")
 async def acknowledge_alert(alert_id: str):
@@ -738,7 +914,9 @@ async def acknowledge_alert(alert_id: str):
         _escalation_alerts[alert_id]["acknowledged"] = True
         found = True
     if not found:
-        raise HTTPException(status_code=404, detail=f"Alert {alert_id} not found in active state")
+        raise HTTPException(
+            status_code=404, detail=f"Alert {alert_id} not found in active state"
+        )
     return {"status": "acknowledged", "alert_id": alert_id}
 
 
@@ -747,8 +925,10 @@ async def get_elevation(lat: float, lon: float):
     """Return terrain elevation (metres MSL) at lat/lon from SRTM DEM tiles."""
     try:
         import sys as _sys
+
         _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
         from packages.geo.dem import get_provider
+
         elev = get_provider().get_elevation(lat, lon)
         return {"lat": lat, "lon": lon, "elevation_m": elev}
     except Exception as e:
@@ -763,7 +943,11 @@ async def publish_mission_update(mission: "MissionData"):
         topic = f"missions/{mission.mission_id}"
         await mqtt_client.publish(topic, mission.model_dump_json())
         # Convert to internal model for Redis
-        mstatus = mission.status.lower() if isinstance(mission.status, str) else str(mission.status)
+        mstatus = (
+            mission.status.lower()
+            if isinstance(mission.status, str)
+            else str(mission.status)
+        )
         try:
             ms = MissionStatus(mstatus)
         except Exception:
@@ -777,11 +961,14 @@ async def publish_mission_update(mission: "MissionData"):
         )
         await redis_client.add_mission_update(mu)
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "mission", "data": mu.model_dump()}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "mission", "data": mu.model_dump()})
+            )
         return {"status": "published", "mission_id": mission.mission_id}
     except Exception as e:
         logger.error("Failed to publish mission update", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to publish mission update")
+
 
 @app.post("/api/v1/nodes/register", response_model=NodeRegisterResponse)
 async def register_node(req: NodeRegisterRequest):
@@ -810,12 +997,15 @@ async def register_node(req: NodeRegisterRequest):
         token=token,
     )
 
+
 @app.delete("/api/v1/nodes/{node_id}")
 async def retire_node(node_id: str):
     assert SessionLocal is not None
     async with SessionLocal() as session:
         await session.execute(
-            nodes.update().where(nodes.c.id == node_id).values(
+            nodes.update()
+            .where(nodes.c.id == node_id)
+            .values(
                 retired=True,
                 status="RETIRED",
                 updated_at=datetime.now(timezone.utc),
@@ -824,12 +1014,19 @@ async def retire_node(node_id: str):
         await session.commit()
     return {"status": "retired", "id": node_id}
 
+
 # Helpers
-async def _upsert_node(session: AsyncSession, req: "NodeRegisterRequest", now: datetime):
-    existing = await session.execute(text("SELECT id FROM nodes WHERE id = :id"), {"id": req.id})
+async def _upsert_node(
+    session: AsyncSession, req: "NodeRegisterRequest", now: datetime
+):
+    existing = await session.execute(
+        text("SELECT id FROM nodes WHERE id = :id"), {"id": req.id}
+    )
     if existing.first():
         await session.execute(
-            nodes.update().where(nodes.c.id == req.id).values(
+            nodes.update()
+            .where(nodes.c.id == req.id)
+            .values(
                 type=req.type,
                 pubkey=req.pubkey,
                 fw_version=req.fw_version,
@@ -860,24 +1057,33 @@ async def _upsert_node(session: AsyncSession, req: "NodeRegisterRequest", now: d
             )
         )
 
+
 @app.get("/api/v1/nodes/{node_id}")
 async def get_node(node_id: str):
     assert SessionLocal is not None
     async with SessionLocal() as session:
-        res = await session.execute(text("SELECT * FROM nodes WHERE id = :id"), {"id": node_id})
+        res = await session.execute(
+            text("SELECT * FROM nodes WHERE id = :id"), {"id": node_id}
+        )
         row = res.mappings().first()
         if not row:
             raise HTTPException(status_code=404, detail="Node not found")
         return {**row}
+
 
 @app.get("/api/v1/coverage")
 async def list_coverages():
     """List tower coverages; UI can union polygons client-side until server union is available."""
     assert SessionLocal is not None
     async with SessionLocal() as session:
-        res = await session.execute(text("SELECT node_id, viewshed_geojson, version, updated_at FROM coverages ORDER BY updated_at DESC"))
+        res = await session.execute(
+            text(
+                "SELECT node_id, viewshed_geojson, version, updated_at FROM coverages ORDER BY updated_at DESC"
+            )
+        )
         rows = [dict(r) for r in res.mappings().all()]
         return {"coverages": rows}
+
 
 @app.get("/api/v1/coverage/union")
 async def coverage_union():
@@ -891,7 +1097,11 @@ async def coverage_union():
     except Exception:
         return {"union": None, "count": 0}
     async with SessionLocal() as session:
-        res = await session.execute(text("SELECT viewshed_geojson FROM coverages WHERE viewshed_geojson IS NOT NULL"))
+        res = await session.execute(
+            text(
+                "SELECT viewshed_geojson FROM coverages WHERE viewshed_geojson IS NOT NULL"
+            )
+        )
         geoms = []
         for r in res.mappings().all():
             try:
@@ -902,6 +1112,7 @@ async def coverage_union():
             return {"union": None, "count": 0}
         u = unary_union(geoms)
         return {"union": mapping(u), "count": len(geoms)}
+
 
 # Handlers
 async def _handle_observation(topic: str, data: Dict[str, Any]):
@@ -918,14 +1129,18 @@ async def _handle_observation(topic: str, data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Failed to handle observation: {e}")
 
+
 async def _handle_mission(topic: str, data: Dict[str, Any]):
     try:
         # Broadcast to UI subscribers
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "mission_event", "topic": topic, "data": data}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "mission_event", "topic": topic, "data": data})
+            )
         logger.info("Forwarded mission to ws", topic=topic)
     except Exception as e:
         logger.error(f"Failed to handle mission: {e}")
+
 
 async def _handle_heartbeat(topic: str, data: Dict[str, Any]):
     """health/{node_id}/heartbeat payload: {"ts":..., "status":"OK", ...}"""
@@ -935,7 +1150,9 @@ async def _handle_heartbeat(topic: str, data: Dict[str, Any]):
         assert SessionLocal is not None
         async with SessionLocal() as session:
             await session.execute(
-                nodes.update().where(nodes.c.id == node_id).values(
+                nodes.update()
+                .where(nodes.c.id == node_id)
+                .values(
                     status="ONLINE",
                     last_seen=now,
                     updated_at=now,
@@ -943,9 +1160,14 @@ async def _handle_heartbeat(topic: str, data: Dict[str, Any]):
             )
             await session.commit()
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "heartbeat", "node_id": node_id, "ts": data.get("ts")}))
+            await websocket_manager.broadcast(
+                json.dumps(
+                    {"type": "heartbeat", "node_id": node_id, "ts": data.get("ts")}
+                )
+            )
     except Exception as e:
         logger.error(f"Failed to handle heartbeat: {e}")
+
 
 async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
     """Handle Plainview leak/spill detection events and map to alert_stream + world_alerts."""
@@ -974,7 +1196,9 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
             source=str(data.get("source") or "plainview"),
             category="plainview.leak",
             tags=["plainview", "leak"],
-            metadata={k: v for k, v in data.items() if k not in {"id", "severity", "location"}},
+            metadata={
+                k: v for k, v in data.items() if k not in {"id", "severity", "location"}
+            },
         )
         await redis_client.add_alert(am)
         # Persist minimal world_alerts row (reuse existing path via /alerts would be heavier)
@@ -991,7 +1215,9 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
                             ts=am.timestamp,
                             properties=am.metadata,
                             org_id=None,
-                            geom=text(f"ST_SetSRID(ST_MakePoint({float(longitude)}, {float(latitude)}), 4326)")
+                            geom=text(
+                                f"ST_SetSRID(ST_MakePoint({float(longitude)}, {float(latitude)}), 4326)"
+                            ),
                         )
                     )
                 else:
@@ -1002,7 +1228,11 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
                             description=am.description,
                             source=am.source,
                             ts=am.timestamp,
-                            properties={**am.metadata, "lon": float(longitude), "lat": float(latitude)},
+                            properties={
+                                **am.metadata,
+                                "lon": float(longitude),
+                                "lat": float(latitude),
+                            },
                             org_id=None,
                         )
                     )
@@ -1010,9 +1240,12 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "alert", "data": am.model_dump()}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "alert", "data": am.model_dump()})
+            )
     except Exception as e:
         logger.error(f"Failed to handle plainview leak: {e}")
+
 
 async def _handle_valve_status(topic: str, data: Dict[str, Any]):
     """Handle valve status telemetry and forward to operations_stream and WS."""
@@ -1027,9 +1260,12 @@ async def _handle_valve_status(topic: str, data: Dict[str, Any]):
         if redis_client:
             await redis_client.add_operation_event(record)
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "valve_status", "topic": topic, "data": data}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "valve_status", "topic": topic, "data": data})
+            )
     except Exception as e:
         logger.error(f"Failed to handle valve status: {e}")
+
 
 async def _handle_pipeline_pressure(topic: str, data: Dict[str, Any]):
     """Handle pipeline pressure taps; forward as operations events."""
@@ -1046,12 +1282,14 @@ async def _handle_pipeline_pressure(topic: str, data: Dict[str, Any]):
     except Exception as e:
         logger.error(f"Failed to handle pipeline pressure: {e}")
 
+
 async def _handle_entity_update(topic: str, data: Dict[str, Any]):
     """Handle entities/{entity_id}/update from SDK adapters — ingest into WorldStore."""
     try:
         if not WORLD_STORE_AVAILABLE or not world_store:
             return
         from packages.entities.core import Entity
+
         entity_id = data.get("entity_id") or topic.split("/")[1]
         # Build Entity from MQTT dict and upsert into WorldStore
         data["id"] = entity_id
@@ -1062,6 +1300,7 @@ async def _handle_entity_update(topic: str, data: Dict[str, Any]):
             entity_crdt.update(entity_id, data)
     except Exception as e:
         logger.error(f"Failed to handle entity update: {e}")
+
 
 # Background processors
 async def telemetry_processor():
@@ -1074,6 +1313,7 @@ async def telemetry_processor():
             logger.error("Telemetry processor error", error=str(e))
             await asyncio.sleep(5)
 
+
 async def alert_processor():
     while True:
         try:
@@ -1083,6 +1323,7 @@ async def alert_processor():
         except Exception as e:
             logger.error("Alert processor error", error=str(e))
             await asyncio.sleep(5)
+
 
 async def heartbeat_watcher():
     """Flip nodes to STALE/OFFLINE based on last_seen."""
@@ -1100,7 +1341,10 @@ async def heartbeat_watcher():
                         WHERE status = 'ONLINE' AND last_seen IS NOT NULL AND last_seen < :stale_cutoff AND retired = FALSE;
                         """
                     ),
-                    {"now": now, "stale_cutoff": now - timedelta(seconds=HEARTBEAT_STALE_SECS)},
+                    {
+                        "now": now,
+                        "stale_cutoff": now - timedelta(seconds=HEARTBEAT_STALE_SECS),
+                    },
                 )
                 # OFFLINE
                 await session.execute(
@@ -1111,13 +1355,18 @@ async def heartbeat_watcher():
                         WHERE (status = 'STALE' OR status = 'ONLINE') AND last_seen IS NOT NULL AND last_seen < :offline_cutoff AND retired = FALSE;
                         """
                     ),
-                    {"now": now, "offline_cutoff": now - timedelta(seconds=HEARTBEAT_OFFLINE_SECS)},
+                    {
+                        "now": now,
+                        "offline_cutoff": now
+                        - timedelta(seconds=HEARTBEAT_OFFLINE_SECS),
+                    },
                 )
                 await session.commit()
             await asyncio.sleep(30)
         except Exception as e:
             logger.error(f"Heartbeat watcher error: {e}")
             await asyncio.sleep(10)
+
 
 # Geofences table and endpoints
 geofences = Table(
@@ -1127,15 +1376,26 @@ geofences = Table(
     Column("org_id", String(128)),
     Column("name", String(128)),
     Column("props", JSON),
-    *( [Column("geom", Geometry(geometry_type="POLYGON", srid=4326))] if GEO_AVAILABLE else [] ),
+    *(
+        [Column("geom", Geometry(geometry_type="POLYGON", srid=4326))]
+        if GEO_AVAILABLE
+        else []
+    ),
 )
 
+
 @app.post("/api/v1/geofences")
-async def create_geofence(payload: dict, _claims: dict | None = Depends(_verify_bearer_fabric)):
+async def create_geofence(
+    payload: dict, _claims: dict | None = Depends(_verify_bearer_fabric)
+):
     assert SessionLocal is not None
     org_id = None
     try:
-        org_id = (_claims or {}).get("org") or (_claims or {}).get("org_id") or (_claims or {}).get("tenant")
+        org_id = (
+            (_claims or {}).get("org")
+            or (_claims or {}).get("org_id")
+            or (_claims or {}).get("tenant")
+        )
     except Exception:
         org_id = None
     name = str(payload.get("name") or "geofence")
@@ -1156,8 +1416,10 @@ async def create_geofence(payload: dict, _claims: dict | None = Depends(_verify_
         async with SessionLocal() as session:
             await session.execute(
                 geofences.insert().values(
-                    org_id=org_id, name=name, props=props,
-                    geom=text(f"ST_GeomFromText('{wkt}', 4326)")
+                    org_id=org_id,
+                    name=name,
+                    props=props,
+                    geom=text(f"ST_GeomFromText('{wkt}', 4326)"),
                 )
             )
             await session.commit()
@@ -1165,17 +1427,24 @@ async def create_geofence(payload: dict, _claims: dict | None = Depends(_verify_
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @app.get("/api/v1/geofences")
 async def list_geofences(org_id: str | None = Depends(_get_org_id)):
     assert SessionLocal is not None
     async with SessionLocal() as session:
         where = "WHERE org_id = :org_id" if org_id else ""
-        res = await session.execute(text(f"SELECT id, name, props FROM geofences {where} ORDER BY id DESC"), {"org_id": org_id} if org_id else {})
+        res = await session.execute(
+            text(f"SELECT id, name, props FROM geofences {where} ORDER BY id DESC"),
+            {"org_id": org_id} if org_id else {},
+        )
         rows = [dict(r) for r in res.mappings().all()]
         return {"geofences": rows}
 
+
 @app.get("/api/v1/geofences/contains")
-async def geofence_contains(lat: float, lon: float, org_id: str | None = Depends(_get_org_id)):
+async def geofence_contains(
+    lat: float, lon: float, org_id: str | None = Depends(_get_org_id)
+):
     if not GEO_AVAILABLE:
         return {"contains": True}
     assert SessionLocal is not None
@@ -1189,6 +1458,7 @@ async def geofence_contains(lat: float, lon: float, org_id: str | None = Depends
             params["org_id"] = org_id
         r = (await session.execute(q, params)).mappings().first()
         return {"contains": bool(r.get("inside")) if r else False}
+
 
 # Coverage stub
 async def _compute_viewshed_stub(node_id: str):
@@ -1206,12 +1476,20 @@ async def _compute_viewshed_stub(node_id: str):
             )
             await session.commit()
         if websocket_manager:
-            await websocket_manager.broadcast(json.dumps({"type": "coverage_updated", "node_id": node_id}))
+            await websocket_manager.broadcast(
+                json.dumps({"type": "coverage_updated", "node_id": node_id})
+            )
     except Exception as e:
         logger.error(f"Viewshed stub failed: {e}")
 
+
 # JWT helper and token refresh
-def _issue_token(node_id: str, topics: Dict[str, List[str]], policy: Dict[str, Any], ttl_seconds: int = 600) -> str:
+def _issue_token(
+    node_id: str,
+    topics: Dict[str, List[str]],
+    policy: Dict[str, Any],
+    ttl_seconds: int = 600,
+) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": node_id,
@@ -1222,9 +1500,11 @@ def _issue_token(node_id: str, topics: Dict[str, List[str]], policy: Dict[str, A
     }
     return jwt.encode(payload, FABRIC_JWT_SECRET, algorithm="HS256")
 
+
 class TokenResponse(BaseModel):
     token: str
     expires_in: int
+
 
 @app.post("/api/v1/nodes/{node_id}/token", response_model=TokenResponse)
 async def refresh_token(node_id: str):
@@ -1236,21 +1516,26 @@ async def refresh_token(node_id: str):
     token = _issue_token(node_id, topics, policy, ttl_seconds=600)
     return TokenResponse(token=token, expires_in=600)
 
+
 def _run_migrations():
     try:
-        ini_path = os.path.join(os.path.dirname(__file__), 'alembic.ini')
+        ini_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
         cfg = AlembicConfig(ini_path)
         # Ensure env picks up the DB URL
-        if not os.getenv('POSTGRES_URL'):
-            os.environ['POSTGRES_URL'] = 'postgresql://summit:summit_password@localhost:5432/summit_os'
-        alembic_command.upgrade(cfg, 'head')
+        if not os.getenv("POSTGRES_URL"):
+            os.environ["POSTGRES_URL"] = (
+                "postgresql://summit:summit_password@localhost:5432/summit_os"
+            )
+        alembic_command.upgrade(cfg, "head")
         logger.info("Alembic migrations applied")
     except Exception as e:
         logger.error(f"Failed to run migrations: {e}")
         raise
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

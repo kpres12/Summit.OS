@@ -19,6 +19,7 @@ Usage:
     los  = dem.check_line_of_sight(34.0, -118.0, 100, 34.1, -118.1, 10)
     profile = dem.get_elevation_profile(34.0, -118.0, 34.1, -118.1, n_samples=50)
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,6 +32,7 @@ logger = logging.getLogger("geo.dem")
 
 try:
     import numpy as np
+
     _NP = True
 except ImportError:
     np = None  # type: ignore
@@ -47,7 +49,7 @@ class DEMProvider:
 
     def __init__(self, dem_dir: str = "/data/dem"):
         self._dem_dir = dem_dir
-        self._cache: Dict[str, Optional[object]] = {}   # tile_key → numpy array or None
+        self._cache: Dict[str, Optional[object]] = {}  # tile_key → numpy array or None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -65,8 +67,10 @@ class DEMProvider:
 
     def get_elevation_profile(
         self,
-        lat1: float, lon1: float,
-        lat2: float, lon2: float,
+        lat1: float,
+        lon1: float,
+        lat2: float,
+        lon2: float,
         n_samples: int = 50,
     ) -> List[Tuple[float, float]]:
         """
@@ -86,8 +90,12 @@ class DEMProvider:
 
     def check_line_of_sight(
         self,
-        obs_lat: float, obs_lon: float, obs_alt_m: float,
-        tgt_lat: float, tgt_lon: float, tgt_alt_m: float,
+        obs_lat: float,
+        obs_lon: float,
+        obs_alt_m: float,
+        tgt_lat: float,
+        tgt_lon: float,
+        tgt_alt_m: float,
         n_samples: int = 50,
     ) -> bool:
         """
@@ -115,7 +123,8 @@ class DEMProvider:
 
     def terrain_following_altitude(
         self,
-        lat: float, lon: float,
+        lat: float,
+        lon: float,
         agl_m: float = 30.0,
     ) -> float:
         """
@@ -129,8 +138,8 @@ class DEMProvider:
         """SRTM tile key for the 1°×1° tile containing (lat, lon)."""
         tlat = int(math.floor(lat))
         tlon = int(math.floor(lon))
-        ns   = "N" if tlat >= 0 else "S"
-        ew   = "E" if tlon >= 0 else "W"
+        ns = "N" if tlat >= 0 else "S"
+        ew = "E" if tlon >= 0 else "W"
         return f"{ns}{abs(tlat):02d}{ew}{abs(tlon):03d}"
 
     def _tile_path(self, key: str) -> Optional[str]:
@@ -161,7 +170,7 @@ class DEMProvider:
 
         try:
             data = np.fromfile(path, dtype=">i2")  # big-endian int16
-            n = int(round(math.sqrt(len(data))))    # 3601 for SRTM1, 1201 for SRTM3
+            n = int(round(math.sqrt(len(data))))  # 3601 for SRTM1, 1201 for SRTM3
             tile = data.reshape((n, n)).astype(np.float32)
             # Replace void values (-32768) with 0
             tile[tile == -32768] = 0.0
@@ -197,10 +206,12 @@ class DEMProvider:
         v10 = float(tile[r1, c0])
         v11 = float(tile[r1, c1])
 
-        return (v00 * (1 - dc) * (1 - dr) +
-                v01 * dc       * (1 - dr) +
-                v10 * (1 - dc) * dr       +
-                v11 * dc       * dr)
+        return (
+            v00 * (1 - dc) * (1 - dr)
+            + v01 * dc * (1 - dr)
+            + v10 * (1 - dc) * dr
+            + v11 * dc * dr
+        )
 
 
 # ── Module-level singleton ────────────────────────────────────────────────────
@@ -218,9 +229,10 @@ def get_provider() -> DEMProvider:
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6_371_000.0
-    p1, p2  = math.radians(lat1), math.radians(lat2)
-    dp, dl  = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))

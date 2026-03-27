@@ -8,6 +8,7 @@ from enum import Enum
 
 class SeverityLevel(str, Enum):
     """Alert severity levels."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -16,6 +17,7 @@ class SeverityLevel(str, Enum):
 
 class DeviceStatus(str, Enum):
     """Device status values."""
+
     ONLINE = "online"
     OFFLINE = "offline"
     ERROR = "error"
@@ -24,6 +26,7 @@ class DeviceStatus(str, Enum):
 
 class MissionStatus(str, Enum):
     """Mission status values."""
+
     PLANNED = "planned"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -33,6 +36,7 @@ class MissionStatus(str, Enum):
 
 class Location(BaseModel):
     """Geographic location."""
+
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
     altitude: Optional[float] = Field(None, ge=0)
@@ -41,6 +45,7 @@ class Location(BaseModel):
 
 class TelemetryMessage(BaseModel):
     """Telemetry data from edge devices."""
+
     device_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     location: Location
@@ -53,6 +58,7 @@ class TelemetryMessage(BaseModel):
 
 class AlertMessage(BaseModel):
     """Alert message for incidents and anomalies."""
+
     alert_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     severity: SeverityLevel
@@ -69,6 +75,7 @@ class AlertMessage(BaseModel):
 
 class MissionUpdate(BaseModel):
     """Mission status update."""
+
     mission_id: str
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: MissionStatus
@@ -81,6 +88,7 @@ class MissionUpdate(BaseModel):
 
 class SystemMetrics(BaseModel):
     """System performance metrics."""
+
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     service: str
     cpu_usage: float = Field(ge=0.0, le=100.0)
@@ -93,6 +101,7 @@ class SystemMetrics(BaseModel):
 
 class DeviceInfo(BaseModel):
     """Device information and capabilities."""
+
     device_id: str
     device_type: str
     capabilities: List[str] = Field(default_factory=list)

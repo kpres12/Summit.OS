@@ -12,6 +12,7 @@ replicated across mesh nodes without coordination. Supports:
 All CRDTs implement a merge() operation that is commutative, associative,
 and idempotent — guaranteeing convergence regardless of message ordering.
 """
+
 from __future__ import annotations
 
 import time
@@ -55,7 +56,11 @@ class LWWRegister:
         return LWWRegister(self.node_id, self.value, self.timestamp)
 
     def to_dict(self) -> Dict:
-        return {"value": self.value, "timestamp": self.timestamp, "node_id": self.node_id}
+        return {
+            "value": self.value,
+            "timestamp": self.timestamp,
+            "node_id": self.node_id,
+        }
 
     @classmethod
     def from_dict(cls, data: Dict) -> "LWWRegister":
@@ -242,6 +247,7 @@ class CRDTStore:
 
     Used by MeshPeer to manage all distributed state for a node.
     """
+
     node_id: str
     registers: Dict[str, LWWRegister] = field(default_factory=dict)
     counters: Dict[str, PNCounter] = field(default_factory=dict)
@@ -268,7 +274,9 @@ class CRDTStore:
             if key in self.registers:
                 self.registers[key] = self.registers[key].merge(reg)
             else:
-                self.registers[key] = LWWRegister(self.node_id, reg.value, reg.timestamp)
+                self.registers[key] = LWWRegister(
+                    self.node_id, reg.value, reg.timestamp
+                )
 
         for key, ctr in other.counters.items():
             if key in self.counters:

@@ -9,6 +9,7 @@ Real asyncio UDP transport replacing mock/stub networking:
 
 Designed for DDIL (Denied, Degraded, Intermittent, Limited) environments.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -27,6 +28,7 @@ logger = logging.getLogger("mesh.transport")
 
 # ── Message Types ───────────────────────────────────────────
 
+
 class MessageType(IntEnum):
     HEARTBEAT = 0x01
     SYNC_REQUEST = 0x02
@@ -43,6 +45,7 @@ class MessageType(IntEnum):
 
 # ── Framing ─────────────────────────────────────────────────
 
+
 @dataclass
 class FramedMessage:
     """
@@ -51,6 +54,7 @@ class FramedMessage:
     Layout (big-endian):
     [4B magic] [1B version] [1B msg_type] [4B payload_len] [16B nonce] [payload] [32B hmac]
     """
+
     MAGIC = b"SMSH"  # Summit Mesh
     VERSION = 1
 
@@ -80,6 +84,7 @@ class FramedMessage:
 
         if hmac_key:
             import hmac as hmac_mod
+
             mac = hmac_mod.new(hmac_key, data, hashlib.sha256).digest()
         else:
             mac = b"\x00" * 32
@@ -99,14 +104,19 @@ class FramedMessage:
 
         version, msg_type, payload_len = struct.unpack(">BBI", raw[4:10])
         nonce = raw[10:26]
-        payload = raw[26:26 + payload_len]
-        mac = raw[26 + payload_len:26 + payload_len + 32]
+        payload = raw[26 : 26 + payload_len]
+        mac = raw[26 + payload_len : 26 + payload_len + 32]
 
         if hmac_key:
             import hmac as hmac_mod
-            expected_mac = hmac_mod.new(hmac_key, raw[:26 + payload_len], hashlib.sha256).digest()
+
+            expected_mac = hmac_mod.new(
+                hmac_key, raw[: 26 + payload_len], hashlib.sha256
+            ).digest()
             if not hmac_mod.compare_digest(mac, expected_mac):
-                logger.warning("HMAC verification failed — message tampered or wrong key")
+                logger.warning(
+                    "HMAC verification failed — message tampered or wrong key"
+                )
                 return None
 
         return cls(
@@ -117,6 +127,7 @@ class FramedMessage:
 
 
 # ── Encryption Envelope ─────────────────────────────────────
+
 
 class EncryptionEnvelope:
     """
@@ -134,31 +145,40 @@ class EncryptionEnvelope:
     def _check_crypto() -> bool:
         try:
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
             return True
         except ImportError:
             return False
 
-    def encrypt(self, plaintext: bytes, nonce: bytes,
-                aad: Optional[bytes] = None) -> bytes:
+    def encrypt(
+        self, plaintext: bytes, nonce: bytes, aad: Optional[bytes] = None
+    ) -> bytes:
         """Encrypt plaintext with AES-256-GCM."""
         if self._crypto_available:
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
             aesgcm = AESGCM(self._key)
             # GCM needs 12-byte nonce
-            gcm_nonce = nonce[:12] if len(nonce) >= 12 else nonce + b"\x00" * (12 - len(nonce))
+            gcm_nonce = (
+                nonce[:12] if len(nonce) >= 12 else nonce + b"\x00" * (12 - len(nonce))
+            )
             return aesgcm.encrypt(gcm_nonce, plaintext, aad)
         else:
             # XOR fallback — NOT SECURE, dev only
             key_stream = hashlib.sha256(self._key + nonce).digest()
             return bytes(p ^ key_stream[i % 32] for i, p in enumerate(plaintext))
 
-    def decrypt(self, ciphertext: bytes, nonce: bytes,
-                aad: Optional[bytes] = None) -> bytes:
+    def decrypt(
+        self, ciphertext: bytes, nonce: bytes, aad: Optional[bytes] = None
+    ) -> bytes:
         """Decrypt ciphertext with AES-256-GCM."""
         if self._crypto_available:
             from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
             aesgcm = AESGCM(self._key)
-            gcm_nonce = nonce[:12] if len(nonce) >= 12 else nonce + b"\x00" * (12 - len(nonce))
+            gcm_nonce = (
+                nonce[:12] if len(nonce) >= 12 else nonce + b"\x00" * (12 - len(nonce))
+            )
             return aesgcm.decrypt(gcm_nonce, ciphertext, aad)
         else:
             key_stream = hashlib.sha256(self._key + nonce).digest()
@@ -167,11 +187,16 @@ class EncryptionEnvelope:
 
 # ── UDP Protocol ────────────────────────────────────────────
 
+
 class MeshUDPProtocol(asyncio.DatagramProtocol):
     """Asyncio UDP protocol for mesh communication."""
 
-    def __init__(self, on_message: Callable, hmac_key: bytes = b"",
-                 encryption: Optional[EncryptionEnvelope] = None):
+    def __init__(
+        self,
+        on_message: Callable,
+        hmac_key: bytes = b"",
+        encryption: Optional[EncryptionEnvelope] = None,
+    ):
         self.on_message = on_message
         self.hmac_key = hmac_key
         self.encryption = encryption
@@ -209,8 +234,9 @@ class MeshUDPProtocol(asyncio.DatagramProtocol):
 
         self.on_message(msg.msg_type, message_data, addr)
 
-    def send(self, msg_type: MessageType, payload: Any,
-             target: Tuple[str, int]) -> None:
+    def send(
+        self, msg_type: MessageType, payload: Any, target: Tuple[str, int]
+    ) -> None:
         """Send a message to a target address."""
         if self.transport is None:
             return
@@ -250,6 +276,7 @@ class MeshUDPProtocol(asyncio.DatagramProtocol):
 
 # ── Transport Manager ──────────────────────────────────────
 
+
 class TransportManager:
     """
     Manages the mesh transport layer.
@@ -261,9 +288,13 @@ class TransportManager:
     - Connection metrics
     """
 
-    def __init__(self, bind_host: str = "0.0.0.0", bind_port: int = 9100,
-                 hmac_key: Optional[bytes] = None,
-                 encryption_key: Optional[bytes] = None):
+    def __init__(
+        self,
+        bind_host: str = "0.0.0.0",
+        bind_port: int = 9100,
+        hmac_key: Optional[bytes] = None,
+        encryption_key: Optional[bytes] = None,
+    ):
         self.bind_host = bind_host
         self.bind_port = bind_port
         self.hmac_key = hmac_key or b""
@@ -275,8 +306,7 @@ class TransportManager:
         self._running = False
         self._tasks: List[asyncio.Task] = []
 
-    def register_handler(self, msg_type: MessageType,
-                         handler: Callable) -> None:
+    def register_handler(self, msg_type: MessageType, handler: Callable) -> None:
         """Register a message handler."""
         if msg_type not in self._handlers:
             self._handlers[msg_type] = []
@@ -319,20 +349,23 @@ class TransportManager:
 
         logger.info("Mesh transport stopped")
 
-    def send(self, msg_type: MessageType, payload: Any,
-             target: Tuple[str, int]) -> None:
+    def send(
+        self, msg_type: MessageType, payload: Any, target: Tuple[str, int]
+    ) -> None:
         """Send a message to a target peer."""
         if self._protocol:
             self._protocol.send(msg_type, payload, target)
 
-    def broadcast(self, msg_type: MessageType, payload: Any,
-                  targets: List[Tuple[str, int]]) -> None:
+    def broadcast(
+        self, msg_type: MessageType, payload: Any, targets: List[Tuple[str, int]]
+    ) -> None:
         """Send a message to multiple peers."""
         for target in targets:
             self.send(msg_type, payload, target)
 
-    def _dispatch(self, msg_type: MessageType, data: Any,
-                  addr: Tuple[str, int]) -> None:
+    def _dispatch(
+        self, msg_type: MessageType, data: Any, addr: Tuple[str, int]
+    ) -> None:
         """Dispatch incoming message to registered handlers."""
         handlers = self._handlers.get(msg_type, [])
         for handler in handlers:
@@ -341,9 +374,11 @@ class TransportManager:
             except Exception as e:
                 logger.error(f"Handler error for {msg_type}: {e}")
 
-    def schedule_periodic(self, coro_factory: Callable[[], Coroutine],
-                          interval: float) -> None:
+    def schedule_periodic(
+        self, coro_factory: Callable[[], Coroutine], interval: float
+    ) -> None:
         """Schedule a periodic coroutine."""
+
         async def _loop():
             while self._running:
                 try:

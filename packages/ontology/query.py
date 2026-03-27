@@ -41,10 +41,10 @@ class ObjectQuery:
     """Fluent query for a single object type."""
 
     def __init__(self, object_type: str) -> None:
-        self._type    = object_type
+        self._type = object_type
         self._filters: Dict[str, Any] = {}
-        self._limit   = 500
-        self._offset  = 0
+        self._limit = 500
+        self._offset = 0
 
     def where(self, **kwargs) -> "ObjectQuery":
         self._filters.update(kwargs)
@@ -60,8 +60,8 @@ class ObjectQuery:
 
     def linked_from(self, link_type: str, source_id: str) -> "ObjectQuery":
         """Filter to only objects that are the TARGET of a specific link from source_id."""
-        store     = get_store()
-        links     = store.links_from_object(source_id, link_type=link_type)
+        store = get_store()
+        links = store.links_from_object(source_id, link_type=link_type)
         target_ids = {link.target_id for link in links}
         # Add a special filter that will be applied in .all()
         self._filters["__linked_target_ids"] = target_ids
@@ -69,20 +69,22 @@ class ObjectQuery:
 
     def linked_to(self, link_type: str, target_id: str) -> "ObjectQuery":
         """Filter to only objects that are the SOURCE of a specific link to target_id."""
-        store     = get_store()
-        links     = store.links_to_object(target_id, link_type=link_type)
+        store = get_store()
+        links = store.links_to_object(target_id, link_type=link_type)
         source_ids = {link.source_id for link in links}
         self._filters["__linked_source_ids"] = source_ids
         return self
 
     def all(self) -> List[ObjectInstance]:
-        store   = get_store()
+        store = get_store()
 
         # Extract special in-memory filters
         linked_target_ids = self._filters.pop("__linked_target_ids", None)
         linked_source_ids = self._filters.pop("__linked_source_ids", None)
 
-        results = store.list(self._type, self._filters or None, self._limit, self._offset)
+        results = store.list(
+            self._type, self._filters or None, self._limit, self._offset
+        )
 
         if linked_target_ids is not None:
             results = [r for r in results if r.object_id in linked_target_ids]
@@ -121,7 +123,7 @@ class OntologyQuery:
         start_type: str,
         start_id: str,
         link_type: str,
-        direction: str = "outbound",   # "outbound" | "inbound"
+        direction: str = "outbound",  # "outbound" | "inbound"
         target_type: Optional[str] = None,
     ) -> List[ObjectInstance]:
         """
@@ -130,7 +132,7 @@ class OntologyQuery:
         direction="outbound" → start_id is SOURCE, return TARGETs
         direction="inbound"  → start_id is TARGET, return SOURCEs
         """
-        store   = get_store()
+        store = get_store()
         results = []
 
         if direction == "outbound":
@@ -164,9 +166,9 @@ class OntologyQuery:
         Return all directly linked objects in both directions, grouped by link type.
         Useful for building a local graph view of a single entity.
         """
-        store   = get_store()
+        store = get_store()
         out_links = store.links_from_object(object_id)
-        in_links  = store.links_to_object(object_id)
+        in_links = store.links_to_object(object_id)
 
         result: Dict[str, List[ObjectInstance]] = {}
 
@@ -189,9 +191,9 @@ class OntologyQuery:
         Return a compact natural-language summary of the current ontology state.
         Designed to be injected into an LLM prompt as context.
         """
-        store   = get_store()
-        stats   = store.stats()
-        lines   = ["## Summit.OS Ontology — Live State\n"]
+        store = get_store()
+        stats = store.stats()
+        lines = ["## Summit.OS Ontology — Live State\n"]
 
         # Object counts
         lines.append("### Object counts")
@@ -201,17 +203,24 @@ class OntologyQuery:
         lines.append("\n### Recent critical objects")
         for otype in ("Alert", "Incident", "Mission", "Asset"):
             instances = store.all_of_type(otype)
-            critical  = [
-                i for i in instances
+            critical = [
+                i
+                for i in instances
                 if i.properties.get("severity") in ("CRITICAL", "HIGH")
                 or i.properties.get("status") in ("ACTIVE", "IN_PROGRESS")
             ][:max_items_per_type]
             if critical:
-                lines.append(f"\n**{otype}** (showing {len(critical)} active/critical):")
+                lines.append(
+                    f"\n**{otype}** (showing {len(critical)} active/critical):"
+                )
                 for inst in critical:
                     props = inst.properties
-                    label = props.get("title") or props.get("name") or props.get("description", "")
-                    sev   = props.get("severity") or props.get("status") or ""
+                    label = (
+                        props.get("title")
+                        or props.get("name")
+                        or props.get("description", "")
+                    )
+                    sev = props.get("severity") or props.get("status") or ""
                     lines.append(f"  - [{sev}] {inst.object_id[:8]}… {label[:80]}")
 
         lines.append(f"\n### Links: {stats['total_links']} total")

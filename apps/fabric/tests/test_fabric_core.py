@@ -2,10 +2,13 @@
 
 Uses FABRIC_TEST_MODE=true (SQLite backend, no MQTT/Redis).
 """
+
 import os
+
 os.environ["FABRIC_TEST_MODE"] = "true"
 
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import pytest
@@ -21,6 +24,7 @@ def client():
 
 # --- Health / Readiness ---
 
+
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -34,6 +38,7 @@ def test_livez(client):
 
 
 # --- Node Registration ---
+
 
 def test_register_node(client):
     payload = {
@@ -70,9 +75,15 @@ def test_get_nonexistent_node(client):
 
 def test_retire_node(client):
     # Register first
-    client.post("/api/v1/nodes/register", json={
-        "id": "retire-me", "type": "DRONE", "capabilities": [], "comm": [],
-    })
+    client.post(
+        "/api/v1/nodes/register",
+        json={
+            "id": "retire-me",
+            "type": "DRONE",
+            "capabilities": [],
+            "comm": [],
+        },
+    )
     r = client.delete("/api/v1/nodes/retire-me")
     assert r.status_code == 200
     assert r.json()["status"] == "retired"
@@ -87,6 +98,7 @@ def test_refresh_token(client):
 
 
 # --- World State ---
+
 
 def test_worldstate_returns_structure(client):
     r = client.get("/api/v1/worldstate")
@@ -106,6 +118,7 @@ def test_worldstate_org_filter(client):
 
 # --- Coverage ---
 
+
 def test_coverage_list_empty(client):
     r = client.get("/api/v1/coverage")
     assert r.status_code == 200
@@ -122,11 +135,15 @@ def test_coverage_union_empty(client):
 
 # --- Geofences ---
 
+
 def test_create_geofence(client):
-    r = client.post("/api/v1/geofences", json={
-        "name": "test-zone",
-        "props": {"type": "exclusion"},
-    })
+    r = client.post(
+        "/api/v1/geofences",
+        json={
+            "name": "test-zone",
+            "props": {"type": "exclusion"},
+        },
+    )
     assert r.status_code == 200
     assert r.json()["status"] == "created"
 

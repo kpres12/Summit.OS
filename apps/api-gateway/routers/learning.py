@@ -6,6 +6,7 @@ All endpoints are read-heavy; writes happen only via POST /learning/feedback.
 
 Use init_learning_router(engine) in main.py lifespan before including the router.
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,8 +33,7 @@ def init_learning_router(engine: Any) -> None:
 def _get_engine():
     if _engine is None:
         raise HTTPException(
-            status_code=503,
-            detail="CyberSynetic engine is not initialized"
+            status_code=503, detail="CyberSynetic engine is not initialized"
         )
     return _engine
 
@@ -42,19 +42,20 @@ def _get_engine():
 # Request / Response models
 # ---------------------------------------------------------------------------
 
+
 class FeedbackEventRequest(BaseModel):
-    event_type:        str
-    user_id:           Optional[str] = None
-    user_role:         Optional[str] = None
-    entity_id:         Optional[str] = None
-    alert_id:          Optional[str] = None
-    mission_id:        Optional[str] = None
-    adapter_id:        Optional[str] = None
-    duration_seconds:  Optional[float] = None
-    success:           Optional[bool] = None
-    distance_m:        Optional[float] = None
+    event_type: str
+    user_id: Optional[str] = None
+    user_role: Optional[str] = None
+    entity_id: Optional[str] = None
+    alert_id: Optional[str] = None
+    mission_id: Optional[str] = None
+    adapter_id: Optional[str] = None
+    duration_seconds: Optional[float] = None
+    success: Optional[bool] = None
+    distance_m: Optional[float] = None
     battery_delta_pct: Optional[float] = None
-    extra:             dict = {}
+    extra: dict = {}
 
 
 class AlertScoreRequest(BaseModel):
@@ -62,21 +63,22 @@ class AlertScoreRequest(BaseModel):
 
 
 class MissionTemplateSuggestRequest(BaseModel):
-    asset_types:  list[str] = []
-    domain_tags:  list[str] = []
-    tags:         list[str] = []
-    domain:       Optional[str] = None
-    limit:        int = 5
+    asset_types: list[str] = []
+    domain_tags: list[str] = []
+    tags: list[str] = []
+    domain: Optional[str] = None
+    limit: int = 5
 
 
 class AssetRankRequest(BaseModel):
-    mission:           dict
-    candidates:        list[str]
+    mission: dict
+    candidates: list[str]
 
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("/feedback", status_code=202)
 async def submit_feedback(req: FeedbackEventRequest):
@@ -98,7 +100,7 @@ async def submit_feedback(req: FeedbackEventRequest):
     except ValueError:
         raise HTTPException(
             status_code=422,
-            detail=f"Unknown event_type '{req.event_type}'. Valid types: {[e.value for e in FeedbackEventType]}"
+            detail=f"Unknown event_type '{req.event_type}'. Valid types: {[e.value for e in FeedbackEventType]}",
         )
 
     event = FeedbackEvent(
@@ -140,7 +142,7 @@ async def list_asset_estimates():
         raise HTTPException(status_code=500, detail=str(exc))
     return {
         "assets": [e.to_dict() for e in estimates],
-        "total":  len(estimates),
+        "total": len(estimates),
     }
 
 
@@ -154,8 +156,7 @@ async def get_asset_estimate(entity_id: str):
         raise HTTPException(status_code=500, detail=str(exc))
     if estimate is None:
         raise HTTPException(
-            status_code=404,
-            detail=f"No capability estimate for asset '{entity_id}'"
+            status_code=404, detail=f"No capability estimate for asset '{entity_id}'"
         )
     return estimate.to_dict()
 
@@ -177,8 +178,7 @@ async def rank_assets(req: AssetRankRequest):
         raise HTTPException(status_code=500, detail=str(exc))
     return {
         "ranked_assets": [
-            {"entity_id": entity_id, "score": score}
-            for entity_id, score in ranked
+            {"entity_id": entity_id, "score": score} for entity_id, score in ranked
         ]
     }
 
@@ -198,7 +198,7 @@ async def list_alert_sources():
         raise HTTPException(status_code=500, detail=str(exc))
     return {
         "sources": [s.to_dict() for s in scores],
-        "total":   len(scores),
+        "total": len(scores),
     }
 
 
@@ -235,7 +235,7 @@ async def list_mission_patterns():
         raise HTTPException(status_code=500, detail=str(exc))
     return {
         "patterns": [p.to_dict() for p in patterns],
-        "total":    len(patterns),
+        "total": len(patterns),
     }
 
 
@@ -264,7 +264,7 @@ async def suggest_mission_templates(req: MissionTemplateSuggestRequest):
     context = {
         "asset_types": req.asset_types,
         "domain_tags": req.domain_tags or req.tags,
-        "domain":      req.domain,
+        "domain": req.domain,
     }
     try:
         suggestions = await engine.suggest_mission_templates(context, limit=req.limit)
@@ -272,7 +272,7 @@ async def suggest_mission_templates(req: MissionTemplateSuggestRequest):
         raise HTTPException(status_code=500, detail=str(exc))
     return {
         "suggestions": [p.to_dict() for p in suggestions],
-        "total":       len(suggestions),
+        "total": len(suggestions),
     }
 
 

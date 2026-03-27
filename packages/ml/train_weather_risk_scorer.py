@@ -57,12 +57,12 @@ RISK_LABELS = {0: "LOW", 1: "MEDIUM", 2: "HIGH", 3: "CRITICAL"}
 WEATHER_FEATURE_DIM = 21  # 15 base + 6 weather
 
 WEATHER_FEATURE_NAMES = FEATURE_NAMES + [
-    "wind_speed_mps_norm",   # [15]
-    "wind_gust_mps_norm",    # [16]
-    "humidity_pct_inv",      # [17]  (100 - humidity%) / 100
-    "temp_c_norm",           # [18]  (temp_c + 20) / 70
-    "precip_mm_norm",        # [19]  min(precip_mm / 50, 1.0)
-    "visibility_km_norm",    # [20]  min(visibility_km / 20, 1.0)
+    "wind_speed_mps_norm",  # [15]
+    "wind_gust_mps_norm",  # [16]
+    "humidity_pct_inv",  # [17]  (100 - humidity%) / 100
+    "temp_c_norm",  # [18]  (temp_c + 20) / 70
+    "precip_mm_norm",  # [19]  min(precip_mm / 50, 1.0)
+    "visibility_km_norm",  # [20]  min(visibility_km / 20, 1.0)
 ]
 
 # ── Scenario catalogue ────────────────────────────────────────────────────────
@@ -72,102 +72,107 @@ WEATHER_FEATURE_NAMES = FEATURE_NAMES + [
 
 _SCENARIOS = [
     # Fire / smoke
-    ("active fire front",       3),
-    ("wildfire",                 3),
-    ("smoke plume",              2),
-    ("smoke column",             2),
-    ("hotspot",                  2),
-    ("ember shower",             3),
-    ("burning structure",        3),
-    ("burning vehicle",          2),
+    ("active fire front", 3),
+    ("wildfire", 3),
+    ("smoke plume", 2),
+    ("smoke column", 2),
+    ("hotspot", 2),
+    ("ember shower", 3),
+    ("burning structure", 3),
+    ("burning vehicle", 2),
     # Flood / water
-    ("flash flood",              3),
-    ("flooding",                 2),
-    ("storm surge",              3),
-    ("levee breach",             3),
-    ("tsunami wave",             3),
-    ("rising water",             2),
-    ("submerged vehicle",        1),
+    ("flash flood", 3),
+    ("flooding", 2),
+    ("storm surge", 3),
+    ("levee breach", 3),
+    ("tsunami wave", 3),
+    ("rising water", 2),
+    ("submerged vehicle", 1),
     # SAR / people
-    ("missing person",           2),
-    ("stranded hiker",           2),
-    ("distress signal",          3),
-    ("man overboard",            3),
-    ("injured survivor",         2),
-    ("casualty",                 2),
+    ("missing person", 2),
+    ("stranded hiker", 2),
+    ("distress signal", 3),
+    ("man overboard", 3),
+    ("injured survivor", 2),
+    ("casualty", 2),
     # Hazmat
-    ("chemical spill",           3),
-    ("toxic gas leak",           3),
-    ("radiation leak",           3),
-    ("industrial explosion",     3),
-    ("ammonia release",          2),
-    ("hazmat plume",             2),
+    ("chemical spill", 3),
+    ("toxic gas leak", 3),
+    ("radiation leak", 3),
+    ("industrial explosion", 3),
+    ("ammonia release", 2),
+    ("hazmat plume", 2),
     # Infrastructure damage
-    ("bridge collapse",          3),
-    ("power line down",          2),
-    ("dam damage",               3),
-    ("pipeline rupture",         3),
-    ("tower collapse",           2),
+    ("bridge collapse", 3),
+    ("power line down", 2),
+    ("dam damage", 3),
+    ("pipeline rupture", 3),
+    ("tower collapse", 2),
     # Agricultural
-    ("crop drought stress",      1),
-    ("locust swarm",             2),
-    ("field fire",               2),
-    ("irrigation failure",       1),
+    ("crop drought stress", 1),
+    ("locust swarm", 2),
+    ("field fire", 2),
+    ("irrigation failure", 1),
     # Medical
-    ("mass casualty",            3),
-    ("field hospital overload",  2),
-    ("outbreak",                 2),
-    ("heat stroke cluster",      2),
-    ("hypothermia victim",       2),
+    ("mass casualty", 3),
+    ("field hospital overload", 2),
+    ("outbreak", 2),
+    ("heat stroke cluster", 2),
+    ("hypothermia victim", 2),
     # Security
-    ("perimeter intrusion",      2),
-    ("unauthorized vessel",      1),
-    ("suspicious activity",      1),
+    ("perimeter intrusion", 2),
+    ("unauthorized vessel", 1),
+    ("suspicious activity", 1),
     # Logistics / low risk baseline
-    ("delivery waypoint",        0),
-    ("supply drop",              0),
-    ("crop survey",              0),
-    ("wildlife survey",          0),
-    ("routine inspection",       0),
+    ("delivery waypoint", 0),
+    ("supply drop", 0),
+    ("crop survey", 0),
+    ("wildlife survey", 0),
+    ("routine inspection", 0),
 ]
 
 
 # ── Synthetic weather generation ──────────────────────────────────────────────
 
+
 def _sample_weather(rng: np.random.Generator) -> dict:
     """Sample random weather conditions."""
     wind_speed_mps = rng.uniform(0.0, 30.0)
-    wind_gust_mps  = wind_speed_mps + rng.uniform(0.0, 15.0)  # gust >= wind
-    humidity_pct   = rng.uniform(2.0, 100.0)
-    temp_c         = rng.uniform(-20.0, 50.0)
-    precip_mm      = rng.choice([0.0], p=[1.0]) if rng.random() < 0.45 else rng.exponential(8.0)
-    visibility_km  = rng.uniform(0.1, 40.0)
+    wind_gust_mps = wind_speed_mps + rng.uniform(0.0, 15.0)  # gust >= wind
+    humidity_pct = rng.uniform(2.0, 100.0)
+    temp_c = rng.uniform(-20.0, 50.0)
+    precip_mm = (
+        rng.choice([0.0], p=[1.0]) if rng.random() < 0.45 else rng.exponential(8.0)
+    )
+    visibility_km = rng.uniform(0.1, 40.0)
     return {
         "wind_speed_mps": float(wind_speed_mps),
-        "wind_gust_mps":  float(min(wind_gust_mps, 60.0)),
-        "humidity_pct":   float(humidity_pct),
-        "temp_c":         float(temp_c),
-        "precip_mm":      float(precip_mm),
-        "visibility_km":  float(visibility_km),
+        "wind_gust_mps": float(min(wind_gust_mps, 60.0)),
+        "humidity_pct": float(humidity_pct),
+        "temp_c": float(temp_c),
+        "precip_mm": float(precip_mm),
+        "visibility_km": float(visibility_km),
     }
 
 
 def _normalize_weather(w: dict) -> list:
     """Convert raw weather values to normalized [0,1] feature vector."""
     return [
-        min(w["wind_speed_mps"] / 30.0, 1.0),                         # [15]
-        min(w["wind_gust_mps"]  / 40.0, 1.0),                         # [16]
-        (100.0 - w["humidity_pct"]) / 100.0,                          # [17]
-        (w["temp_c"] - (-20.0)) / 70.0,                               # [18]
-        min(w["precip_mm"] / 50.0, 1.0),                              # [19]
-        min(w["visibility_km"] / 20.0, 1.0),                          # [20]
+        min(w["wind_speed_mps"] / 30.0, 1.0),  # [15]
+        min(w["wind_gust_mps"] / 40.0, 1.0),  # [16]
+        (100.0 - w["humidity_pct"]) / 100.0,  # [17]
+        (w["temp_c"] - (-20.0)) / 70.0,  # [18]
+        min(w["precip_mm"] / 50.0, 1.0),  # [19]
+        min(w["visibility_km"] / 20.0, 1.0),  # [20]
     ]
 
 
 # ── Weather amplification rules ───────────────────────────────────────────────
 
-def _apply_weather_modifier(base_risk: int, class_str: str,
-                             w: dict, rng: np.random.Generator) -> int:
+
+def _apply_weather_modifier(
+    base_risk: int, class_str: str, w: dict, rng: np.random.Generator
+) -> int:
     """
     Apply domain-expert weather amplification rules to a base risk level.
 
@@ -176,40 +181,73 @@ def _apply_weather_modifier(base_risk: int, class_str: str,
     rounding to add realistic label fuzziness.
     """
     cls = class_str.lower()
-    wind   = w["wind_speed_mps"]
-    gust   = w["wind_gust_mps"]
-    humid  = w["humidity_pct"]
-    temp   = w["temp_c"]
+    wind = w["wind_speed_mps"]
+    gust = w["wind_gust_mps"]
+    humid = w["humidity_pct"]
+    temp = w["temp_c"]
     precip = w["precip_mm"]
-    vis    = w["visibility_km"]
+    vis = w["visibility_km"]
 
     # Normalized equivalents for threshold checks
-    wind_n  = wind / 30.0
-    gust_n  = gust / 40.0
+    wind_n = wind / 30.0
+    gust_n = gust / 40.0
     humid_n = (100.0 - humid) / 100.0  # inverted: high = dry
     precip_n = min(precip / 50.0, 1.0)
-    vis_n   = min(vis / 20.0, 1.0)
-    temp_n  = (temp - (-20.0)) / 70.0
+    vis_n = min(vis / 20.0, 1.0)
+    temp_n = (temp - (-20.0)) / 70.0
 
     delta = 0.0  # modifier in risk-label units
 
-    is_fire    = any(kw in cls for kw in ["fire", "smoke", "ember", "hotspot", "burning", "wildfire", "blaze"])
-    is_flood   = any(kw in cls for kw in ["flood", "surge", "inundation", "tsunami", "rising water", "levee"])
-    is_sar     = any(kw in cls for kw in ["missing", "stranded", "distress", "casualty", "survivor", "overboard"])
-    is_hazmat  = any(kw in cls for kw in ["hazmat", "chemical", "spill", "toxic", "gas", "radiation", "plume", "ammonia"])
-    is_infra   = any(kw in cls for kw in ["bridge", "dam", "power line", "tower", "pipeline", "levee"])
-    is_agri    = any(kw in cls for kw in ["crop", "drought", "field", "farm", "irrigation"])
+    is_fire = any(
+        kw in cls
+        for kw in ["fire", "smoke", "ember", "hotspot", "burning", "wildfire", "blaze"]
+    )
+    is_flood = any(
+        kw in cls
+        for kw in ["flood", "surge", "inundation", "tsunami", "rising water", "levee"]
+    )
+    is_sar = any(
+        kw in cls
+        for kw in [
+            "missing",
+            "stranded",
+            "distress",
+            "casualty",
+            "survivor",
+            "overboard",
+        ]
+    )
+    is_hazmat = any(
+        kw in cls
+        for kw in [
+            "hazmat",
+            "chemical",
+            "spill",
+            "toxic",
+            "gas",
+            "radiation",
+            "plume",
+            "ammonia",
+        ]
+    )
+    is_infra = any(
+        kw in cls
+        for kw in ["bridge", "dam", "power line", "tower", "pipeline", "levee"]
+    )
+    is_agri = any(
+        kw in cls for kw in ["crop", "drought", "field", "farm", "irrigation"]
+    )
 
     # ── Fire / smoke rules ──────────────────────────────────────────────────
     if is_fire:
         # Dry + windy → maximum escalation
         if wind_n > 0.5 and humid_n > 0.7:
-            delta += 1.5   # → CRITICAL
+            delta += 1.5  # → CRITICAL
         elif wind_n > 0.3 and humid_n > 0.5:
-            delta += 0.8   # → HIGH/CRITICAL
+            delta += 0.8  # → HIGH/CRITICAL
         # Raining + calm → downgrade
         if precip_n > 0.3 and wind_n < 0.2:
-            delta -= 1.5   # → MEDIUM/LOW
+            delta -= 1.5  # → MEDIUM/LOW
         elif precip_n > 0.1:
             delta -= 0.5
 
@@ -217,7 +255,7 @@ def _apply_weather_modifier(base_risk: int, class_str: str,
     if is_flood:
         # Heavy rain + strong gust = active storm surge
         if precip_n > 0.5 and gust_n > 0.5:
-            delta += 1.5   # → CRITICAL
+            delta += 1.5  # → CRITICAL
         elif precip_n > 0.3:
             delta += 0.5
         # No rain, stale flood detection → downgrade
@@ -228,7 +266,7 @@ def _apply_weather_modifier(base_risk: int, class_str: str,
     if is_sar:
         # Low visibility makes SAR harder
         if vis_n < 0.3:
-            delta += 0.8   # fog/smoke — harder to find
+            delta += 0.8  # fog/smoke — harder to find
         elif vis_n < 0.5:
             delta += 0.4
         # Cold weather → hypothermia risk
@@ -241,7 +279,7 @@ def _apply_weather_modifier(base_risk: int, class_str: str,
     if is_hazmat:
         # Wind spreads plume
         if wind_n > 0.6:
-            delta += 1.0   # plume spreading rapidly
+            delta += 1.0  # plume spreading rapidly
         elif wind_n > 0.4:
             delta += 0.5
         # Calm: plume stays local, slightly less critical
@@ -259,7 +297,7 @@ def _apply_weather_modifier(base_risk: int, class_str: str,
     # ── Agricultural / drought rules ─────────────────────────────────────────
     if is_agri and "drought" in cls:
         if humid_n > 0.8 and temp_n > 0.7:
-            delta += 1.5   # extreme fire risk conditions
+            delta += 1.5  # extreme fire risk conditions
         elif humid_n > 0.6:
             delta += 0.6
 
@@ -273,9 +311,8 @@ def _apply_weather_modifier(base_risk: int, class_str: str,
 
 # ── Data generation ───────────────────────────────────────────────────────────
 
-def generate_weather_risk_samples(n_samples: int,
-                                  rng_seed: int = 42
-                                  ) -> tuple:
+
+def generate_weather_risk_samples(n_samples: int, rng_seed: int = 42) -> tuple:
     """
     Generate n_samples (X, y) pairs with 21-float feature vectors.
 
@@ -296,10 +333,10 @@ def generate_weather_risk_samples(n_samples: int,
         # Build base observation (lat/lon ~50% present)
         has_loc = rng.random() > 0.5
         obs = {
-            "class":      cls_str,
+            "class": cls_str,
             "confidence": confidence,
-            "lat":        float(rng.uniform(-60.0, 80.0)) if has_loc else None,
-            "lon":        float(rng.uniform(-180.0, 180.0)) if has_loc else None,
+            "lat": float(rng.uniform(-60.0, 80.0)) if has_loc else None,
+            "lon": float(rng.uniform(-180.0, 180.0)) if has_loc else None,
         }
 
         # Extract 15-float base feature vector
@@ -324,8 +361,8 @@ def generate_weather_risk_samples(n_samples: int,
 
 # ── Feature importance (permutation-based for HGBT) ──────────────────────────
 
-def _weather_feature_importances(model, X_test: np.ndarray,
-                                  y_test: np.ndarray) -> None:
+
+def _weather_feature_importances(model, X_test: np.ndarray, y_test: np.ndarray) -> None:
     """Print permutation importance for weather features (indices 15-20)."""
     from sklearn.metrics import accuracy_score
 
@@ -347,6 +384,7 @@ def _weather_feature_importances(model, X_test: np.ndarray,
 
 # ── Weather comparison examples ───────────────────────────────────────────────
 
+
 def _print_weather_examples(model) -> None:
     """
     Print 5 example predictions showing how weather changes the risk score.
@@ -356,59 +394,109 @@ def _print_weather_examples(model) -> None:
 
     examples = [
         {
-            "desc":   "Wildfire smoke — calm rainy vs. dry windy",
-            "class":  "smoke plume",
-            "conf":   0.88,
-            "calm":   {"wind_speed_mps": 2.0,  "wind_gust_mps": 3.0,
-                       "humidity_pct": 85.0, "temp_c": 18.0,
-                       "precip_mm": 12.0, "visibility_km": 15.0},
-            "severe": {"wind_speed_mps": 22.0, "wind_gust_mps": 35.0,
-                       "humidity_pct": 6.0,  "temp_c": 38.0,
-                       "precip_mm": 0.0,  "visibility_km": 4.0},
+            "desc": "Wildfire smoke — calm rainy vs. dry windy",
+            "class": "smoke plume",
+            "conf": 0.88,
+            "calm": {
+                "wind_speed_mps": 2.0,
+                "wind_gust_mps": 3.0,
+                "humidity_pct": 85.0,
+                "temp_c": 18.0,
+                "precip_mm": 12.0,
+                "visibility_km": 15.0,
+            },
+            "severe": {
+                "wind_speed_mps": 22.0,
+                "wind_gust_mps": 35.0,
+                "humidity_pct": 6.0,
+                "temp_c": 38.0,
+                "precip_mm": 0.0,
+                "visibility_km": 4.0,
+            },
         },
         {
-            "desc":   "Flash flood — no rain vs. active storm",
-            "class":  "flash flood",
-            "conf":   0.75,
-            "calm":   {"wind_speed_mps": 3.0,  "wind_gust_mps": 5.0,
-                       "humidity_pct": 60.0, "temp_c": 20.0,
-                       "precip_mm": 0.0,  "visibility_km": 18.0},
-            "severe": {"wind_speed_mps": 18.0, "wind_gust_mps": 28.0,
-                       "humidity_pct": 95.0, "temp_c": 15.0,
-                       "precip_mm": 35.0, "visibility_km": 3.0},
+            "desc": "Flash flood — no rain vs. active storm",
+            "class": "flash flood",
+            "conf": 0.75,
+            "calm": {
+                "wind_speed_mps": 3.0,
+                "wind_gust_mps": 5.0,
+                "humidity_pct": 60.0,
+                "temp_c": 20.0,
+                "precip_mm": 0.0,
+                "visibility_km": 18.0,
+            },
+            "severe": {
+                "wind_speed_mps": 18.0,
+                "wind_gust_mps": 28.0,
+                "humidity_pct": 95.0,
+                "temp_c": 15.0,
+                "precip_mm": 35.0,
+                "visibility_km": 3.0,
+            },
         },
         {
-            "desc":   "Missing person SAR — clear day vs. fog + cold",
-            "class":  "missing person",
-            "conf":   0.80,
-            "calm":   {"wind_speed_mps": 4.0,  "wind_gust_mps": 6.0,
-                       "humidity_pct": 55.0, "temp_c": 22.0,
-                       "precip_mm": 0.0,  "visibility_km": 20.0},
-            "severe": {"wind_speed_mps": 8.0,  "wind_gust_mps": 12.0,
-                       "humidity_pct": 92.0, "temp_c": 1.0,
-                       "precip_mm": 4.0,  "visibility_km": 0.5},
+            "desc": "Missing person SAR — clear day vs. fog + cold",
+            "class": "missing person",
+            "conf": 0.80,
+            "calm": {
+                "wind_speed_mps": 4.0,
+                "wind_gust_mps": 6.0,
+                "humidity_pct": 55.0,
+                "temp_c": 22.0,
+                "precip_mm": 0.0,
+                "visibility_km": 20.0,
+            },
+            "severe": {
+                "wind_speed_mps": 8.0,
+                "wind_gust_mps": 12.0,
+                "humidity_pct": 92.0,
+                "temp_c": 1.0,
+                "precip_mm": 4.0,
+                "visibility_km": 0.5,
+            },
         },
         {
-            "desc":   "Chemical spill — calm vs. high wind (plume spread)",
-            "class":  "chemical spill",
-            "conf":   0.90,
-            "calm":   {"wind_speed_mps": 0.5,  "wind_gust_mps": 1.0,
-                       "humidity_pct": 60.0, "temp_c": 20.0,
-                       "precip_mm": 0.0,  "visibility_km": 15.0},
-            "severe": {"wind_speed_mps": 20.0, "wind_gust_mps": 30.0,
-                       "humidity_pct": 45.0, "temp_c": 25.0,
-                       "precip_mm": 0.0,  "visibility_km": 8.0},
+            "desc": "Chemical spill — calm vs. high wind (plume spread)",
+            "class": "chemical spill",
+            "conf": 0.90,
+            "calm": {
+                "wind_speed_mps": 0.5,
+                "wind_gust_mps": 1.0,
+                "humidity_pct": 60.0,
+                "temp_c": 20.0,
+                "precip_mm": 0.0,
+                "visibility_km": 15.0,
+            },
+            "severe": {
+                "wind_speed_mps": 20.0,
+                "wind_gust_mps": 30.0,
+                "humidity_pct": 45.0,
+                "temp_c": 25.0,
+                "precip_mm": 0.0,
+                "visibility_km": 8.0,
+            },
         },
         {
-            "desc":   "Agricultural drought — humid cool vs. extreme heat/dry",
-            "class":  "crop drought stress",
-            "conf":   0.70,
-            "calm":   {"wind_speed_mps": 3.0,  "wind_gust_mps": 5.0,
-                       "humidity_pct": 70.0, "temp_c": 15.0,
-                       "precip_mm": 5.0,  "visibility_km": 20.0},
-            "severe": {"wind_speed_mps": 10.0, "wind_gust_mps": 18.0,
-                       "humidity_pct": 8.0,  "temp_c": 44.0,
-                       "precip_mm": 0.0,  "visibility_km": 10.0},
+            "desc": "Agricultural drought — humid cool vs. extreme heat/dry",
+            "class": "crop drought stress",
+            "conf": 0.70,
+            "calm": {
+                "wind_speed_mps": 3.0,
+                "wind_gust_mps": 5.0,
+                "humidity_pct": 70.0,
+                "temp_c": 15.0,
+                "precip_mm": 5.0,
+                "visibility_km": 20.0,
+            },
+            "severe": {
+                "wind_speed_mps": 10.0,
+                "wind_gust_mps": 18.0,
+                "humidity_pct": 8.0,
+                "temp_c": 44.0,
+                "precip_mm": 0.0,
+                "visibility_km": 10.0,
+            },
         },
     ]
 
@@ -417,23 +505,32 @@ def _print_weather_examples(model) -> None:
     print("=" * 65)
 
     for ex in examples:
-        obs = {"class": ex["class"], "confidence": ex["conf"],
-               "lat": 35.0, "lon": -118.0}
+        obs = {
+            "class": ex["class"],
+            "confidence": ex["conf"],
+            "lat": 35.0,
+            "lon": -118.0,
+        }
         base_feat = feat_extract(obs)
 
-        row_calm   = np.array([base_feat + _normalize_weather(ex["calm"])],
-                               dtype=np.float32)
-        row_severe = np.array([base_feat + _normalize_weather(ex["severe"])],
-                               dtype=np.float32)
+        row_calm = np.array(
+            [base_feat + _normalize_weather(ex["calm"])], dtype=np.float32
+        )
+        row_severe = np.array(
+            [base_feat + _normalize_weather(ex["severe"])], dtype=np.float32
+        )
 
-        pred_calm   = model.predict(row_calm)[0]
+        pred_calm = model.predict(row_calm)[0]
         pred_severe = model.predict(row_severe)[0]
 
-        label_calm   = RISK_LABELS[int(pred_calm)]
+        label_calm = RISK_LABELS[int(pred_calm)]
         label_severe = RISK_LABELS[int(pred_severe)]
 
-        changed = " <-- ESCALATED" if pred_severe > pred_calm else (
-                  " <-- DOWNGRADED" if pred_severe < pred_calm else "")
+        changed = (
+            " <-- ESCALATED"
+            if pred_severe > pred_calm
+            else (" <-- DOWNGRADED" if pred_severe < pred_calm else "")
+        )
 
         print(f"\n  {ex['desc']}")
         print(f"    Calm conditions :  {label_calm:<8}")
@@ -442,19 +539,21 @@ def _print_weather_examples(model) -> None:
 
 # ── Training ──────────────────────────────────────────────────────────────────
 
+
 def load_real_csv(csv_path: str):
     """Load real observations and map to weather risk scorer feature space (21 floats)."""
     import csv as _csv
+
     label_inv = {v: k for k, v in RISK_LABELS.items()}
     X, y = [], []
     # Default neutral weather (temperate, calm) for rows without weather data
     default_weather = {
         "wind_speed_mps": 5.0,
-        "wind_gust_mps":  8.0,
-        "humidity_pct":   55.0,
-        "temp_c":         18.0,
-        "precip_mm":      0.0,
-        "visibility_km":  15.0,
+        "wind_gust_mps": 8.0,
+        "humidity_pct": 55.0,
+        "temp_c": 18.0,
+        "precip_mm": 0.0,
+        "visibility_km": 15.0,
     }
     try:
         with open(csv_path, newline="") as f:
@@ -481,14 +580,21 @@ def load_real_csv(csv_path: str):
                     y.append(label)
                 except (ValueError, KeyError):
                     continue
-        print(f"  Loaded {len(X)} real weather-risk samples from {os.path.basename(csv_path)}")
+        print(
+            f"  Loaded {len(X)} real weather-risk samples from {os.path.basename(csv_path)}"
+        )
     except FileNotFoundError:
         print(f"  CSV not found: {csv_path}")
-    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+    return (
+        (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64))
+        if X
+        else (None, None)
+    )
 
 
-def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
-          real_csv: str = None):
+def train(
+    n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR, real_csv: str = None
+):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
@@ -508,6 +614,7 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
         if X_real is not None:
             from collections import defaultdict
             import random as _rand
+
             _rand.seed(42)
             syn_counts = defaultdict(int)
             for lbl in y:
@@ -525,7 +632,9 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
             if real_capped_X:
                 X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
                 y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
-                print(f"  Real data (capped): { {RISK_LABELS[k]: v for k, v in real_counts.items()} }")
+                print(
+                    f"  Real data (capped): { {RISK_LABELS[k]: v for k, v in real_counts.items()} }"
+                )
                 print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     dist = Counter(RISK_LABELS[i] for i in y.tolist())
@@ -569,9 +678,11 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
     target_names = [RISK_LABELS[i] for i in sorted(RISK_LABELS)]
 
     print("Classification report (test set):")
-    print(classification_report(y_test, y_pred,
-                                 target_names=target_names,
-                                 zero_division=0))
+    print(
+        classification_report(
+            y_test, y_pred, target_names=target_names, zero_division=0
+        )
+    )
 
     # ── Weather feature importances ─────────────────────────────────────────
     _weather_feature_importances(model, X_test, y_test)
@@ -603,20 +714,20 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
         "base_feature_dim": FEATURE_DIM,
         "weather_feature_dim": 6,
         "weather_feature_indices": {
-            "wind_speed_mps_norm":  15,
-            "wind_gust_mps_norm":   16,
-            "humidity_pct_inv":     17,
-            "temp_c_norm":          18,
-            "precip_mm_norm":       19,
-            "visibility_km_norm":   20,
+            "wind_speed_mps_norm": 15,
+            "wind_gust_mps_norm": 16,
+            "humidity_pct_inv": 17,
+            "temp_c_norm": 18,
+            "precip_mm_norm": 19,
+            "visibility_km_norm": 20,
         },
         "normalization": {
-            "wind_speed_mps_norm":  "raw_value / 30.0  (clip to 1.0)",
-            "wind_gust_mps_norm":   "raw_value / 40.0  (clip to 1.0)",
-            "humidity_pct_inv":     "(100 - humidity_pct) / 100",
-            "temp_c_norm":          "(temp_c - (-20)) / 70  (range -20C to 50C)",
-            "precip_mm_norm":       "min(precip_mm / 50, 1.0)",
-            "visibility_km_norm":   "min(visibility_km / 20, 1.0)",
+            "wind_speed_mps_norm": "raw_value / 30.0  (clip to 1.0)",
+            "wind_gust_mps_norm": "raw_value / 40.0  (clip to 1.0)",
+            "humidity_pct_inv": "(100 - humidity_pct) / 100",
+            "temp_c_norm": "(temp_c - (-20)) / 70  (range -20C to 50C)",
+            "precip_mm_norm": "min(precip_mm / 50, 1.0)",
+            "visibility_km_norm": "min(visibility_km / 20, 1.0)",
         },
         "risk_labels": {str(k): v for k, v in RISK_LABELS.items()},
         "onnx_input_name": "float_input",
@@ -633,25 +744,68 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
     try:
         import onnxruntime as ort
 
-        sess = ort.InferenceSession(
-            str(onnx_path), providers=["CPUExecutionProvider"]
-        )
+        sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
         test_cases = [
-            ("active fire front",   0.95, {"wind_speed_mps": 25.0, "wind_gust_mps": 35.0,
-                                            "humidity_pct": 4.0,  "temp_c": 40.0,
-                                            "precip_mm": 0.0, "visibility_km": 5.0}),
-            ("active fire front",   0.95, {"wind_speed_mps": 2.0,  "wind_gust_mps": 3.0,
-                                            "humidity_pct": 88.0, "temp_c": 15.0,
-                                            "precip_mm": 20.0, "visibility_km": 12.0}),
-            ("missing person",      0.82, {"wind_speed_mps": 5.0,  "wind_gust_mps": 8.0,
-                                            "humidity_pct": 90.0, "temp_c": 0.5,
-                                            "precip_mm": 2.0, "visibility_km": 0.4}),
-            ("chemical spill",      0.91, {"wind_speed_mps": 18.0, "wind_gust_mps": 24.0,
-                                            "humidity_pct": 50.0, "temp_c": 22.0,
-                                            "precip_mm": 0.0, "visibility_km": 8.0}),
-            ("delivery waypoint",   0.97, {"wind_speed_mps": 3.0,  "wind_gust_mps": 5.0,
-                                            "humidity_pct": 60.0, "temp_c": 18.0,
-                                            "precip_mm": 1.0, "visibility_km": 20.0}),
+            (
+                "active fire front",
+                0.95,
+                {
+                    "wind_speed_mps": 25.0,
+                    "wind_gust_mps": 35.0,
+                    "humidity_pct": 4.0,
+                    "temp_c": 40.0,
+                    "precip_mm": 0.0,
+                    "visibility_km": 5.0,
+                },
+            ),
+            (
+                "active fire front",
+                0.95,
+                {
+                    "wind_speed_mps": 2.0,
+                    "wind_gust_mps": 3.0,
+                    "humidity_pct": 88.0,
+                    "temp_c": 15.0,
+                    "precip_mm": 20.0,
+                    "visibility_km": 12.0,
+                },
+            ),
+            (
+                "missing person",
+                0.82,
+                {
+                    "wind_speed_mps": 5.0,
+                    "wind_gust_mps": 8.0,
+                    "humidity_pct": 90.0,
+                    "temp_c": 0.5,
+                    "precip_mm": 2.0,
+                    "visibility_km": 0.4,
+                },
+            ),
+            (
+                "chemical spill",
+                0.91,
+                {
+                    "wind_speed_mps": 18.0,
+                    "wind_gust_mps": 24.0,
+                    "humidity_pct": 50.0,
+                    "temp_c": 22.0,
+                    "precip_mm": 0.0,
+                    "visibility_km": 8.0,
+                },
+            ),
+            (
+                "delivery waypoint",
+                0.97,
+                {
+                    "wind_speed_mps": 3.0,
+                    "wind_gust_mps": 5.0,
+                    "humidity_pct": 60.0,
+                    "temp_c": 18.0,
+                    "precip_mm": 1.0,
+                    "visibility_km": 20.0,
+                },
+            ),
         ]
         for cls_str, conf, w in test_cases:
             obs = {"class": cls_str, "confidence": conf, "lat": 35.0, "lon": -118.0}
@@ -674,21 +828,28 @@ def train(n_samples: int = 80000, output_dir: Path = DEFAULT_OUTPUT_DIR,
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Train Summit.OS weather-adjusted risk scorer"
     )
     parser.add_argument(
-        "--samples", type=int, default=80000,
-        help="Number of synthetic training samples (default: 80000)"
+        "--samples",
+        type=int,
+        default=80000,
+        help="Number of synthetic training samples (default: 80000)",
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR,
-        help=f"Output directory for .onnx + .json (default: {DEFAULT_OUTPUT_DIR})"
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help=f"Output directory for .onnx + .json (default: {DEFAULT_OUTPUT_DIR})",
     )
     parser.add_argument(
-        "--real-csv", dest="real_csv", default=None,
-        help="Path to real observations CSV to blend with synthetic data"
+        "--real-csv",
+        dest="real_csv",
+        default=None,
+        help="Path to real observations CSV to blend with synthetic data",
     )
     args = parser.parse_args()
     train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

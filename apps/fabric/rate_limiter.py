@@ -19,6 +19,7 @@ Behavior:
     - Violations logged at WARNING level with source and drop count
     - Violations exposed as Prometheus counter (if prometheus_client available)
 """
+
 from __future__ import annotations
 
 import json
@@ -31,8 +32,8 @@ from typing import Dict, Optional
 logger = logging.getLogger("summit.fabric.ratelimit")
 
 _RATE_LIMIT_ENABLED = os.getenv("MQTT_RATE_LIMIT_ENABLED", "true").lower() == "true"
-_DEFAULT_RATE = float(os.getenv("MQTT_RATE_LIMIT_DEFAULT", "50"))   # msgs/sec
-_DEFAULT_BURST = float(os.getenv("MQTT_RATE_LIMIT_BURST", "100"))    # burst
+_DEFAULT_RATE = float(os.getenv("MQTT_RATE_LIMIT_DEFAULT", "50"))  # msgs/sec
+_DEFAULT_BURST = float(os.getenv("MQTT_RATE_LIMIT_BURST", "100"))  # burst
 
 # Parse per-source overrides
 _SOURCE_OVERRIDES: Dict[str, float] = {}
@@ -45,6 +46,7 @@ except Exception:
 # Prometheus counter (optional)
 try:
     from prometheus_client import Counter
+
     _DROPPED_MSGS = Counter(
         "summit_mqtt_rate_limited_total",
         "Total MQTT messages dropped by rate limiter",
@@ -68,7 +70,7 @@ class _TokenBucket:
     def __init__(self, rate: float, burst: float):
         self.rate = rate
         self.burst = burst
-        self.tokens = burst          # start full
+        self.tokens = burst  # start full
         self._last_refill = time.monotonic()
         self._drop_count = 0
 

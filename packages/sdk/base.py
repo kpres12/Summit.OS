@@ -4,6 +4,7 @@ BaseAdapter — the base class every Summit.OS adapter should extend.
 Handles lifecycle (start/stop), MQTT publishing via AdapterPublisher,
 manifest validation, and missing env var warnings.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -57,7 +58,9 @@ class BaseAdapter(ABC):
         mqtt_password: Optional[str] = None,
     ):
         if not hasattr(self, "MANIFEST") or self.MANIFEST is None:
-            raise TypeError(f"{self.__class__.__name__} must define a MANIFEST class attribute")
+            raise TypeError(
+                f"{self.__class__.__name__} must define a MANIFEST class attribute"
+            )
 
         # Validate manifest
         errors = self.MANIFEST.validate()
@@ -133,7 +136,9 @@ class BaseAdapter(ABC):
         try:
             await self.run()
         except Exception as e:
-            logger.error(f"Adapter '{self.MANIFEST.name}' run() raised: {e}", exc_info=True)
+            logger.error(
+                f"Adapter '{self.MANIFEST.name}' run() raised: {e}", exc_info=True
+            )
         finally:
             self._publisher.disconnect()
             logger.info(

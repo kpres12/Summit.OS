@@ -115,43 +115,43 @@ _COMPLEMENTARY_SET = frozenset(_COMPLEMENTARY_PAIRS)
 
 # Domain groupings (must match features.py categories)
 _DOMAIN_MAP = {
-    "fire":        "fire_smoke",
-    "smoke":       "fire_smoke",
-    "wildfire":    "fire_smoke",
-    "ember":       "fire_smoke",
-    "hotspot":     "fire_smoke",
-    "flood":       "flood_water",
-    "inundation":  "flood_water",
-    "surge":       "flood_water",
-    "submerged":   "flood_water",
-    "tsunami":     "flood_water",
-    "person":      "person",
-    "survivor":    "person",
-    "missing":     "person",
-    "stranded":    "person",
-    "vehicle":     "vehicle",
-    "drone":       "vehicle",
-    "uav":         "vehicle",
-    "vessel":      "vehicle",
-    "boat":        "vehicle",
-    "ship":        "vehicle",
-    "chemical":    "hazmat",
-    "spill":       "hazmat",
-    "plume":       "hazmat",
-    "toxic":       "hazmat",
-    "collapse":    "structural",
-    "earthquake":  "structural",
-    "landslide":   "structural",
+    "fire": "fire_smoke",
+    "smoke": "fire_smoke",
+    "wildfire": "fire_smoke",
+    "ember": "fire_smoke",
+    "hotspot": "fire_smoke",
+    "flood": "flood_water",
+    "inundation": "flood_water",
+    "surge": "flood_water",
+    "submerged": "flood_water",
+    "tsunami": "flood_water",
+    "person": "person",
+    "survivor": "person",
+    "missing": "person",
+    "stranded": "person",
+    "vehicle": "vehicle",
+    "drone": "vehicle",
+    "uav": "vehicle",
+    "vessel": "vehicle",
+    "boat": "vehicle",
+    "ship": "vehicle",
+    "chemical": "hazmat",
+    "spill": "hazmat",
+    "plume": "hazmat",
+    "toxic": "hazmat",
+    "collapse": "structural",
+    "earthquake": "structural",
+    "landslide": "structural",
 }
 
 # Domain lists used during synthesis
 _DOMAINS = {
-    "fire_smoke":  ["fire", "smoke", "wildfire", "ember", "hotspot"],
+    "fire_smoke": ["fire", "smoke", "wildfire", "ember", "hotspot"],
     "flood_water": ["flood", "inundation", "surge", "submerged", "tsunami"],
-    "person":      ["person", "survivor", "missing", "stranded"],
-    "vehicle":     ["vehicle", "drone", "uav", "vessel", "boat"],
-    "hazmat":      ["chemical", "spill", "plume", "toxic"],
-    "structural":  ["collapse", "earthquake", "landslide"],
+    "person": ["person", "survivor", "missing", "stranded"],
+    "vehicle": ["vehicle", "drone", "uav", "vessel", "boat"],
+    "hazmat": ["chemical", "spill", "plume", "toxic"],
+    "structural": ["collapse", "earthquake", "landslide"],
 }
 _DOMAIN_NAMES = list(_DOMAINS.keys())
 
@@ -197,25 +197,43 @@ def _build_feature_vector(
     long_gap = float(time_s > 600)
     escalating = float(conf_b > conf_a)
 
-    vec = np.array([
-        dist_km, time_s, conf_a, conf_b, conf_diff,
-        same_domain, same_class, complementary,
-        dot_prod, l2_dist,
-        float(has_loc), bearing_norm, wind_align, float(same_sensor),
-        rapid, close, medium, far, long_gap, escalating,
-    ], dtype=np.float32)
+    vec = np.array(
+        [
+            dist_km,
+            time_s,
+            conf_a,
+            conf_b,
+            conf_diff,
+            same_domain,
+            same_class,
+            complementary,
+            dot_prod,
+            l2_dist,
+            float(has_loc),
+            bearing_norm,
+            wind_align,
+            float(same_sensor),
+            rapid,
+            close,
+            medium,
+            far,
+            long_gap,
+            escalating,
+        ],
+        dtype=np.float32,
+    )
 
     # Add small Gaussian noise to continuous features only
     noise = noise_rng.normal(0, 0.05, FEATURE_DIM).astype(np.float32)
-    noise[5:8] = 0.0   # binary class-match flags — no noise
-    noise[10] = 0.0    # both_have_location
-    noise[13] = 0.0    # sensor_same_type
-    noise[14:] = 0.0   # binary derived flags
+    noise[5:8] = 0.0  # binary class-match flags — no noise
+    noise[10] = 0.0  # both_have_location
+    noise[13] = 0.0  # sensor_same_type
+    noise[14:] = 0.0  # binary derived flags
     vec = vec + noise
 
     # Clip continuous features to valid ranges
-    vec[0] = max(0.0, vec[0])   # distance >= 0
-    vec[1] = max(0.0, vec[1])   # time >= 0
+    vec[0] = max(0.0, vec[0])  # distance >= 0
+    vec[1] = max(0.0, vec[1])  # time >= 0
     vec[2] = float(np.clip(vec[2], 0.0, 1.0))
     vec[3] = float(np.clip(vec[3], 0.0, 1.0))
     vec[4] = float(np.clip(vec[4], 0.0, 1.0))
@@ -235,8 +253,12 @@ def _make_feature_vec_for_class(rng, cls: str) -> np.ndarray:
     vec[1] = 1.0  # has_location
 
     domain_to_idx = {
-        "fire_smoke": 2, "person": 3, "flood_water": 4,
-        "structural": 5, "vehicle": 6, "hazmat": 7,
+        "fire_smoke": 2,
+        "person": 3,
+        "flood_water": 4,
+        "structural": 5,
+        "vehicle": 6,
+        "hazmat": 7,
     }
     idx = domain_to_idx.get(domain)
     if idx is not None:
@@ -247,6 +269,7 @@ def _make_feature_vec_for_class(rng, cls: str) -> np.ndarray:
 # ---------------------------------------------------------------------------
 # Synthetic data generation
 # ---------------------------------------------------------------------------
+
 
 def generate_data(n_total: int = 70000, seed: int = 42):
     """
@@ -284,9 +307,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, True, float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            True,
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -306,9 +338,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fb = fa.copy()
         fb[0] = conf_b
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, True, float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), True,
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            True,
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            True,
             rng,
         )
         samples_X.append(vec)
@@ -326,9 +367,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, True, float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            True,
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -347,9 +397,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, True, float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            True,
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -368,9 +427,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, True, float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            True,
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -394,9 +462,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, bool(rng.integers(0, 2)), float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            bool(rng.integers(0, 2)),
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -423,9 +500,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, bool(rng.integers(0, 2)), float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            bool(rng.integers(0, 2)),
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -445,9 +531,18 @@ def generate_data(n_total: int = 70000, seed: int = 42):
         fa = _make_feature_vec_for_class(rng, cls_a)
         fb = _make_feature_vec_for_class(rng, cls_b)
         vec = _build_feature_vector(
-            dist, t, conf_a, conf_b, cls_a, cls_b,
-            fa, fb, bool(rng.integers(0, 2)), float(rng.uniform(0, 1)),
-            float(rng.uniform(0, 1)), bool(rng.integers(0, 2)),
+            dist,
+            t,
+            conf_a,
+            conf_b,
+            cls_a,
+            cls_b,
+            fa,
+            fb,
+            bool(rng.integers(0, 2)),
+            float(rng.uniform(0, 1)),
+            float(rng.uniform(0, 1)),
+            bool(rng.integers(0, 2)),
             rng,
         )
         samples_X.append(vec)
@@ -465,6 +560,7 @@ def generate_data(n_total: int = 70000, seed: int = 42):
 # Training
 # ---------------------------------------------------------------------------
 
+
 def load_real_csv(csv_path: str):
     """Load real observations and form detection pairs for incident correlator.
 
@@ -481,7 +577,10 @@ def load_real_csv(csv_path: str):
         phi1, phi2 = math.radians(lat1), math.radians(lat2)
         dphi = math.radians(lat2 - lat1)
         dlam = math.radians(lon2 - lon1)
-        a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+        a = (
+            math.sin(dphi / 2) ** 2
+            + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+        )
         return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     rows = []
@@ -494,7 +593,9 @@ def load_real_csv(csv_path: str):
                     lat = float(row["lat"])
                     lon = float(row["lon"])
                     cls = row["class"].strip().lower()
-                    rows.append({"class": cls, "confidence": conf, "lat": lat, "lon": lon})
+                    rows.append(
+                        {"class": cls, "confidence": conf, "lat": lat, "lon": lon}
+                    )
                 except (ValueError, KeyError):
                     continue
     except FileNotFoundError:
@@ -508,8 +609,12 @@ def load_real_csv(csv_path: str):
         v[1] = 1.0  # has location
         domain = _get_domain(r["class"].split()[0] if r["class"] else "")
         domain_to_idx = {
-            "fire_smoke": 2, "person": 3, "flood_water": 4,
-            "structural": 5, "vehicle": 6, "hazmat": 7,
+            "fire_smoke": 2,
+            "person": 3,
+            "flood_water": 4,
+            "structural": 5,
+            "vehicle": 6,
+            "hazmat": 7,
         }
         idx = domain_to_idx.get(domain)
         if idx is not None:
@@ -518,10 +623,12 @@ def load_real_csv(csv_path: str):
 
     X, y = [], []
     import random as _rand
+
     _rand.seed(42)
 
     # Group by class for same-incident pairs
     from collections import defaultdict
+
     by_class = defaultdict(list)
     for r in rows:
         by_class[r["class"]].append(r)
@@ -538,11 +645,19 @@ def load_real_csv(csv_path: str):
                 fa = _row_feat(a)
                 fb = _row_feat(b)
                 vec = _build_feature_vector(
-                    dist, time_s, a["confidence"], b["confidence"],
-                    a["class"].split()[0], b["class"].split()[0],
-                    fa, fb, True,
-                    float(_rand.uniform(0, 1)), float(_rand.uniform(0, 1)),
-                    True, np.random.default_rng(42),
+                    dist,
+                    time_s,
+                    a["confidence"],
+                    b["confidence"],
+                    a["class"].split()[0],
+                    b["class"].split()[0],
+                    fa,
+                    fb,
+                    True,
+                    float(_rand.uniform(0, 1)),
+                    float(_rand.uniform(0, 1)),
+                    True,
+                    np.random.default_rng(42),
                 )
                 X.append(vec)
                 y.append(1)
@@ -550,7 +665,7 @@ def load_real_csv(csv_path: str):
                 continue
 
     # Different-incident pairs: random rows of different classes
-    row_list = rows[:min(len(rows), 20000)]
+    row_list = rows[: min(len(rows), 20000)]
     _rand.shuffle(row_list)
     n_diff = min(len(X), len(row_list) // 2)
     for i in range(n_diff):
@@ -564,19 +679,33 @@ def load_real_csv(csv_path: str):
             fa = _row_feat(a)
             fb = _row_feat(b)
             vec = _build_feature_vector(
-                dist, time_s, a["confidence"], b["confidence"],
-                a["class"].split()[0], b["class"].split()[0],
-                fa, fb, True,
-                float(_rand.uniform(0, 1)), float(_rand.uniform(0, 1)),
-                False, np.random.default_rng(43),
+                dist,
+                time_s,
+                a["confidence"],
+                b["confidence"],
+                a["class"].split()[0],
+                b["class"].split()[0],
+                fa,
+                fb,
+                True,
+                float(_rand.uniform(0, 1)),
+                float(_rand.uniform(0, 1)),
+                False,
+                np.random.default_rng(43),
             )
             X.append(vec)
             y.append(0)
         except Exception:
             continue
 
-    print(f"  Loaded {len(X)} real detection-pair samples from {os.path.basename(csv_path)}")
-    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int32)) if X else (None, None)
+    print(
+        f"  Loaded {len(X)} real detection-pair samples from {os.path.basename(csv_path)}"
+    )
+    return (
+        (np.array(X, dtype=np.float32), np.array(y, dtype=np.int32))
+        if X
+        else (None, None)
+    )
 
 
 def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
@@ -597,6 +726,7 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
         if X_real is not None:
             from collections import defaultdict
             import random as _rand
+
             _rand.seed(42)
             syn_counts = defaultdict(int)
             for lbl in y:
@@ -615,7 +745,9 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
                 X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
                 y = np.concatenate([y, np.array(real_capped_y, dtype=np.int32)])
                 label_map = {0: "different", 1: "same"}
-                print(f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }")
+                print(
+                    f"  Real data (capped): { {label_map[k]: v for k, v in real_counts.items()} }"
+                )
                 print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -650,14 +782,19 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
     f1 = f1_score(y_test, y_pred, zero_division=0)
     auc = roc_auc_score(y_test, y_prob)
 
-    print(f"\nPrecision: {prec:.4f}  Recall: {rec:.4f}  F1: {f1:.4f}  AUC-ROC: {auc:.4f}")
+    print(
+        f"\nPrecision: {prec:.4f}  Recall: {rec:.4f}  F1: {f1:.4f}  AUC-ROC: {auc:.4f}"
+    )
 
     print("\nClassification report:")
-    print(classification_report(
-        y_test, y_pred,
-        target_names=["different_incident", "same_incident"],
-        zero_division=0,
-    ))
+    print(
+        classification_report(
+            y_test,
+            y_pred,
+            target_names=["different_incident", "same_incident"],
+            zero_division=0,
+        )
+    )
 
     cm = confusion_matrix(y_test, y_pred)
     print("Confusion matrix (rows=actual, cols=predicted):")
@@ -674,9 +811,11 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
     ranked = np.argsort(delta)[::-1]
     print("\nMost discriminating features (mean shift different → same):")
     for rank, idx in enumerate(ranked[:10], 1):
-        print(f"  {rank:>2}. {FEATURE_NAMES[idx]:<28}  "
-              f"same={same_mean[idx]:.3f}  diff={diff_mean[idx]:.3f}  "
-              f"delta={delta[idx]:.3f}")
+        print(
+            f"  {rank:>2}. {FEATURE_NAMES[idx]:<28}  "
+            f"same={same_mean[idx]:.3f}  diff={diff_mean[idx]:.3f}  "
+            f"delta={delta[idx]:.3f}"
+        )
 
     # --- ONNX export (matches project skl2onnx pattern) ---------------------
     onnx_path = os.path.join(output_dir, "incident_correlator.onnx")
@@ -695,6 +834,7 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
     # --- Smoke test via ONNX runtime ----------------------------------------
     try:
         import onnxruntime as ort
+
         sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
 
         # fmt: (description, feature_vector)
@@ -702,29 +842,129 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
             (
                 "fire + smoke, 0.3 km, 45 s  (SAME)",
                 # dist  time   ca    cb   diff  s_dom s_cls compl  dot   l2
-                [0.3, 45.0, 0.88, 0.76, 0.12, 1.0, 0.0,  1.0,  6.5, 1.2,
-                # hasloc bear  wind  sens  rapid close med   far   lgap  esc
-                 1.0,  0.23, 0.61, 0.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0],
+                [
+                    0.3,
+                    45.0,
+                    0.88,
+                    0.76,
+                    0.12,
+                    1.0,
+                    0.0,
+                    1.0,
+                    6.5,
+                    1.2,
+                    # hasloc bear  wind  sens  rapid close med   far   lgap  esc
+                    1.0,
+                    0.23,
+                    0.61,
+                    0.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
             ),
             (
                 "flood + surge, 1.2 km, 8 min (SAME)",
-                [1.2, 480.0, 0.82, 0.91, 0.09, 1.0, 0.0, 1.0, 5.8, 1.4,
-                 1.0, 0.44, 0.55, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0],
+                [
+                    1.2,
+                    480.0,
+                    0.82,
+                    0.91,
+                    0.09,
+                    1.0,
+                    0.0,
+                    1.0,
+                    5.8,
+                    1.4,
+                    1.0,
+                    0.44,
+                    0.55,
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                ],
             ),
             (
                 "fire vs flood, 2 km, 1 min   (DIFF)",
-                [2.0, 60.0, 0.90, 0.85, 0.05, 0.0, 0.0, 0.0, 1.2, 3.8,
-                 1.0, 0.12, 0.30, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                [
+                    2.0,
+                    60.0,
+                    0.90,
+                    0.85,
+                    0.05,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.2,
+                    3.8,
+                    1.0,
+                    0.12,
+                    0.30,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                ],
             ),
             (
                 "same class, 150 km apart      (DIFF)",
-                [150.0, 300.0, 0.75, 0.80, 0.05, 1.0, 1.0, 0.0, 7.1, 0.3,
-                 1.0, 0.77, 0.42, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0],
+                [
+                    150.0,
+                    300.0,
+                    0.75,
+                    0.80,
+                    0.05,
+                    1.0,
+                    1.0,
+                    0.0,
+                    7.1,
+                    0.3,
+                    1.0,
+                    0.77,
+                    0.42,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    1.0,
+                ],
             ),
             (
                 "same class, 0.1 km, 2 h ago  (DIFF)",
-                [0.1, 7200.0, 0.88, 0.71, 0.17, 1.0, 1.0, 0.0, 6.9, 0.4,
-                 1.0, 0.05, 0.50, 1.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0],
+                [
+                    0.1,
+                    7200.0,
+                    0.88,
+                    0.71,
+                    0.17,
+                    1.0,
+                    1.0,
+                    0.0,
+                    6.9,
+                    0.4,
+                    1.0,
+                    0.05,
+                    0.50,
+                    1.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                ],
             ),
         ]
 
@@ -755,16 +995,22 @@ if __name__ == "__main__":
         description="Train Summit.OS incident correlator and export to ONNX."
     )
     parser.add_argument(
-        "--samples", type=int, default=70000,
-        help="Total number of synthetic detection-pair samples (default: 70000)"
+        "--samples",
+        type=int,
+        default=70000,
+        help="Total number of synthetic detection-pair samples (default: 70000)",
     )
     parser.add_argument(
-        "--output-dir", dest="output_dir", default=None,
-        help="Directory to write .onnx and .json files (default: packages/ml/models/)"
+        "--output-dir",
+        dest="output_dir",
+        default=None,
+        help="Directory to write .onnx and .json files (default: packages/ml/models/)",
     )
     parser.add_argument(
-        "--real-csv", dest="real_csv", default=None,
-        help="Path to real observations CSV to blend with synthetic data"
+        "--real-csv",
+        dest="real_csv",
+        default=None,
+        help="Path to real observations CSV to blend with synthetic data",
     )
     args = parser.parse_args()
     train(n_samples=args.samples, output_dir=args.output_dir, real_csv=args.real_csv)

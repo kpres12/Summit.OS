@@ -12,6 +12,7 @@ Dependencies
 ------------
     pip install aiohttp
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -122,9 +123,7 @@ class WebhookAdapter(BaseAdapter):
             auth_header = request.headers.get("Authorization", "")
             expected = f"Bearer {self._auth_token}"
             if auth_header != expected:
-                return web.json_response(
-                    {"error": "Unauthorized"}, status=401
-                )
+                return web.json_response({"error": "Unauthorized"}, status=401)
 
         try:
             payload = await request.json()
@@ -133,7 +132,9 @@ class WebhookAdapter(BaseAdapter):
 
         obs = self._payload_to_obs(payload)
         if obs is None:
-            return web.json_response({"error": "Could not parse observation"}, status=422)
+            return web.json_response(
+                {"error": "Could not parse observation"}, status=422
+            )
 
         try:
             self._queue.put_nowait(obs)
@@ -186,13 +187,29 @@ class WebhookAdapter(BaseAdapter):
             metadata = {}
         # Carry through any unrecognised keys as metadata
         known_keys = {
-            "entity_id", "id", "device_id", "sensor_id",
-            "callsign", "name", "label", "device_name",
-            "entity_type", "type", "device_type",
+            "entity_id",
+            "id",
+            "device_id",
+            "sensor_id",
+            "callsign",
+            "name",
+            "label",
+            "device_name",
+            "entity_type",
+            "type",
+            "device_type",
             "metadata",
-            *_LAT_ALIASES, *_LON_ALIASES, *_ALT_ALIASES,
-            "heading", "heading_deg", "course",
-            "speed", "speed_mps", "velocity", "vertical_mps", "climb_rate",
+            *_LAT_ALIASES,
+            *_LON_ALIASES,
+            *_ALT_ALIASES,
+            "heading",
+            "heading_deg",
+            "course",
+            "speed",
+            "speed_mps",
+            "velocity",
+            "vertical_mps",
+            "climb_rate",
         }
         for k, v in payload.items():
             if k not in known_keys:

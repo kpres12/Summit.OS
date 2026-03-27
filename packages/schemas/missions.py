@@ -8,6 +8,7 @@ from enum import Enum
 
 class MissionStatus(str, Enum):
     """Mission status values."""
+
     PLANNING = "planning"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -18,6 +19,7 @@ class MissionStatus(str, Enum):
 
 class MissionSchema(BaseModel):
     """Mission definition schema."""
+
     mission_id: str = Field(..., description="Unique mission identifier")
     name: Optional[str] = None
     objectives: List[str] = Field(default_factory=list)

@@ -8,6 +8,7 @@ Interfaces with MAVLink-compatible autopilots (ArduPilot, PX4) via:
 
 Implements the VehicleDriver interface from packages/hal/base.py.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -36,6 +37,7 @@ class MAVFlightMode(str, Enum):
 @dataclass
 class MAVTelemetry:
     """Telemetry data from a MAVLink vehicle."""
+
     lat: float = 0.0
     lon: float = 0.0
     alt: float = 0.0
@@ -60,9 +62,16 @@ class MAVTelemetry:
         return {
             "position": {"lat": self.lat, "lon": self.lon, "alt": self.alt},
             "attitude": {"roll": self.roll, "pitch": self.pitch, "yaw": self.yaw},
-            "speed": {"ground": self.groundspeed, "air": self.airspeed, "climb": self.climb_rate},
+            "speed": {
+                "ground": self.groundspeed,
+                "air": self.airspeed,
+                "climb": self.climb_rate,
+            },
             "heading": self.heading,
-            "battery": {"voltage": self.battery_voltage, "remaining": self.battery_remaining},
+            "battery": {
+                "voltage": self.battery_voltage,
+                "remaining": self.battery_remaining,
+            },
             "gps": {"fix": self.gps_fix_type, "sats": self.satellites_visible},
             "mode": self.flight_mode,
             "armed": self.armed,
@@ -83,9 +92,13 @@ class MAVLinkDriver:
     Falls back to simulation when pymavlink is not available.
     """
 
-    def __init__(self, connection_string: str = "udp:127.0.0.1:14550",
-                 system_id: int = 1, component_id: int = 1,
-                 heartbeat_interval: float = 1.0):
+    def __init__(
+        self,
+        connection_string: str = "udp:127.0.0.1:14550",
+        system_id: int = 1,
+        component_id: int = 1,
+        heartbeat_interval: float = 1.0,
+    ):
         self.connection_string = connection_string
         self.system_id = system_id
         self.component_id = component_id
@@ -108,6 +121,7 @@ class MAVLinkDriver:
     def _check_pymavlink() -> bool:
         try:
             from pymavlink import mavutil
+
             return True
         except ImportError:
             return False
@@ -117,6 +131,7 @@ class MAVLinkDriver:
         if self._pymavlink_available:
             try:
                 from pymavlink import mavutil
+
                 self._mavlink = mavutil.mavlink_connection(
                     self.connection_string,
                     source_system=self.system_id,
@@ -208,7 +223,10 @@ class MAVLinkDriver:
             self._telemetry.battery_remaining = msg.battery_remaining
         elif msg_type == "HEARTBEAT":
             from pymavlink import mavutil
-            self._telemetry.armed = (msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED) != 0
+
+            self._telemetry.armed = (
+                msg.base_mode & mavutil.mavlink.MAV_MODE_FLAG_SAFETY_ARMED
+            ) != 0
         elif msg_type == "GPS_RAW_INT":
             self._telemetry.gps_fix_type = msg.fix_type
             self._telemetry.satellites_visible = msg.satellites_visible
@@ -245,12 +263,24 @@ class MAVLinkDriver:
         """Navigate to a waypoint in GUIDED mode."""
         if self._mavlink:
             from pymavlink import mavutil
+
             self._mavlink.mav.set_position_target_global_int_send(
-                0, self.system_id, self.component_id,
+                0,
+                self.system_id,
+                self.component_id,
                 mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
                 0b0000111111111000,
-                int(lat * 1e7), int(lon * 1e7), alt,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                int(lat * 1e7),
+                int(lon * 1e7),
+                alt,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
             )
         logger.info(f"Goto: ({lat:.6f}, {lon:.6f}, {alt:.1f}m)")
         return True
@@ -261,9 +291,17 @@ class MAVLinkDriver:
         await self.arm()
         if self._mavlink:
             self._mavlink.mav.command_long_send(
-                self.system_id, self.component_id,
+                self.system_id,
+                self.component_id,
                 22,  # MAV_CMD_NAV_TAKEOFF
-                0, 0, 0, 0, 0, 0, 0, altitude,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                altitude,
             )
         self._telemetry.alt = altitude
         return True

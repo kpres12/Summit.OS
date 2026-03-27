@@ -8,6 +8,7 @@ from enum import Enum
 
 class DroneType(str, Enum):
     """Drone types for tiered response."""
+
     SCOUT = "scout"  # Reconnaissance/verification drone
     INTERCEPTOR = "interceptor"  # Intervention/action drone
     RELAY = "relay"  # Communication relay drone
@@ -17,6 +18,7 @@ class DroneType(str, Enum):
 
 class DroneRole(str, Enum):
     """Operational roles for drones."""
+
     RECONNAISSANCE = "reconnaissance"
     VERIFICATION = "verification"
     INTERVENTION = "intervention"
@@ -29,6 +31,7 @@ class DroneRole(str, Enum):
 
 class PayloadType(str, Enum):
     """Generic payload types for drones."""
+
     LIQUID_CAPSULE = "liquid_capsule"
     SOLID_CONTAINER = "solid_container"
     GAS_CANISTER = "gas_canister"
@@ -37,11 +40,14 @@ class PayloadType(str, Enum):
     SENSOR_PACKAGE = "sensor_package"
     TOOL_KIT = "tool_kit"
     SAMPLE_CONTAINER = "sample_container"
-    LATCHING_DEVICE = "latching_device"  # Electromechanical latch/gripper for attaching objects
+    LATCHING_DEVICE = (
+        "latching_device"  # Electromechanical latch/gripper for attaching objects
+    )
 
 
 class MissionTier(str, Enum):
     """Mission tier levels for escalation."""
+
     TIER_1_VERIFY = "tier_1_verify"  # Initial verification
     TIER_2_SUPPRESS = "tier_2_suppress"  # Direct intervention
     TIER_3_CONTAIN = "tier_3_contain"  # Multi-asset containment
@@ -50,6 +56,7 @@ class MissionTier(str, Enum):
 
 class DroneCapabilities(BaseModel):
     """Extended capabilities for tiered response drones."""
+
     drone_type: DroneType
     roles: List[DroneRole] = Field(default_factory=list)
     max_speed: float = Field(..., description="Maximum speed in km/h")
@@ -58,14 +65,20 @@ class DroneCapabilities(BaseModel):
     payload_capacity: float = Field(..., description="Payload capacity in kg")
     payload_types: List[PayloadType] = Field(default_factory=list)
     sensors: List[str] = Field(default_factory=list)
-    environmental_resistance: Dict[str, bool] = Field(default_factory=dict)  # heat, cold, water, etc.
+    environmental_resistance: Dict[str, bool] = Field(
+        default_factory=dict
+    )  # heat, cold, water, etc.
     auto_dock: bool = True
     mavlink_conn: Optional[str] = None
     mesh_radio: bool = False
-    
+
     # Performance characteristics
-    dash_speed: Optional[float] = Field(None, description="Dash speed for emergency response")
-    response_time: Optional[float] = Field(None, description="Time to reach coordinates in seconds")
+    dash_speed: Optional[float] = Field(
+        None, description="Dash speed for emergency response"
+    )
+    response_time: Optional[float] = Field(
+        None, description="Time to reach coordinates in seconds"
+    )
     operating_altitude: Dict[str, float] = Field(
         default_factory=lambda: {"min": 10, "max": 120, "optimal": 60}
     )
@@ -73,20 +86,32 @@ class DroneCapabilities(BaseModel):
 
 class PayloadConfig(BaseModel):
     """Configuration for intervention payloads."""
+
     type: PayloadType
     capacity: float = Field(..., description="Capacity in liters or units")
     deployment_pattern: str = Field(default="single", description="Deployment pattern")
     effective_radius: float = Field(..., description="Effective radius in meters")
-    preparation_time: float = Field(default=0, description="Preparation time in seconds")
+    preparation_time: float = Field(
+        default=0, description="Preparation time in seconds"
+    )
     # Optional actuator control for latching/gripper payloads
-    actuator_channel: Optional[int] = Field(default=None, description="PWM servo channel for latch/gripper")
-    pwm_open: Optional[int] = Field(default=None, description="PWM value to open/release latch")
-    pwm_close: Optional[int] = Field(default=None, description="PWM value to close/engage latch")
-    activation_ms: Optional[int] = Field(default=None, description="Time in milliseconds to hold actuator state")
+    actuator_channel: Optional[int] = Field(
+        default=None, description="PWM servo channel for latch/gripper"
+    )
+    pwm_open: Optional[int] = Field(
+        default=None, description="PWM value to open/release latch"
+    )
+    pwm_close: Optional[int] = Field(
+        default=None, description="PWM value to close/engage latch"
+    )
+    activation_ms: Optional[int] = Field(
+        default=None, description="Time in milliseconds to hold actuator state"
+    )
 
 
 class InterventionPlan(BaseModel):
     """Plan for drone intervention missions."""
+
     target_location: Dict[str, float]  # lat, lon
     payload_config: PayloadConfig
     approach_vector: Optional[Dict[str, float]] = None  # bearing, distance
@@ -98,41 +123,69 @@ class InterventionPlan(BaseModel):
 
 class SwarmCoordination(BaseModel):
     """Coordination data for multi-drone operations."""
+
     formation: str = Field(default="containment_ring", description="Formation pattern")
     lead_drone: str = Field(..., description="Lead drone asset_id")
-    separation_distance: float = Field(default=50, description="Minimum separation in meters")
-    coordination_frequency: Optional[str] = Field(None, description="Radio frequency for coordination")
+    separation_distance: float = Field(
+        default=50, description="Minimum separation in meters"
+    )
+    coordination_frequency: Optional[str] = Field(
+        None, description="Radio frequency for coordination"
+    )
     anti_collision: bool = True
     shared_telemetry: bool = True
 
 
 class ThreatThreshold(BaseModel):
     """Generic threat assessment thresholds for escalation decisions."""
-    severity_score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Overall severity threshold")
-    size_metric: Optional[float] = Field(None, description="Size/scale threshold (units depend on domain)")
-    spread_rate: Optional[float] = Field(None, description="Spread/growth rate threshold")
-    intensity_metric: Optional[float] = Field(None, description="Intensity measurement threshold")
-    environmental_factor: float = Field(default=1.0, description="Environmental conditions multiplier")
-    terrain_factor: float = Field(default=1.0, description="Terrain/geography multiplier")
-    urgency_multiplier: float = Field(default=1.0, description="Time-sensitive urgency factor")
+
+    severity_score: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Overall severity threshold"
+    )
+    size_metric: Optional[float] = Field(
+        None, description="Size/scale threshold (units depend on domain)"
+    )
+    spread_rate: Optional[float] = Field(
+        None, description="Spread/growth rate threshold"
+    )
+    intensity_metric: Optional[float] = Field(
+        None, description="Intensity measurement threshold"
+    )
+    environmental_factor: float = Field(
+        default=1.0, description="Environmental conditions multiplier"
+    )
+    terrain_factor: float = Field(
+        default=1.0, description="Terrain/geography multiplier"
+    )
+    urgency_multiplier: float = Field(
+        default=1.0, description="Time-sensitive urgency factor"
+    )
 
 
 class TieredMissionRequest(BaseModel):
     """Request for tiered mission dispatch."""
+
     alert_id: str = Field(..., description="Associated alert/detection ID")
     initial_location: Dict[str, float]  # lat, lon of target
     verification_required: bool = True
     intervention_threshold: ThreatThreshold
     max_tier: MissionTier = MissionTier.TIER_3_CONTAIN
-    preferred_assets: Optional[List[str]] = Field(None, description="Preferred asset IDs")
-    time_limit: Optional[float] = Field(None, description="Mission time limit in minutes")
+    preferred_assets: Optional[List[str]] = Field(
+        None, description="Preferred asset IDs"
+    )
+    time_limit: Optional[float] = Field(
+        None, description="Mission time limit in minutes"
+    )
     environmental_data: Optional[Dict[str, Any]] = None
     terrain_data: Optional[Dict[str, Any]] = None
-    domain_context: Optional[Dict[str, Any]] = Field(None, description="Domain-specific context data")
+    domain_context: Optional[Dict[str, Any]] = Field(
+        None, description="Domain-specific context data"
+    )
 
 
 class TieredMissionStatus(BaseModel):
     """Status of tiered mission execution."""
+
     mission_id: str
     current_tier: MissionTier
     tier_1_status: Optional[str] = None  # PENDING, ACTIVE, COMPLETED, FAILED
@@ -149,18 +202,23 @@ class TieredMissionStatus(BaseModel):
 
 class DroneBoxConfig(BaseModel):
     """Configuration for deployment box containing FireFly + EmberWing."""
+
     box_id: str
     location: Dict[str, float]  # lat, lon of deployment box
     firefly_id: str
     emberwing_id: str
     shared_charger: bool = True
-    launch_sequence_delay: float = Field(default=2.0, description="Delay between launches in seconds")
-    recovery_timeout: float = Field(default=1800, description="Auto-recovery timeout in seconds")
+    launch_sequence_delay: float = Field(
+        default=2.0, description="Delay between launches in seconds"
+    )
+    recovery_timeout: float = Field(
+        default=1800, description="Auto-recovery timeout in seconds"
+    )
     weather_limits: Dict[str, float] = Field(
         default_factory=lambda: {
             "max_wind_speed": 15.0,  # m/s
             "min_visibility": 1000,  # meters
-            "max_precipitation": 5.0  # mm/h
+            "max_precipitation": 5.0,  # mm/h
         }
     )
 
@@ -168,6 +226,7 @@ class DroneBoxConfig(BaseModel):
 # Extended asset model for tiered response
 class TieredAsset(BaseModel):
     """Asset model extended for tiered response capabilities."""
+
     asset_id: str
     type: str = "drone"
     drone_capabilities: Optional[DroneCapabilities] = None

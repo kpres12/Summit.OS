@@ -6,14 +6,14 @@ from .base import (
     BaseThreatAssessor,
     GenericThreatAssessor,
     ThreatAssessmentRegistry,
-    threat_registry
+    threat_registry,
 )
 
 __all__ = [
     "ThreatLevel",
-    "ThreatAssessmentResult", 
+    "ThreatAssessmentResult",
     "BaseThreatAssessor",
     "GenericThreatAssessor",
     "ThreatAssessmentRegistry",
-    "threat_registry"
+    "threat_registry",
 ]

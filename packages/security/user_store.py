@@ -19,6 +19,7 @@ For production, pass a PostgreSQL URL:
 
 All public methods are async and safe to call from FastAPI route handlers.
 """
+
 from __future__ import annotations
 
 import json
@@ -60,12 +61,14 @@ user_mfa = Table(
     _metadata,
     Column("user_id", String(128), primary_key=True),
     Column("email", Text, nullable=False),
-    Column("totp_secret_enc", Text, nullable=True),          # AES-256-GCM encrypted base64
+    Column("totp_secret_enc", Text, nullable=True),  # AES-256-GCM encrypted base64
     Column("totp_enabled", Integer, default=0),
     Column("totp_enrolled_at", DateTime(timezone=True), nullable=True),
-    Column("backup_codes_json", Text, nullable=True),        # JSON array of Argon2id hashes
+    Column("backup_codes_json", Text, nullable=True),  # JSON array of Argon2id hashes
     Column("backup_codes_remaining", Integer, default=0),
-    Column("mfa_method", String(32), default="none"),        # 'none', 'totp', 'webauthn', 'both'
+    Column(
+        "mfa_method", String(32), default="none"
+    ),  # 'none', 'totp', 'webauthn', 'both'
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
 )

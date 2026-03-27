@@ -4,6 +4,7 @@ Observability Metrics for Summit.OS
 Provides structured metrics collection compatible with Prometheus/OpenTelemetry.
 Includes counters, gauges, histograms, and a health aggregator.
 """
+
 from __future__ import annotations
 
 import time
@@ -18,7 +19,10 @@ logger = logging.getLogger("observability")
 
 class Counter:
     """Monotonically increasing counter."""
-    def __init__(self, name: str, description: str = "", labels: Dict[str, str] | None = None):
+
+    def __init__(
+        self, name: str, description: str = "", labels: Dict[str, str] | None = None
+    ):
         self.name = name
         self.description = description
         self.labels = labels or {}
@@ -34,7 +38,10 @@ class Counter:
 
 class Gauge:
     """Value that can go up and down."""
-    def __init__(self, name: str, description: str = "", labels: Dict[str, str] | None = None):
+
+    def __init__(
+        self, name: str, description: str = "", labels: Dict[str, str] | None = None
+    ):
         self.name = name
         self.description = description
         self.labels = labels or {}
@@ -56,10 +63,12 @@ class Gauge:
 
 class Histogram:
     """Distribution of values with configurable buckets."""
+
     DEFAULT_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 
-    def __init__(self, name: str, description: str = "",
-                 buckets: List[float] | None = None):
+    def __init__(
+        self, name: str, description: str = "", buckets: List[float] | None = None
+    ):
         self.name = name
         self.description = description
         self.buckets = sorted(buckets or self.DEFAULT_BUCKETS)
@@ -106,8 +115,9 @@ class MetricsRegistry:
             self.gauges[key] = Gauge(name, description, labels)
         return self.gauges[key]
 
-    def histogram(self, name: str, description: str = "",
-                  buckets: List[float] | None = None) -> Histogram:
+    def histogram(
+        self, name: str, description: str = "", buckets: List[float] | None = None
+    ) -> Histogram:
         if name not in self.histograms:
             self.histograms[name] = Histogram(name, description, buckets)
         return self.histograms[name]
@@ -144,6 +154,7 @@ class MetricsRegistry:
 @dataclass
 class HealthStatus:
     """Health status for a component."""
+
     component: str
     healthy: bool
     message: str = ""
@@ -159,8 +170,11 @@ class HealthAggregator:
 
     def report(self, component: str, healthy: bool, message: str = "", **details):
         self.components[component] = HealthStatus(
-            component=component, healthy=healthy,
-            message=message, details=details, last_check=time.time(),
+            component=component,
+            healthy=healthy,
+            message=message,
+            details=details,
+            last_check=time.time(),
         )
 
     def is_healthy(self) -> bool:

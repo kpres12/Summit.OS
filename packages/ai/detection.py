@@ -10,6 +10,7 @@ Supports:
 The pipeline outputs standardized Detection objects that feed into
 the fusion track correlator.
 """
+
 from __future__ import annotations
 
 import time
@@ -25,6 +26,7 @@ logger = logging.getLogger("ai.detection")
 @dataclass
 class BoundingBox:
     """Bounding box in pixel coordinates."""
+
     x1: float  # top-left x
     y1: float  # top-left y
     x2: float  # bottom-right x
@@ -60,6 +62,7 @@ class BoundingBox:
 @dataclass
 class Detection:
     """A single object detection result."""
+
     class_id: int
     class_name: str
     confidence: float
@@ -80,9 +83,15 @@ class Detection:
             "class_id": self.class_id,
             "class_name": self.class_name,
             "confidence": self.confidence,
-            "bbox": {"x1": self.bbox.x1, "y1": self.bbox.y1,
-                     "x2": self.bbox.x2, "y2": self.bbox.y2},
-            "lat": self.lat, "lon": self.lon, "alt": self.alt,
+            "bbox": {
+                "x1": self.bbox.x1,
+                "y1": self.bbox.y1,
+                "x2": self.bbox.x2,
+                "y2": self.bbox.y2,
+            },
+            "lat": self.lat,
+            "lon": self.lon,
+            "alt": self.alt,
             "track_id": self.track_id,
             "model_name": self.model_name,
             "timestamp": self.timestamp,
@@ -92,6 +101,7 @@ class Detection:
 @dataclass
 class DetectionResult:
     """Result of running detection on a single frame."""
+
     detections: List[Detection]
     frame_id: int = 0
     inference_ms: float = 0.0
@@ -102,6 +112,7 @@ class DetectionResult:
 
 
 # ── Abstract Detector ───────────────────────────────────────
+
 
 class ObjectDetector(ABC):
     """Abstract base for all detectors."""
@@ -118,6 +129,7 @@ class ObjectDetector(ABC):
 
 
 # ── YOLO Detector ───────────────────────────────────────────
+
 
 class YOLODetector(ObjectDetector):
     """
@@ -136,10 +148,13 @@ class YOLODetector(ObjectDetector):
     def _load_model(self):
         try:
             from ultralytics import YOLO
+
             self._model = YOLO(self.model_path)
-            if hasattr(self._model, 'names'):
+            if hasattr(self._model, "names"):
                 self._class_names = list(self._model.names.values())
-            logger.info(f"YOLO model loaded: {self.model_path} ({len(self._class_names)} classes)")
+            logger.info(
+                f"YOLO model loaded: {self.model_path} ({len(self._class_names)} classes)"
+            )
         except ImportError:
             logger.warning("ultralytics not installed — YOLO detector unavailable")
             self._model = None
@@ -164,17 +179,27 @@ class YOLODetector(ObjectDetector):
                 xyxy = boxes.xyxy[i].cpu().numpy()
                 conf = float(boxes.conf[i].cpu().numpy())
                 cls_id = int(boxes.cls[i].cpu().numpy())
-                cls_name = self._class_names[cls_id] if cls_id < len(self._class_names) else f"class_{cls_id}"
+                cls_name = (
+                    self._class_names[cls_id]
+                    if cls_id < len(self._class_names)
+                    else f"class_{cls_id}"
+                )
 
-                detections.append(Detection(
-                    class_id=cls_id,
-                    class_name=cls_name,
-                    confidence=conf,
-                    bbox=BoundingBox(x1=float(xyxy[0]), y1=float(xyxy[1]),
-                                     x2=float(xyxy[2]), y2=float(xyxy[3])),
-                    model_name=self.model_path,
-                    timestamp=time.time(),
-                ))
+                detections.append(
+                    Detection(
+                        class_id=cls_id,
+                        class_name=cls_name,
+                        confidence=conf,
+                        bbox=BoundingBox(
+                            x1=float(xyxy[0]),
+                            y1=float(xyxy[1]),
+                            x2=float(xyxy[2]),
+                            y2=float(xyxy[3]),
+                        ),
+                        model_name=self.model_path,
+                        timestamp=time.time(),
+                    )
+                )
 
         return DetectionResult(
             detections=detections,
@@ -188,6 +213,7 @@ class YOLODetector(ObjectDetector):
 
 # ── OpenCV DNN Detector ─────────────────────────────────────
 
+
 class OpenCVDetector(ObjectDetector):
     """
     OpenCV DNN-based detector.
@@ -197,23 +223,94 @@ class OpenCVDetector(ObjectDetector):
     """
 
     COCO_CLASSES = [
-        "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train",
-        "truck", "boat", "traffic light", "fire hydrant", "stop sign",
-        "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep",
-        "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-        "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard",
-        "sports ball", "kite", "baseball bat", "baseball glove", "skateboard",
-        "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork",
-        "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange",
-        "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
-        "couch", "potted plant", "bed", "dining table", "toilet", "tv",
-        "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave",
-        "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
-        "scissors", "teddy bear", "hair drier", "toothbrush",
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane",
+        "bus",
+        "train",
+        "truck",
+        "boat",
+        "traffic light",
+        "fire hydrant",
+        "stop sign",
+        "parking meter",
+        "bench",
+        "bird",
+        "cat",
+        "dog",
+        "horse",
+        "sheep",
+        "cow",
+        "elephant",
+        "bear",
+        "zebra",
+        "giraffe",
+        "backpack",
+        "umbrella",
+        "handbag",
+        "tie",
+        "suitcase",
+        "frisbee",
+        "skis",
+        "snowboard",
+        "sports ball",
+        "kite",
+        "baseball bat",
+        "baseball glove",
+        "skateboard",
+        "surfboard",
+        "tennis racket",
+        "bottle",
+        "wine glass",
+        "cup",
+        "fork",
+        "knife",
+        "spoon",
+        "bowl",
+        "banana",
+        "apple",
+        "sandwich",
+        "orange",
+        "broccoli",
+        "carrot",
+        "hot dog",
+        "pizza",
+        "donut",
+        "cake",
+        "chair",
+        "couch",
+        "potted plant",
+        "bed",
+        "dining table",
+        "toilet",
+        "tv",
+        "laptop",
+        "mouse",
+        "remote",
+        "keyboard",
+        "cell phone",
+        "microwave",
+        "oven",
+        "toaster",
+        "sink",
+        "refrigerator",
+        "book",
+        "clock",
+        "vase",
+        "scissors",
+        "teddy bear",
+        "hair drier",
+        "toothbrush",
     ]
 
-    def __init__(self, model_path: str = "", config_path: str = "",
-                 input_size: Tuple[int, int] = (416, 416)):
+    def __init__(
+        self,
+        model_path: str = "",
+        config_path: str = "",
+        input_size: Tuple[int, int] = (416, 416),
+    ):
         self.model_path = model_path
         self.config_path = config_path
         self.input_size = input_size
@@ -223,6 +320,7 @@ class OpenCVDetector(ObjectDetector):
     def _load_model(self):
         try:
             import cv2
+
             if self.model_path:
                 self._net = cv2.dnn.readNet(self.model_path, self.config_path)
                 logger.info(f"OpenCV DNN model loaded: {self.model_path}")
@@ -244,7 +342,9 @@ class OpenCVDetector(ObjectDetector):
             image = cv2.imread(image)
 
         h, w = image.shape[:2]
-        blob = cv2.dnn.blobFromImage(image, 1/255.0, self.input_size, swapRB=True, crop=False)
+        blob = cv2.dnn.blobFromImage(
+            image, 1 / 255.0, self.input_size, swapRB=True, crop=False
+        )
         self._net.setInput(blob)
         outputs = self._net.forward(self._net.getUnconnectedOutLayersNames())
 
@@ -262,19 +362,29 @@ class OpenCVDetector(ObjectDetector):
                 x1 = cx - bw / 2
                 y1 = cy - bh / 2
 
-                cls_name = self.COCO_CLASSES[class_id] if class_id < len(self.COCO_CLASSES) else f"class_{class_id}"
-                detections.append(Detection(
-                    class_id=class_id, class_name=cls_name,
-                    confidence=confidence,
-                    bbox=BoundingBox(x1=x1, y1=y1, x2=x1+bw, y2=y1+bh),
-                    model_name="opencv_dnn",
-                    timestamp=time.time(),
-                ))
+                cls_name = (
+                    self.COCO_CLASSES[class_id]
+                    if class_id < len(self.COCO_CLASSES)
+                    else f"class_{class_id}"
+                )
+                detections.append(
+                    Detection(
+                        class_id=class_id,
+                        class_name=cls_name,
+                        confidence=confidence,
+                        bbox=BoundingBox(x1=x1, y1=y1, x2=x1 + bw, y2=y1 + bh),
+                        model_name="opencv_dnn",
+                        timestamp=time.time(),
+                    )
+                )
 
         elapsed_ms = (time.time() - start) * 1000
         return DetectionResult(
-            detections=detections, inference_ms=elapsed_ms,
-            model_name="opencv_dnn", image_width=w, image_height=h,
+            detections=detections,
+            inference_ms=elapsed_ms,
+            model_name="opencv_dnn",
+            image_width=w,
+            image_height=h,
         )
 
     def get_class_names(self) -> List[str]:
@@ -282,6 +392,7 @@ class OpenCVDetector(ObjectDetector):
 
 
 # ── Mock Detector ───────────────────────────────────────────
+
 
 class MockDetector(ObjectDetector):
     """
@@ -300,6 +411,7 @@ class MockDetector(ObjectDetector):
 
     def detect(self, image: Any, confidence_threshold: float = 0.5) -> DetectionResult:
         import random
+
         rng = random.Random(self._seed + self._frame_count)
         self._frame_count += 1
 
@@ -315,14 +427,18 @@ class MockDetector(ObjectDetector):
             w = rng.uniform(30, 150)
             h = rng.uniform(30, 150)
 
-            detections.append(Detection(
-                class_id=cls_id,
-                class_name=self.MOCK_CLASSES[cls_id],
-                confidence=round(conf, 3),
-                bbox=BoundingBox(x1=cx-w/2, y1=cy-h/2, x2=cx+w/2, y2=cy+h/2),
-                model_name="mock",
-                timestamp=time.time(),
-            ))
+            detections.append(
+                Detection(
+                    class_id=cls_id,
+                    class_name=self.MOCK_CLASSES[cls_id],
+                    confidence=round(conf, 3),
+                    bbox=BoundingBox(
+                        x1=cx - w / 2, y1=cy - h / 2, x2=cx + w / 2, y2=cy + h / 2
+                    ),
+                    model_name="mock",
+                    timestamp=time.time(),
+                )
+            )
 
         return DetectionResult(
             detections=detections,
@@ -335,6 +451,7 @@ class MockDetector(ObjectDetector):
 
 
 # ── ONNX Detector (YOLOv8 format) ────────────────────────────
+
 
 class ONNXDetector(ObjectDetector):
     """
@@ -356,9 +473,19 @@ class ONNXDetector(ObjectDetector):
     def _find_model(self) -> str:
         """Search common locations for a YOLOv8n ONNX model."""
         import os
+
         candidates = [
-            os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n.onnx"),
-            os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n", "yolov8n.onnx"),
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "models", "yolov8n.onnx"
+            ),
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "models",
+                "yolov8n",
+                "yolov8n.onnx",
+            ),
             "yolov8n.onnx",
         ]
         for c in candidates:
@@ -370,8 +497,11 @@ class ONNXDetector(ObjectDetector):
     def _load_model(self):
         try:
             import onnxruntime as ort
+
             if not self.model_path:
-                logger.warning("No ONNX model file found — run scripts/download_model.py")
+                logger.warning(
+                    "No ONNX model file found — run scripts/download_model.py"
+                )
                 return
             self._session = ort.InferenceSession(
                 self.model_path,
@@ -393,7 +523,7 @@ class ONNXDetector(ObjectDetector):
 
         # Pre-process: resize to input_size x input_size, normalize to [0,1], CHW
         img = self._preprocess(image)
-        h_orig, w_orig = image.shape[:2] if hasattr(image, 'shape') else (640, 640)
+        h_orig, w_orig = image.shape[:2] if hasattr(image, "shape") else (640, 640)
 
         # Run inference
         input_name = self._session.get_inputs()[0].name
@@ -406,8 +536,8 @@ class ONNXDetector(ObjectDetector):
 
         # Post-process: cx, cy, w, h + 80 class scores
         detections = []
-        boxes = preds[:, :4]       # (8400, 4) — cx, cy, w, h
-        scores = preds[:, 4:]      # (8400, 80)
+        boxes = preds[:, :4]  # (8400, 4) — cx, cy, w, h
+        scores = preds[:, 4:]  # (8400, 80)
         class_ids = np.argmax(scores, axis=1)
         max_scores = np.max(scores, axis=1)
 
@@ -424,15 +554,23 @@ class ONNXDetector(ObjectDetector):
             y2 = (cy + bh / 2) * scale_y
 
             cls_id = int(class_ids[idx])
-            cls_name = self.COCO_CLASSES[cls_id] if cls_id < len(self.COCO_CLASSES) else f"class_{cls_id}"
-            detections.append(Detection(
-                class_id=cls_id,
-                class_name=cls_name,
-                confidence=float(max_scores[idx]),
-                bbox=BoundingBox(x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2)),
-                model_name="yolov8n-onnx",
-                timestamp=time.time(),
-            ))
+            cls_name = (
+                self.COCO_CLASSES[cls_id]
+                if cls_id < len(self.COCO_CLASSES)
+                else f"class_{cls_id}"
+            )
+            detections.append(
+                Detection(
+                    class_id=cls_id,
+                    class_name=cls_name,
+                    confidence=float(max_scores[idx]),
+                    bbox=BoundingBox(
+                        x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2)
+                    ),
+                    model_name="yolov8n-onnx",
+                    timestamp=time.time(),
+                )
+            )
 
         elapsed_ms = (time.time() - start) * 1000
         return DetectionResult(
@@ -446,8 +584,10 @@ class ONNXDetector(ObjectDetector):
     def _preprocess(self, image: Any):
         """Resize, normalize, transpose to NCHW float32."""
         import numpy as np
+
         try:
             import cv2
+
             if isinstance(image, str):
                 image = cv2.imread(image)
             img = cv2.resize(image, (self.input_size, self.input_size))
@@ -456,6 +596,7 @@ class ONNXDetector(ObjectDetector):
             # Fallback: use PIL
             from PIL import Image as PILImage
             import io as _io
+
             if isinstance(image, bytes):
                 pil_img = PILImage.open(_io.BytesIO(image))
             elif isinstance(image, np.ndarray):
@@ -466,7 +607,7 @@ class ONNXDetector(ObjectDetector):
 
         img = img.astype(np.float32) / 255.0
         img = np.transpose(img, (2, 0, 1))  # HWC → CHW
-        img = np.expand_dims(img, axis=0)     # → NCHW
+        img = np.expand_dims(img, axis=0)  # → NCHW
         return img
 
     def get_class_names(self) -> List[str]:
@@ -475,8 +616,10 @@ class ONNXDetector(ObjectDetector):
 
 # ── NMS utility ───────────────────────────────────────────
 
-def non_max_suppression(detections: List[Detection],
-                        iou_threshold: float = 0.5) -> List[Detection]:
+
+def non_max_suppression(
+    detections: List[Detection], iou_threshold: float = 0.5
+) -> List[Detection]:
     """Apply non-maximum suppression to remove overlapping detections."""
     if not detections:
         return []
@@ -489,7 +632,8 @@ def non_max_suppression(detections: List[Detection],
         best = sorted_dets.pop(0)
         keep.append(best)
         sorted_dets = [
-            d for d in sorted_dets
+            d
+            for d in sorted_dets
             if best.bbox.iou(d.bbox) < iou_threshold or d.class_id != best.class_id
         ]
 
@@ -497,6 +641,7 @@ def non_max_suppression(detections: List[Detection],
 
 
 # ── Factory ─────────────────────────────────────────────────
+
 
 def create_detector(backend: str = "auto", **kwargs) -> ObjectDetector:
     """

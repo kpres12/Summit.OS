@@ -8,6 +8,7 @@ Provides:
 
 Implements zero-trust mTLS mesh networking for Summit.OS services.
 """
+
 from __future__ import annotations
 
 import ssl
@@ -26,6 +27,7 @@ logger = logging.getLogger("security.mtls")
 @dataclass
 class CertInfo:
     """Certificate metadata."""
+
     common_name: str
     serial_number: str
     fingerprint: str
@@ -64,9 +66,15 @@ class CertificateAuthority:
     for full X.509 cert generation. Falls back to openssl CLI.
     """
 
-    def __init__(self, ca_dir: Optional[str] = None, org: str = "Summit.OS",
-                 validity_days: int = 365):
-        self.ca_dir = Path(ca_dir) if ca_dir else Path(tempfile.mkdtemp(prefix="summit-ca-"))
+    def __init__(
+        self,
+        ca_dir: Optional[str] = None,
+        org: str = "Summit.OS",
+        validity_days: int = 365,
+    ):
+        self.ca_dir = (
+            Path(ca_dir) if ca_dir else Path(tempfile.mkdtemp(prefix="summit-ca-"))
+        )
         self.org = org
         self.validity_days = validity_days
         self._ca_cert: Optional[CertInfo] = None
@@ -80,6 +88,7 @@ class CertificateAuthority:
             from cryptography import x509
             from cryptography.hazmat.primitives import hashes, serialization
             from cryptography.hazmat.primitives.asymmetric import rsa
+
             return True
         except ImportError:
             return False
@@ -102,10 +111,12 @@ class CertificateAuthority:
         ca_key = rsa.generate_private_key(public_exponent=65537, key_size=4096)
 
         # Build CA cert
-        subject = issuer = x509.Name([
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, self.org),
-            x509.NameAttribute(NameOID.COMMON_NAME, f"{self.org} Root CA"),
-        ])
+        subject = issuer = x509.Name(
+            [
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, self.org),
+                x509.NameAttribute(NameOID.COMMON_NAME, f"{self.org} Root CA"),
+            ]
+        )
 
         now = datetime.datetime.now(datetime.timezone.utc)
         ca_cert = (
@@ -119,11 +130,17 @@ class CertificateAuthority:
             .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
             .add_extension(
                 x509.KeyUsage(
-                    digital_signature=True, key_cert_sign=True, crl_sign=True,
-                    content_commitment=False, key_encipherment=False,
-                    data_encipherment=False, key_agreement=False,
-                    encipher_only=False, decipher_only=False,
-                ), critical=True,
+                    digital_signature=True,
+                    key_cert_sign=True,
+                    crl_sign=True,
+                    content_commitment=False,
+                    key_encipherment=False,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    encipher_only=False,
+                    decipher_only=False,
+                ),
+                critical=True,
             )
             .sign(ca_key, hashes.SHA256())
         )
@@ -146,7 +163,9 @@ class CertificateAuthority:
             serial_number=str(ca_cert.serial_number),
             fingerprint=ca_cert.fingerprint(hashes.SHA256()).hex(),
             not_before=now.timestamp(),
-            not_after=(now + datetime.timedelta(days=self.validity_days * 5)).timestamp(),
+            not_after=(
+                now + datetime.timedelta(days=self.validity_days * 5)
+            ).timestamp(),
             issuer=f"{self.org} Root CA",
             is_ca=True,
             cert_pem=cert_pem,
@@ -175,11 +194,17 @@ class CertificateAuthority:
 
         self.ca_dir.mkdir(parents=True, exist_ok=True)
         (self.ca_dir / "ca.crt").write_bytes(self._ca_cert.cert_pem)
-        logger.warning("CA initialized with mock certs (cryptography lib not available)")
+        logger.warning(
+            "CA initialized with mock certs (cryptography lib not available)"
+        )
         return self._ca_cert
 
-    def issue_cert(self, common_name: str, san_dns: Optional[List[str]] = None,
-                   san_ips: Optional[List[str]] = None) -> CertInfo:
+    def issue_cert(
+        self,
+        common_name: str,
+        san_dns: Optional[List[str]] = None,
+        san_ips: Optional[List[str]] = None,
+    ) -> CertInfo:
         """Issue a service certificate signed by this CA."""
         if self._ca_cert is None:
             self.init_ca()
@@ -188,8 +213,9 @@ class CertificateAuthority:
             return self._issue_cert_crypto(common_name, san_dns, san_ips)
         return self._issue_cert_fallback(common_name)
 
-    def _issue_cert_crypto(self, cn: str, san_dns: Optional[List[str]],
-                           san_ips: Optional[List[str]]) -> CertInfo:
+    def _issue_cert_crypto(
+        self, cn: str, san_dns: Optional[List[str]], san_ips: Optional[List[str]]
+    ) -> CertInfo:
         from cryptography import x509
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import rsa
@@ -206,10 +232,12 @@ class CertificateAuthority:
         # Generate service key
         svc_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
-        subject = x509.Name([
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, self.org),
-            x509.NameAttribute(NameOID.COMMON_NAME, cn),
-        ])
+        subject = x509.Name(
+            [
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, self.org),
+                x509.NameAttribute(NameOID.COMMON_NAME, cn),
+            ]
+        )
 
         now = datetime.datetime.now(datetime.timezone.utc)
         builder = (
@@ -220,25 +248,34 @@ class CertificateAuthority:
             .serial_number(x509.random_serial_number())
             .not_valid_before(now)
             .not_valid_after(now + datetime.timedelta(days=self.validity_days))
-            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(
+                x509.BasicConstraints(ca=False, path_length=None), critical=True
+            )
             .add_extension(
                 x509.KeyUsage(
-                    digital_signature=True, key_encipherment=True,
-                    content_commitment=False, data_encipherment=False,
-                    key_agreement=False, key_cert_sign=False, crl_sign=False,
-                    encipher_only=False, decipher_only=False,
-                ), critical=True,
+                    digital_signature=True,
+                    key_encipherment=True,
+                    content_commitment=False,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    key_cert_sign=False,
+                    crl_sign=False,
+                    encipher_only=False,
+                    decipher_only=False,
+                ),
+                critical=True,
             )
         )
 
         # SANs
         sans = []
-        for dns in (san_dns or [cn]):
+        for dns in san_dns or [cn]:
             sans.append(x509.DNSName(dns))
-        for ip in (san_ips or ["127.0.0.1"]):
+        for ip in san_ips or ["127.0.0.1"]:
             sans.append(x509.IPAddress(ipaddress.ip_address(ip)))
         builder = builder.add_extension(
-            x509.SubjectAlternativeName(sans), critical=False,
+            x509.SubjectAlternativeName(sans),
+            critical=False,
         )
 
         svc_cert = builder.sign(ca_key, hashes.SHA256())
@@ -309,8 +346,9 @@ class TLSContextFactory:
     """
 
     @staticmethod
-    def create_server_context(cert_path: str, key_path: str,
-                              ca_path: str) -> ssl.SSLContext:
+    def create_server_context(
+        cert_path: str, key_path: str, ca_path: str
+    ) -> ssl.SSLContext:
         """Create server TLS context requiring client certs."""
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(cert_path, key_path)
@@ -323,8 +361,9 @@ class TLSContextFactory:
         return ctx
 
     @staticmethod
-    def create_client_context(cert_path: str, key_path: str,
-                              ca_path: str) -> ssl.SSLContext:
+    def create_client_context(
+        cert_path: str, key_path: str, ca_path: str
+    ) -> ssl.SSLContext:
         """Create client TLS context for mTLS."""
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         ctx.load_cert_chain(cert_path, key_path)

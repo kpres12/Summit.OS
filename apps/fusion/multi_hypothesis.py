@@ -10,6 +10,7 @@ Hungarian algorithm may produce suboptimal associations.
 Complements the existing track correlator (which uses single-hypothesis
 Hungarian assignment) by providing an alternative for contested scenarios.
 """
+
 from __future__ import annotations
 
 import math
@@ -25,6 +26,7 @@ logger = logging.getLogger("fusion.mht")
 @dataclass
 class Hypothesis:
     """A single association hypothesis."""
+
     hypothesis_id: int
     parent_id: int = -1
     # Track-to-measurement associations: {track_id: measurement_idx}
@@ -45,8 +47,11 @@ class Hypothesis:
 @dataclass
 class MHTTrack:
     """A track maintained by the MHT."""
+
     track_id: str
-    positions: List[Tuple[float, float, float]] = field(default_factory=list)  # (lat, lon, alt)
+    positions: List[Tuple[float, float, float]] = field(
+        default_factory=list
+    )  # (lat, lon, alt)
     timestamps: List[float] = field(default_factory=list)
     scores: List[float] = field(default_factory=list)
     confirmed: bool = False
@@ -61,6 +66,7 @@ class MHTTrack:
 @dataclass
 class Measurement:
     """A sensor measurement to be associated."""
+
     idx: int
     lat: float
     lon: float
@@ -85,9 +91,15 @@ class MultiHypothesisTracker:
 
     EARTH_R = 6_371_000.0
 
-    def __init__(self, max_hypotheses: int = 100, max_depth: int = 5,
-                 gate_distance_m: float = 1000.0, new_track_score: float = 0.3,
-                 confirm_threshold: int = 3, delete_threshold: int = 5):
+    def __init__(
+        self,
+        max_hypotheses: int = 100,
+        max_depth: int = 5,
+        gate_distance_m: float = 1000.0,
+        new_track_score: float = 0.3,
+        confirm_threshold: int = 3,
+        delete_threshold: int = 5,
+    ):
         self.max_hypotheses = max_hypotheses
         self.max_depth = max_depth
         self.gate_distance_m = gate_distance_m
@@ -116,7 +128,11 @@ class MultiHypothesisTracker:
             return {"tracks": {}, "new_tracks": [], "hypotheses": len(self._hypotheses)}
 
         new_hypotheses = []
-        active_tracks = [tid for tid, t in self._tracks.items() if t.miss_count < self.delete_threshold]
+        active_tracks = [
+            tid
+            for tid, t in self._tracks.items()
+            if t.miss_count < self.delete_threshold
+        ]
 
         for parent in self._hypotheses:
             # Generate child hypotheses
@@ -127,16 +143,18 @@ class MultiHypothesisTracker:
         self._hypotheses = self._prune(new_hypotheses)
 
         # Extract best hypothesis
-        best = max(self._hypotheses, key=lambda h: h.score) if self._hypotheses else None
+        best = (
+            max(self._hypotheses, key=lambda h: h.score) if self._hypotheses else None
+        )
 
         if best:
             return self._apply_hypothesis(best, measurements)
 
         return {"tracks": {}, "new_tracks": [], "hypotheses": len(self._hypotheses)}
 
-    def _generate_children(self, parent: Hypothesis,
-                           measurements: List[Measurement],
-                           track_ids: List[str]) -> List[Hypothesis]:
+    def _generate_children(
+        self, parent: Hypothesis, measurements: List[Measurement], track_ids: List[str]
+    ) -> List[Hypothesis]:
         """Generate child hypotheses from a parent."""
         children = []
 
@@ -148,8 +166,10 @@ class MultiHypothesisTracker:
                 continue
             for m in measurements:
                 dist = self._haversine(
-                    track.last_position[0], track.last_position[1],
-                    m.lat, m.lon,
+                    track.last_position[0],
+                    track.last_position[1],
+                    m.lat,
+                    m.lon,
                 )
                 if dist < self.gate_distance_m:
                     gated[tid].append(m.idx)
@@ -179,8 +199,10 @@ class MultiHypothesisTracker:
             for m_idx in m_idxs:
                 m = measurements[m_idx]
                 dist = self._haversine(
-                    track.last_position[0], track.last_position[1],
-                    m.lat, m.lon,
+                    track.last_position[0],
+                    track.last_position[1],
+                    m.lat,
+                    m.lon,
                 )
                 scored_pairs.append((dist, tid, m_idx))
 
@@ -202,8 +224,10 @@ class MultiHypothesisTracker:
             m = measurements[m_idx]
             track = self._tracks[tid]
             dist = self._haversine(
-                track.last_position[0], track.last_position[1],
-                m.lat, m.lon,
+                track.last_position[0],
+                track.last_position[1],
+                m.lat,
+                m.lon,
             )
             ll += -0.5 * (dist / self.gate_distance_m) ** 2
 
@@ -234,15 +258,16 @@ class MultiHypothesisTracker:
 
         # Sort by score descending and keep top N
         hypotheses.sort(key=lambda h: h.score, reverse=True)
-        pruned = hypotheses[:self.max_hypotheses]
+        pruned = hypotheses[: self.max_hypotheses]
 
         # Depth pruning
         pruned = [h for h in pruned if h.depth <= self.max_depth]
 
         return pruned if pruned else [hypotheses[0]]
 
-    def _apply_hypothesis(self, hyp: Hypothesis,
-                          measurements: List[Measurement]) -> Dict:
+    def _apply_hypothesis(
+        self, hyp: Hypothesis, measurements: List[Measurement]
+    ) -> Dict:
         """Apply the best hypothesis to update tracks."""
         results = {"tracks": {}, "new_tracks": [], "hypotheses": len(self._hypotheses)}
 
@@ -280,7 +305,11 @@ class MultiHypothesisTracker:
             results["new_tracks"].append(tid)
 
         # Delete dead tracks
-        dead = [tid for tid, t in self._tracks.items() if t.miss_count >= self.delete_threshold]
+        dead = [
+            tid
+            for tid, t in self._tracks.items()
+            if t.miss_count >= self.delete_threshold
+        ]
         for tid in dead:
             del self._tracks[tid]
 
@@ -290,13 +319,15 @@ class MultiHypothesisTracker:
         for track in self._tracks.values():
             track.miss_count += 1
 
-    def _haversine(self, lat1: float, lon1: float,
-                   lat2: float, lon2: float) -> float:
+    def _haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         la1, lo1 = math.radians(lat1), math.radians(lon1)
         la2, lo2 = math.radians(lat2), math.radians(lon2)
         dlat = la2 - la1
         dlon = lo2 - lo1
-        a = math.sin(dlat/2)**2 + math.cos(la1) * math.cos(la2) * math.sin(dlon/2)**2
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(la1) * math.cos(la2) * math.sin(dlon / 2) ** 2
+        )
         return 2 * self.EARTH_R * math.asin(math.sqrt(min(a, 1.0)))
 
     def get_confirmed_tracks(self) -> List[MHTTrack]:

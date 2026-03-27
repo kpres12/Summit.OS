@@ -75,9 +75,12 @@ from packages.ontology.store import get_store as _get_store
 from packages.ontology.types import LinkInstance, ObjectInstance
 
 logger = logging.getLogger("ontology.service")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
+)
 
 # ── WebSocket connection manager ───────────────────────────────────────────────
+
 
 class _WSManager:
     def __init__(self):
@@ -109,32 +112,47 @@ _ws_manager = _WSManager()
 def _broadcast_sync(event: str, payload: Any):
     """Sync wrapper for async broadcast (called from store event listeners)."""
     import asyncio
+
     try:
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            loop.create_task(_ws_manager.broadcast({"event": event, "payload": payload.to_dict() if hasattr(payload, "to_dict") else str(payload)}))
+            loop.create_task(
+                _ws_manager.broadcast(
+                    {
+                        "event": event,
+                        "payload": (
+                            payload.to_dict()
+                            if hasattr(payload, "to_dict")
+                            else str(payload)
+                        ),
+                    }
+                )
+            )
     except Exception:
         pass
 
 
 # ── lifespan ───────────────────────────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Bootstrap ontology (registers all type definitions + indexes)
     registry = get_registry()
-    store    = get_store()
+    store = get_store()
 
     # Wire store events → WebSocket broadcast
     store.on("object.created", lambda p: _broadcast_sync("object.created", p))
     store.on("object.updated", lambda p: _broadcast_sync("object.updated", p))
     store.on("object.deleted", lambda p: _broadcast_sync("object.deleted", p))
-    store.on("link.created",   lambda p: _broadcast_sync("link.created", p))
+    store.on("link.created", lambda p: _broadcast_sync("link.created", p))
 
     summary = registry.summary()
     logger.info(
         "Ontology service ready — %d object types, %d link types, %d action types",
-        summary["object_types"], summary["link_types"], summary["action_types"],
+        summary["object_types"],
+        summary["link_types"],
+        summary["action_types"],
     )
     yield
     logger.info("Ontology service shutting down")
@@ -143,10 +161,10 @@ async def lifespan(app: FastAPI):
 # ── app ────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title       = "Summit.OS Ontology Service",
-    description = "Semantic layer and operational backbone for Summit.OS",
-    version     = "1.0.0",
-    lifespan    = lifespan,
+    title="Summit.OS Ontology Service",
+    description="Semantic layer and operational backbone for Summit.OS",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -159,10 +177,11 @@ app.add_middleware(
 
 # ── request/response models ────────────────────────────────────────────────────
 
+
 class ActionRequest(BaseModel):
     object_id: str = ""
-    inputs:    Dict[str, Any] = {}
-    actor_id:  str = "operator"
+    inputs: Dict[str, Any] = {}
+    actor_id: str = "operator"
 
 
 class SyncEntityRequest(BaseModel):
@@ -170,13 +189,13 @@ class SyncEntityRequest(BaseModel):
 
 
 class SyncAlertRequest(BaseModel):
-    alert:    Dict[str, Any]
+    alert: Dict[str, Any]
     alert_id: Optional[str] = None
 
 
 class SyncObservationRequest(BaseModel):
     observation: Dict[str, Any]
-    alert_id:    Optional[str] = None
+    alert_id: Optional[str] = None
 
 
 class SyncMissionRequest(BaseModel):
@@ -188,35 +207,37 @@ class SyncSitRepRequest(BaseModel):
 
 
 class CreateLinkRequest(BaseModel):
-    source_id:  str
-    target_id:  str
+    source_id: str
+    target_id: str
     properties: Dict[str, Any] = {}
 
 
 class SemanticQueryRequest(BaseModel):
     object_type: Optional[str] = None
-    filters:     Dict[str, Any] = {}
-    link_traverse: Optional[str] = None   # link_type to traverse
+    filters: Dict[str, Any] = {}
+    link_traverse: Optional[str] = None  # link_type to traverse
     traverse_direction: str = "outbound"
     limit: int = 50
 
 
 # ── health ─────────────────────────────────────────────────────────────────────
 
+
 @app.get("/health")
 def health():
     store = get_store()
-    reg   = get_registry()
+    reg = get_registry()
     stats = store.stats()
     return {
-        "status":  "ok",
+        "status": "ok",
         "service": "Summit.OS Ontology",
-        "schema":  reg.summary(),
-        "store":   stats,
+        "schema": reg.summary(),
+        "store": stats,
     }
 
 
 # ── schema endpoints ───────────────────────────────────────────────────────────
+
 
 @app.get("/schema")
 def get_schema():
@@ -228,17 +249,22 @@ def list_object_types():
     reg = get_registry()
     return [
         {
-            "name":         t.name,
+            "name": t.name,
             "display_name": t.display_name,
-            "description":  t.description,
-            "properties":   [
-                {"name": p.name, "kind": p.kind, "required": p.required,
-                 "description": p.description, "index": p.index}
+            "description": t.description,
+            "properties": [
+                {
+                    "name": p.name,
+                    "kind": p.kind,
+                    "required": p.required,
+                    "description": p.description,
+                    "index": p.index,
+                }
                 for p in t.properties
             ],
             "links_from": [l.name for l in reg.links_from(t.name)],
-            "links_to":   [l.name for l in reg.links_to(t.name)],
-            "actions":    [a.name for a in reg.actions_for(t.name)],
+            "links_to": [l.name for l in reg.links_to(t.name)],
+            "actions": [a.name for a in reg.actions_for(t.name)],
         }
         for t in reg.list_object_types()
     ]
@@ -246,32 +272,53 @@ def list_object_types():
 
 @app.get("/schema/objects/{type_name}")
 def get_object_type(type_name: str):
-    reg  = get_registry()
+    reg = get_registry()
     defn = reg.get_object_type(type_name)
     if not defn:
         raise HTTPException(404, f"Object type '{type_name}' not found")
     return {
-        "name":         defn.name,
+        "name": defn.name,
         "display_name": defn.display_name,
-        "description":  defn.description,
-        "properties":   [
-            {"name": p.name, "kind": p.kind, "required": p.required,
-             "enum_values": p.enum_values, "description": p.description, "index": p.index}
+        "description": defn.description,
+        "properties": [
+            {
+                "name": p.name,
+                "kind": p.kind,
+                "required": p.required,
+                "enum_values": p.enum_values,
+                "description": p.description,
+                "index": p.index,
+            }
             for p in defn.properties
         ],
         "links_from": [
-            {"name": l.name, "target_type": l.target_type, "cardinality": l.cardinality,
-             "description": l.description}
+            {
+                "name": l.name,
+                "target_type": l.target_type,
+                "cardinality": l.cardinality,
+                "description": l.description,
+            }
             for l in reg.links_from(type_name)
         ],
         "links_to": [
-            {"name": l.name, "source_type": l.source_type, "cardinality": l.cardinality,
-             "description": l.description}
+            {
+                "name": l.name,
+                "source_type": l.source_type,
+                "cardinality": l.cardinality,
+                "description": l.description,
+            }
             for l in reg.links_to(type_name)
         ],
         "actions": [
-            {"name": a.name, "display_name": a.display_name, "description": a.description,
-             "inputs": [{"name": p.name, "kind": p.kind, "required": p.required} for p in a.input_properties]}
+            {
+                "name": a.name,
+                "display_name": a.display_name,
+                "description": a.description,
+                "inputs": [
+                    {"name": p.name, "kind": p.kind, "required": p.required}
+                    for p in a.input_properties
+                ],
+            }
             for a in reg.actions_for(type_name)
         ],
     }
@@ -280,8 +327,14 @@ def get_object_type(type_name: str):
 @app.get("/schema/links")
 def list_link_types():
     return [
-        {"name": l.name, "display_name": l.display_name, "source_type": l.source_type,
-         "target_type": l.target_type, "cardinality": l.cardinality, "description": l.description}
+        {
+            "name": l.name,
+            "display_name": l.display_name,
+            "source_type": l.source_type,
+            "target_type": l.target_type,
+            "cardinality": l.cardinality,
+            "description": l.description,
+        }
         for l in get_registry().list_link_types()
     ]
 
@@ -289,20 +342,32 @@ def list_link_types():
 @app.get("/schema/actions")
 def list_action_types():
     return [
-        {"name": a.name, "display_name": a.display_name, "target_type": a.target_type,
-         "description": a.description,
-         "inputs": [{"name": p.name, "kind": p.kind, "required": p.required,
-                     "enum_values": p.enum_values} for p in a.input_properties]}
+        {
+            "name": a.name,
+            "display_name": a.display_name,
+            "target_type": a.target_type,
+            "description": a.description,
+            "inputs": [
+                {
+                    "name": p.name,
+                    "kind": p.kind,
+                    "required": p.required,
+                    "enum_values": p.enum_values,
+                }
+                for p in a.input_properties
+            ],
+        }
         for a in get_registry().list_action_types()
     ]
 
 
 # ── object endpoints ───────────────────────────────────────────────────────────
 
+
 @app.get("/objects/{type_name}")
 def list_objects(
     type_name: str,
-    limit:  int = Query(100, le=1000),
+    limit: int = Query(100, le=1000),
     offset: int = Query(0),
     status: Optional[str] = None,
     severity: Optional[str] = None,
@@ -314,15 +379,19 @@ def list_objects(
         raise HTTPException(404, f"Object type '{type_name}' not found")
 
     filters = {}
-    if status:   filters["status"]   = status
-    if severity: filters["severity"] = severity
-    if domain:   filters["domain"]   = domain
-    if org_id:   filters["org_id"]   = org_id
+    if status:
+        filters["status"] = status
+    if severity:
+        filters["severity"] = severity
+    if domain:
+        filters["domain"] = domain
+    if org_id:
+        filters["org_id"] = org_id
 
     instances = get_store().list(type_name, filters or None, limit, offset)
     return {
-        "type":    type_name,
-        "count":   len(instances),
+        "type": type_name,
+        "count": len(instances),
         "objects": [i.to_dict() for i in instances],
     }
 
@@ -345,7 +414,7 @@ def sync_object(type_name: str, body: Dict[str, Any]):
     if not obj_id:
         raise HTTPException(400, "Missing 'id' in body")
     instance = ObjectInstance(object_type=type_name, object_id=obj_id, properties=body)
-    result   = get_store()._upsert(instance)
+    result = get_store()._upsert(instance)
     return result.to_dict()
 
 
@@ -359,8 +428,11 @@ def delete_object(type_name: str, object_id: str):
 
 # ── link endpoints ─────────────────────────────────────────────────────────────
 
+
 @app.get("/links/{link_type}")
-def list_links(link_type: str, source_id: Optional[str] = None, target_id: Optional[str] = None):
+def list_links(
+    link_type: str, source_id: Optional[str] = None, target_id: Optional[str] = None
+):
     store = get_store()
     if source_id:
         links = store.links_from_object(source_id, link_type)
@@ -368,7 +440,11 @@ def list_links(link_type: str, source_id: Optional[str] = None, target_id: Optio
         links = store.links_to_object(target_id, link_type)
     else:
         links = [l for (lt, _, _), l in store._links.items() if lt == link_type]
-    return {"link_type": link_type, "count": len(links), "links": [l.to_dict() for l in links]}
+    return {
+        "link_type": link_type,
+        "count": len(links),
+        "links": [l.to_dict() for l in links],
+    }
 
 
 @app.post("/links/{link_type}")
@@ -376,8 +452,12 @@ def create_link(link_type: str, body: CreateLinkRequest):
     reg = get_registry()
     if not reg.get_link_type(link_type):
         raise HTTPException(404, f"Link type '{link_type}' not found")
-    link   = LinkInstance(link_type=link_type, source_id=body.source_id,
-                          target_id=body.target_id, properties=body.properties)
+    link = LinkInstance(
+        link_type=link_type,
+        source_id=body.source_id,
+        target_id=body.target_id,
+        properties=body.properties,
+    )
     result = get_store()._upsert_link(link)
     return result.to_dict()
 
@@ -392,19 +472,19 @@ def delete_link(link_type: str, source_id: str, target_id: str):
 
 # ── graph endpoints ────────────────────────────────────────────────────────────
 
+
 @app.get("/graph/{type_name}/{object_id}/neighbors")
 def get_neighbors(type_name: str, object_id: str):
     instance = get_store().get(type_name, object_id)
     if not instance:
         raise HTTPException(404, f"{type_name} '{object_id}' not found")
-    q         = OntologyQuery()
+    q = OntologyQuery()
     neighbors = q.neighbors(object_id)
     return {
-        "object_id":  object_id,
+        "object_id": object_id,
         "object_type": type_name,
         "neighbors": {
-            rel: [n.to_dict() for n in nodes]
-            for rel, nodes in neighbors.items()
+            rel: [n.to_dict() for n in nodes] for rel, nodes in neighbors.items()
         },
     }
 
@@ -417,18 +497,19 @@ def traverse(
     direction: str = "outbound",
     target_type: Optional[str] = None,
 ):
-    q       = OntologyQuery()
+    q = OntologyQuery()
     results = q.traverse(type_name, object_id, link_type, direction, target_type)
     return {
-        "source_id":  object_id,
-        "link_type":  link_type,
-        "direction":  direction,
-        "count":      len(results),
-        "objects":    [r.to_dict() for r in results],
+        "source_id": object_id,
+        "link_type": link_type,
+        "direction": direction,
+        "count": len(results),
+        "objects": [r.to_dict() for r in results],
     }
 
 
 # ── action endpoints ───────────────────────────────────────────────────────────
+
 
 @app.post("/actions/{action_name}")
 def execute_action(action_name: str, body: ActionRequest):
@@ -437,22 +518,25 @@ def execute_action(action_name: str, body: ActionRequest):
         raise HTTPException(404, f"Action '{action_name}' not found")
 
     result = get_action_runner().execute(
-        action_name = action_name,
-        object_id   = body.object_id,
-        inputs      = body.inputs,
-        actor_id    = body.actor_id,
+        action_name=action_name,
+        object_id=body.object_id,
+        inputs=body.inputs,
+        actor_id=body.actor_id,
     )
 
     if not result.success:
-        raise HTTPException(422, detail={
-            "error":   result.error,
-            "audit":   result.audit_entry.to_dict() if result.audit_entry else None,
-        })
+        raise HTTPException(
+            422,
+            detail={
+                "error": result.error,
+                "audit": result.audit_entry.to_dict() if result.audit_entry else None,
+            },
+        )
 
     return {
-        "success":         True,
-        "object":          result.object_instance.to_dict() if result.object_instance else None,
-        "audit":           result.audit_entry.to_dict() if result.audit_entry else None,
+        "success": True,
+        "object": result.object_instance.to_dict() if result.object_instance else None,
+        "audit": result.audit_entry.to_dict() if result.audit_entry else None,
         "side_effect_log": result.side_effect_log,
     }
 
@@ -464,6 +548,7 @@ def get_audit(limit: int = Query(100, le=1000), actor_id: Optional[str] = None):
 
 
 # ── query endpoints ────────────────────────────────────────────────────────────
+
 
 @app.post("/query/semantic")
 def semantic_query(body: SemanticQueryRequest):
@@ -485,6 +570,7 @@ def ontology_summary():
 
 
 # ── sync endpoints (called by other services) ──────────────────────────────────
+
 
 @app.post("/sync/entity")
 def sync_entity(body: SyncEntityRequest):
@@ -518,17 +604,20 @@ def sync_sitrep(body: SyncSitRepRequest):
 
 # ── WebSocket ──────────────────────────────────────────────────────────────────
 
+
 @app.websocket("/ws/events")
 async def ws_events(websocket: WebSocket):
     await _ws_manager.connect(websocket)
     try:
         # Send current state on connect
-        await websocket.send_json({
-            "event":   "connected",
-            "payload": get_registry().summary(),
-        })
+        await websocket.send_json(
+            {
+                "event": "connected",
+                "payload": get_registry().summary(),
+            }
+        )
         while True:
-            await websocket.receive_text()   # keep connection alive (client ping)
+            await websocket.receive_text()  # keep connection alive (client ping)
     except WebSocketDisconnect:
         _ws_manager.disconnect(websocket)
 
@@ -538,8 +627,8 @@ async def ws_events(websocket: WebSocket):
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host    = os.getenv("ONTOLOGY_HOST", "0.0.0.0"),
-        port    = int(os.getenv("ONTOLOGY_PORT", "8007")),
-        reload  = os.getenv("ENV", "production") == "development",
-        workers = 1,
+        host=os.getenv("ONTOLOGY_HOST", "0.0.0.0"),
+        port=int(os.getenv("ONTOLOGY_PORT", "8007")),
+        reload=os.getenv("ENV", "production") == "development",
+        workers=1,
     )

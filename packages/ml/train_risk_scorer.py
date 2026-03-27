@@ -38,6 +38,7 @@ def load_real_csv(csv_path: str):
     label_inv = {v: k for k, v in RISK_LABELS.items()}
     X, y = [], []
     from features import extract
+
     try:
         with open(csv_path, newline="") as f:
             reader = csv.DictReader(f)
@@ -59,7 +60,11 @@ def load_real_csv(csv_path: str):
         print(f"  Loaded {len(X)} real risk samples from {os.path.basename(csv_path)}")
     except FileNotFoundError:
         print(f"  CSV not found: {csv_path}")
-    return (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64)) if X else (None, None)
+    return (
+        (np.array(X, dtype=np.float32), np.array(y, dtype=np.int64))
+        if X
+        else (None, None)
+    )
 
 
 def train(n_synthetic: int = 8000, real_csv: str = None):
@@ -74,6 +79,7 @@ def train(n_synthetic: int = 8000, real_csv: str = None):
         if X_real is not None:
             from collections import defaultdict
             import random as _rand
+
             _rand.seed(42)
             syn_counts = defaultdict(int)
             for lbl in y:
@@ -91,27 +97,34 @@ def train(n_synthetic: int = 8000, real_csv: str = None):
             if real_capped_X:
                 X = np.vstack([X, np.array(real_capped_X, dtype=np.float32)])
                 y = np.concatenate([y, np.array(real_capped_y, dtype=np.int64)])
-                print(f"  Real data (capped): { {RISK_LABELS[k]: v for k, v in real_counts.items()} }")
+                print(
+                    f"  Real data (capped): { {RISK_LABELS[k]: v for k, v in real_counts.items()} }"
+                )
                 print(f"  Combined: {len(X)} total samples (real + synthetic)")
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    pipe = Pipeline([
-        ("scaler", StandardScaler()),
-        ("clf", HistGradientBoostingClassifier(
-            max_iter=400,
-            max_depth=5,
-            learning_rate=0.05,
-            min_samples_leaf=8,
-            l2_regularization=0.1,
-            early_stopping=True,
-            validation_fraction=0.1,
-            n_iter_no_change=20,
-            random_state=42,
-        )),
-    ])
+    pipe = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            (
+                "clf",
+                HistGradientBoostingClassifier(
+                    max_iter=400,
+                    max_depth=5,
+                    learning_rate=0.05,
+                    min_samples_leaf=8,
+                    l2_regularization=0.1,
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                    n_iter_no_change=20,
+                    random_state=42,
+                ),
+            ),
+        ]
+    )
 
     print("Training HistGradientBoostingClassifier (balanced)...")
     pipe.fit(X_train, y_train)
@@ -119,7 +132,11 @@ def train(n_synthetic: int = 8000, real_csv: str = None):
     y_pred = pipe.predict(X_test)
     target_names = [RISK_LABELS[i] for i in sorted(RISK_LABELS)]
     print("\nClassification report (test set):")
-    print(classification_report(y_test, y_pred, target_names=target_names, zero_division=0))
+    print(
+        classification_report(
+            y_test, y_pred, target_names=target_names, zero_division=0
+        )
+    )
 
     cv_scores = cross_val_score(pipe, X, y, cv=5, scoring="accuracy")
     print(f"5-fold CV accuracy: {cv_scores.mean():.3f} ± {cv_scores.std():.3f}")
@@ -140,6 +157,7 @@ def train(n_synthetic: int = 8000, real_csv: str = None):
     # Smoke test
     import onnxruntime as ort
     from features import extract
+
     sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
     test_obs = [
         {"class": "active fire front", "confidence": 0.95, "lat": 34.0, "lon": -118.0},
@@ -153,13 +171,16 @@ def train(n_synthetic: int = 8000, real_csv: str = None):
     for obs in test_obs:
         feat = np.array([extract(obs)], dtype=np.float32)
         pred = sess.run(None, {"float_input": feat})[0][0]
-        print(f"  {obs['class']:<35} conf={obs['confidence']:.2f} → {RISK_LABELS[int(pred)]}")
+        print(
+            f"  {obs['class']:<35} conf={obs['confidence']:.2f} → {RISK_LABELS[int(pred)]}"
+        )
 
     return onnx_path
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--real-csv", dest="real_csv", default=None)
     parser.add_argument("--samples", type=int, default=8000)

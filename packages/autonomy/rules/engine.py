@@ -13,6 +13,7 @@ Use cases:
 - Hostile track detected → alert + reposition
 - Comms lost → switch to autonomous mode
 """
+
 from __future__ import annotations
 
 import time
@@ -26,6 +27,7 @@ logger = logging.getLogger("autonomy.rules")
 
 class RulePriority(IntEnum):
     """Rule priorities (higher = evaluated first)."""
+
     SAFETY = 100
     TACTICAL = 50
     OPERATIONAL = 25
@@ -35,6 +37,7 @@ class RulePriority(IntEnum):
 @dataclass
 class Rule:
     """A condition-action rule."""
+
     name: str
     condition: Callable[[Dict[str, Any]], bool]
     action: Callable[[Dict[str, Any]], Any]
@@ -90,7 +93,9 @@ class RuleEngine:
         """Replace the evaluation context."""
         self._context = dict(context)
 
-    def evaluate(self, extra_context: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+    def evaluate(
+        self, extra_context: Dict[str, Any] | None = None
+    ) -> List[Dict[str, Any]]:
         """
         Evaluate all enabled rules against current context.
 
@@ -118,12 +123,14 @@ class RuleEngine:
                     rule.last_fired = now
                     rule.fire_count += 1
                     rule.last_result = result
-                    fired.append({
-                        "rule": rule.name,
-                        "priority": rule.priority,
-                        "result": result,
-                        "timestamp": now,
-                    })
+                    fired.append(
+                        {
+                            "rule": rule.name,
+                            "priority": rule.priority,
+                            "result": result,
+                            "timestamp": now,
+                        }
+                    )
                     logger.info(f"Rule fired: {rule.name} (priority={rule.priority})")
             except Exception as e:
                 logger.error(f"Rule '{rule.name}' error: {e}")
@@ -158,8 +165,11 @@ def build_safety_rules() -> List[Rule]:
             name="battery_critical",
             description="Emergency RTB when battery drops below 10%",
             condition=lambda ctx: ctx.get("battery_percent", 100) < 10,
-            action=lambda ctx: {"command": "RTB", "reason": "battery_critical",
-                                "priority": "emergency"},
+            action=lambda ctx: {
+                "command": "RTB",
+                "reason": "battery_critical",
+                "priority": "emergency",
+            },
             priority=RulePriority.SAFETY,
             cooldown_sec=30.0,
         ),
@@ -167,8 +177,11 @@ def build_safety_rules() -> List[Rule]:
             name="battery_low",
             description="Warning when battery drops below 25%",
             condition=lambda ctx: ctx.get("battery_percent", 100) < 25,
-            action=lambda ctx: {"command": "WARN", "reason": "battery_low",
-                                "priority": "high"},
+            action=lambda ctx: {
+                "command": "WARN",
+                "reason": "battery_low",
+                "priority": "high",
+            },
             priority=RulePriority.SAFETY,
             cooldown_sec=60.0,
         ),
@@ -176,8 +189,11 @@ def build_safety_rules() -> List[Rule]:
             name="geofence_violation",
             description="Emergency stop when outside geofence",
             condition=lambda ctx: ctx.get("geofence_violated", False),
-            action=lambda ctx: {"command": "HOLD", "reason": "geofence_violation",
-                                "priority": "emergency"},
+            action=lambda ctx: {
+                "command": "HOLD",
+                "reason": "geofence_violation",
+                "priority": "emergency",
+            },
             priority=RulePriority.SAFETY,
             cooldown_sec=5.0,
         ),
@@ -185,18 +201,24 @@ def build_safety_rules() -> List[Rule]:
             name="comms_lost",
             description="Switch to autonomous mode on comms loss",
             condition=lambda ctx: ctx.get("comms_status") == "lost",
-            action=lambda ctx: {"command": "AUTONOMOUS", "reason": "comms_lost",
-                                "priority": "high"},
+            action=lambda ctx: {
+                "command": "AUTONOMOUS",
+                "reason": "comms_lost",
+                "priority": "high",
+            },
             priority=RulePriority.SAFETY,
             cooldown_sec=10.0,
         ),
         Rule(
             name="altitude_limit",
             description="Enforce maximum altitude",
-            condition=lambda ctx: ctx.get("vehicle_alt", 0) > ctx.get("max_altitude_m", 400),
-            action=lambda ctx: {"command": "DESCEND",
-                                "target_alt": ctx.get("max_altitude_m", 400),
-                                "reason": "altitude_limit"},
+            condition=lambda ctx: ctx.get("vehicle_alt", 0)
+            > ctx.get("max_altitude_m", 400),
+            action=lambda ctx: {
+                "command": "DESCEND",
+                "target_alt": ctx.get("max_altitude_m", 400),
+                "reason": "altitude_limit",
+            },
             priority=RulePriority.SAFETY,
             cooldown_sec=5.0,
         ),
@@ -210,14 +232,16 @@ def build_tactical_rules() -> List[Rule]:
             name="hostile_detected",
             description="Alert on hostile track detection",
             condition=lambda ctx: any(
-                t.get("classification") == "hostile"
-                for t in ctx.get("tracks", [])
+                t.get("classification") == "hostile" for t in ctx.get("tracks", [])
             ),
             action=lambda ctx: {
                 "command": "ALERT",
                 "reason": "hostile_detected",
-                "tracks": [t for t in ctx.get("tracks", [])
-                           if t.get("classification") == "hostile"],
+                "tracks": [
+                    t
+                    for t in ctx.get("tracks", [])
+                    if t.get("classification") == "hostile"
+                ],
             },
             priority=RulePriority.TACTICAL,
             cooldown_sec=15.0,
@@ -226,8 +250,10 @@ def build_tactical_rules() -> List[Rule]:
             name="high_density_area",
             description="Increase scan rate in high-track-density areas",
             condition=lambda ctx: len(ctx.get("tracks", [])) > 10,
-            action=lambda ctx: {"command": "INCREASE_SCAN_RATE",
-                                "reason": "high_density"},
+            action=lambda ctx: {
+                "command": "INCREASE_SCAN_RATE",
+                "reason": "high_density",
+            },
             priority=RulePriority.TACTICAL,
             cooldown_sec=30.0,
         ),

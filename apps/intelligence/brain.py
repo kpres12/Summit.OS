@@ -16,6 +16,7 @@ Environment variables:
     BRAIN_TEMPERATURE   - sampling temperature (default: 0.2 — factual/deterministic)
     BRAIN_MAX_STEPS     - max perceive/plan/act cycles per mission tick (default: 5)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,6 +41,7 @@ BRAIN_MAX_STEPS = int(os.getenv("BRAIN_MAX_STEPS", "5"))
 # ---------------------------------------------------------------------------
 # Prompt injection defence — delegates to prompt_guard
 # ---------------------------------------------------------------------------
+
 
 def _sanitize_objective(text: str) -> str:
     """Sanitize a user-supplied mission objective. Delegates to prompt_guard."""
@@ -79,6 +81,7 @@ class OllamaClient:
         """Returns True if Ollama is reachable and the model is present."""
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=3.0) as client:
                 r = await client.get(f"{self.base_url}/api/tags")
                 if r.status_code != 200:
@@ -107,6 +110,7 @@ class OllamaClient:
         """Send a chat request. Returns the assistant message content or None."""
         try:
             import httpx
+
             payload: Dict[str, Any] = {
                 "model": self.model,
                 "messages": messages,
@@ -175,7 +179,7 @@ def _parse_tool_calls(response: str) -> Tuple[List[Tuple[str, Dict]], str]:
     for line in lines:
         line = line.strip()
         if line.startswith("SUMMARY:"):
-            summary = line[len("SUMMARY:"):].strip()
+            summary = line[len("SUMMARY:") :].strip()
             continue
         if not line or not (line.startswith("{") or '"tool"' in line):
             continue
@@ -305,7 +309,12 @@ class Brain:
         # Sanitize the stored response to prevent a successful injection in one
         # step from poisoning the context for all subsequent steps.
         safe_response = sanitize_text(response, max_len=2000, label="llm_response")
-        self._conversation.append({"role": "user", "content": f"[Mission: {_sanitize_objective(mission_objective)}]"})
+        self._conversation.append(
+            {
+                "role": "user",
+                "content": f"[Mission: {_sanitize_objective(mission_objective)}]",
+            }
+        )
         self._conversation.append({"role": "assistant", "content": safe_response})
 
         # 3. Act — parse and execute tool calls
@@ -315,25 +324,35 @@ class Brain:
         for tool_name, args in tool_calls_parsed:
             logger.info(f"Brain calling tool: {tool_name}({list(args.keys())})")
             result = await self.executor.execute(tool_name, args)
-            call_results.append({
-                "tool": tool_name,
-                "args": args,
-                "result": result,
-            })
+            call_results.append(
+                {
+                    "tool": tool_name,
+                    "args": args,
+                    "result": result,
+                }
+            )
             if not result.get("ok"):
-                logger.warning(f"Tool {tool_name} returned error: {result.get('error')}")
+                logger.warning(
+                    f"Tool {tool_name} returned error: {result.get('error')}"
+                )
 
         if not summary:
-            summary = response.strip().split("\n")[-1][:200] if response else "No summary"
+            summary = (
+                response.strip().split("\n")[-1][:200] if response else "No summary"
+            )
 
-        logger.info(f"Brain step complete: {len(call_results)} tool calls | {summary[:100]}")
+        logger.info(
+            f"Brain step complete: {len(call_results)} tool calls | {summary[:100]}"
+        )
 
         return {
             "available": True,
             "tool_calls": call_results,
             "summary": summary,
             "context_chars": len(context),
-            "raw_response": response[:500] if logger.isEnabledFor(logging.DEBUG) else None,
+            "raw_response": (
+                response[:500] if logger.isEnabledFor(logging.DEBUG) else None
+            ),
         }
 
     async def run_mission(

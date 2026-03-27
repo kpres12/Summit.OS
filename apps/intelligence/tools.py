@@ -8,6 +8,7 @@ and the agent runtime executes them against the tasking/fabric services.
 Tool schema follows the Ollama/OpenAI function-calling format so it can be
 parsed by brain.py and sent to the local Llama model.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,16 +35,40 @@ TOOL_DEFINITIONS: List[Dict] = [
                 "properties": {
                     "task_type": {
                         "type": "string",
-                        "enum": ["SURVEY", "MONITOR", "SEARCH", "DELIVER", "PERIMETER", "ORBIT"],
+                        "enum": [
+                            "SURVEY",
+                            "MONITOR",
+                            "SEARCH",
+                            "DELIVER",
+                            "PERIMETER",
+                            "ORBIT",
+                        ],
                         "description": "Type of task to assign",
                     },
                     "lat": {"type": "number", "description": "Target latitude"},
                     "lon": {"type": "number", "description": "Target longitude"},
-                    "altitude_m": {"type": "number", "description": "Target altitude in metres (optional)"},
-                    "asset_id": {"type": "string", "description": "Specific asset ID to use (optional — omit to let engine choose)"},
-                    "priority": {"type": "integer", "minimum": 1, "maximum": 5, "description": "Task priority 1-5 (5=highest)"},
-                    "radius_m": {"type": "number", "description": "Area radius in metres (for SURVEY/PERIMETER tasks)"},
-                    "reason": {"type": "string", "description": "Brief rationale for this dispatch"},
+                    "altitude_m": {
+                        "type": "number",
+                        "description": "Target altitude in metres (optional)",
+                    },
+                    "asset_id": {
+                        "type": "string",
+                        "description": "Specific asset ID to use (optional — omit to let engine choose)",
+                    },
+                    "priority": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5,
+                        "description": "Task priority 1-5 (5=highest)",
+                    },
+                    "radius_m": {
+                        "type": "number",
+                        "description": "Area radius in metres (for SURVEY/PERIMETER tasks)",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Brief rationale for this dispatch",
+                    },
                 },
             },
         },
@@ -61,11 +86,20 @@ TOOL_DEFINITIONS: List[Dict] = [
                         "type": "string",
                         "enum": ["INFO", "WARNING", "CRITICAL"],
                     },
-                    "description": {"type": "string", "description": "Clear description of the situation"},
-                    "entity_id": {"type": "string", "description": "Entity this alert is about (optional)"},
+                    "description": {
+                        "type": "string",
+                        "description": "Clear description of the situation",
+                    },
+                    "entity_id": {
+                        "type": "string",
+                        "description": "Entity this alert is about (optional)",
+                    },
                     "lat": {"type": "number"},
                     "lon": {"type": "number"},
-                    "recommended_action": {"type": "string", "description": "What you recommend the operator do"},
+                    "recommended_action": {
+                        "type": "string",
+                        "description": "What you recommend the operator do",
+                    },
                 },
             },
         },
@@ -77,7 +111,13 @@ TOOL_DEFINITIONS: List[Dict] = [
             "description": "Define a geographic boundary — exclusion zone, inclusion zone, or alert trigger area.",
             "parameters": {
                 "type": "object",
-                "required": ["name", "fence_type", "center_lat", "center_lon", "radius_m"],
+                "required": [
+                    "name",
+                    "fence_type",
+                    "center_lat",
+                    "center_lon",
+                    "radius_m",
+                ],
                 "properties": {
                     "name": {"type": "string"},
                     "fence_type": {
@@ -88,7 +128,10 @@ TOOL_DEFINITIONS: List[Dict] = [
                     "center_lat": {"type": "number"},
                     "center_lon": {"type": "number"},
                     "radius_m": {"type": "number"},
-                    "max_altitude_m": {"type": "number", "description": "Altitude ceiling (optional)"},
+                    "max_altitude_m": {
+                        "type": "number",
+                        "description": "Altitude ceiling (optional)",
+                    },
                     "reason": {"type": "string"},
                 },
             },
@@ -106,12 +149,22 @@ TOOL_DEFINITIONS: List[Dict] = [
                     "asset_id": {"type": "string"},
                     "action": {
                         "type": "string",
-                        "enum": ["RETURN_HOME", "LAND", "HOVER", "EMERGENCY_STOP", "RESUME", "GOTO"],
+                        "enum": [
+                            "RETURN_HOME",
+                            "LAND",
+                            "HOVER",
+                            "EMERGENCY_STOP",
+                            "RESUME",
+                            "GOTO",
+                        ],
                         "description": "Command action to send",
                     },
                     "lat": {"type": "number", "description": "Required for GOTO"},
                     "lon": {"type": "number", "description": "Required for GOTO"},
-                    "altitude_m": {"type": "number", "description": "Required for GOTO"},
+                    "altitude_m": {
+                        "type": "number",
+                        "description": "Required for GOTO",
+                    },
                     "reason": {"type": "string"},
                 },
             },
@@ -129,9 +182,18 @@ TOOL_DEFINITIONS: List[Dict] = [
                 "type": "object",
                 "required": ["device_id", "action"],
                 "properties": {
-                    "device_id": {"type": "string", "description": "Modbus/OPC-UA device entity ID"},
-                    "action": {"type": "string", "enum": ["OPEN", "CLOSE", "SET", "RESET"]},
-                    "value": {"type": "number", "description": "Setpoint value (for SET action)"},
+                    "device_id": {
+                        "type": "string",
+                        "description": "Modbus/OPC-UA device entity ID",
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["OPEN", "CLOSE", "SET", "RESET"],
+                    },
+                    "value": {
+                        "type": "number",
+                        "description": "Setpoint value (for SET action)",
+                    },
                     "reason": {"type": "string"},
                 },
             },
@@ -147,16 +209,35 @@ TOOL_DEFINITIONS: List[Dict] = [
                 "properties": {
                     "entity_type": {
                         "type": "string",
-                        "enum": ["ASSET", "TRACK", "ALERT", "MISSION", "SENSOR", "GEOFENCE"],
+                        "enum": [
+                            "ASSET",
+                            "TRACK",
+                            "ALERT",
+                            "MISSION",
+                            "SENSOR",
+                            "GEOFENCE",
+                        ],
                     },
                     "state": {
                         "type": "string",
                         "enum": ["ACTIVE", "WARNING", "CRITICAL", "INACTIVE", "LOST"],
                     },
-                    "domain": {"type": "string", "enum": ["AERIAL", "GROUND", "MARITIME", "SPACE"]},
-                    "near_lat": {"type": "number", "description": "Filter by proximity — centre lat"},
-                    "near_lon": {"type": "number", "description": "Filter by proximity — centre lon"},
-                    "radius_m": {"type": "number", "description": "Proximity radius in metres"},
+                    "domain": {
+                        "type": "string",
+                        "enum": ["AERIAL", "GROUND", "MARITIME", "SPACE"],
+                    },
+                    "near_lat": {
+                        "type": "number",
+                        "description": "Filter by proximity — centre lat",
+                    },
+                    "near_lon": {
+                        "type": "number",
+                        "description": "Filter by proximity — centre lon",
+                    },
+                    "radius_m": {
+                        "type": "number",
+                        "description": "Proximity radius in metres",
+                    },
                 },
             },
         },
@@ -174,14 +255,23 @@ TOOL_DEFINITIONS: List[Dict] = [
                 "type": "object",
                 "required": ["question", "context"],
                 "properties": {
-                    "question": {"type": "string", "description": "What you need the human to decide"},
-                    "context": {"type": "string", "description": "Situation summary for the operator"},
+                    "question": {
+                        "type": "string",
+                        "description": "What you need the human to decide",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Situation summary for the operator",
+                    },
                     "options": {
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "Suggested response options (optional)",
                     },
-                    "urgency": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+                    "urgency": {
+                        "type": "string",
+                        "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+                    },
                 },
             },
         },
@@ -190,6 +280,7 @@ TOOL_DEFINITIONS: List[Dict] = [
 
 
 # ── Tool executor ─────────────────────────────────────────────────────────────
+
 
 class ToolExecutor:
     """
@@ -221,6 +312,7 @@ class ToolExecutor:
 
     async def _post(self, url: str, payload: Dict) -> Dict:
         import httpx
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(url, json=payload)
             r.raise_for_status()
@@ -228,6 +320,7 @@ class ToolExecutor:
 
     async def _get(self, url: str, params: Optional[Dict] = None) -> Dict:
         import httpx
+
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get(url, params=params or {})
             r.raise_for_status()
@@ -316,7 +409,10 @@ class ToolExecutor:
         params = {k: v for k, v in args.items() if v is not None}
         result = await self._get(f"{self.fabric_url}/entities", params)
         entities = result if isinstance(result, list) else result.get("entities", [])
-        return {"ok": True, "result": {"entity_count": len(entities), "entities": entities}}
+        return {
+            "ok": True,
+            "result": {"entity_count": len(entities), "entities": entities},
+        }
 
     async def _tool_request_human_input(self, args: Dict) -> Dict:
         """Queue a human decision request. Returns immediately — response comes async."""
@@ -328,15 +424,19 @@ class ToolExecutor:
             "status": "PENDING",
         }
         self._pending_human_inputs.append(request)
-        logger.info(f"Human input requested [{args.get('urgency','MEDIUM')}]: {args['question']}")
+        logger.info(
+            f"Human input requested [{args.get('urgency','MEDIUM')}]: {args['question']}"
+        )
 
         # Create a WARNING alert so the operator sees it in the console
         try:
-            await self._tool_create_alert({
-                "severity": "WARNING",
-                "description": f"AI requesting operator input: {args['question']}",
-                "recommended_action": args["context"],
-            })
+            await self._tool_create_alert(
+                {
+                    "severity": "WARNING",
+                    "description": f"AI requesting operator input: {args['question']}",
+                    "recommended_action": args["context"],
+                }
+            )
         except Exception:
             pass
 

@@ -7,6 +7,7 @@ Implements the Summit.OS Task API:
 - Task state machine: PENDING → ASSIGNED → RUNNING → COMPLETED/FAILED/CANCELLED
 - Task dependencies and priority scheduling
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,6 +41,7 @@ class TaskPriority(int, Enum):
 @dataclass
 class TaskRecord:
     """A task in the mission planning system."""
+
     task_id: str
     task_type: str  # "navigate", "observe", "patrol", "strike", "recon"
     state: TaskState = TaskState.PENDING
@@ -77,7 +79,11 @@ class TaskRecord:
             "state": self.state.value,
             "priority": self.priority.value,
             "assignee_id": self.assignee_id,
-            "target": {"lat": self.target_lat, "lon": self.target_lon, "alt": self.target_alt},
+            "target": {
+                "lat": self.target_lat,
+                "lon": self.target_lon,
+                "alt": self.target_alt,
+            },
             "params": self.params,
             "depends_on": self.depends_on,
             "result": self.result,
@@ -89,11 +95,17 @@ class TaskRecord:
 
     @property
     def is_terminal(self) -> bool:
-        return self.state in (TaskState.COMPLETED, TaskState.FAILED, TaskState.CANCELLED)
+        return self.state in (
+            TaskState.COMPLETED,
+            TaskState.FAILED,
+            TaskState.CANCELLED,
+        )
 
     @property
     def is_overdue(self) -> bool:
-        return self.deadline > 0 and time.time() > self.deadline and not self.is_terminal
+        return (
+            self.deadline > 0 and time.time() > self.deadline and not self.is_terminal
+        )
 
 
 class TaskStore:
@@ -112,17 +124,22 @@ class TaskStore:
         self._version += 1
         task.version = self._version
         self._tasks[task.task_id] = task
-        heapq.heappush(self._priority_queue, (task.priority.value, task.created_at, task.task_id))
+        heapq.heappush(
+            self._priority_queue, (task.priority.value, task.created_at, task.task_id)
+        )
         self._notify("created", task)
         return task
 
     def get(self, task_id: str) -> Optional[TaskRecord]:
         return self._tasks.get(task_id)
 
-    def list(self, state: Optional[TaskState] = None,
-             mission_id: Optional[str] = None,
-             assignee_id: Optional[str] = None,
-             limit: int = 100) -> List[TaskRecord]:
+    def list(
+        self,
+        state: Optional[TaskState] = None,
+        mission_id: Optional[str] = None,
+        assignee_id: Optional[str] = None,
+        limit: int = 100,
+    ) -> List[TaskRecord]:
         results = []
         for t in self._tasks.values():
             if state and t.state != state:
@@ -136,8 +153,9 @@ class TaskStore:
                 break
         return results
 
-    def assign(self, task_id: str, assignee_id: str,
-               assignee_type: str = "") -> Optional[TaskRecord]:
+    def assign(
+        self, task_id: str, assignee_id: str, assignee_type: str = ""
+    ) -> Optional[TaskRecord]:
         task = self._tasks.get(task_id)
         if not task or task.state != TaskState.PENDING:
             return None
@@ -170,7 +188,9 @@ class TaskStore:
         self._notify("started", task)
         return task
 
-    def complete(self, task_id: str, result: Optional[Dict] = None) -> Optional[TaskRecord]:
+    def complete(
+        self, task_id: str, result: Optional[Dict] = None
+    ) -> Optional[TaskRecord]:
         task = self._tasks.get(task_id)
         if not task or task.is_terminal:
             return None

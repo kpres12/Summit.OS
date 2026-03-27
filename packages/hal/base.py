@@ -9,6 +9,7 @@ Defines abstract interfaces for hardware interaction:
 Concrete drivers (MAVLink, SITL, ROS2, etc.) implement these interfaces.
 The HAL registry provides runtime discovery and lifecycle management.
 """
+
 from __future__ import annotations
 
 import time
@@ -42,8 +43,12 @@ class Position:
     heading_deg: float = 0.0
 
     def to_dict(self) -> Dict:
-        return {"lat": self.lat, "lon": self.lon, "alt_m": self.alt_m,
-                "heading_deg": self.heading_deg}
+        return {
+            "lat": self.lat,
+            "lon": self.lon,
+            "alt_m": self.alt_m,
+            "heading_deg": self.heading_deg,
+        }
 
 
 @dataclass
@@ -54,13 +59,18 @@ class Velocity:
     ground_speed_mps: float = 0.0
 
     def to_dict(self) -> Dict:
-        return {"north": self.north_mps, "east": self.east_mps, "down": self.down_mps,
-                "ground_speed": self.ground_speed_mps}
+        return {
+            "north": self.north_mps,
+            "east": self.east_mps,
+            "down": self.down_mps,
+            "ground_speed": self.ground_speed_mps,
+        }
 
 
 @dataclass
 class HardwareInfo:
     """Static hardware identification."""
+
     hardware_id: str
     hardware_type: str  # "vehicle", "sensor", "actuator"
     make: str = ""
@@ -133,24 +143,21 @@ class VehicleDriver(HardwareDriver):
     """
 
     @abstractmethod
-    async def arm(self) -> bool:
-        ...
+    async def arm(self) -> bool: ...
 
     @abstractmethod
-    async def disarm(self) -> bool:
-        ...
+    async def disarm(self) -> bool: ...
 
     @abstractmethod
-    async def takeoff(self, altitude_m: float) -> bool:
-        ...
+    async def takeoff(self, altitude_m: float) -> bool: ...
 
     @abstractmethod
-    async def land(self) -> bool:
-        ...
+    async def land(self) -> bool: ...
 
     @abstractmethod
-    async def goto(self, lat: float, lon: float, alt_m: float,
-                   speed_mps: float = 5.0) -> bool:
+    async def goto(
+        self, lat: float, lon: float, alt_m: float, speed_mps: float = 5.0
+    ) -> bool:
         """Command vehicle to navigate to position."""
         ...
 
@@ -160,12 +167,10 @@ class VehicleDriver(HardwareDriver):
         ...
 
     @abstractmethod
-    async def get_position(self) -> Position:
-        ...
+    async def get_position(self) -> Position: ...
 
     @abstractmethod
-    async def get_velocity(self) -> Velocity:
-        ...
+    async def get_velocity(self) -> Velocity: ...
 
     @abstractmethod
     async def get_battery(self) -> Dict[str, float]:
@@ -232,20 +237,16 @@ class ActuatorDriver(HardwareDriver):
     """
 
     @abstractmethod
-    async def activate(self) -> bool:
-        ...
+    async def activate(self) -> bool: ...
 
     @abstractmethod
-    async def deactivate(self) -> bool:
-        ...
+    async def deactivate(self) -> bool: ...
 
     @abstractmethod
-    async def set_parameter(self, name: str, value: Any) -> bool:
-        ...
+    async def set_parameter(self, name: str, value: Any) -> bool: ...
 
     @abstractmethod
-    async def get_parameters(self) -> Dict[str, Any]:
-        ...
+    async def get_parameters(self) -> Dict[str, Any]: ...
 
 
 # ── HAL Registry ───────────────────────────────────────────
@@ -265,15 +266,21 @@ class HALRegistry:
 
     def register_vehicle(self, driver: VehicleDriver):
         self.vehicles[driver.info.hardware_id] = driver
-        logger.info(f"Vehicle registered: {driver.info.hardware_id} ({driver.info.model})")
+        logger.info(
+            f"Vehicle registered: {driver.info.hardware_id} ({driver.info.model})"
+        )
 
     def register_sensor(self, driver: SensorDriver):
         self.sensors[driver.info.hardware_id] = driver
-        logger.info(f"Sensor registered: {driver.info.hardware_id} ({driver.info.model})")
+        logger.info(
+            f"Sensor registered: {driver.info.hardware_id} ({driver.info.model})"
+        )
 
     def register_actuator(self, driver: ActuatorDriver):
         self.actuators[driver.info.hardware_id] = driver
-        logger.info(f"Actuator registered: {driver.info.hardware_id} ({driver.info.model})")
+        logger.info(
+            f"Actuator registered: {driver.info.hardware_id} ({driver.info.model})"
+        )
 
     def get_vehicle(self, hardware_id: str) -> Optional[VehicleDriver]:
         return self.vehicles.get(hardware_id)
@@ -286,9 +293,9 @@ class HALRegistry:
 
     def all_drivers(self) -> List[HardwareDriver]:
         return (
-            list(self.vehicles.values()) +
-            list(self.sensors.values()) +
-            list(self.actuators.values())
+            list(self.vehicles.values())
+            + list(self.sensors.values())
+            + list(self.actuators.values())
         )
 
     async def connect_all(self) -> Dict[str, bool]:

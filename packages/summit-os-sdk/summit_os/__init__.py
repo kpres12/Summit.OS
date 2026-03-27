@@ -18,7 +18,7 @@ __email__ = ""
 
 __all__ = [
     "SummitClient",
-    "EdgeAgent", 
+    "EdgeAgent",
     "ROS2Bridge",
     "MQTTClient",
     "WebSocketClient",

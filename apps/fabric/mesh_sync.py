@@ -25,6 +25,7 @@ Environment variables:
     MESH_BANDWIDTH_BPS  - target bandwidth cap in bytes/sec (default: 10000 = 10KB/s)
     MQTT_HOST/PORT      - MQTT broker
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -48,12 +49,13 @@ MESH_BANDWIDTH_BPS = int(os.getenv("MESH_BANDWIDTH_BPS", "10000"))
 
 # ── Priority tiers ────────────────────────────────────────────────────────────
 
+
 class SyncPriority(IntEnum):
-    CRITICAL = 0     # Alerts, CRITICAL state entities — always first
-    WARNING = 1      # WARNING state entities
-    MISSION = 2      # Mission / tasking updates
-    ACTIVE = 3       # Normal active entity telemetry
-    LOW = 4          # Inactive / low-value telemetry
+    CRITICAL = 0  # Alerts, CRITICAL state entities — always first
+    WARNING = 1  # WARNING state entities
+    MISSION = 2  # Mission / tasking updates
+    ACTIVE = 3  # Normal active entity telemetry
+    LOW = 4  # Inactive / low-value telemetry
 
 
 def _entity_priority(entity: Dict) -> SyncPriority:
@@ -74,8 +76,8 @@ def _entity_priority(entity: Dict) -> SyncPriority:
 
 @dataclass(order=True)
 class DeltaEntry:
-    priority: int                        # SyncPriority value (lower = higher priority)
-    ts: float = field(compare=False)     # Timestamp for ordering within same priority
+    priority: int  # SyncPriority value (lower = higher priority)
+    ts: float = field(compare=False)  # Timestamp for ordering within same priority
     entity_id: str = field(compare=False)
     version: int = field(compare=False)
     payload: bytes = field(compare=False)
@@ -86,6 +88,7 @@ class DeltaEntry:
 
 
 # ── State vector for anti-entropy ─────────────────────────────────────────────
+
 
 class StateVector:
     """
@@ -119,6 +122,7 @@ class StateVector:
 
 # ── Bandwidth token bucket ────────────────────────────────────────────────────
 
+
 class BandwidthBucket:
     """Token bucket for outbound bandwidth shaping."""
 
@@ -148,6 +152,7 @@ class BandwidthBucket:
 
 
 # ── Mesh sync engine ──────────────────────────────────────────────────────────
+
 
 class MeshSync:
     """
@@ -250,10 +255,14 @@ class MeshSync:
             self._queue.append(entry)
             self._queue_size_bytes += entry.size()
             self._stats["deltas_dropped"] += 1
-            logger.debug(f"Queue full — dropped {dropped.entity_id} ({dropped.entity_type}, pri={dropped.priority})")
+            logger.debug(
+                f"Queue full — dropped {dropped.entity_id} ({dropped.entity_type}, pri={dropped.priority})"
+            )
         else:
             self._stats["deltas_dropped"] += 1
-            logger.debug(f"Queue full — dropped incoming {entry.entity_id} (lower priority)")
+            logger.debug(
+                f"Queue full — dropped incoming {entry.entity_id} (lower priority)"
+            )
 
     # ── Outbound: drain queue over MQTT ──────────────────────────────────────
 
@@ -273,7 +282,9 @@ class MeshSync:
         for entry in entries:
             await self._bandwidth.wait_for(entry.size())
             try:
-                self._mqtt_client.publish(topic_base, entry.payload, qos=1, retain=False)
+                self._mqtt_client.publish(
+                    topic_base, entry.payload, qos=1, retain=False
+                )
                 sent_bytes += entry.size()
                 self._stats["deltas_sent"] += 1
                 self._stats["bytes_sent"] += entry.size()
@@ -293,11 +304,13 @@ class MeshSync:
         if not self._mqtt_client:
             return
         topic = f"mesh/node/{self.node_id}/state_vector"
-        payload = json.dumps({
-            "node_id": self.node_id,
-            "ts": time.time(),
-            "versions": self._state_vector.to_dict(),
-        }).encode()
+        payload = json.dumps(
+            {
+                "node_id": self.node_id,
+                "ts": time.time(),
+                "versions": self._state_vector.to_dict(),
+            }
+        ).encode()
         try:
             self._mqtt_client.publish(topic, payload, qos=0, retain=True)
         except Exception as e:
@@ -320,13 +333,18 @@ class MeshSync:
     # ── Main sync loop ────────────────────────────────────────────────────────
 
     async def run(self) -> None:
-        logger.info(f"MeshSync starting — node_id={self.node_id}, interval={self.sync_interval}s, bw={MESH_BANDWIDTH_BPS}B/s")
+        logger.info(
+            f"MeshSync starting — node_id={self.node_id}, interval={self.sync_interval}s, bw={MESH_BANDWIDTH_BPS}B/s"
+        )
         while True:
             try:
                 await self._drain_queue()
                 await self._publish_state_vector()
 
-                if self._stats["deltas_sent"] % 100 == 0 and self._stats["deltas_sent"] > 0:
+                if (
+                    self._stats["deltas_sent"] % 100 == 0
+                    and self._stats["deltas_sent"] > 0
+                ):
                     logger.info(
                         f"MeshSync stats: sent={self._stats['deltas_sent']} "
                         f"dropped={self._stats['deltas_dropped']} "

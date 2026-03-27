@@ -16,6 +16,7 @@ Usage:
     # Query from camera-B — returns (track_id, score) or (None, 0.0)
     match_id, score = reid.query(crop_bgr_array, camera_id="cam-b", exclude_cameras={"cam-b"})
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,6 +32,7 @@ logger = logging.getLogger("fusion.reid")
 
 try:
     import cv2
+
     _CV2 = True
 except ImportError:
     cv2 = None  # type: ignore
@@ -38,6 +40,7 @@ except ImportError:
 
 try:
     import onnxruntime as ort
+
     _ORT = True
 except ImportError:
     ort = None  # type: ignore
@@ -46,16 +49,19 @@ except ImportError:
 
 # ── Histogram embedding (always available) ───────────────────────────────────
 
+
 def _color_histogram(bgr: np.ndarray, bins: int = 8) -> np.ndarray:
     """
     Compute a normalised L*a*b* colour histogram.
     Returns a flat float32 vector of length bins**3.
     """
     if not _CV2 or bgr is None or bgr.size == 0:
-        return np.zeros(bins ** 3, dtype=np.float32)
+        return np.zeros(bins**3, dtype=np.float32)
     lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2Lab)
     hist = cv2.calcHist(
-        [lab], [0, 1, 2], None,
+        [lab],
+        [0, 1, 2],
+        None,
         [bins, bins, bins],
         [0, 256, 0, 256, 0, 256],
     )
@@ -75,6 +81,7 @@ def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
 
 
 # ── ONNX embedding (optional) ────────────────────────────────────────────────
+
 
 class _ONNXEmbedder:
     """Thin wrapper around an ONNX Re-ID model (e.g. OSNet-x0.25)."""
@@ -98,9 +105,9 @@ class _ONNXEmbedder:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         # ImageNet normalisation
         mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-        std  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
         img = (img - mean) / std
-        img = img.transpose(2, 0, 1)[np.newaxis]   # NCHW
+        img = img.transpose(2, 0, 1)[np.newaxis]  # NCHW
         emb = self._sess.run(None, {self._input_name: img})[0][0]
         norm = np.linalg.norm(emb)
         return (emb / norm) if norm > 1e-9 else emb
@@ -108,11 +115,12 @@ class _ONNXEmbedder:
 
 # ── Gallery entry ─────────────────────────────────────────────────────────────
 
+
 class _GalleryEntry:
-    MAX_HISTORY = 5   # keep last N embeddings per track per camera
+    MAX_HISTORY = 5  # keep last N embeddings per track per camera
 
     def __init__(self, track_id: str):
-        self.track_id   = track_id
+        self.track_id = track_id
         # camera_id → deque of embeddings
         self._embeds: Dict[str, deque] = {}
         self.last_seen: float = time.time()
@@ -140,6 +148,7 @@ class _GalleryEntry:
 
 # ── Main Re-ID class ──────────────────────────────────────────────────────────
 
+
 class AppearanceReID:
     """
     Cross-camera appearance re-identification gallery.
@@ -149,8 +158,8 @@ class AppearanceReID:
     """
 
     MATCH_THRESHOLD_ONNX = float(os.getenv("REID_MATCH_THRESHOLD_ONNX", "0.75"))
-    MATCH_THRESHOLD_HIST  = float(os.getenv("REID_MATCH_THRESHOLD_HIST",  "0.85"))
-    MAX_GALLERY_AGE_S     = float(os.getenv("REID_MAX_GALLERY_AGE_S", "300"))   # 5 min
+    MATCH_THRESHOLD_HIST = float(os.getenv("REID_MATCH_THRESHOLD_HIST", "0.85"))
+    MAX_GALLERY_AGE_S = float(os.getenv("REID_MAX_GALLERY_AGE_S", "300"))  # 5 min
 
     def __init__(self):
         self._gallery: Dict[str, _GalleryEntry] = {}
@@ -164,9 +173,13 @@ class AppearanceReID:
                 self._use_onnx = True
                 logger.info(f"ReID ONNX model loaded: {model_path}")
             except Exception as e:
-                logger.warning(f"ReID ONNX model failed to load ({e}) — using histogram fallback")
+                logger.warning(
+                    f"ReID ONNX model failed to load ({e}) — using histogram fallback"
+                )
         else:
-            logger.info("ReID using colour-histogram embeddings (set REID_MODEL_PATH for ONNX)")
+            logger.info(
+                "ReID using colour-histogram embeddings (set REID_MODEL_PATH for ONNX)"
+            )
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -203,14 +216,16 @@ class AppearanceReID:
             exclude_cameras = {camera_id}
 
         emb = self._embed(crop)
-        threshold = self.MATCH_THRESHOLD_ONNX if self._use_onnx else self.MATCH_THRESHOLD_HIST
+        threshold = (
+            self.MATCH_THRESHOLD_ONNX if self._use_onnx else self.MATCH_THRESHOLD_HIST
+        )
 
         best_id: Optional[str] = None
         best_score: float = 0.0
 
         for tid, entry in self._gallery.items():
             if min_cross_camera and not (entry.cameras - exclude_cameras):
-                continue   # no cross-camera observations yet
+                continue  # no cross-camera observations yet
             gallery_emb = entry.mean_embedding(exclude_cameras)
             if gallery_emb is None:
                 continue
@@ -243,8 +258,11 @@ class AppearanceReID:
 
     def _evict_stale(self):
         now = time.time()
-        stale = [tid for tid, e in self._gallery.items()
-                 if now - e.last_seen > self.MAX_GALLERY_AGE_S]
+        stale = [
+            tid
+            for tid, e in self._gallery.items()
+            if now - e.last_seen > self.MAX_GALLERY_AGE_S
+        ]
         for tid in stale:
             del self._gallery[tid]
 

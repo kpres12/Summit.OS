@@ -40,6 +40,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _fetch(url: str, timeout: int = 30, retries: int = 3) -> Optional[bytes]:
     headers = {"User-Agent": "Summit.OS/1.0 (public data research)"}
     for attempt in range(retries):
@@ -52,7 +53,7 @@ def _fetch(url: str, timeout: int = 30, retries: int = 3) -> Optional[bytes]:
             return None
         except Exception as e:
             if attempt < retries - 1:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 print(f"  Failed: {e}")
                 return None
@@ -63,14 +64,25 @@ def _write_csv(rows: List[Dict], path: str):
     if not rows:
         return
     with open(path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["class", "confidence", "lat", "lon",
-                                                "mission_type", "risk_level", "source"])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "class",
+                "confidence",
+                "lat",
+                "lon",
+                "mission_type",
+                "risk_level",
+                "source",
+            ],
+        )
         writer.writeheader()
         writer.writerows(rows)
     print(f"  Wrote {len(rows)} rows → {path}")
 
 
 # ── NASA FIRMS — Active fire detections ──────────────────────────────────────
+
 
 def download_firms(max_rows: int = 50000) -> List[Dict]:
     """
@@ -89,11 +101,20 @@ def download_firms(max_rows: int = 50000) -> List[Dict]:
 
     urls = [
         # VIIRS NOAA-20 (most current sensor)
-        ("https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_7d.csv", "viirs_noaa20"),
+        (
+            "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Global_7d.csv",
+            "viirs_noaa20",
+        ),
         # VIIRS SUOMI NPP
-        ("https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_7d.csv", "viirs_suomi"),
+        (
+            "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_7d.csv",
+            "viirs_suomi",
+        ),
         # MODIS (older, broader coverage)
-        ("https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/MODIS_C6_1_Global_7d.csv", "modis"),
+        (
+            "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/MODIS_C6_1_Global_7d.csv",
+            "modis",
+        ),
     ]
 
     # VIIRS confidence: l=low, n=nominal, h=high
@@ -137,17 +158,23 @@ def download_firms(max_rows: int = 50000) -> List[Dict]:
                 else:
                     obs_class = "smoke"
 
-                risk = "CRITICAL" if (conf >= 0.80 or frp > 100) else ("HIGH" if conf >= 0.60 else "MEDIUM")
+                risk = (
+                    "CRITICAL"
+                    if (conf >= 0.80 or frp > 100)
+                    else ("HIGH" if conf >= 0.60 else "MEDIUM")
+                )
 
-                rows.append({
-                    "class": obs_class,
-                    "confidence": round(conf, 3),
-                    "lat": round(lat, 5),
-                    "lon": round(lon, 5),
-                    "mission_type": "SURVEY",
-                    "risk_level": risk,
-                    "source": f"firms_{sensor}",
-                })
+                rows.append(
+                    {
+                        "class": obs_class,
+                        "confidence": round(conf, 3),
+                        "lat": round(lat, 5),
+                        "lon": round(lon, 5),
+                        "mission_type": "SURVEY",
+                        "risk_level": risk,
+                        "source": f"firms_{sensor}",
+                    }
+                )
                 count += 1
             except (ValueError, KeyError):
                 continue
@@ -162,52 +189,47 @@ def download_firms(max_rows: int = 50000) -> List[Dict]:
 # Maps NOAA event types to (mission_type, risk_level)
 _NOAA_EVENT_MAP = {
     # Flood events
-    "flash flood":           ("PERIMETER", "CRITICAL"),
-    "flood":                 ("SURVEY",    "HIGH"),
-    "coastal flood":         ("SURVEY",    "HIGH"),
-    "lakeshore flood":       ("SURVEY",    "MEDIUM"),
-    "storm surge/tide":      ("PERIMETER", "CRITICAL"),
-
+    "flash flood": ("PERIMETER", "CRITICAL"),
+    "flood": ("SURVEY", "HIGH"),
+    "coastal flood": ("SURVEY", "HIGH"),
+    "lakeshore flood": ("SURVEY", "MEDIUM"),
+    "storm surge/tide": ("PERIMETER", "CRITICAL"),
     # Wind/tornado
-    "tornado":               ("PERIMETER", "CRITICAL"),
-    "funnel cloud":          ("MONITOR",   "HIGH"),
-    "waterspout":            ("MONITOR",   "HIGH"),
-    "hurricane (typhoon)":   ("SURVEY",    "CRITICAL"),
-    "tropical storm":        ("SURVEY",    "HIGH"),
-
+    "tornado": ("PERIMETER", "CRITICAL"),
+    "funnel cloud": ("MONITOR", "HIGH"),
+    "waterspout": ("MONITOR", "HIGH"),
+    "hurricane (typhoon)": ("SURVEY", "CRITICAL"),
+    "tropical storm": ("SURVEY", "HIGH"),
     # Fire weather
-    "wildfire":              ("SURVEY",    "CRITICAL"),
-    "dense smoke":           ("SURVEY",    "HIGH"),
-
+    "wildfire": ("SURVEY", "CRITICAL"),
+    "dense smoke": ("SURVEY", "HIGH"),
     # Winter/ice
-    "avalanche":             ("SEARCH",    "CRITICAL"),
-    "blizzard":              ("SURVEY",    "HIGH"),
-    "ice storm":             ("INSPECT",   "MEDIUM"),
-
+    "avalanche": ("SEARCH", "CRITICAL"),
+    "blizzard": ("SURVEY", "HIGH"),
+    "ice storm": ("INSPECT", "MEDIUM"),
     # Hazmat-adjacent
-    "dust storm":            ("SURVEY",    "MEDIUM"),
-    "dense fog":             ("MONITOR",   "MEDIUM"),
-
+    "dust storm": ("SURVEY", "MEDIUM"),
+    "dense fog": ("MONITOR", "MEDIUM"),
     # Structural
-    "landslide":             ("SEARCH",    "CRITICAL"),
-    "debris flow":           ("PERIMETER", "CRITICAL"),
-
+    "landslide": ("SEARCH", "CRITICAL"),
+    "debris flow": ("PERIMETER", "CRITICAL"),
     # Marine
     "marine thunderstorm wind": ("MONITOR", "HIGH"),
-    "high surf":             ("MONITOR",   "HIGH"),
-    "rip current":           ("SEARCH",    "CRITICAL"),
-    "marine dense fog":      ("MONITOR",   "MEDIUM"),
+    "high surf": ("MONITOR", "HIGH"),
+    "rip current": ("SEARCH", "CRITICAL"),
+    "marine dense fog": ("MONITOR", "MEDIUM"),
 }
+
 
 # NOAA magnitude scale → confidence proxy
 def _noaa_magnitude_to_conf(mag: str, mag_type: str) -> float:
     try:
         v = float(mag)
-        if mag_type in ("EF", "F"):        # tornado scale 0-5
+        if mag_type in ("EF", "F"):  # tornado scale 0-5
             return min(0.95, 0.50 + v * 0.09)
-        if mag_type in ("MPH", "KTS"):     # wind speed
+        if mag_type in ("MPH", "KTS"):  # wind speed
             return min(0.95, 0.40 + v / 200.0)
-        if mag_type in ("FT",):            # hail/surge
+        if mag_type in ("FT",):  # hail/surge
             return min(0.90, 0.50 + v / 20.0)
         return 0.70
     except (ValueError, TypeError):
@@ -246,7 +268,10 @@ def download_noaa_storm_events(year: int = 2023, max_rows: int = 30000) -> List[
         if idx:
             text = idx.decode("utf-8", errors="replace")
             import re
-            matches = re.findall(rf'StormEvents_details-ftp_v1\.0_d{year}_c\d+\.csv\.gz', text)
+
+            matches = re.findall(
+                rf"StormEvents_details-ftp_v1\.0_d{year}_c\d+\.csv\.gz", text
+            )
             if matches:
                 url = base + matches[-1]
                 data = _fetch(url, timeout=60)
@@ -256,6 +281,7 @@ def download_noaa_storm_events(year: int = 2023, max_rows: int = 30000) -> List[
         return []
 
     import gzip
+
     try:
         csv_bytes = gzip.decompress(data)
     except Exception as e:
@@ -289,21 +315,24 @@ def download_noaa_storm_events(year: int = 2023, max_rows: int = 30000) -> List[
         mag_type = rec.get("MAGNITUDE_TYPE") or ""
         conf = _noaa_magnitude_to_conf(mag, mag_type)
 
-        rows.append({
-            "class": event_type,
-            "confidence": round(conf, 3),
-            "lat": round(lat, 5),
-            "lon": round(lon, 5),
-            "mission_type": mission_type,
-            "risk_level": risk_level,
-            "source": f"noaa_storm_{year}",
-        })
+        rows.append(
+            {
+                "class": event_type,
+                "confidence": round(conf, 3),
+                "lat": round(lat, 5),
+                "lon": round(lon, 5),
+                "mission_type": mission_type,
+                "risk_level": risk_level,
+                "source": f"noaa_storm_{year}",
+            }
+        )
 
     print(f"  NOAA storm events: {len(rows)} labeled incidents")
     return rows
 
 
 # ── PHMSA Pipeline & Hazmat Incidents ────────────────────────────────────────
+
 
 def download_phmsa(max_rows: int = 20000) -> List[Dict]:
     """
@@ -340,8 +369,8 @@ def download_phmsa(max_rows: int = 20000) -> List[Dict]:
 
                 # Determine severity
                 fatalities = int(rec.get("FATAL") or rec.get("FATALITIES") or 0)
-                injuries   = int(rec.get("INJURE") or rec.get("INJURIES") or 0)
-                ignite     = str(rec.get("IGNITE_IND") or rec.get("IGNITION") or "").upper()
+                injuries = int(rec.get("INJURE") or rec.get("INJURIES") or 0)
+                ignite = str(rec.get("IGNITE_IND") or rec.get("IGNITION") or "").upper()
 
                 if fatalities > 0 or ignite == "YES":
                     conf, risk = 0.92, "CRITICAL"
@@ -350,15 +379,17 @@ def download_phmsa(max_rows: int = 20000) -> List[Dict]:
                 else:
                     conf, risk = 0.68, "MEDIUM"
 
-                rows.append({
-                    "class": "pipeline leak",
-                    "confidence": conf,
-                    "lat": round(lat, 5),
-                    "lon": round(lon, 5),
-                    "mission_type": "PERIMETER",
-                    "risk_level": risk,
-                    "source": "phmsa_pipeline",
-                })
+                rows.append(
+                    {
+                        "class": "pipeline leak",
+                        "confidence": conf,
+                        "lat": round(lat, 5),
+                        "lon": round(lon, 5),
+                        "mission_type": "PERIMETER",
+                        "risk_level": risk,
+                        "source": "phmsa_pipeline",
+                    }
+                )
                 count += 1
             except (ValueError, TypeError):
                 continue
@@ -368,6 +399,7 @@ def download_phmsa(max_rows: int = 20000) -> List[Dict]:
 
 
 # ── GBIF Wildlife Occurrences ─────────────────────────────────────────────────
+
 
 def download_gbif_wildlife(max_rows: int = 5000) -> List[Dict]:
     """
@@ -410,15 +442,17 @@ def download_gbif_wildlife(max_rows: int = 5000) -> List[Dict]:
                     continue
                 # Lower confidence for high-uncertainty fixes
                 conf = max(0.50, min(0.92, 1.0 - uncertainty / 50000.0))
-                rows.append({
-                    "class": f"{common} sighting",
-                    "confidence": round(conf, 3),
-                    "lat": round(float(lat), 5),
-                    "lon": round(float(lon), 5),
-                    "mission_type": mission_type,
-                    "risk_level": risk_level,
-                    "source": "gbif_wildlife",
-                })
+                rows.append(
+                    {
+                        "class": f"{common} sighting",
+                        "confidence": round(conf, 3),
+                        "lat": round(float(lat), 5),
+                        "lon": round(float(lon), 5),
+                        "mission_type": mission_type,
+                        "risk_level": risk_level,
+                        "source": "gbif_wildlife",
+                    }
+                )
         except Exception as e:
             print(f"  GBIF {common}: {e}")
         time.sleep(0.5)  # be a polite API consumer
@@ -429,7 +463,10 @@ def download_gbif_wildlife(max_rows: int = 5000) -> List[Dict]:
 
 # ── USGS Earthquake Catalog ───────────────────────────────────────────────────
 
-def download_usgs_earthquakes(min_magnitude: float = 4.0, max_rows: int = 10000) -> List[Dict]:
+
+def download_usgs_earthquakes(
+    min_magnitude: float = 4.0, max_rows: int = 10000
+) -> List[Dict]:
     """
     Download earthquake events from USGS ComCat API.
     No auth required. Real-time global catalog.
@@ -450,7 +487,9 @@ def download_usgs_earthquakes(min_magnitude: float = 4.0, max_rows: int = 10000)
         "limit": str(min(max_rows, 20000)),
         "starttime": "2015-01-01",
     }
-    url = "https://earthquake.usgs.gov/fdsnws/event/1/query?" + urllib.parse.urlencode(params)
+    url = "https://earthquake.usgs.gov/fdsnws/event/1/query?" + urllib.parse.urlencode(
+        params
+    )
     data = _fetch(url, timeout=60)
     if not data:
         print("  USGS earthquakes unavailable — skipping")
@@ -465,7 +504,7 @@ def download_usgs_earthquakes(min_magnitude: float = 4.0, max_rows: int = 10000)
     rows = []
     for feature in payload.get("features", []):
         props = feature.get("properties", {})
-        geom  = feature.get("geometry", {})
+        geom = feature.get("geometry", {})
         coords = geom.get("coordinates", [None, None, None])
         try:
             lon = float(coords[0])
@@ -478,23 +517,40 @@ def download_usgs_earthquakes(min_magnitude: float = 4.0, max_rows: int = 10000)
             continue
 
         if mag >= 6.5:
-            obs_class, mission, risk, conf = "major earthquake",    "SEARCH",   "CRITICAL", 0.97
+            obs_class, mission, risk, conf = (
+                "major earthquake",
+                "SEARCH",
+                "CRITICAL",
+                0.97,
+            )
         elif mag >= 5.5:
-            obs_class, mission, risk, conf = "significant earthquake", "SEARCH", "HIGH",     0.90
+            obs_class, mission, risk, conf = (
+                "significant earthquake",
+                "SEARCH",
+                "HIGH",
+                0.90,
+            )
         elif mag >= 5.0:
-            obs_class, mission, risk, conf = "moderate earthquake",  "SURVEY",   "HIGH",     0.82
+            obs_class, mission, risk, conf = (
+                "moderate earthquake",
+                "SURVEY",
+                "HIGH",
+                0.82,
+            )
         else:
-            obs_class, mission, risk, conf = "earthquake",           "SURVEY",   "MEDIUM",   0.70
+            obs_class, mission, risk, conf = "earthquake", "SURVEY", "MEDIUM", 0.70
 
-        rows.append({
-            "class": obs_class,
-            "confidence": round(conf, 3),
-            "lat": round(lat, 5),
-            "lon": round(lon, 5),
-            "mission_type": mission,
-            "risk_level": risk,
-            "source": "usgs_earthquakes",
-        })
+        rows.append(
+            {
+                "class": obs_class,
+                "confidence": round(conf, 3),
+                "lat": round(lat, 5),
+                "lon": round(lon, 5),
+                "mission_type": mission,
+                "risk_level": risk,
+                "source": "usgs_earthquakes",
+            }
+        )
 
     print(f"  USGS earthquakes: {len(rows)} events (M{min_magnitude}+)")
     return rows
@@ -503,20 +559,21 @@ def download_usgs_earthquakes(min_magnitude: float = 4.0, max_rows: int = 10000)
 # ── NASA EONET — Natural Events ───────────────────────────────────────────────
 
 _EONET_CATEGORY_MAP = {
-    "Wildfires":             ("active fire",           "SURVEY",    "CRITICAL", 0.90),
-    "Volcanoes":             ("volcanic eruption",     "PERIMETER", "HIGH",     0.88),
-    "Floods":                ("flood",                 "SURVEY",    "HIGH",     0.82),
-    "Severe Storms":         ("severe storm",          "PERIMETER", "HIGH",     0.80),
-    "Landslides":            ("landslide",             "SEARCH",    "CRITICAL", 0.88),
-    "Dust and Haze":         ("dust storm",            "SURVEY",    "MEDIUM",   0.72),
-    "Sea and Lake Ice":      ("ice hazard",            "MONITOR",   "MEDIUM",   0.75),
-    "Manmade":               ("industrial incident",   "PERIMETER", "HIGH",     0.80),
-    "Snow":                  ("blizzard",              "SURVEY",    "MEDIUM",   0.68),
-    "Temperature Extremes":  ("extreme heat",          "SURVEY",    "MEDIUM",   0.70),
-    "Earthquakes":           ("earthquake",            "SEARCH",    "HIGH",     0.85),
-    "Drought":               ("drought",               "SURVEY",    "LOW",      0.60),
-    "Water Color":           ("water contamination",   "MONITOR",   "MEDIUM",   0.65),
+    "Wildfires": ("active fire", "SURVEY", "CRITICAL", 0.90),
+    "Volcanoes": ("volcanic eruption", "PERIMETER", "HIGH", 0.88),
+    "Floods": ("flood", "SURVEY", "HIGH", 0.82),
+    "Severe Storms": ("severe storm", "PERIMETER", "HIGH", 0.80),
+    "Landslides": ("landslide", "SEARCH", "CRITICAL", 0.88),
+    "Dust and Haze": ("dust storm", "SURVEY", "MEDIUM", 0.72),
+    "Sea and Lake Ice": ("ice hazard", "MONITOR", "MEDIUM", 0.75),
+    "Manmade": ("industrial incident", "PERIMETER", "HIGH", 0.80),
+    "Snow": ("blizzard", "SURVEY", "MEDIUM", 0.68),
+    "Temperature Extremes": ("extreme heat", "SURVEY", "MEDIUM", 0.70),
+    "Earthquakes": ("earthquake", "SEARCH", "HIGH", 0.85),
+    "Drought": ("drought", "SURVEY", "LOW", 0.60),
+    "Water Color": ("water contamination", "MONITOR", "MEDIUM", 0.65),
 }
+
 
 def download_nasa_eonet(max_rows: int = 5000) -> List[Dict]:
     """
@@ -563,15 +620,17 @@ def download_nasa_eonet(max_rows: int = 5000) -> List[Dict]:
                     lon, lat = float(coords[0][0][0]), float(coords[0][0][1])
                 else:
                     continue
-                rows.append({
-                    "class": obs_class,
-                    "confidence": round(base_conf, 3),
-                    "lat": round(lat, 5),
-                    "lon": round(lon, 5),
-                    "mission_type": mission,
-                    "risk_level": risk,
-                    "source": "nasa_eonet",
-                })
+                rows.append(
+                    {
+                        "class": obs_class,
+                        "confidence": round(base_conf, 3),
+                        "lat": round(lat, 5),
+                        "lon": round(lon, 5),
+                        "mission_type": mission,
+                        "risk_level": risk,
+                        "source": "nasa_eonet",
+                    }
+                )
                 break  # one point per event is enough
             except (TypeError, ValueError, IndexError):
                 continue
@@ -584,33 +643,34 @@ def download_nasa_eonet(max_rows: int = 5000) -> List[Dict]:
 
 _INAT_SPECIES = [
     # Large predators / dangerous wildlife → PERIMETER
-    ("Ursus arctos",         "grizzly bear",      "PERIMETER", "HIGH",   0.88),
-    ("Ursus americanus",     "black bear",        "PERIMETER", "MEDIUM", 0.80),
-    ("Panthera onca",        "jaguar",            "PERIMETER", "HIGH",   0.88),
-    ("Panthera leo",         "lion",              "PERIMETER", "HIGH",   0.90),
-    ("Panthera tigris",      "tiger",             "PERIMETER", "HIGH",   0.90),
-    ("Puma concolor",        "mountain lion",     "PERIMETER", "HIGH",   0.85),
-    ("Crocodylia",           "crocodile",         "PERIMETER", "HIGH",   0.87),
-    ("Canis lupus",          "wolf",              "MONITOR",   "MEDIUM", 0.78),
-    ("Alces alces",          "moose",             "MONITOR",   "MEDIUM", 0.75),
-    ("Bison bison",          "bison",             "MONITOR",   "MEDIUM", 0.75),
+    ("Ursus arctos", "grizzly bear", "PERIMETER", "HIGH", 0.88),
+    ("Ursus americanus", "black bear", "PERIMETER", "MEDIUM", 0.80),
+    ("Panthera onca", "jaguar", "PERIMETER", "HIGH", 0.88),
+    ("Panthera leo", "lion", "PERIMETER", "HIGH", 0.90),
+    ("Panthera tigris", "tiger", "PERIMETER", "HIGH", 0.90),
+    ("Puma concolor", "mountain lion", "PERIMETER", "HIGH", 0.85),
+    ("Crocodylia", "crocodile", "PERIMETER", "HIGH", 0.87),
+    ("Canis lupus", "wolf", "MONITOR", "MEDIUM", 0.78),
+    ("Alces alces", "moose", "MONITOR", "MEDIUM", 0.75),
+    ("Bison bison", "bison", "MONITOR", "MEDIUM", 0.75),
     # Marine mammals / vessel hazard → MONITOR
-    ("Orcinus orca",         "orca",              "MONITOR",   "MEDIUM", 0.85),
-    ("Tursiops truncatus",   "bottlenose dolphin","MONITOR",   "LOW",    0.72),
-    ("Mirounga",             "elephant seal",     "MONITOR",   "LOW",    0.70),
-    ("Megaptera novaeangliae","humpback whale",   "MONITOR",   "MEDIUM", 0.80),
+    ("Orcinus orca", "orca", "MONITOR", "MEDIUM", 0.85),
+    ("Tursiops truncatus", "bottlenose dolphin", "MONITOR", "LOW", 0.72),
+    ("Mirounga", "elephant seal", "MONITOR", "LOW", 0.70),
+    ("Megaptera novaeangliae", "humpback whale", "MONITOR", "MEDIUM", 0.80),
     # Invasive / feral
-    ("Python bivittatus",    "burmese python",    "PERIMETER", "MEDIUM", 0.78),
-    ("Sus scrofa",           "feral pig",         "MONITOR",   "LOW",    0.68),
+    ("Python bivittatus", "burmese python", "PERIMETER", "MEDIUM", 0.78),
+    ("Sus scrofa", "feral pig", "MONITOR", "LOW", 0.68),
     # Threatened / endangered → MONITOR (conservation ops)
-    ("Ailuropoda melanoleuca","giant panda",      "MONITOR",   "MEDIUM", 0.82),
-    ("Gorilla gorilla",      "western gorilla",   "MONITOR",   "HIGH",   0.85),
-    ("Diceros bicornis",     "black rhino",       "MONITOR",   "HIGH",   0.87),
-    ("Elephas maximus",      "asian elephant",    "MONITOR",   "MEDIUM", 0.82),
+    ("Ailuropoda melanoleuca", "giant panda", "MONITOR", "MEDIUM", 0.82),
+    ("Gorilla gorilla", "western gorilla", "MONITOR", "HIGH", 0.85),
+    ("Diceros bicornis", "black rhino", "MONITOR", "HIGH", 0.87),
+    ("Elephas maximus", "asian elephant", "MONITOR", "MEDIUM", 0.82),
     # Birds relevant to UAV ops / wildlife strikes
-    ("Haliaeetus leucocephalus","bald eagle",     "MONITOR",   "LOW",    0.78),
-    ("Aquila chrysaetos",    "golden eagle",      "MONITOR",   "LOW",    0.75),
+    ("Haliaeetus leucocephalus", "bald eagle", "MONITOR", "LOW", 0.78),
+    ("Aquila chrysaetos", "golden eagle", "MONITOR", "LOW", 0.75),
 ]
+
 
 def download_inat_wildlife(max_rows: int = 8000) -> List[Dict]:
     """
@@ -632,7 +692,9 @@ def download_inat_wildlife(max_rows: int = 8000) -> List[Dict]:
             "per_page": str(min(per_species, 200)),
             "order_by": "observed_on",
         }
-        url = "https://api.inaturalist.org/v1/observations?" + urllib.parse.urlencode(params)
+        url = "https://api.inaturalist.org/v1/observations?" + urllib.parse.urlencode(
+            params
+        )
         data = _fetch(url, timeout=20)
         if not data:
             time.sleep(1)
@@ -658,24 +720,29 @@ def download_inat_wildlife(max_rows: int = 8000) -> List[Dict]:
             acc = obs.get("positional_accuracy") or 10000
             conf = round(max(0.50, min(base_conf, base_conf - acc / 200000.0)), 3)
 
-            rows.append({
-                "class": f"{common} sighting",
-                "confidence": conf,
-                "lat": round(lat, 5),
-                "lon": round(lon, 5),
-                "mission_type": mission,
-                "risk_level": risk,
-                "source": "inat_wildlife",
-            })
+            rows.append(
+                {
+                    "class": f"{common} sighting",
+                    "confidence": conf,
+                    "lat": round(lat, 5),
+                    "lon": round(lon, 5),
+                    "mission_type": mission,
+                    "risk_level": risk,
+                    "source": "inat_wildlife",
+                }
+            )
             count += 1
 
         time.sleep(0.75)  # iNaturalist rate limit: ~60 req/min
 
-    print(f"  iNaturalist: {len(rows)} wildlife observations ({len(_INAT_SPECIES)} species)")
+    print(
+        f"  iNaturalist: {len(rows)} wildlife observations ({len(_INAT_SPECIES)} species)"
+    )
     return rows
 
 
 # ── OpenAQ — Air Quality (fire smoke + hazmat proxy) ─────────────────────────
+
 
 def download_openaq(max_rows: int = 5000) -> List[Dict]:
     """
@@ -690,10 +757,10 @@ def download_openaq(max_rows: int = 5000) -> List[Dict]:
 
     # PM2.5: fine particulate (wildfire smoke, industrial)
     for parameter, threshold_high, threshold_critical, obs_class, mission in [
-        ("pm25",  75.0, 150.0, "smoke haze",          "SURVEY"),
-        ("pm10", 150.0, 350.0, "dust hazard",          "SURVEY"),
-        ("no2",   100.0, 200.0, "industrial emission", "PERIMETER"),
-        ("so2",    50.0, 150.0, "chemical release",    "PERIMETER"),
+        ("pm25", 75.0, 150.0, "smoke haze", "SURVEY"),
+        ("pm10", 150.0, 350.0, "dust hazard", "SURVEY"),
+        ("no2", 100.0, 200.0, "industrial emission", "PERIMETER"),
+        ("so2", 50.0, 150.0, "chemical release", "PERIMETER"),
     ]:
         url = (
             f"https://api.openaq.org/v2/measurements"
@@ -729,15 +796,17 @@ def download_openaq(max_rows: int = 5000) -> List[Dict]:
             else:
                 continue  # below threshold — not interesting for training
 
-            rows.append({
-                "class": obs_class,
-                "confidence": round(conf, 3),
-                "lat": round(lat, 5),
-                "lon": round(lon, 5),
-                "mission_type": mission,
-                "risk_level": risk,
-                "source": f"openaq_{parameter}",
-            })
+            rows.append(
+                {
+                    "class": obs_class,
+                    "confidence": round(conf, 3),
+                    "lat": round(lat, 5),
+                    "lon": round(lon, 5),
+                    "mission_type": mission,
+                    "risk_level": risk,
+                    "source": f"openaq_{parameter}",
+                }
+            )
 
         time.sleep(0.5)
 
@@ -749,35 +818,36 @@ def download_openaq(max_rows: int = 5000) -> List[Dict]:
 
 _GDACS_ALERT_MAP = {
     "EQ": {  # earthquake
-        "Red":    ("major earthquake",      "SEARCH",    "CRITICAL", 0.95),
-        "Orange": ("significant earthquake","SEARCH",    "HIGH",     0.88),
-        "Green":  ("earthquake",            "SURVEY",    "MEDIUM",   0.72),
+        "Red": ("major earthquake", "SEARCH", "CRITICAL", 0.95),
+        "Orange": ("significant earthquake", "SEARCH", "HIGH", 0.88),
+        "Green": ("earthquake", "SURVEY", "MEDIUM", 0.72),
     },
     "TC": {  # tropical cyclone
-        "Red":    ("major hurricane",       "PERIMETER", "CRITICAL", 0.95),
-        "Orange": ("tropical cyclone",      "PERIMETER", "HIGH",     0.88),
-        "Green":  ("tropical storm",        "SURVEY",    "MEDIUM",   0.72),
+        "Red": ("major hurricane", "PERIMETER", "CRITICAL", 0.95),
+        "Orange": ("tropical cyclone", "PERIMETER", "HIGH", 0.88),
+        "Green": ("tropical storm", "SURVEY", "MEDIUM", 0.72),
     },
     "FL": {  # flood
-        "Red":    ("major flood",           "PERIMETER", "CRITICAL", 0.92),
-        "Orange": ("flood",                 "SURVEY",    "HIGH",     0.82),
-        "Green":  ("minor flooding",        "SURVEY",    "MEDIUM",   0.65),
+        "Red": ("major flood", "PERIMETER", "CRITICAL", 0.92),
+        "Orange": ("flood", "SURVEY", "HIGH", 0.82),
+        "Green": ("minor flooding", "SURVEY", "MEDIUM", 0.65),
     },
     "VO": {  # volcano
-        "Red":    ("volcanic eruption",     "PERIMETER", "CRITICAL", 0.93),
-        "Orange": ("volcanic activity",     "PERIMETER", "HIGH",     0.85),
-        "Green":  ("volcanic alert",        "MONITOR",   "MEDIUM",   0.68),
+        "Red": ("volcanic eruption", "PERIMETER", "CRITICAL", 0.93),
+        "Orange": ("volcanic activity", "PERIMETER", "HIGH", 0.85),
+        "Green": ("volcanic alert", "MONITOR", "MEDIUM", 0.68),
     },
     "WF": {  # wildfire
-        "Red":    ("large wildfire",        "SURVEY",    "CRITICAL", 0.94),
-        "Orange": ("wildfire",              "SURVEY",    "HIGH",     0.85),
-        "Green":  ("fire alert",            "SURVEY",    "MEDIUM",   0.68),
+        "Red": ("large wildfire", "SURVEY", "CRITICAL", 0.94),
+        "Orange": ("wildfire", "SURVEY", "HIGH", 0.85),
+        "Green": ("fire alert", "SURVEY", "MEDIUM", 0.68),
     },
     "DR": {  # drought
-        "Red":    ("severe drought",        "SURVEY",    "HIGH",     0.80),
-        "Orange": ("drought",               "SURVEY",    "MEDIUM",   0.65),
+        "Red": ("severe drought", "SURVEY", "HIGH", 0.80),
+        "Orange": ("drought", "SURVEY", "MEDIUM", 0.65),
     },
 }
+
 
 def download_gdacs(max_rows: int = 3000) -> List[Dict]:
     """
@@ -816,11 +886,11 @@ def download_gdacs(max_rows: int = 3000) -> List[Dict]:
         if len(rows) >= max_rows:
             break
         props = feature.get("properties", {})
-        geom  = feature.get("geometry", {})
+        geom = feature.get("geometry", {})
         coords = geom.get("coordinates", [None, None])
 
-        event_type   = str(props.get("eventtype") or "").upper()
-        alert_level  = str(props.get("alertlevel") or "Green").capitalize()
+        event_type = str(props.get("eventtype") or "").upper()
+        alert_level = str(props.get("alertlevel") or "Green").capitalize()
 
         level_map = _GDACS_ALERT_MAP.get(event_type, {})
         mapping = level_map.get(alert_level) or level_map.get("Green")
@@ -835,15 +905,17 @@ def download_gdacs(max_rows: int = 3000) -> List[Dict]:
         except (TypeError, ValueError, IndexError):
             continue
 
-        rows.append({
-            "class": obs_class,
-            "confidence": round(conf, 3),
-            "lat": round(lat, 5),
-            "lon": round(lon, 5),
-            "mission_type": mission,
-            "risk_level": risk,
-            "source": f"gdacs_{event_type.lower()}",
-        })
+        rows.append(
+            {
+                "class": obs_class,
+                "confidence": round(conf, 3),
+                "lat": round(lat, 5),
+                "lon": round(lon, 5),
+                "mission_type": mission,
+                "risk_level": risk,
+                "source": f"gdacs_{event_type.lower()}",
+            }
+        )
 
     print(f"  GDACS: {len(rows)} disaster alerts")
     return rows
@@ -852,34 +924,37 @@ def download_gdacs(max_rows: int = 3000) -> List[Dict]:
 def _parse_gdacs_rss(text: str, max_rows: int) -> List[Dict]:
     """Fallback: extract lat/lon/event type from GDACS RSS XML."""
     import re
+
     rows = []
     items = re.findall(r"<item>(.*?)</item>", text, re.DOTALL)
     for item in items[:max_rows]:
         try:
-            lat_m  = re.search(r"<geo:lat>([\d.\-]+)", item)
-            lon_m  = re.search(r"<geo:long>([\d.\-]+)", item)
+            lat_m = re.search(r"<geo:lat>([\d.\-]+)", item)
+            lon_m = re.search(r"<geo:long>([\d.\-]+)", item)
             type_m = re.search(r"<gdacs:eventtype>(.*?)</gdacs:eventtype>", item)
-            alert_m= re.search(r"<gdacs:alertlevel>(.*?)</gdacs:alertlevel>", item)
+            alert_m = re.search(r"<gdacs:alertlevel>(.*?)</gdacs:alertlevel>", item)
             if not (lat_m and lon_m):
                 continue
             lat = float(lat_m.group(1))
             lon = float(lon_m.group(1))
-            event_type  = (type_m.group(1) if type_m else "EQ").upper()
+            event_type = (type_m.group(1) if type_m else "EQ").upper()
             alert_level = (alert_m.group(1) if alert_m else "Green").capitalize()
             level_map = _GDACS_ALERT_MAP.get(event_type, {})
             mapping = level_map.get(alert_level) or level_map.get("Green")
             if not mapping:
                 continue
             obs_class, mission, risk, conf = mapping
-            rows.append({
-                "class": obs_class,
-                "confidence": round(conf, 3),
-                "lat": round(lat, 5),
-                "lon": round(lon, 5),
-                "mission_type": mission,
-                "risk_level": risk,
-                "source": f"gdacs_{event_type.lower()}",
-            })
+            rows.append(
+                {
+                    "class": obs_class,
+                    "confidence": round(conf, 3),
+                    "lat": round(lat, 5),
+                    "lon": round(lon, 5),
+                    "mission_type": mission,
+                    "risk_level": risk,
+                    "source": f"gdacs_{event_type.lower()}",
+                }
+            )
         except (ValueError, AttributeError):
             continue
     return rows
@@ -888,31 +963,32 @@ def _parse_gdacs_rss(text: str, max_rows: int) -> List[Dict]:
 # ── ReliefWeb — Humanitarian Crisis Events ────────────────────────────────────
 
 _RELIEFWEB_TYPE_MAP = {
-    "Flood":                  ("flood",              "SURVEY",    "HIGH",     0.85),
-    "Flash Flood":            ("flash flood",        "PERIMETER", "CRITICAL", 0.90),
-    "Earthquake":             ("earthquake",         "SEARCH",    "CRITICAL", 0.92),
-    "Tsunami":                ("tsunami",            "PERIMETER", "CRITICAL", 0.95),
-    "Tropical Cyclone":       ("tropical cyclone",   "PERIMETER", "CRITICAL", 0.92),
-    "Drought":                ("drought",            "SURVEY",    "MEDIUM",   0.70),
-    "Fire":                   ("wildfire",           "SURVEY",    "CRITICAL", 0.90),
-    "Volcano":                ("volcanic eruption",  "PERIMETER", "HIGH",     0.88),
-    "Landslide":              ("landslide",          "SEARCH",    "CRITICAL", 0.88),
-    "Cold Wave":              ("extreme cold",       "SURVEY",    "MEDIUM",   0.72),
-    "Heat Wave":              ("extreme heat",       "SURVEY",    "MEDIUM",   0.72),
-    "Epidemic":               ("disease outbreak",   "DELIVER",   "HIGH",     0.82),
-    "Food Insecurity":        ("aid required",       "DELIVER",   "HIGH",     0.78),
-    "Industrial Accident":    ("industrial incident","PERIMETER", "HIGH",     0.85),
-    "Transport Accident":     ("vehicle incident",   "SEARCH",    "HIGH",     0.82),
-    "Civil Unrest":           ("security threat",    "PERIMETER", "HIGH",     0.80),
-    "Insect Infestation":     ("crop threat",        "SURVEY",    "MEDIUM",   0.68),
-    "Storm":                  ("severe storm",       "PERIMETER", "HIGH",     0.82),
-    "Mud Slide":              ("mudslide",           "SEARCH",    "CRITICAL", 0.88),
-    "Snow Avalanche":         ("avalanche",          "SEARCH",    "CRITICAL", 0.90),
-    "Sea Level Rise":         ("coastal flood",      "SURVEY",    "HIGH",     0.75),
-    "Oil Spill":              ("hazmat spill",       "PERIMETER", "HIGH",     0.88),
-    "Chemical Incident":      ("chemical release",   "PERIMETER", "CRITICAL", 0.92),
-    "Nuclear/Radiological":   ("radiation hazard",   "PERIMETER", "CRITICAL", 0.95),
+    "Flood": ("flood", "SURVEY", "HIGH", 0.85),
+    "Flash Flood": ("flash flood", "PERIMETER", "CRITICAL", 0.90),
+    "Earthquake": ("earthquake", "SEARCH", "CRITICAL", 0.92),
+    "Tsunami": ("tsunami", "PERIMETER", "CRITICAL", 0.95),
+    "Tropical Cyclone": ("tropical cyclone", "PERIMETER", "CRITICAL", 0.92),
+    "Drought": ("drought", "SURVEY", "MEDIUM", 0.70),
+    "Fire": ("wildfire", "SURVEY", "CRITICAL", 0.90),
+    "Volcano": ("volcanic eruption", "PERIMETER", "HIGH", 0.88),
+    "Landslide": ("landslide", "SEARCH", "CRITICAL", 0.88),
+    "Cold Wave": ("extreme cold", "SURVEY", "MEDIUM", 0.72),
+    "Heat Wave": ("extreme heat", "SURVEY", "MEDIUM", 0.72),
+    "Epidemic": ("disease outbreak", "DELIVER", "HIGH", 0.82),
+    "Food Insecurity": ("aid required", "DELIVER", "HIGH", 0.78),
+    "Industrial Accident": ("industrial incident", "PERIMETER", "HIGH", 0.85),
+    "Transport Accident": ("vehicle incident", "SEARCH", "HIGH", 0.82),
+    "Civil Unrest": ("security threat", "PERIMETER", "HIGH", 0.80),
+    "Insect Infestation": ("crop threat", "SURVEY", "MEDIUM", 0.68),
+    "Storm": ("severe storm", "PERIMETER", "HIGH", 0.82),
+    "Mud Slide": ("mudslide", "SEARCH", "CRITICAL", 0.88),
+    "Snow Avalanche": ("avalanche", "SEARCH", "CRITICAL", 0.90),
+    "Sea Level Rise": ("coastal flood", "SURVEY", "HIGH", 0.75),
+    "Oil Spill": ("hazmat spill", "PERIMETER", "HIGH", 0.88),
+    "Chemical Incident": ("chemical release", "PERIMETER", "CRITICAL", 0.92),
+    "Nuclear/Radiological": ("radiation hazard", "PERIMETER", "CRITICAL", 0.95),
 }
+
 
 def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
     """
@@ -928,25 +1004,44 @@ def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
 
     # Country centroids (lat, lon) for fallback geo
     _COUNTRY_CENTROIDS = {
-        "Afghanistan": (33.9, 67.7), "Bangladesh": (23.7, 90.4),
-        "Brazil": (-14.2, -51.9), "Cambodia": (12.6, 104.9),
-        "China": (35.9, 104.2), "Colombia": (4.6, -74.1),
-        "DR Congo": (-4.0, 21.8), "Ethiopia": (9.1, 40.5),
-        "Haiti": (18.9, -72.3), "India": (20.6, 79.0),
-        "Indonesia": (-0.8, 113.9), "Iraq": (33.2, 43.7),
-        "Japan": (36.2, 138.3), "Kenya": (-0.0, 37.9),
-        "Mexico": (23.6, -102.6), "Mozambique": (-18.7, 35.5),
-        "Myanmar": (17.1, 96.0), "Nepal": (28.4, 84.1),
-        "Nigeria": (9.1, 8.7), "Pakistan": (30.4, 69.3),
-        "Peru": (-9.2, -75.0), "Philippines": (12.9, 121.8),
-        "Somalia": (5.2, 46.2), "South Sudan": (6.9, 31.3),
-        "Sudan": (15.6, 32.5), "Syria": (34.8, 38.9),
-        "Turkey": (38.9, 35.2), "United States": (37.1, -95.7),
-        "Venezuela": (6.4, -66.6), "Yemen": (15.6, 48.5),
-        "Zimbabwe": (-20.0, 30.0), "Chile": (-30.0, -71.0),
-        "Australia": (-25.3, 133.8), "Italy": (41.9, 12.6),
-        "Greece": (39.1, 21.8), "Thailand": (15.9, 100.9),
-        "Vietnam": (14.1, 108.3), "Malaysia": (4.2, 108.0),
+        "Afghanistan": (33.9, 67.7),
+        "Bangladesh": (23.7, 90.4),
+        "Brazil": (-14.2, -51.9),
+        "Cambodia": (12.6, 104.9),
+        "China": (35.9, 104.2),
+        "Colombia": (4.6, -74.1),
+        "DR Congo": (-4.0, 21.8),
+        "Ethiopia": (9.1, 40.5),
+        "Haiti": (18.9, -72.3),
+        "India": (20.6, 79.0),
+        "Indonesia": (-0.8, 113.9),
+        "Iraq": (33.2, 43.7),
+        "Japan": (36.2, 138.3),
+        "Kenya": (-0.0, 37.9),
+        "Mexico": (23.6, -102.6),
+        "Mozambique": (-18.7, 35.5),
+        "Myanmar": (17.1, 96.0),
+        "Nepal": (28.4, 84.1),
+        "Nigeria": (9.1, 8.7),
+        "Pakistan": (30.4, 69.3),
+        "Peru": (-9.2, -75.0),
+        "Philippines": (12.9, 121.8),
+        "Somalia": (5.2, 46.2),
+        "South Sudan": (6.9, 31.3),
+        "Sudan": (15.6, 32.5),
+        "Syria": (34.8, 38.9),
+        "Turkey": (38.9, 35.2),
+        "United States": (37.1, -95.7),
+        "Venezuela": (6.4, -66.6),
+        "Yemen": (15.6, 48.5),
+        "Zimbabwe": (-20.0, 30.0),
+        "Chile": (-30.0, -71.0),
+        "Australia": (-25.3, 133.8),
+        "Italy": (41.9, 12.6),
+        "Greece": (39.1, 21.8),
+        "Thailand": (15.9, 100.9),
+        "Vietnam": (14.1, 108.3),
+        "Malaysia": (4.2, 108.0),
     }
 
     params = {
@@ -956,7 +1051,9 @@ def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
         "sort[]": "date:desc",
         "filter[operator]": "AND",
     }
-    url = "https://api.reliefweb.int/v1/disasters?" + urllib.parse.urlencode(params, doseq=True)
+    url = "https://api.reliefweb.int/v1/disasters?" + urllib.parse.urlencode(
+        params, doseq=True
+    )
     data = _fetch(url, timeout=30)
     if not data:
         print("  ReliefWeb unavailable — skipping")
@@ -971,7 +1068,7 @@ def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
     rows = []
     for item in payload.get("data", []):
         fields = item.get("fields", {})
-        types   = fields.get("type", [{}])
+        types = fields.get("type", [{}])
         disaster_type = types[0].get("name", "") if types else ""
         mapping = _RELIEFWEB_TYPE_MAP.get(disaster_type)
         if not mapping:
@@ -991,15 +1088,17 @@ def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
         lat = round(lat + (hash(fields.get("name", "")) % 100) / 500.0 - 0.1, 5)
         lon = round(lon + (hash(disaster_type) % 100) / 500.0 - 0.1, 5)
 
-        rows.append({
-            "class": obs_class,
-            "confidence": round(conf, 3),
-            "lat": lat,
-            "lon": lon,
-            "mission_type": mission,
-            "risk_level": risk,
-            "source": "reliefweb",
-        })
+        rows.append(
+            {
+                "class": obs_class,
+                "confidence": round(conf, 3),
+                "lat": lat,
+                "lon": lon,
+                "mission_type": mission,
+                "risk_level": risk,
+                "source": "reliefweb",
+            }
+        )
 
     print(f"  ReliefWeb: {len(rows)} humanitarian events")
     return rows
@@ -1007,9 +1106,23 @@ def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
 
 # ── Combine and deduplicate ───────────────────────────────────────────────────
 
-ALL_SOURCES = ["firms", "noaa", "phmsa", "gbif", "usgs", "eonet", "inat", "openaq", "gdacs", "reliefweb"]
+ALL_SOURCES = [
+    "firms",
+    "noaa",
+    "phmsa",
+    "gbif",
+    "usgs",
+    "eonet",
+    "inat",
+    "openaq",
+    "gdacs",
+    "reliefweb",
+]
 
-def download_all(year: int = 2023, years: List[int] = None, sources: List[str] = None) -> str:
+
+def download_all(
+    year: int = 2023, years: List[int] = None, sources: List[str] = None
+) -> str:
     all_rows = []
     active = sources or ALL_SOURCES
 
@@ -1047,6 +1160,7 @@ def download_all(year: int = 2023, years: List[int] = None, sources: List[str] =
 
     # Print breakdown by source
     from collections import Counter
+
     by_source = Counter(r["source"].split("_")[0] for r in all_rows)
     print("\nBreakdown by source:")
     for src, count in sorted(by_source.items(), key=lambda x: -x[1]):
@@ -1071,11 +1185,19 @@ if __name__ == "__main__":
     import urllib.parse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", choices=ALL_SOURCES,
-                        action="append", dest="sources",
-                        help="Specific source(s) to download (default: all)")
+    parser.add_argument(
+        "--source",
+        choices=ALL_SOURCES,
+        action="append",
+        dest="sources",
+        help="Specific source(s) to download (default: all)",
+    )
     parser.add_argument("--year", type=int, default=2023)
-    parser.add_argument("--years", type=int, nargs="+",
-                        help="Multiple NOAA years: --years 2020 2021 2022 2023")
+    parser.add_argument(
+        "--years",
+        type=int,
+        nargs="+",
+        help="Multiple NOAA years: --years 2020 2021 2022 2023",
+    )
     args = parser.parse_args()
     download_all(year=args.year, years=args.years, sources=args.sources)

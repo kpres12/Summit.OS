@@ -9,6 +9,7 @@ sensor might suddenly become relevant again. Humans can always override the
 weight. But a source with a 90% false-positive rate will have its alerts quietly
 downgraded so they don't pollute the operator's attention.
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,7 +41,7 @@ WEIGHT_MIN = 0.1
 WEIGHT_MAX = 2.0
 
 # Bayesian prior pseudo-counts for new sources (slightly optimistic)
-PRIOR_CONFIRMED     = 2.0   # α₀
+PRIOR_CONFIRMED = 2.0  # α₀
 PRIOR_FALSE_POSITIVE = 0.5  # β₀
 
 
@@ -48,18 +49,19 @@ PRIOR_FALSE_POSITIVE = 0.5  # β₀
 # Data class
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SourceReliabilityScore:
-    source_id:      str
-    total_alerts:   int
-    confirmed:      int
-    dismissed:      int
+    source_id: str
+    total_alerts: int
+    confirmed: int
+    dismissed: int
     false_positives: int
-    investigated:   int
-    reliability:    float   # Bayesian smoothed: confirmed / (confirmed + false_positives)
-    noise_rate:     float   # false_positives / total_alerts
+    investigated: int
+    reliability: float  # Bayesian smoothed: confirmed / (confirmed + false_positives)
+    noise_rate: float  # false_positives / total_alerts
     priority_weight: float  # multiplier to apply to alerts from this source
-    last_updated:   datetime
+    last_updated: datetime
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -76,17 +78,17 @@ _metadata = MetaData()
 source_scores_table = Table(
     "alert_source_scores",
     _metadata,
-    Column("id",              Integer,  primary_key=True, autoincrement=True),
-    Column("source_id",       String(128), nullable=False, unique=True),
-    Column("total_alerts",    Integer,  nullable=False, default=0),
-    Column("confirmed",       Integer,  nullable=False, default=0),
-    Column("dismissed",       Integer,  nullable=False, default=0),
-    Column("false_positives", Integer,  nullable=False, default=0),
-    Column("investigated",    Integer,  nullable=False, default=0),
-    Column("reliability",     Float,    nullable=False, default=0.8),
-    Column("noise_rate",      Float,    nullable=False, default=0.0),
-    Column("priority_weight", Float,    nullable=False, default=1.0),
-    Column("last_updated",    DateTime(timezone=True), nullable=False),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("source_id", String(128), nullable=False, unique=True),
+    Column("total_alerts", Integer, nullable=False, default=0),
+    Column("confirmed", Integer, nullable=False, default=0),
+    Column("dismissed", Integer, nullable=False, default=0),
+    Column("false_positives", Integer, nullable=False, default=0),
+    Column("investigated", Integer, nullable=False, default=0),
+    Column("reliability", Float, nullable=False, default=0.8),
+    Column("noise_rate", Float, nullable=False, default=0.0),
+    Column("priority_weight", Float, nullable=False, default=1.0),
+    Column("last_updated", DateTime(timezone=True), nullable=False),
     Index("ix_ass_source_id", "source_id"),
 )
 
@@ -94,6 +96,7 @@ source_scores_table = Table(
 # ---------------------------------------------------------------------------
 # Scorer
 # ---------------------------------------------------------------------------
+
 
 class AlertQualityScorer:
     """
@@ -128,7 +131,7 @@ class AlertQualityScorer:
     def _compute_reliability(confirmed: int, false_positives: int) -> float:
         """Bayesian Beta-Binomial reliability estimate."""
         alpha = confirmed + PRIOR_CONFIRMED
-        beta  = false_positives + PRIOR_FALSE_POSITIVE
+        beta = false_positives + PRIOR_FALSE_POSITIVE
         return round(alpha / (alpha + beta), 4)
 
     @staticmethod
@@ -179,15 +182,15 @@ class AlertQualityScorer:
     async def _save(self, score: SourceReliabilityScore) -> None:
         engine = self._ensure_engine()
         row_data = {
-            "total_alerts":    score.total_alerts,
-            "confirmed":       score.confirmed,
-            "dismissed":       score.dismissed,
+            "total_alerts": score.total_alerts,
+            "confirmed": score.confirmed,
+            "dismissed": score.dismissed,
             "false_positives": score.false_positives,
-            "investigated":    score.investigated,
-            "reliability":     score.reliability,
-            "noise_rate":      score.noise_rate,
+            "investigated": score.investigated,
+            "reliability": score.reliability,
+            "noise_rate": score.noise_rate,
             "priority_weight": score.priority_weight,
-            "last_updated":    score.last_updated,
+            "last_updated": score.last_updated,
         }
         async with engine.begin() as conn:
             existing = await conn.execute(
@@ -203,14 +206,16 @@ class AlertQualityScorer:
                 )
             else:
                 await conn.execute(
-                    insert(source_scores_table).values(source_id=score.source_id, **row_data)
+                    insert(source_scores_table).values(
+                        source_id=score.source_id, **row_data
+                    )
                 )
 
     async def record_alert_outcome(
         self,
-        alert_id:  str,
+        alert_id: str,
         source_id: str,
-        outcome:   str,
+        outcome: str,
     ) -> None:
         """
         Record an operator's verdict on an alert from a given source.
@@ -229,21 +234,26 @@ class AlertQualityScorer:
         elif outcome == "investigated":
             score.investigated += 1
         else:
-            logger.warning("Unknown alert outcome '%s' for source %s", outcome, source_id)
+            logger.warning(
+                "Unknown alert outcome '%s' for source %s", outcome, source_id
+            )
             return
 
         # Recompute derived fields
-        score.reliability     = self._compute_reliability(score.confirmed, score.false_positives)
-        score.noise_rate      = round(
-            score.false_positives / max(score.total_alerts, 1), 4
+        score.reliability = self._compute_reliability(
+            score.confirmed, score.false_positives
         )
+        score.noise_rate = round(score.false_positives / max(score.total_alerts, 1), 4)
         score.priority_weight = self._weight_from_reliability(score.reliability)
-        score.last_updated    = datetime.now(UTC)
+        score.last_updated = datetime.now(UTC)
 
         await self._save(score)
         logger.debug(
             "Alert outcome '%s' recorded for source %s: reliability=%.3f weight=%.3f",
-            outcome, source_id, score.reliability, score.priority_weight,
+            outcome,
+            source_id,
+            score.reliability,
+            score.priority_weight,
         )
 
     async def get_weight(self, source_id: str) -> float:
@@ -279,7 +289,9 @@ class AlertQualityScorer:
 
         # Priority ladder (high → medium → low → info)
         _priority_ladder = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]
-        original_priority = str(alert.get("priority") or alert.get("severity") or "MEDIUM").upper()
+        original_priority = str(
+            alert.get("priority") or alert.get("severity") or "MEDIUM"
+        ).upper()
 
         adjusted_priority = original_priority
         confidence_note: Optional[str] = None
@@ -314,8 +326,8 @@ class AlertQualityScorer:
 
         result = dict(alert)
         result["source_reliability_weight"] = weight
-        result["adjusted_priority"]         = adjusted_priority
-        result["confidence_note"]           = confidence_note
+        result["adjusted_priority"] = adjusted_priority
+        result["confidence_note"] = confidence_note
         return result
 
     async def get_all_scores(self) -> list[SourceReliabilityScore]:

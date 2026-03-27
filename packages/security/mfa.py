@@ -14,6 +14,7 @@ WebAuthn is provided by the optional ``webauthn`` package. All WebAuthn
 functions raise ImportError with installation instructions if the package
 is not present.
 """
+
 from __future__ import annotations
 
 import base64
@@ -45,6 +46,7 @@ try:
         PublicKeyCredentialDescriptor,
     )
     from webauthn.helpers.cose import COSEAlgorithmIdentifier  # type: ignore
+
     _WEBAUTHN_AVAILABLE = True
 except ImportError:
     _WEBAUTHN_AVAILABLE = False
@@ -291,9 +293,7 @@ def hash_backup_code(code: str) -> str:
     return hash_password(code)
 
 
-def verify_backup_code(
-    code: str, hashes: list[str]
-) -> tuple[bool, Optional[str]]:
+def verify_backup_code(code: str, hashes: list[str]) -> tuple[bool, Optional[str]]:
     """
     Check a submitted backup code against a list of stored Argon2id hashes.
 
@@ -359,7 +359,7 @@ def begin_registration(
     _require_webauthn()
 
     exclude = []
-    for cred in (existing_credentials or []):
+    for cred in existing_credentials or []:
         exclude.append(
             PublicKeyCredentialDescriptor(id=bytes.fromhex(cred["credential_id"]))
         )

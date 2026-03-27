@@ -31,6 +31,7 @@ if CURRENT_DIR not in sys.path:
 
 try:
     import httpx  # optional
+
     HTTPX_AVAILABLE = True
 except Exception:
     HTTPX_AVAILABLE = False
@@ -44,7 +45,9 @@ class SimAsset:
     conn: str
 
 
-async def register_asset(tasking_url: str, asset: SimAsset, battery: float = 95.0, link: str = "OK") -> None:
+async def register_asset(
+    tasking_url: str, asset: SimAsset, battery: float = 95.0, link: str = "OK"
+) -> None:
     if not HTTPX_AVAILABLE:
         print("[sim] httpx not available, skipping asset registration")
         return
@@ -68,12 +71,16 @@ async def register_asset(tasking_url: str, asset: SimAsset, battery: float = 95.
 def parse_asset_arg(value: str) -> SimAsset:
     # Format: <asset_id>=<connection_string>
     if "=" not in value:
-        raise argparse.ArgumentTypeError("Expected format <asset_id>=<connection_string>")
+        raise argparse.ArgumentTypeError(
+            "Expected format <asset_id>=<connection_string>"
+        )
     aid, conn = value.split("=", 1)
     return SimAsset(asset_id=aid.strip(), conn=conn.strip())
 
 
-async def simple_loiter_plan(center: Tuple[float, float], radius_m: float, altitude: float, speed: float) -> List[Waypoint]:
+async def simple_loiter_plan(
+    center: Tuple[float, float], radius_m: float, altitude: float, speed: float
+) -> List[Waypoint]:
     lat, lon = center
     # single waypoint at offset radius to induce loiter
     return [Waypoint(lat=lat, lon=lon, alt=altitude, speed=speed, action="WAYPOINT")]  # type: ignore
@@ -119,7 +126,9 @@ async def run_sim(args: argparse.Namespace) -> None:
     if args.loiter_center:
         lat, lon = args.loiter_center
         for a, p in pilots.items():
-            wps = await simple_loiter_plan((lat, lon), args.loiter_radius, args.altitude, args.speed)
+            wps = await simple_loiter_plan(
+                (lat, lon), args.loiter_radius, args.altitude, args.speed
+            )
             ok = await p.set_mission(wps)
             print(f"[sim] set mission for {a}: {ok}")
             if ok and args.start:
@@ -134,7 +143,9 @@ async def run_sim(args: argparse.Namespace) -> None:
             for a, p in pilots.items():
                 st = p.get_status()
                 prog = p.get_mission_progress()
-                print(f"[sim] {a} mode={st.mode.value} armed={st.armed} batt={st.battery}% pos={st.position} prog={prog['state']}")
+                print(
+                    f"[sim] {a} mode={st.mode.value} armed={st.armed} batt={st.battery}% pos={st.position} prog={prog['state']}"
+                )
     except KeyboardInterrupt:
         print("[sim] shutting down...")
     finally:
@@ -164,16 +175,27 @@ def build_parser() -> argparse.ArgumentParser:
         help="Tasking service base URL",
     )
     p.add_argument("--arm", action="store_true", help="Arm vehicles")
-    p.add_argument("--takeoff-alt", type=float, default=0.0, help="If >0, takeoff to this altitude (m)")
+    p.add_argument(
+        "--takeoff-alt",
+        type=float,
+        default=0.0,
+        help="If >0, takeoff to this altitude (m)",
+    )
     p.add_argument("--start", action="store_true", help="Start mission after upload")
-    p.add_argument("--altitude", type=float, default=60.0, help="Default mission altitude (m)")
-    p.add_argument("--speed", type=float, default=5.0, help="Default mission speed (m/s)")
+    p.add_argument(
+        "--altitude", type=float, default=60.0, help="Default mission altitude (m)"
+    )
+    p.add_argument(
+        "--speed", type=float, default=5.0, help="Default mission speed (m/s)"
+    )
     p.add_argument(
         "--loiter-center",
         type=lambda s: tuple(map(float, s.split(","))),
         help="Center lat,lon for loiter pattern",
     )
-    p.add_argument("--loiter-radius", type=float, default=100.0, help="Loiter radius (m)")
+    p.add_argument(
+        "--loiter-radius", type=float, default=100.0, help="Loiter radius (m)"
+    )
     return p
 
 

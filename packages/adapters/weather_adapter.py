@@ -9,6 +9,7 @@ Dependencies
 ------------
     pip install aiohttp
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -174,9 +175,7 @@ class WeatherAdapter(BaseAdapter):
             return None
 
         # Get observation stations list
-        obs_stations_url = (
-            data.get("properties", {}).get("observationStations")
-        )
+        obs_stations_url = data.get("properties", {}).get("observationStations")
         if not obs_stations_url:
             return None
 
@@ -200,9 +199,7 @@ class WeatherAdapter(BaseAdapter):
 
         return f"{_NWS_BASE}/stations/{station_id}/observations/latest"
 
-    def _nws_props_to_obs(
-        self, name: str, lat: float, lon: float, props: dict
-    ) -> dict:
+    def _nws_props_to_obs(self, name: str, lat: float, lon: float, props: dict) -> dict:
         def nws_val(field: str) -> Optional[float]:
             obj = props.get(field, {})
             if isinstance(obj, dict):
@@ -270,9 +267,7 @@ class WeatherAdapter(BaseAdapter):
 
         return self._owm_data_to_obs(name, lat, lon, data)
 
-    def _owm_data_to_obs(
-        self, name: str, lat: float, lon: float, data: dict
-    ) -> dict:
+    def _owm_data_to_obs(self, name: str, lat: float, lon: float, data: dict) -> dict:
         main = data.get("main", {})
         wind = data.get("wind", {})
         clouds = data.get("clouds", {})

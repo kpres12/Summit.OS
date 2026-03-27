@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import sys, os
+
 sys.path.insert(0, "/packages")
 
 logger = logging.getLogger("tasking")
@@ -16,30 +17,47 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from pydantic import BaseModel, Field
 import paho.mqtt.client as mqtt
 from packages.schemas.drones import (
-    DroneType, MissionTier, TieredMissionRequest, TieredMissionStatus,
-    DroneCapabilities, PayloadConfig, InterventionPlan, SwarmCoordination,
-    ThreatThreshold, TieredAsset
+    DroneType,
+    MissionTier,
+    TieredMissionRequest,
+    TieredMissionStatus,
+    DroneCapabilities,
+    PayloadConfig,
+    InterventionPlan,
+    SwarmCoordination,
+    ThreatThreshold,
+    TieredAsset,
 )
 from packages.threat_assessment import threat_registry, ThreatAssessmentResult
 
 # State machine, assignment engine, coverage patterns
 try:
-    from apps.tasking.state_machine import MissionStateMachine, MissionStateMachineRegistry, MissionState
+    from apps.tasking.state_machine import (
+        MissionStateMachine,
+        MissionStateMachineRegistry,
+        MissionState,
+    )
+
     STATE_MACHINE_AVAILABLE = True
 except Exception:
     STATE_MACHINE_AVAILABLE = False
 
 try:
     from apps.tasking.assignment_engine import AssignmentEngine, resolve_pattern
+
     ASSIGNMENT_ENGINE_AVAILABLE = True
 except Exception:
     ASSIGNMENT_ENGINE_AVAILABLE = False
 
 try:
     from apps.tasking.coverage_patterns import (
-        grid_coverage_pattern, spiral_coverage_pattern,
-        perimeter_patrol_pattern, orbit_pattern, expand_search_pattern,
+        grid_coverage_pattern,
+        spiral_coverage_pattern,
+        perimeter_patrol_pattern,
+        orbit_pattern,
+        expand_search_pattern,
     )
+
     COVERAGE_PATTERNS_AVAILABLE = True
 except Exception:
     COVERAGE_PATTERNS_AVAILABLE = False
@@ -48,6 +66,7 @@ except Exception:
 try:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
     from packages.world.store import WorldStore
+
     WORLD_STORE_AVAILABLE = True
 except Exception:
     WORLD_STORE_AVAILABLE = False
@@ -69,12 +88,14 @@ from sqlalchemy.orm import sessionmaker
 # Optional metrics/tracing/auth imports
 try:
     from prometheus_client import Counter, Gauge, CONTENT_TYPE_LATEST, generate_latest
+
     PROM_AVAILABLE = True
 except Exception:
     PROM_AVAILABLE = False
 
 try:
     from jose import jwt
+
     OIDC_AVAILABLE = True
 except Exception:
     OIDC_AVAILABLE = False
@@ -91,7 +112,7 @@ assignment_engine_instance = None  # initialized after lifespan
 
 # Optional direct autopilot control
 DIRECT_AUTOPILOT = os.getenv("TASKING_DIRECT_AUTOPILOT", "false").lower() == "true"
-_direct_queue: Optional[__import__('asyncio').Queue] = None
+_direct_queue: Optional[__import__("asyncio").Queue] = None
 _autopilots: Dict[str, Any] = {}
 
 # Configuration via env
@@ -151,7 +172,9 @@ mission_assignments = Table(
     Column("mission_id", String(128), nullable=False),
     Column("asset_id", String(128), nullable=False),
     Column("plan", JSON, nullable=True),  # waypoints/patterns
-    Column("status", String(32), nullable=False),  # ASSIGNED, DISPATCHED, ACTIVE, COMPLETED, FAILED
+    Column(
+        "status", String(32), nullable=False
+    ),  # ASSIGNED, DISPATCHED, ACTIVE, COMPLETED, FAILED
 )
 
 # Tiered response tables
@@ -161,7 +184,9 @@ tiered_missions = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("mission_id", String(128), nullable=False, unique=True),
     Column("alert_id", String(128), nullable=False),
-    Column("current_tier", String(32), nullable=False),  # tier_1_verify, tier_2_suppress, etc.
+    Column(
+        "current_tier", String(32), nullable=False
+    ),  # tier_1_verify, tier_2_suppress, etc.
     Column("tier_1_status", String(32), nullable=True),
     Column("tier_2_status", String(32), nullable=True),
     Column("tier_3_status", String(32), nullable=True),
@@ -200,7 +225,9 @@ interventions = Table(
     Column("target_location", JSON, nullable=False),  # lat, lon
     Column("payload_config", JSON, nullable=False),
     Column("intervention_plan", JSON, nullable=True),
-    Column("status", String(32), nullable=False),  # PLANNED, DEPLOYED, COMPLETED, FAILED
+    Column(
+        "status", String(32), nullable=False
+    ),  # PLANNED, DEPLOYED, COMPLETED, FAILED
     Column("effectiveness", Float, nullable=True),  # 0.0 - 1.0 success rate
     Column("deployed_at", DateTime(timezone=True)),
     Column("completed_at", DateTime(timezone=True)),
@@ -208,7 +235,9 @@ interventions = Table(
 
 # Metrics
 if PROM_AVAILABLE:
-    METRIC_MISSIONS_CREATED = Counter("missions_created_total", "Number of missions created")
+    METRIC_MISSIONS_CREATED = Counter(
+        "missions_created_total", "Number of missions created"
+    )
     METRIC_MISSIONS_ACTIVE = Gauge("missions_active", "Active missions")
     METRIC_ASSETS_REGISTERED = Counter("assets_registered_total", "Assets registered")
 else:
@@ -255,7 +284,10 @@ async def lifespan(app: FastAPI):
         pg_url = "sqlite+aiosqlite://"
     else:
         pg_url = _to_asyncpg_url(
-            os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os")
+            os.getenv(
+                "POSTGRES_URL",
+                "postgresql://summit:summit_password@localhost:5432/summit_os",
+            )
         )
     engine = create_async_engine(pg_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -278,6 +310,7 @@ async def lifespan(app: FastAPI):
         # Closed-loop execution monitor
         try:
             from execution_monitor import ExecutionMonitor
+
             _exec_monitor = ExecutionMonitor(SessionLocal, mqtt_client)
             asyncio.create_task(_exec_monitor.run())
             logger.info("ExecutionMonitor started")
@@ -303,6 +336,7 @@ app = FastAPI(title="Summit Tasking", version="0.2.1", lifespan=lifespan)
 # Mission replay API
 try:
     from replay_router import router as _replay_router
+
     app.include_router(_replay_router)
 except Exception as _rr_err:
     logger.warning(f"Replay router not loaded: {_rr_err}")
@@ -313,6 +347,7 @@ try:
     if _otel_root not in sys.path:
         sys.path.insert(0, _otel_root)
     from packages.observability.tracing import get_tracer, create_tracing_middleware
+
     _tracer = get_tracer("summit-tasking")
     app.middleware("http")(create_tracing_middleware(_tracer))
 except Exception as _e:
@@ -322,13 +357,18 @@ except Exception as _e:
 from fastapi.responses import JSONResponse as _JSONResponse
 from fastapi.requests import Request as _FRequest
 
+
 class ErrorResponse(BaseModel):
     error: str
     detail: Any | None = None
 
+
 @app.exception_handler(HTTPException)
 async def http_exc_handler(_req: _FRequest, exc: HTTPException):
-    return _JSONResponse(status_code=exc.status_code, content=ErrorResponse(error="HTTPException", detail=exc.detail).model_dump())
+    return _JSONResponse(
+        status_code=exc.status_code,
+        content=ErrorResponse(error="HTTPException", detail=exc.detail).model_dump(),
+    )
 
 
 # -------------------------
@@ -389,16 +429,22 @@ class AssetOut(AssetIn):
 class MissionCreateRequest(BaseModel):
     name: Optional[str] = None
     objectives: List[str] = Field(default_factory=list)
-    area: Optional[Dict[str, Any]] = None  # e.g., {center: {lat, lon}, radius_m: 500} or {polygon: [[lat,lon], ...]}
+    area: Optional[Dict[str, Any]] = (
+        None  # e.g., {center: {lat, lon}, radius_m: 500} or {polygon: [[lat,lon], ...]}
+    )
     num_drones: Optional[int] = Field(default=None, ge=1)
-    policy_context: Optional[Dict[str, Any]] = None  # airspace/geofence/weather/NOTAMs/operator
+    policy_context: Optional[Dict[str, Any]] = (
+        None  # airspace/geofence/weather/NOTAMs/operator
+    )
     # planning_params:
     #   pattern: "loiter" | "grid"
     #   altitude: meters
     #   speed: m/s
     #   grid_spacing_m: for pattern=grid
     #   heading_deg: lane orientation for grid
-    planning_params: Optional[Dict[str, Any]] = None  # pattern: loiter|grid, altitude, speed, grid_spacing_m, heading_deg
+    planning_params: Optional[Dict[str, Any]] = (
+        None  # pattern: loiter|grid, altitude, speed, grid_spacing_m, heading_deg
+    )
 
 
 class MissionAssignment(BaseModel):
@@ -424,7 +470,13 @@ class MissionResponse(BaseModel):
 async def _publish_mission_update(mission_id: str, event: Dict[str, Any]):
     if not mqtt_client:
         return
-    payload = json.dumps({"mission_id": mission_id, **event, "ts_iso": datetime.now(timezone.utc).isoformat()})
+    payload = json.dumps(
+        {
+            "mission_id": mission_id,
+            **event,
+            "ts_iso": datetime.now(timezone.utc).isoformat(),
+        }
+    )
     mqtt_client.publish("missions/updates", payload, qos=1)
     mqtt_client.publish(f"missions/{mission_id}", payload, qos=1)
 
@@ -442,7 +494,9 @@ async def _init_direct_autopilot():
             payload = {"raw": msg.payload.decode("utf-8", errors="ignore")}
         # thread-safe put into asyncio queue
         loop = __import__("asyncio").get_event_loop()
-        loop.call_soon_threadsafe(_direct_queue.put_nowait, {"topic": msg.topic, "payload": payload})
+        loop.call_soon_threadsafe(
+            _direct_queue.put_nowait, {"topic": msg.topic, "payload": payload}
+        )
 
     mqtt_client.on_message = _on_message
     mqtt_client.subscribe("tasks/+/dispatch", qos=1)
@@ -453,6 +507,7 @@ async def _direct_autopilot_worker():
     """Consume dispatches and drive autopilot directly if MAVLink and connection info are available."""
     try:
         from drone_autopilot import FireFlyAutopilot, Waypoint  # type: ignore
+
         MAV_OK = True
     except Exception:
         MAV_OK = False
@@ -469,7 +524,11 @@ async def _direct_autopilot_worker():
             if topic and topic.startswith("tasks/"):
                 asset_id = topic.split("/")[1]
             asset_id = payload.get("asset_id") or asset_id
-            waypoints = payload.get("waypoints") or (payload.get("plan") or {}).get("waypoints") or []
+            waypoints = (
+                payload.get("waypoints")
+                or (payload.get("plan") or {}).get("waypoints")
+                or []
+            )
             if not asset_id or not waypoints:
                 continue
             # Ensure we have/establish autopilot
@@ -478,7 +537,8 @@ async def _direct_autopilot_worker():
                 assert SessionLocal is not None
                 async with SessionLocal() as session:
                     res = await session.execute(
-                        text("SELECT capabilities FROM assets WHERE asset_id = :aid"), {"aid": asset_id}
+                        text("SELECT capabilities FROM assets WHERE asset_id = :aid"),
+                        {"aid": asset_id},
                     )
                     row = res.first()
                     conn_str = None
@@ -503,7 +563,11 @@ async def _direct_autopilot_worker():
                             alt=float(wp.get("alt") or wp.get("altitude") or 50.0),
                             speed=float(wp.get("speed") or 5.0),
                             action=str(wp.get("action") or "WAYPOINT"),
-                            params=wp.get("params") if isinstance(wp.get("params"), dict) else None,
+                            params=(
+                                wp.get("params")
+                                if isinstance(wp.get("params"), dict)
+                                else None
+                            ),
                         )
                     )
                 except Exception:
@@ -518,7 +582,9 @@ async def _direct_autopilot_worker():
             pass
 
 
-async def _validate_policies(req: MissionCreateRequest, org_id: Optional[str] = None) -> List[str]:
+async def _validate_policies(
+    req: MissionCreateRequest, org_id: Optional[str] = None
+) -> List[str]:
     """Validate mission against policy engine (OPA) and return violation reasons.
 
     Fails open (no violations) if OPA is unreachable to avoid blocking local dev.
@@ -553,80 +619,104 @@ async def _validate_policies(req: MissionCreateRequest, org_id: Optional[str] = 
         return []
 
 
-async def _assess_threat(location: Dict[str, float], verification_data: Optional[Dict[str, Any]] = None, domain: str = "generic") -> ThreatAssessmentResult:
+async def _assess_threat(
+    location: Dict[str, float],
+    verification_data: Optional[Dict[str, Any]] = None,
+    domain: str = "generic",
+) -> ThreatAssessmentResult:
     """Assess threat level using pluggable domain-specific assessors."""
-    
+
     # Get appropriate threat assessor for domain
     assessor = threat_registry.get_assessor(domain)
-    
+
     # Default sensor data if none provided
     sensor_data = verification_data or {
         "confidence": 0.5,
         "intensity": 0.0,
         "size": 0.0,
-        "spread_rate": 0.0
+        "spread_rate": 0.0,
     }
-    
+
     # Run threat assessment
     result = await assessor.assess_threat(
         location=location,
         sensor_data=sensor_data,
-        environmental_data=verification_data.get("environmental_data") if verification_data else None
+        environmental_data=(
+            verification_data.get("environmental_data") if verification_data else None
+        ),
     )
-    
+
     return result
 
 
-async def _select_tiered_assets(location: Dict[str, float], tier: MissionTier, available_assets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+async def _select_tiered_assets(
+    location: Dict[str, float],
+    tier: MissionTier,
+    available_assets: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
     """Select appropriate assets for tiered mission based on tier and location."""
     selected = []
-    
+
     if tier == MissionTier.TIER_1_VERIFY:
         # Select fastest Scout drone for reconnaissance
         scouts = [
-            a for a in available_assets 
+            a
+            for a in available_assets
             if a.get("capabilities", {}).get("drone_type") == "scout"
         ]
         if scouts:
             # Sort by dash speed, take fastest
-            scouts.sort(key=lambda x: x.get("capabilities", {}).get("dash_speed", 0), reverse=True)
+            scouts.sort(
+                key=lambda x: x.get("capabilities", {}).get("dash_speed", 0),
+                reverse=True,
+            )
             selected.append(scouts[0])
-    
+
     elif tier == MissionTier.TIER_2_SUPPRESS:
         # Select Interceptor drone with intervention payload
         interceptors = [
-            a for a in available_assets 
+            a
+            for a in available_assets
             if a.get("capabilities", {}).get("drone_type") == "interceptor"
             and a.get("capabilities", {}).get("payload_capacity", 0) > 5
         ]
         if interceptors:
             # Sort by payload capacity, take largest
-            interceptors.sort(key=lambda x: x.get("capabilities", {}).get("payload_capacity", 0), reverse=True)
+            interceptors.sort(
+                key=lambda x: x.get("capabilities", {}).get("payload_capacity", 0),
+                reverse=True,
+            )
             selected.append(interceptors[0])
-    
+
     elif tier == MissionTier.TIER_3_CONTAIN:
         # Select multiple drones for containment pattern
         containment_drones = [
-            a for a in available_assets 
-            if a.get("capabilities", {}).get("drone_type") in ["interceptor", "scout", "relay"]
+            a
+            for a in available_assets
+            if a.get("capabilities", {}).get("drone_type")
+            in ["interceptor", "scout", "relay"]
         ]
         # Take up to 4 drones for containment ring
         selected = containment_drones[:4]
-    
+
     return selected
 
 
-async def _plan_tiered_mission(req: TieredMissionRequest, assets: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def _plan_tiered_mission(
+    req: TieredMissionRequest, assets: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     """Plan tiered mission with escalation logic."""
     plans = {}
-    
+
     # Start with Tier 1 verification
-    tier_1_assets = await _select_tiered_assets(req.initial_location, MissionTier.TIER_1_VERIFY, assets)
-    
+    tier_1_assets = await _select_tiered_assets(
+        req.initial_location, MissionTier.TIER_1_VERIFY, assets
+    )
+
     for asset in tier_1_assets:
         asset_id = asset["asset_id"]
         capabilities = asset.get("capabilities", {})
-        
+
         # Create verification mission plan
         plans[asset_id] = {
             "tier": "tier_1_verify",
@@ -641,40 +731,46 @@ async def _plan_tiered_mission(req: TieredMissionRequest, assets: List[Dict[str,
                 {
                     "lat": req.initial_location["lat"],
                     "lon": req.initial_location["lon"],
-                    "alt": capabilities.get("operating_altitude", {}).get("optimal", 60),
+                    "alt": capabilities.get("operating_altitude", {}).get(
+                        "optimal", 60
+                    ),
                     "speed": capabilities.get("dash_speed", 100),
-                    "action": "VERIFY_TARGET"
+                    "action": "VERIFY_TARGET",
                 }
-            ]
+            ],
         }
-    
+
     return plans
 
 
-async def _create_containment_pattern(center: Dict[str, float], assets: List[Dict[str, Any]], radius: float = 100.0) -> Dict[str, Dict[str, Any]]:
+async def _create_containment_pattern(
+    center: Dict[str, float], assets: List[Dict[str, Any]], radius: float = 100.0
+) -> Dict[str, Dict[str, Any]]:
     """Create containment ring pattern for multiple assets."""
     import math
-    
+
     plans = {}
     num_assets = len(assets)
-    
+
     if num_assets == 0:
         return plans
-    
+
     # Distribute assets in a ring around the target
     for i, asset in enumerate(assets):
         angle = (2 * math.pi * i) / num_assets
-        
+
         # Calculate position on the ring
         lat_offset = (radius / 111111.0) * math.sin(angle)  # degrees lat per meter
-        lon_offset = (radius / (111111.0 * math.cos(math.radians(center["lat"])))) * math.cos(angle)
-        
+        lon_offset = (
+            radius / (111111.0 * math.cos(math.radians(center["lat"])))
+        ) * math.cos(angle)
+
         position_lat = center["lat"] + lat_offset
         position_lon = center["lon"] + lon_offset
-        
+
         asset_id = asset["asset_id"]
         capabilities = asset.get("capabilities", {})
-        
+
         plans[asset_id] = {
             "tier": "tier_3_contain",
             "role": "containment",
@@ -687,24 +783,31 @@ async def _create_containment_pattern(center: Dict[str, float], assets: List[Dic
             "orbit_radius": 25.0,  # orbit around assigned position
             "coordination": {
                 "formation": "containment_ring",
-                "separation_distance": radius * 2 * math.pi / num_assets,  # arc length between drones
-                "anti_collision": True
+                "separation_distance": radius
+                * 2
+                * math.pi
+                / num_assets,  # arc length between drones
+                "anti_collision": True,
             },
             "waypoints": [
                 {
                     "lat": position_lat,
                     "lon": position_lon,
-                    "alt": capabilities.get("operating_altitude", {}).get("optimal", 60),
+                    "alt": capabilities.get("operating_altitude", {}).get(
+                        "optimal", 60
+                    ),
                     "speed": capabilities.get("max_speed", 30),
-                    "action": "ORBIT"
+                    "action": "ORBIT",
                 }
-            ]
+            ],
         }
-    
+
     return plans
 
 
-async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def _plan_assignments(
+    req: MissionCreateRequest, available_assets: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     """Planner: 'loiter' and 'grid' patterns, polygon support, heading rotation, deconfliction, and per-asset constraints."""
     num = req.num_drones or max(1, min(1, len(available_assets)))
     chosen = available_assets[:num]
@@ -745,12 +848,16 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
         for i in range(n):
             x1, y1 = poly[i][1], poly[i][0]
             x2, y2 = poly[(i + 1) % n][1], poly[(i + 1) % n][0]
-            intersect = ((y1 > y) != (y2 > y)) and (x < (x2 - x1) * (y - y1) / (y2 - y1 + 1e-9) + x1)
+            intersect = ((y1 > y) != (y2 > y)) and (
+                x < (x2 - x1) * (y - y1) / (y2 - y1 + 1e-9) + x1
+            )
             if intersect:
                 inside = not inside
         return inside
 
-    def _segment_intersections(p1: Dict[str, float], p2: Dict[str, float], poly: List[List[float]]) -> List[float]:
+    def _segment_intersections(
+        p1: Dict[str, float], p2: Dict[str, float], poly: List[List[float]]
+    ) -> List[float]:
         # Return t values (0..1) where segment p1->p2 crosses polygon edges
         ts: List[float] = []
         x1, y1 = p1["lon"], p1["lat"]
@@ -773,9 +880,15 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
         ts = sorted(set(ts))
         return ts
 
-    def _clip_segment_to_polygon(p1: Dict[str, float], p2: Dict[str, float], poly: List[List[float]]) -> List[Dict[str, float]]:
+    def _clip_segment_to_polygon(
+        p1: Dict[str, float], p2: Dict[str, float], poly: List[List[float]]
+    ) -> List[Dict[str, float]]:
         # Return list of waypoints representing inside intervals (pairs of points) after clipping
-        if not poly or point_in_polygon(p1["lat"], p1["lon"], poly) and point_in_polygon(p2["lat"], p2["lon"], poly):
+        if (
+            not poly
+            or point_in_polygon(p1["lat"], p1["lon"], poly)
+            and point_in_polygon(p2["lat"], p2["lon"], poly)
+        ):
             return [p1, p2]
         ts = [0.0] + _segment_intersections(p1, p2, poly) + [1.0]
         inside = point_in_polygon(p1["lat"], p1["lon"], poly)
@@ -784,9 +897,20 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
             t0, t1 = ts[i], ts[i + 1]
             if inside:
                 # keep this interval
-                q0 = {"lat": p1["lat"] + (p2["lat"] - p1["lat"]) * t0, "lon": p1["lon"] + (p2["lon"] - p1["lon"]) * t0}
-                q1 = {"lat": p1["lat"] + (p2["lat"] - p1["lat"]) * t1, "lon": p1["lon"] + (p2["lon"] - p1["lon"]) * t1}
-                if not result or (result and (result[-1]["lat"] != q0["lat"] or result[-1]["lon"] != q0["lon"])):
+                q0 = {
+                    "lat": p1["lat"] + (p2["lat"] - p1["lat"]) * t0,
+                    "lon": p1["lon"] + (p2["lon"] - p1["lon"]) * t0,
+                }
+                q1 = {
+                    "lat": p1["lat"] + (p2["lat"] - p1["lat"]) * t1,
+                    "lon": p1["lon"] + (p2["lon"] - p1["lon"]) * t1,
+                }
+                if not result or (
+                    result
+                    and (
+                        result[-1]["lat"] != q0["lat"] or result[-1]["lon"] != q0["lon"]
+                    )
+                ):
                     result.append(q0)
                 result.append(q1)
             inside = not inside
@@ -801,7 +925,11 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
             center = req.area["center"]
         if "radius_m" in req.area:
             radius = float(req.area["radius_m"])
-        if "polygon" in req.area and isinstance(req.area["polygon"], list) and req.area["polygon"]:
+        if (
+            "polygon" in req.area
+            and isinstance(req.area["polygon"], list)
+            and req.area["polygon"]
+        ):
             polygon = req.area["polygon"]  # [[lat, lon], ...]
 
     # Extract per-asset constraints for clamping (min/max altitude/speed)
@@ -880,20 +1008,34 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                     polygon,
                 )
             else:
-                clipped_points = [{"lat": p1_lat, "lon": p1_lon}, {"lat": p2_lat, "lon": p2_lon}]
+                clipped_points = [
+                    {"lat": p1_lat, "lon": p1_lon},
+                    {"lat": p2_lat, "lon": p2_lon},
+                ]
             # Build waypoints from clipped points in order
             waypoints_seq: List[Dict[str, Any]] = []
             for qp in clipped_points:
-                waypoints_seq.append({"lat": qp["lat"], "lon": qp["lon"], "alt": altitude_default, "speed": speed_default, "action": "WAYPOINT"})
+                waypoints_seq.append(
+                    {
+                        "lat": qp["lat"],
+                        "lon": qp["lon"],
+                        "alt": altitude_default,
+                        "speed": speed_default,
+                        "action": "WAYPOINT",
+                    }
+                )
             if not waypoints_seq:
                 continue
             lane_endpoints.append(waypoints_seq)
 
         # Assign lanes to assets
-        asset_lane_wpts: Dict[str, List[Dict[str, Any]]] = {a["asset_id"]: [] for a in chosen}
+        asset_lane_wpts: Dict[str, List[Dict[str, Any]]] = {
+            a["asset_id"]: [] for a in chosen
+        }
         if assigner == "ortools":
             try:
                 from ortools.graph.python import min_cost_flow  # type: ignore
+
                 # Simple assignment as min-cost flow: lanes -> assets with unit demand
                 n_lanes = len(lane_endpoints)
                 n_assets = len(chosen)
@@ -901,15 +1043,19 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                 mcf = min_cost_flow.SimpleMinCostFlow()
                 source = n_lanes + n_assets
                 sink = source + 1
+
                 # Node indexing: lanes [0..n_lanes-1], assets [n_lanes..n_lanes+n_assets-1]
                 def asset_node(i: int) -> int:
                     return n_lanes + i
+
                 # Add arcs from source to lanes
                 for i in range(n_lanes):
                     mcf.add_arc_with_capacity_and_unit_cost(source, i, 1, 0)
                 # Add arcs from assets to sink (capacity large)
                 for j in range(n_assets):
-                    mcf.add_arc_with_capacity_and_unit_cost(asset_node(j), sink, n_lanes, 0)
+                    mcf.add_arc_with_capacity_and_unit_cost(
+                        asset_node(j), sink, n_lanes, 0
+                    )
                 # Costs: distance from lane midpoint to asset nominal position (use index distance)
                 for i in range(n_lanes):
                     # Midpoint of lane i
@@ -917,7 +1063,9 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                     for j in range(n_assets):
                         # crude cost: prefer balancing by index distance, could use distance to asset last known pos
                         cost = abs(j - (i % n_assets))
-                        mcf.add_arc_with_capacity_and_unit_cost(i, asset_node(j), 1, int(cost))
+                        mcf.add_arc_with_capacity_and_unit_cost(
+                            i, asset_node(j), 1, int(cost)
+                        )
                 # Supplies
                 supplies = [0] * (sink + 1)
                 supplies[source] = n_lanes
@@ -931,7 +1079,10 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                             tail = mcf.tail(arc)
                             head = mcf.head(arc)
                             # lane to asset arcs fall in lanes->assets range (ignore source/ sink arcs)
-                            if 0 <= tail < n_lanes and n_lanes <= head < n_lanes + n_assets:
+                            if (
+                                0 <= tail < n_lanes
+                                and n_lanes <= head < n_lanes + n_assets
+                            ):
                                 asset_idx = head - n_lanes
                                 asset_id = chosen[asset_idx]["asset_id"]
                                 asset_lane_wpts[asset_id].extend(lane_endpoints[tail])
@@ -971,7 +1122,9 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                 # distance estimate (flat earth approx)
                 if prev is not None:
                     dy_m = (wp["lat"] - prev["lat"]) * 111_111.0
-                    dx_m = (wp["lon"] - prev["lon"]) / deg_lon_per_meter(center["lat"])  # invert per-meter
+                    dx_m = (wp["lon"] - prev["lon"]) / deg_lon_per_meter(
+                        center["lat"]
+                    )  # invert per-meter
                     seg = (dy_m**2 + dx_m**2) ** 0.5
                     if (dist_total + seg) / max(0.1, spd) > max_time:
                         break
@@ -980,13 +1133,25 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                 wp_alt = alt
                 try:
                     import sys as _sys
-                    _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+
+                    _sys.path.insert(
+                        0, os.path.join(os.path.dirname(__file__), "../..")
+                    )
                     from packages.geo.dem import get_provider as _get_dem
+
                     terrain_m = _get_dem().get_elevation(wp["lat"], wp["lon"])
                     wp_alt = alt + terrain_m
                 except Exception:
                     pass
-                wps.append({"lat": wp["lat"], "lon": wp["lon"], "alt": wp_alt, "speed": spd, "action": wp.get("action", "WAYPOINT")})
+                wps.append(
+                    {
+                        "lat": wp["lat"],
+                        "lon": wp["lon"],
+                        "alt": wp_alt,
+                        "speed": spd,
+                        "action": wp.get("action", "WAYPOINT"),
+                    }
+                )
                 prev = wp
             plans[aid] = {
                 "pattern": "grid",
@@ -995,7 +1160,11 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
                 "grid": {
                     "spacing_m": spacing_m_effective,
                     "heading_deg": heading,
-                    "bounds": {"center": center, "half_width_m": half_width_m, "half_height_m": half_height_m},
+                    "bounds": {
+                        "center": center,
+                        "half_width_m": half_width_m,
+                        "half_height_m": half_height_m,
+                    },
                 },
                 "start_delay_sec": round(idx * start_delay_step, 2),
                 "waypoints": wps,
@@ -1024,7 +1193,13 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
             alt = max(min_alt, min(max_alt, altitude_default + idx * alt_offset_step))
             spd = max(min_spd, min(max_spd, speed_default))
             wps = [
-                {"lat": wp["lat"], "lon": wp["lon"], "alt": alt, "speed": spd, "action": "WAYPOINT"}
+                {
+                    "lat": wp["lat"],
+                    "lon": wp["lon"],
+                    "alt": alt,
+                    "speed": spd,
+                    "action": "WAYPOINT",
+                }
                 for wp in spiral_wps
             ]
             plans[a["asset_id"]] = {
@@ -1045,11 +1220,26 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
         for k in range(1, loops + 1):
             half = (side * k) / 2.0
             corners = [
-                (lat0 + meters_to_deg_lat(+half), lon0 + meters_to_deg_lon(+half, lat0)),
-                (lat0 + meters_to_deg_lat(+half), lon0 + meters_to_deg_lon(-half, lat0)),
-                (lat0 + meters_to_deg_lat(-half), lon0 + meters_to_deg_lon(-half, lat0)),
-                (lat0 + meters_to_deg_lat(-half), lon0 + meters_to_deg_lon(+half, lat0)),
-                (lat0 + meters_to_deg_lat(+half), lon0 + meters_to_deg_lon(+half, lat0)),
+                (
+                    lat0 + meters_to_deg_lat(+half),
+                    lon0 + meters_to_deg_lon(+half, lat0),
+                ),
+                (
+                    lat0 + meters_to_deg_lat(+half),
+                    lon0 + meters_to_deg_lon(-half, lat0),
+                ),
+                (
+                    lat0 + meters_to_deg_lat(-half),
+                    lon0 + meters_to_deg_lon(-half, lat0),
+                ),
+                (
+                    lat0 + meters_to_deg_lat(-half),
+                    lon0 + meters_to_deg_lon(+half, lat0),
+                ),
+                (
+                    lat0 + meters_to_deg_lat(+half),
+                    lon0 + meters_to_deg_lon(+half, lat0),
+                ),
             ]
             for lat, lon in corners:
                 if (polygon is None) or point_in_polygon(lat, lon, polygon):
@@ -1063,7 +1253,13 @@ async def _plan_assignments(req: MissionCreateRequest, available_assets: List[Di
             alt = max(min_alt, min(max_alt, altitude_default + idx * alt_offset_step))
             spd = max(min_spd, min(max_spd, speed_default))
             wps = [
-                {"lat": wp["lat"], "lon": wp["lon"], "alt": alt, "speed": spd, "action": "WAYPOINT"}
+                {
+                    "lat": wp["lat"],
+                    "lon": wp["lon"],
+                    "alt": alt,
+                    "speed": spd,
+                    "action": "WAYPOINT",
+                }
                 for wp in sq_wps
             ]
             plans[a["asset_id"]] = {
@@ -1138,6 +1334,7 @@ async def valve_command(asset_id: str, cmd: ValveCommand, request: Request):
 
 # Metrics endpoint
 if PROM_AVAILABLE:
+
     @app.get("/metrics")
     async def metrics():
         return __import__("fastapi").responses.Response(
@@ -1213,9 +1410,7 @@ async def list_tasks(
     """List tasks, optionally filtered by asset_id or status."""
     assert SessionLocal is not None
 
-    query = (
-        "SELECT task_id, asset_id, action, status, created_at, started_at, completed_at FROM tasks"
-    )
+    query = "SELECT task_id, asset_id, action, status, created_at, started_at, completed_at FROM tasks"
     params = {"lim": limit}
     where_clauses = []
 
@@ -1246,9 +1441,9 @@ async def complete_task(task_id: str):
 
     async with SessionLocal() as session:
         await session.execute(
-            tasks.update().where(tasks.c.task_id == task_id).values(
-                status="COMPLETED", completed_at=datetime.now(timezone.utc)
-            )
+            tasks.update()
+            .where(tasks.c.task_id == task_id)
+            .values(status="COMPLETED", completed_at=datetime.now(timezone.utc))
         )
         await session.commit()
 
@@ -1262,9 +1457,9 @@ async def fail_task(task_id: str, reason: str = "Unknown error"):
 
     async with SessionLocal() as session:
         await session.execute(
-            tasks.update().where(tasks.c.task_id == task_id).values(
-                status="FAILED", completed_at=datetime.now(timezone.utc)
-            )
+            tasks.update()
+            .where(tasks.c.task_id == task_id)
+            .values(status="FAILED", completed_at=datetime.now(timezone.utc))
         )
         await session.commit()
 
@@ -1408,12 +1603,15 @@ async def create_mission(req: MissionCreateRequest, request: Request):
     available_assets = [
         a
         for a in assets_rows
-        if (a.get("battery") or 0) >= 30 and (a.get("link") in ("OK", "GOOD", "CONNECTED", None))
+        if (a.get("battery") or 0) >= 30
+        and (a.get("link") in ("OK", "GOOD", "CONNECTED", None))
     ]
     if not available_assets:
         if sm:
             sm.transition(MissionState.FAILED)  # → FAILED
-        raise HTTPException(status_code=409, detail="No available assets to plan mission")
+        raise HTTPException(
+            status_code=409, detail="No available assets to plan mission"
+        )
 
     # ── Intent-based assignment (if available) ──
     if ASSIGNMENT_ENGINE_AVAILABLE and req.area and req.area.get("center"):
@@ -1433,7 +1631,9 @@ async def create_mission(req: MissionCreateRequest, request: Request):
             # Rebuild available_assets in scored order
             scored_ids = [s.asset_id for s in assignment_result.selected_assets]
             scored_map = {a["asset_id"]: a for a in available_assets}
-            available_assets = [scored_map[aid] for aid in scored_ids if aid in scored_map]
+            available_assets = [
+                scored_map[aid] for aid in scored_ids if aid in scored_map
+            ]
 
     # Plan (uses existing _plan_assignments with all its patterns)
     assignments_map = await _plan_assignments(req, available_assets)
@@ -1488,12 +1688,18 @@ async def create_mission(req: MissionCreateRequest, request: Request):
             # Pre-dispatch policy gate
             try:
                 from apps.tasking.opa import OPAClient
+
                 opa = OPAClient()
                 dispatch_result = await opa.evaluate_pre_dispatch(
-                    mission_id=mission_id, asset_id=asset_id, plan=plan, org_id=org_id,
+                    mission_id=mission_id,
+                    asset_id=asset_id,
+                    plan=plan,
+                    org_id=org_id,
                 )
                 if not dispatch_result.get("allow", True):
-                    logger.warning(f"Pre-dispatch denied for {asset_id}: {dispatch_result.get('deny_reasons')}")
+                    logger.warning(
+                        f"Pre-dispatch denied for {asset_id}: {dispatch_result.get('deny_reasons')}"
+                    )
                     continue
             except Exception:
                 pass  # If OPA check fails, proceed (fail-open for dispatch)
@@ -1563,8 +1769,12 @@ async def get_mission(mission_id: str):
             "status": m.get("status"),
             "policy_ok": bool(m.get("policy_ok")),
             "assignments": [a.model_dump() for a in assignments],
-            "created_at": _safe_isoformat(m.get("created_at") or datetime.now(timezone.utc)),
-            "started_at": _safe_isoformat(m.get("started_at")) if m.get("started_at") else None,
+            "created_at": _safe_isoformat(
+                m.get("created_at") or datetime.now(timezone.utc)
+            ),
+            "started_at": (
+                _safe_isoformat(m.get("started_at")) if m.get("started_at") else None
+            ),
             "completed_at": _safe_isoformat(m.get("completed_at")),
         }
 
@@ -1572,9 +1782,7 @@ async def get_mission(mission_id: str):
 @app.get("/api/v1/missions")
 async def list_missions(limit: int = 50, status: Optional[str] = None):
     assert SessionLocal is not None
-    query = (
-        "SELECT mission_id, name, objectives, status, created_at, started_at, completed_at FROM missions"
-    )
+    query = "SELECT mission_id, name, objectives, status, created_at, started_at, completed_at FROM missions"
     params: Dict[str, Any] = {"lim": limit}
     if status:
         query += " WHERE status = :st"
@@ -1605,10 +1813,10 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
     """Create a new tiered response mission."""
     await _require_auth(request)
     assert SessionLocal is not None
-    
+
     mission_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc)
-    
+
     # Fetch available assets
     async with SessionLocal() as session:
         result = await session.execute(
@@ -1617,22 +1825,26 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
             )
         )
         assets_rows = [dict(r._mapping) for r in result.all()]
-    
+
     # Filter for available tiered response assets
     available_assets = [
-        a for a in assets_rows
-        if (a.get("battery") or 0) >= 50  # Higher battery requirement for tiered response
+        a
+        for a in assets_rows
+        if (a.get("battery") or 0)
+        >= 50  # Higher battery requirement for tiered response
         and (a.get("link") in ("OK", "GOOD", "CONNECTED", None))
         and a.get("capabilities", {}).get("drone_type") in ["scout", "interceptor"]
     ]
-    
+
     if not available_assets:
-        raise HTTPException(status_code=409, detail="No available tiered response assets")
-    
+        raise HTTPException(
+            status_code=409, detail="No available tiered response assets"
+        )
+
     # Plan Tier 1 verification mission
     tier_1_plans = await _plan_tiered_mission(req, available_assets)
     tier_1_assets = list(tier_1_plans.keys())
-    
+
     # Store tiered mission
     async with SessionLocal() as session:
         await session.execute(
@@ -1642,12 +1854,16 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
                 current_tier="tier_1_verify",
                 tier_1_status="ACTIVE",
                 assets_deployed=tier_1_assets,
-                fire_threshold=req.intervention_threshold.model_dump() if req.intervention_threshold else None,
+                fire_threshold=(
+                    req.intervention_threshold.model_dump()
+                    if req.intervention_threshold
+                    else None
+                ),
                 created_at=created_at,
                 updated_at=created_at,
             )
         )
-        
+
         # Create mission assignments
         for asset_id, plan in tier_1_plans.items():
             await session.execute(
@@ -1658,9 +1874,9 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
                     status="ASSIGNED",
                 )
             )
-        
+
         await session.commit()
-    
+
     # Dispatch to assets
     if mqtt_client:
         for asset_id, plan in tier_1_plans.items():
@@ -1675,7 +1891,7 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
                 "ts_iso": created_at.isoformat(),
             }
             mqtt_client.publish(topic, json.dumps(message), qos=1)
-    
+
     return TieredMissionStatus(
         mission_id=mission_id,
         current_tier=MissionTier.TIER_1_VERIFY,
@@ -1687,52 +1903,74 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
 
 
 @app.post("/api/v1/tiered-missions/{mission_id}/escalate")
-async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, Any], request: Request):
+async def escalate_tiered_mission(
+    mission_id: str, verification_data: Dict[str, Any], request: Request
+):
     """Escalate tiered mission to next tier based on verification results."""
     await _require_auth(request)
     assert SessionLocal is not None
-    
+
     # Get current mission state
     async with SessionLocal() as session:
         res = await session.execute(
             text("SELECT * FROM tiered_missions WHERE mission_id = :mid"),
-            {"mid": mission_id}
+            {"mid": mission_id},
         )
         mission_row = res.first()
         if not mission_row:
             raise HTTPException(status_code=404, detail="Tiered mission not found")
-        
+
         mission_data = dict(mission_row._mapping)
         current_tier = mission_data["current_tier"]
-        
+
         # Assess threat from verification data using generic framework
-        target_location = {"lat": verification_data.get("lat", 0), "lon": verification_data.get("lon", 0)}
+        target_location = {
+            "lat": verification_data.get("lat", 0),
+            "lon": verification_data.get("lon", 0),
+        }
         domain = verification_data.get("domain", "generic")
-        threat_assessment = await _assess_threat(target_location, verification_data, domain)
-        
+        threat_assessment = await _assess_threat(
+            target_location, verification_data, domain
+        )
+
         escalation_needed = threat_assessment.escalation_required
         next_tier = None
-        
+
         if current_tier == "tier_1_verify" and escalation_needed:
             next_tier = "tier_2_suppress"
-        elif current_tier == "tier_2_suppress" and threat_assessment.threat_level in ["high", "critical"]:
+        elif current_tier == "tier_2_suppress" and threat_assessment.threat_level in [
+            "high",
+            "critical",
+        ]:
             next_tier = "tier_3_contain"
-        
+
         if not next_tier:
             # No escalation needed, mark current tier as completed
             await session.execute(
                 tiered_missions.update()
                 .where(tiered_missions.c.mission_id == mission_id)
                 .values(
-                    tier_1_status="COMPLETED" if current_tier == "tier_1_verify" else mission_data["tier_1_status"],
-                    tier_2_status="COMPLETED" if current_tier == "tier_2_suppress" else mission_data["tier_2_status"],
+                    tier_1_status=(
+                        "COMPLETED"
+                        if current_tier == "tier_1_verify"
+                        else mission_data["tier_1_status"]
+                    ),
+                    tier_2_status=(
+                        "COMPLETED"
+                        if current_tier == "tier_2_suppress"
+                        else mission_data["tier_2_status"]
+                    ),
                     verification_result=verification_data,
                     updated_at=datetime.now(timezone.utc),
                 )
             )
             await session.commit()
-            return {"escalated": False, "reason": "No escalation required", "threat_assessment": threat_assessment.model_dump()}
-        
+            return {
+                "escalated": False,
+                "reason": "No escalation required",
+                "threat_assessment": threat_assessment.model_dump(),
+            }
+
         # Get available assets for next tier
         result = await session.execute(
             text(
@@ -1740,27 +1978,32 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
             )
         )
         assets_rows = [dict(r._mapping) for r in result.all()]
-        
+
         available_assets = [
-            a for a in assets_rows
+            a
+            for a in assets_rows
             if (a.get("battery") or 0) >= 40
             and (a.get("link") in ("OK", "GOOD", "CONNECTED", None))
             and a.get("capabilities", {}).get("drone_type") in ["scout", "interceptor"]
         ]
-        
+
         # Plan next tier
         if next_tier == "tier_2_suppress":
-            tier_2_assets = await _select_tiered_assets(target_location, MissionTier.TIER_2_SUPPRESS, available_assets)
-            
+            tier_2_assets = await _select_tiered_assets(
+                target_location, MissionTier.TIER_2_SUPPRESS, available_assets
+            )
+
             if not tier_2_assets:
-                raise HTTPException(status_code=409, detail="No available assets for Tier 2 suppression")
-            
+                raise HTTPException(
+                    status_code=409, detail="No available assets for Tier 2 suppression"
+                )
+
             # Create intervention plan
             intervention_plans = {}
             for asset in tier_2_assets:
                 asset_id = asset["asset_id"]
                 capabilities = asset.get("capabilities", {})
-                
+
                 intervention_plans[asset_id] = {
                     "tier": "tier_2_suppress",
                     "role": "intervention",
@@ -1768,7 +2011,7 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
                     "payload": {
                         "type": "liquid_capsule",  # Generic payload type
                         "capacity": capabilities.get("payload_capacity", 10),
-                        "deployment_pattern": "targeted_drop"
+                        "deployment_pattern": "targeted_drop",
                     },
                     "approach_altitude": 40,
                     "drop_altitude": 20,
@@ -1778,18 +2021,26 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
                             "lon": target_location["lon"],
                             "alt": 20,
                             "speed": capabilities.get("max_speed", 60),
-                            "action": "DEPLOY_PAYLOAD"
+                            "action": "DEPLOY_PAYLOAD",
                         }
-                    ]
+                    ],
                 }
-            
-            deployed_assets = mission_data["assets_deployed"] + list(intervention_plans.keys())
-            
+
+            deployed_assets = mission_data["assets_deployed"] + list(
+                intervention_plans.keys()
+            )
+
         elif next_tier == "tier_3_contain":
-            containment_assets = await _select_tiered_assets(target_location, MissionTier.TIER_3_CONTAIN, available_assets)
-            intervention_plans = await _create_containment_pattern(target_location, containment_assets)
-            deployed_assets = mission_data["assets_deployed"] + list(intervention_plans.keys())
-        
+            containment_assets = await _select_tiered_assets(
+                target_location, MissionTier.TIER_3_CONTAIN, available_assets
+            )
+            intervention_plans = await _create_containment_pattern(
+                target_location, containment_assets
+            )
+            deployed_assets = mission_data["assets_deployed"] + list(
+                intervention_plans.keys()
+            )
+
         # Update mission with next tier
         update_values = {
             "current_tier": next_tier,
@@ -1797,20 +2048,20 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
             "assets_deployed": deployed_assets,
             "updated_at": datetime.now(timezone.utc),
         }
-        
+
         if next_tier == "tier_2_suppress":
             update_values["tier_2_status"] = "ACTIVE"
             update_values["tier_1_status"] = "COMPLETED"
         elif next_tier == "tier_3_contain":
             update_values["tier_3_status"] = "ACTIVE"
             update_values["tier_2_status"] = "COMPLETED"
-        
+
         await session.execute(
             tiered_missions.update()
             .where(tiered_missions.c.mission_id == mission_id)
             .values(**update_values)
         )
-        
+
         # Create new mission assignments
         for asset_id, plan in intervention_plans.items():
             await session.execute(
@@ -1821,16 +2072,20 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
                     status="ASSIGNED",
                 )
             )
-        
+
         await session.commit()
-        
+
         # Dispatch to new assets
         if mqtt_client:
             for asset_id, plan in intervention_plans.items():
                 topic = f"tasks/{asset_id}/dispatch"
                 message = {
                     "task_id": f"tiered:{mission_id}:{next_tier}",
-                    "action": "TIER_2_SUPPRESS" if next_tier == "tier_2_suppress" else "TIER_3_CONTAIN",
+                    "action": (
+                        "TIER_2_SUPPRESS"
+                        if next_tier == "tier_2_suppress"
+                        else "TIER_3_CONTAIN"
+                    ),
                     "tier": next_tier,
                     "waypoints": plan.get("waypoints", []),
                     "plan": plan,
@@ -1839,12 +2094,12 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
                     "ts_iso": datetime.now(timezone.utc).isoformat(),
                 }
                 mqtt_client.publish(topic, json.dumps(message), qos=1)
-        
+
         return {
             "escalated": True,
             "next_tier": next_tier,
             "assets_deployed": list(intervention_plans.keys()),
-            "threat_assessment": threat_assessment.model_dump()
+            "threat_assessment": threat_assessment.model_dump(),
         }
 
 
@@ -1852,25 +2107,27 @@ async def escalate_tiered_mission(mission_id: str, verification_data: Dict[str, 
 async def get_tiered_mission(mission_id: str):
     """Get tiered mission status."""
     assert SessionLocal is not None
-    
+
     async with SessionLocal() as session:
         res = await session.execute(
             text("SELECT * FROM tiered_missions WHERE mission_id = :mid"),
-            {"mid": mission_id}
+            {"mid": mission_id},
         )
         mission_row = res.first()
         if not mission_row:
             raise HTTPException(status_code=404, detail="Tiered mission not found")
-        
+
         mission_data = dict(mission_row._mapping)
-        
+
         # Get assignments
         ares = await session.execute(
-            text("SELECT asset_id, plan, status FROM mission_assignments WHERE mission_id = :mid"),
-            {"mid": mission_id}
+            text(
+                "SELECT asset_id, plan, status FROM mission_assignments WHERE mission_id = :mid"
+            ),
+            {"mid": mission_id},
         )
         assignments = [dict(r._mapping) for r in ares.all()]
-        
+
         return {
             "mission_id": mission_data["mission_id"],
             "alert_id": mission_data["alert_id"],
@@ -1883,8 +2140,16 @@ async def get_tiered_mission(mission_id: str):
             "escalation_reason": mission_data["escalation_reason"],
             "assets_deployed": mission_data["assets_deployed"],
             "assignments": assignments,
-            "created_at": mission_data["created_at"].isoformat() if mission_data["created_at"] else None,
-            "updated_at": mission_data["updated_at"].isoformat() if mission_data["updated_at"] else None,
+            "created_at": (
+                mission_data["created_at"].isoformat()
+                if mission_data["created_at"]
+                else None
+            ),
+            "updated_at": (
+                mission_data["updated_at"].isoformat()
+                if mission_data["updated_at"]
+                else None
+            ),
         }
 
 
@@ -1892,20 +2157,20 @@ async def get_tiered_mission(mission_id: str):
 async def list_tiered_missions(limit: int = 50, tier: Optional[str] = None):
     """List tiered missions."""
     assert SessionLocal is not None
-    
+
     query = "SELECT mission_id, alert_id, current_tier, tier_1_status, tier_2_status, tier_3_status, created_at, updated_at FROM tiered_missions"
     params: Dict[str, Any] = {"lim": limit}
-    
+
     if tier:
         query += " WHERE current_tier = :tier"
         params["tier"] = tier
-    
+
     query += " ORDER BY id DESC LIMIT :lim"
-    
+
     async with SessionLocal() as session:
         res = await session.execute(text(query), params)
         rows = res.all()
-        
+
         return [
             {
                 "mission_id": r.mission_id,

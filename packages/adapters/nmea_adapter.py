@@ -10,6 +10,7 @@ Dependencies
 ------------
     pip install pynmea2 pyserial
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -132,9 +133,7 @@ class NMEAAdapter(BaseAdapter):
         if self._connection_type == "tcp":
             while not self._stop_event.is_set():
                 try:
-                    raw = await asyncio.wait_for(
-                        self._reader.readline(), timeout=15.0
-                    )
+                    raw = await asyncio.wait_for(self._reader.readline(), timeout=15.0)
                 except asyncio.TimeoutError:
                     continue
                 line = raw.decode("ascii", errors="ignore").strip()

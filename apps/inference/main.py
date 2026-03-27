@@ -13,6 +13,7 @@ Endpoints:
   POST /models/select   — Hot-swap the active model
   GET  /health          — Health check
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -31,6 +32,7 @@ from pydantic import BaseModel, Field
 
 # Import detection pipeline
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from packages.ai.detection import (
     ObjectDetector,
@@ -59,6 +61,7 @@ inference_stats = {
 
 
 # ── Models ─────────────────────────────────────────────────
+
 
 class DetectRequest(BaseModel):
     image_b64: Optional[str] = None  # Base64 encoded image
@@ -109,6 +112,7 @@ class ModelSelectRequest(BaseModel):
 
 # ── Lifespan ───────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global active_detector, active_model_name, available_models
@@ -125,7 +129,9 @@ async def lifespan(app: FastAPI):
     active_detector = create_detector(backend=backend, **kwargs)
     active_model_name = backend
 
-    logger.info(f"Inference ready: backend={backend}, models={list(available_models.keys())}")
+    logger.info(
+        f"Inference ready: backend={backend}, models={list(available_models.keys())}"
+    )
 
     yield
 
@@ -142,10 +148,12 @@ app = FastAPI(
 # ── OpenTelemetry tracing middleware ──────────────────────────────────────────
 try:
     import sys as _sys_otel, os as _os_otel
+
     _otel_root = _os_otel.path.join(_os_otel.path.dirname(__file__), "../..")
     if _otel_root not in _sys_otel.path:
         _sys_otel.path.insert(0, _otel_root)
     from packages.observability.tracing import get_tracer, create_tracing_middleware
+
     _tracer = get_tracer("summit-inference")
     app.middleware("http")(create_tracing_middleware(_tracer))
 except Exception as _e:
@@ -162,6 +170,7 @@ app.add_middleware(
 
 
 # ── Endpoints ──────────────────────────────────────────────
+
 
 @app.get("/health")
 async def health():
@@ -189,11 +198,13 @@ async def detect(req: DetectRequest):
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
     # Run detection
-    result = active_detector.detect(image, confidence_threshold=req.confidence_threshold)
+    result = active_detector.detect(
+        image, confidence_threshold=req.confidence_threshold
+    )
 
     # Apply NMS
     filtered = non_max_suppression(result.detections, iou_threshold=req.nms_threshold)
-    filtered = filtered[:req.max_detections]
+    filtered = filtered[: req.max_detections]
 
     # Update stats
     inference_stats["total_requests"] += 1
@@ -279,14 +290,17 @@ async def classify(req: ClassifyRequest):
     # Aggregate by class name
     class_scores: Dict[str, float] = {}
     for d in result.detections:
-        if d.class_name not in class_scores or d.confidence > class_scores[d.class_name]:
+        if (
+            d.class_name not in class_scores
+            or d.confidence > class_scores[d.class_name]
+        ):
             class_scores[d.class_name] = d.confidence
 
     # Sort and take top-K
     sorted_classes = sorted(class_scores.items(), key=lambda x: x[1], reverse=True)
     predictions = [
         {"class_name": name, "confidence": round(conf, 4)}
-        for name, conf in sorted_classes[:req.top_k]
+        for name, conf in sorted_classes[: req.top_k]
     ]
 
     return ClassifyResponse(
@@ -330,14 +344,17 @@ async def select_model(req: ModelSelectRequest):
 
 # ── Helpers ────────────────────────────────────────────────
 
+
 def _decode_image(b64_str: str):
     """Decode a base64 image string to a numpy array."""
     try:
         import numpy as np
+
         image_bytes = base64.b64decode(b64_str)
         # Try with OpenCV first
         try:
             import cv2
+
             arr = np.frombuffer(image_bytes, dtype=np.uint8)
             img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             if img is not None:
@@ -347,6 +364,7 @@ def _decode_image(b64_str: str):
         # Fallback: PIL
         try:
             from PIL import Image
+
             img = Image.open(io.BytesIO(image_bytes))
             return np.array(img)
         except ImportError:
@@ -361,14 +379,17 @@ def _bytes_to_image(data: bytes):
     """Convert raw bytes to image array."""
     try:
         import numpy as np
+
         try:
             import cv2
+
             arr = np.frombuffer(data, dtype=np.uint8)
             return cv2.imdecode(arr, cv2.IMREAD_COLOR)
         except ImportError:
             pass
         try:
             from PIL import Image
+
             return np.array(Image.open(io.BytesIO(data)))
         except ImportError:
             pass
@@ -387,6 +408,7 @@ def _discover_models() -> Dict[str, Dict[str, Any]]:
     # Check YOLO
     try:
         from ultralytics import YOLO
+
         models["yolo"] = {"backend": "yolo", "classes": 80}
     except ImportError:
         pass
@@ -394,6 +416,7 @@ def _discover_models() -> Dict[str, Dict[str, Any]]:
     # Check OpenCV DNN
     try:
         import cv2
+
         if hasattr(cv2, "dnn"):
             models["opencv"] = {"backend": "opencv", "classes": 80}
     except ImportError:
@@ -402,6 +425,7 @@ def _discover_models() -> Dict[str, Dict[str, Any]]:
     # Check ONNX Runtime (for edge inference)
     try:
         import onnxruntime
+
         models["onnx"] = {"backend": "onnx", "classes": 0}
     except ImportError:
         pass
@@ -422,6 +446,7 @@ def _update_avg_latency(new_ms: float):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

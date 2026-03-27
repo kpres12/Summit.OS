@@ -3,6 +3,7 @@ Minimal ONVIF adapter template (camera metadata + heartbeat).
 Usage:
   python -m summit_os.bridges.onvif_bridge --device-id cam-001 --host 192.168.1.10 --user admin --password pass
 """
+
 from __future__ import annotations
 import argparse
 import asyncio
@@ -26,7 +27,9 @@ class OnvifAdapter(BaseAdapter):
 
     async def run(self):
         if ONVIFCamera is None:
-            raise RuntimeError("onvif-zeep not installed; install summit-os-sdk[adapters]")
+            raise RuntimeError(
+                "onvif-zeep not installed; install summit-os-sdk[adapters]"
+            )
         self._cam = ONVIFCamera(self._host, 80, self._user, self._password)
         media = self._cam.create_media_service()
         device = self._cam.create_devicemgmt_service()
@@ -43,7 +46,14 @@ class OnvifAdapter(BaseAdapter):
         # Periodic keepalive
         while not self._stop.is_set():
             await asyncio.sleep(10)
-            await self.publish(f"health/{self.cfg.device_id}/heartbeat", {"device_id": self.cfg.device_id, "ts_iso": self.now_iso(), "status": "ALIVE"})
+            await self.publish(
+                f"health/{self.cfg.device_id}/heartbeat",
+                {
+                    "device_id": self.cfg.device_id,
+                    "ts_iso": self.now_iso(),
+                    "status": "ALIVE",
+                },
+            )
 
 
 def main(argv: Optional[list[str]] = None):

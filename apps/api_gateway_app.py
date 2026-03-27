@@ -4,6 +4,7 @@ Import shim for the API Gateway app.
 The gateway lives at apps/api-gateway/main.py but the hyphenated path
 can't be imported directly. This module re-exports the FastAPI `app`.
 """
+
 import importlib.util
 import os
 

@@ -9,6 +9,7 @@ Track lifecycle:
        ↑          ↑          |
        └──────────┘          └─ (no updates for max_coast ticks)
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,6 +27,7 @@ logger = logging.getLogger("fusion.track_manager")
 @dataclass
 class ManagedTrack:
     """A track with lifecycle metadata."""
+
     track_id: str
     ekf_state: EKFState
     class_label: str = ""
@@ -111,13 +113,22 @@ class TrackManager:
 
         # Prepare observations for correlator
         obs_tuples = [
-            (o["lat"], o["lon"], o["alt"], o.get("sigma_m", 10.0), o.get("sensor_id", "unknown"))
+            (
+                o["lat"],
+                o["lon"],
+                o["alt"],
+                o.get("sigma_m", 10.0),
+                o.get("sensor_id", "unknown"),
+            )
             for o in observations
         ]
 
         # Get EKF states for correlation
-        ekf_states = {tid: tr.ekf_state for tid, tr in self.tracks.items()
-                      if tr.state != "DELETED"}
+        ekf_states = {
+            tid: tr.ekf_state
+            for tid, tr in self.tracks.items()
+            if tr.state != "DELETED"
+        }
 
         # Correlate
         matched, unmatched_obs, unmatched_trks = self.correlator.correlate(
@@ -132,8 +143,11 @@ class TrackManager:
             # EKF update
             track.ekf_state = self.ekf.update_position(
                 track.ekf_state,
-                obs["lat"], obs["lon"], obs["alt"],
-                t, sigma_pos_m=obs.get("sigma_m", 10.0),
+                obs["lat"],
+                obs["lon"],
+                obs["alt"],
+                t,
+                sigma_pos_m=obs.get("sigma_m", 10.0),
             )
 
             # Update metadata
@@ -142,7 +156,7 @@ class TrackManager:
             track.last_seen = t
             track.recent_detections.append(True)
             if len(track.recent_detections) > self.confirm_n:
-                track.recent_detections = track.recent_detections[-self.confirm_n:]
+                track.recent_detections = track.recent_detections[-self.confirm_n :]
 
             # Update class label if provided (majority vote would be better)
             if obs.get("class_label"):
@@ -155,7 +169,9 @@ class TrackManager:
 
             # Update confidence based on hits and uncertainty
             uncertainty = self.ekf.get_position_uncertainty(track.ekf_state)
-            track.confidence = min(1.0, track.hits / 10.0) * max(0.1, 1.0 - uncertainty / 100.0)
+            track.confidence = min(1.0, track.hits / 10.0) * max(
+                0.1, 1.0 - uncertainty / 100.0
+            )
 
         # 2. Create new tracks for unmatched observations
         for obs_idx in unmatched_obs:
@@ -189,11 +205,13 @@ class TrackManager:
                 track.misses += 1
                 track.recent_detections.append(False)
                 if len(track.recent_detections) > self.confirm_n:
-                    track.recent_detections = track.recent_detections[-self.confirm_n:]
+                    track.recent_detections = track.recent_detections[-self.confirm_n :]
 
                 if track.state == "CONFIRMED":
                     track.state = "COASTING"
-                    logger.debug(f"Track {track_id} now COASTING (misses={track.misses})")
+                    logger.debug(
+                        f"Track {track_id} now COASTING (misses={track.misses})"
+                    )
 
         # 4. Lifecycle transitions
         to_delete = []
@@ -202,10 +220,12 @@ class TrackManager:
 
             # Tentative → Confirmed (M-of-N)
             if track.state == "TENTATIVE":
-                detections = sum(track.recent_detections[-self.confirm_n:])
+                detections = sum(track.recent_detections[-self.confirm_n :])
                 if detections >= self.confirm_m:
                     track.state = "CONFIRMED"
-                    logger.info(f"Track {tid} CONFIRMED ({detections}/{self.confirm_n} detections)")
+                    logger.info(
+                        f"Track {tid} CONFIRMED ({detections}/{self.confirm_n} detections)"
+                    )
                 elif track.age_ticks > self.confirm_n and detections < self.confirm_m:
                     # Failed to confirm
                     to_delete.append(tid)

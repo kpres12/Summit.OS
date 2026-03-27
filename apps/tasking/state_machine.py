@@ -15,6 +15,7 @@ Each transition:
 
 Illegal transitions raise MissionStateError.
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,19 +28,20 @@ logger = logging.getLogger("tasking.state_machine")
 
 
 class MissionState(str, Enum):
-    PLANNING     = "PLANNING"
+    PLANNING = "PLANNING"
     POLICY_CHECK = "POLICY_CHECK"
-    DENIED       = "DENIED"
-    DISPATCHED   = "DISPATCHED"
-    ACTIVE       = "ACTIVE"
-    COMPLETING   = "COMPLETING"
-    COMPLETED    = "COMPLETED"
-    FAILED       = "FAILED"
-    CANCELLED    = "CANCELLED"
+    DENIED = "DENIED"
+    DISPATCHED = "DISPATCHED"
+    ACTIVE = "ACTIVE"
+    COMPLETING = "COMPLETING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
 class MissionStateError(Exception):
     """Raised when an illegal state transition is attempted."""
+
     def __init__(self, current: MissionState, target: MissionState):
         self.current = current
         self.target = target
@@ -50,21 +52,34 @@ class MissionStateError(Exception):
 
 # Legal transitions: current_state -> set of allowed next states
 TRANSITIONS = {
-    MissionState.PLANNING:     {MissionState.POLICY_CHECK, MissionState.CANCELLED},
-    MissionState.POLICY_CHECK: {MissionState.DISPATCHED, MissionState.DENIED, MissionState.FAILED},
-    MissionState.DENIED:       {MissionState.PLANNING, MissionState.CANCELLED},  # Can retry
-    MissionState.DISPATCHED:   {MissionState.ACTIVE, MissionState.FAILED, MissionState.CANCELLED},
-    MissionState.ACTIVE:       {MissionState.COMPLETING, MissionState.FAILED, MissionState.CANCELLED},
-    MissionState.COMPLETING:   {MissionState.COMPLETED, MissionState.FAILED},
-    MissionState.COMPLETED:    set(),  # Terminal
-    MissionState.FAILED:       {MissionState.PLANNING},  # Can retry
-    MissionState.CANCELLED:    set(),  # Terminal
+    MissionState.PLANNING: {MissionState.POLICY_CHECK, MissionState.CANCELLED},
+    MissionState.POLICY_CHECK: {
+        MissionState.DISPATCHED,
+        MissionState.DENIED,
+        MissionState.FAILED,
+    },
+    MissionState.DENIED: {MissionState.PLANNING, MissionState.CANCELLED},  # Can retry
+    MissionState.DISPATCHED: {
+        MissionState.ACTIVE,
+        MissionState.FAILED,
+        MissionState.CANCELLED,
+    },
+    MissionState.ACTIVE: {
+        MissionState.COMPLETING,
+        MissionState.FAILED,
+        MissionState.CANCELLED,
+    },
+    MissionState.COMPLETING: {MissionState.COMPLETED, MissionState.FAILED},
+    MissionState.COMPLETED: set(),  # Terminal
+    MissionState.FAILED: {MissionState.PLANNING},  # Can retry
+    MissionState.CANCELLED: set(),  # Terminal
 }
 
 
 @dataclass
 class MissionEvent:
     """Event emitted on state transition."""
+
     mission_id: str
     from_state: MissionState
     to_state: MissionState
@@ -99,7 +114,9 @@ class MissionStateMachine:
         sm.transition(MissionState.COMPLETED)
     """
 
-    def __init__(self, mission_id: str, initial_state: MissionState = MissionState.PLANNING):
+    def __init__(
+        self, mission_id: str, initial_state: MissionState = MissionState.PLANNING
+    ):
         self.mission_id = mission_id
         self.state = initial_state
         self.history: List[MissionEvent] = []
@@ -176,7 +193,9 @@ class MissionStateMachine:
             "is_terminal": self.is_terminal,
             "is_active": self.is_active,
             "history": [e.to_dict() for e in self.history],
-            "allowed_transitions": [s.value for s in TRANSITIONS.get(self.state, set())],
+            "allowed_transitions": [
+                s.value for s in TRANSITIONS.get(self.state, set())
+            ],
         }
 
 

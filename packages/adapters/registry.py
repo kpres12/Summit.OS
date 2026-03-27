@@ -32,6 +32,7 @@ Usage
     # … on shutdown …
     await registry.stop_all()
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -107,6 +108,7 @@ _BUILT_IN_BY_TYPE: dict[str, dict] = {a["type"]: a for a in BUILT_IN_ADAPTERS}
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class AdapterRegistry:
     """
@@ -264,23 +266,27 @@ class AdapterRegistry:
         result = []
         for adapter_id, adapter in self._adapters.items():
             h = adapter.health()
-            result.append({
-                "adapter_id":     adapter_id,
-                "adapter_type":   adapter.config.adapter_type,
-                "display_name":   adapter.config.display_name,
-                "description":    adapter.config.description,
-                "enabled":        adapter.config.enabled,
-                "poll_interval":  adapter.config.poll_interval_seconds,
-                "status":         h.status,
-                "last_connected": h.last_connected.isoformat() if h.last_connected else None,
-                "last_observation": (
-                    h.last_observation.isoformat() if h.last_observation else None
-                ),
-                "observations_total":      h.observations_total,
-                "observations_per_minute": round(h.observations_per_minute, 2),
-                "error_message":           h.error_message,
-                "uptime_seconds":          round(h.uptime_seconds, 1),
-            })
+            result.append(
+                {
+                    "adapter_id": adapter_id,
+                    "adapter_type": adapter.config.adapter_type,
+                    "display_name": adapter.config.display_name,
+                    "description": adapter.config.description,
+                    "enabled": adapter.config.enabled,
+                    "poll_interval": adapter.config.poll_interval_seconds,
+                    "status": h.status,
+                    "last_connected": (
+                        h.last_connected.isoformat() if h.last_connected else None
+                    ),
+                    "last_observation": (
+                        h.last_observation.isoformat() if h.last_observation else None
+                    ),
+                    "observations_total": h.observations_total,
+                    "observations_per_minute": round(h.observations_per_minute, 2),
+                    "error_message": h.error_message,
+                    "uptime_seconds": round(h.uptime_seconds, 1),
+                }
+            )
         return result
 
 
@@ -290,14 +296,14 @@ class AdapterRegistry:
 # We attempt to import the concrete adapter classes that ship with the repo.
 # Failures are non-fatal: the registry still works, just without that type.
 
+
 def _try_register_builtins(registry: AdapterRegistry) -> None:
     """Attempt to register built-in adapter classes into a registry."""
     try:
         import sys, os
+
         # adapters/ directory is at the repo root — add it if needed
-        repo_root = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
-        )
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
         adapters_dir = os.path.join(repo_root, "adapters")
         if adapters_dir not in sys.path:
             sys.path.insert(0, adapters_dir)
@@ -305,15 +311,16 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         pass
 
     _builtins = [
-        ("opensky.adapter",          "OpenSkyAdapter"),
-        ("celestrak.adapter",        "CelesTrakAdapter"),
+        ("opensky.adapter", "OpenSkyAdapter"),
+        ("celestrak.adapter", "CelesTrakAdapter"),
         ("adapters.mavlink_adapter", "MAVLinkAdapter"),
-        ("atak.adapter",             "ATAKAdapter"),
+        ("atak.adapter", "ATAKAdapter"),
     ]
 
     for module_path, class_name in _builtins:
         try:
             import importlib
+
             mod = importlib.import_module(module_path)
             cls = getattr(mod, class_name)
             # Ensure the class has an adapter_type attribute set
@@ -325,4 +332,6 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
             registry.register_type(cls)
             logger.debug("Auto-registered built-in adapter: %s", cls.adapter_type)
         except Exception as exc:
-            logger.debug("Could not auto-register %s.%s: %s", module_path, class_name, exc)
+            logger.debug(
+                "Could not auto-register %s.%s: %s", module_path, class_name, exc
+            )

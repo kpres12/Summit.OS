@@ -1,10 +1,12 @@
 import os
+
 os.environ["FABRIC_TEST_MODE"] = "true"
 
 import pytest
 from fastapi.testclient import TestClient
 import sys
 import os as _os
+
 sys.path.append(_os.path.dirname(_os.path.dirname(__file__)))
 from main import app
 
@@ -23,7 +25,7 @@ def test_register_and_get_node(client):
         "fw_version": "1.2.3",
         "location": {"lat": 34.123, "lon": -117.456, "elev_m": 1820},
         "capabilities": ["THERMAL", "EO"],
-        "comm": ["LTE"]
+        "comm": ["LTE"],
     }
     r = client.post("/api/v1/nodes/register", json=payload)
     assert r.status_code == 200

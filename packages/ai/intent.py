@@ -9,6 +9,7 @@ Predicts entity intent from observed behavior:
 
 Provides advisory and situational assessment capabilities.
 """
+
 from __future__ import annotations
 
 import math
@@ -24,6 +25,7 @@ logger = logging.getLogger("ai.intent")
 
 
 # ── Enums ───────────────────────────────────────────────────
+
 
 class IntentType(str, Enum):
     TRANSIT = "transit"
@@ -50,9 +52,11 @@ class ThreatLevel(str, Enum):
 
 # ── Data Classes ────────────────────────────────────────────
 
+
 @dataclass
 class Position:
     """Geographic position."""
+
     lat: float
     lon: float
     alt: float = 0.0
@@ -62,6 +66,7 @@ class Position:
 @dataclass
 class Kinematics:
     """Full kinematic state."""
+
     position: Position
     velocity: Tuple[float, float, float] = (0.0, 0.0, 0.0)  # m/s (N, E, D)
     speed: float = 0.0  # m/s
@@ -74,6 +79,7 @@ class Kinematics:
 @dataclass
 class IntentResult:
     """Result of intent prediction."""
+
     entity_id: str
     primary_intent: IntentType
     confidence: float
@@ -102,6 +108,7 @@ class IntentResult:
 
 # ── Trajectory Predictor ────────────────────────────────────
 
+
 class TrajectoryPredictor:
     """
     Predicts future positions via kinematic extrapolation.
@@ -125,8 +132,9 @@ class TrajectoryPredictor:
         """Add a kinematic observation."""
         self._histories[entity_id].append(kinematics)
 
-    def predict(self, entity_id: str, horizon_s: float = 300.0,
-                steps: int = 10) -> List[Position]:
+    def predict(
+        self, entity_id: str, horizon_s: float = 300.0, steps: int = 10
+    ) -> List[Position]:
         """
         Predict future positions.
 
@@ -161,19 +169,27 @@ class TrajectoryPredictor:
             # Latitude change from north velocity
             dlat = (vn * t) / self.EARTH_R * (180 / math.pi)
             # Longitude change from east velocity
-            dlon = (ve * t) / (self.EARTH_R * math.cos(math.radians(lat))) * (180 / math.pi)
+            dlon = (
+                (ve * t)
+                / (self.EARTH_R * math.cos(math.radians(lat)))
+                * (180 / math.pi)
+            )
             dalt = -vd * t  # Down → altitude change
 
-            positions.append(Position(
-                lat=lat + dlat,
-                lon=lon + dlon,
-                alt=alt + dalt,
-                timestamp=k.position.timestamp + t,
-            ))
+            positions.append(
+                Position(
+                    lat=lat + dlat,
+                    lon=lon + dlon,
+                    alt=alt + dalt,
+                    timestamp=k.position.timestamp + t,
+                )
+            )
 
         return positions
 
-    def _predict_curvilinear(self, k: Kinematics, dt: float, steps: int) -> List[Position]:
+    def _predict_curvilinear(
+        self, k: Kinematics, dt: float, steps: int
+    ) -> List[Position]:
         """Constant turn-rate extrapolation."""
         positions = []
         lat, lon, alt = k.position.lat, k.position.lon, k.position.alt
@@ -197,14 +213,20 @@ class TrajectoryPredictor:
             dlon = dx / (self.EARTH_R * math.cos(math.radians(lat))) * (180 / math.pi)
             dalt = k.climb_rate * t
 
-            positions.append(Position(
-                lat=lat + dlat, lon=lon + dlon, alt=alt + dalt,
-                timestamp=k.position.timestamp + t,
-            ))
+            positions.append(
+                Position(
+                    lat=lat + dlat,
+                    lon=lon + dlon,
+                    alt=alt + dalt,
+                    timestamp=k.position.timestamp + t,
+                )
+            )
 
         return positions
 
-    def _predict_accelerating(self, k: Kinematics, dt: float, steps: int) -> List[Position]:
+    def _predict_accelerating(
+        self, k: Kinematics, dt: float, steps: int
+    ) -> List[Position]:
         """Constant acceleration extrapolation."""
         positions = []
         lat, lon, alt = k.position.lat, k.position.lon, k.position.alt
@@ -228,10 +250,14 @@ class TrajectoryPredictor:
             dlon = de / (self.EARTH_R * math.cos(math.radians(lat))) * (180 / math.pi)
             dalt = k.climb_rate * t
 
-            positions.append(Position(
-                lat=lat + dlat, lon=lon + dlon, alt=alt + dalt,
-                timestamp=k.position.timestamp + t,
-            ))
+            positions.append(
+                Position(
+                    lat=lat + dlat,
+                    lon=lon + dlon,
+                    alt=alt + dalt,
+                    timestamp=k.position.timestamp + t,
+                )
+            )
 
         return positions
 
@@ -252,11 +278,15 @@ class TrajectoryPredictor:
         dlat = curr.position.lat - prev.position.lat
         dlon = curr.position.lon - prev.position.lon
         vn = (dlat * math.pi / 180) * self.EARTH_R / dt
-        ve = (dlon * math.pi / 180) * self.EARTH_R * math.cos(
-            math.radians(curr.position.lat)) / dt
+        ve = (
+            (dlon * math.pi / 180)
+            * self.EARTH_R
+            * math.cos(math.radians(curr.position.lat))
+            / dt
+        )
         vd = -(curr.position.alt - prev.position.alt) / dt
 
-        speed = math.sqrt(vn ** 2 + ve ** 2)
+        speed = math.sqrt(vn**2 + ve**2)
         heading = math.degrees(math.atan2(ve, vn)) % 360
 
         # Turn rate
@@ -267,8 +297,12 @@ class TrajectoryPredictor:
             if dt2 > 0:
                 dlon2 = prev.position.lon - pprev.position.lon
                 dlat2 = prev.position.lat - pprev.position.lat
-                ve2 = (dlon2 * math.pi / 180) * self.EARTH_R * math.cos(
-                    math.radians(prev.position.lat)) / dt2
+                ve2 = (
+                    (dlon2 * math.pi / 180)
+                    * self.EARTH_R
+                    * math.cos(math.radians(prev.position.lat))
+                    / dt2
+                )
                 vn2 = (dlat2 * math.pi / 180) * self.EARTH_R / dt2
                 prev_heading = math.degrees(math.atan2(ve2, vn2)) % 360
                 dheading = heading - prev_heading
@@ -290,6 +324,7 @@ class TrajectoryPredictor:
 
 # ── Behavior Analyzer ──────────────────────────────────────
 
+
 class BehaviorAnalyzer:
     """
     Identifies behavioral patterns from kinematic history.
@@ -305,8 +340,9 @@ class BehaviorAnalyzer:
 
     EARTH_R = 6_371_000.0
 
-    def __init__(self, loiter_radius_m: float = 500.0,
-                 approach_angle_threshold: float = 30.0):
+    def __init__(
+        self, loiter_radius_m: float = 500.0, approach_angle_threshold: float = 30.0
+    ):
         self.loiter_radius_m = loiter_radius_m
         self.approach_angle_threshold = approach_angle_threshold
         self._position_histories: Dict[str, deque] = defaultdict(
@@ -316,8 +352,9 @@ class BehaviorAnalyzer:
     def update(self, entity_id: str, position: Position) -> None:
         self._position_histories[entity_id].append(position)
 
-    def analyze(self, entity_id: str,
-                reference_point: Optional[Position] = None) -> Dict[str, float]:
+    def analyze(
+        self, entity_id: str, reference_point: Optional[Position] = None
+    ) -> Dict[str, float]:
         """
         Analyze behavior and return intent probabilities.
 
@@ -366,7 +403,10 @@ class BehaviorAnalyzer:
         lat2, lon2 = math.radians(p2.lat), math.radians(p2.lon)
         dlat = lat2 - lat1
         dlon = lon2 - lon1
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        )
         return 2 * self.EARTH_R * math.asin(math.sqrt(a))
 
     def _check_loitering(self, history: deque) -> float:
@@ -395,8 +435,8 @@ class BehaviorAnalyzer:
         # Compute heading changes
         headings = []
         for i in range(1, len(recent)):
-            dlat = recent[i].lat - recent[i-1].lat
-            dlon = recent[i].lon - recent[i-1].lon
+            dlat = recent[i].lat - recent[i - 1].lat
+            dlon = recent[i].lon - recent[i - 1].lon
             h = math.degrees(math.atan2(dlon, dlat)) % 360
             headings.append(h)
 
@@ -420,18 +460,18 @@ class BehaviorAnalyzer:
         speeds = []
 
         for i in range(1, len(recent)):
-            dt = recent[i].timestamp - recent[i-1].timestamp
+            dt = recent[i].timestamp - recent[i - 1].timestamp
             if dt <= 0:
                 continue
-            dist = self._haversine(recent[i], recent[i-1])
+            dist = self._haversine(recent[i], recent[i - 1])
             speed = dist / dt
             speeds.append(speed)
 
             if i >= 2:
-                dlat1 = recent[i].lat - recent[i-1].lat
-                dlon1 = recent[i].lon - recent[i-1].lon
-                dlat0 = recent[i-1].lat - recent[i-2].lat
-                dlon0 = recent[i-1].lon - recent[i-2].lon
+                dlat1 = recent[i].lat - recent[i - 1].lat
+                dlon1 = recent[i].lon - recent[i - 1].lon
+                dlat0 = recent[i - 1].lat - recent[i - 2].lat
+                dlon0 = recent[i - 1].lon - recent[i - 2].lon
                 h1 = math.degrees(math.atan2(dlon1, dlat1))
                 h0 = math.degrees(math.atan2(dlon0, dlat0))
                 dh = abs(h1 - h0)
@@ -443,13 +483,15 @@ class BehaviorAnalyzer:
             return 0.0
 
         avg_heading_change = sum(heading_changes) / len(heading_changes)
-        speed_variance = sum((s - sum(speeds)/len(speeds))**2 for s in speeds) / len(speeds)
+        speed_variance = sum(
+            (s - sum(speeds) / len(speeds)) ** 2 for s in speeds
+        ) / len(speeds)
 
         # High heading change + high speed variance → evasion
         heading_score = min(avg_heading_change / 90, 1.0)
         speed_score = min(speed_variance / 100, 1.0)
 
-        return (heading_score * 0.6 + speed_score * 0.4)
+        return heading_score * 0.6 + speed_score * 0.4
 
     def _check_stationary(self, history: deque) -> float:
         """Score stationary: no significant movement."""
@@ -458,8 +500,7 @@ class BehaviorAnalyzer:
 
         recent = list(history)[-10:]
         total_dist = sum(
-            self._haversine(recent[i], recent[i-1])
-            for i in range(1, len(recent))
+            self._haversine(recent[i], recent[i - 1]) for i in range(1, len(recent))
         )
 
         if total_dist < 5.0:  # < 5 meters total
@@ -470,8 +511,9 @@ class BehaviorAnalyzer:
             return 0.3
         return 0.0
 
-    def _check_approach_retreat(self, history: deque,
-                                ref: Position) -> Tuple[float, float]:
+    def _check_approach_retreat(
+        self, history: deque, ref: Position
+    ) -> Tuple[float, float]:
         """Score approach/retreat relative to a reference point."""
         if len(history) < 5:
             return (0.0, 0.0)
@@ -500,6 +542,7 @@ class BehaviorAnalyzer:
 
 # ── Threat Assessor ─────────────────────────────────────────
 
+
 class ThreatAssessor:
     """
     Combines behavior analysis and classification to assess threat level.
@@ -515,11 +558,14 @@ class ThreatAssessor:
         self.protected_points: List[Position] = []
         self.threat_radius_m = 10_000.0  # 10km threat bubble
 
-    def assess(self, entity_id: str,
-               intent_probs: Dict[str, float],
-               position: Position,
-               classification: str = "UNKNOWN",
-               is_friendly: bool = False) -> Tuple[ThreatLevel, float]:
+    def assess(
+        self,
+        entity_id: str,
+        intent_probs: Dict[str, float],
+        position: Position,
+        classification: str = "UNKNOWN",
+        is_friendly: bool = False,
+    ) -> Tuple[ThreatLevel, float]:
         """
         Assess threat level.
 
@@ -531,8 +577,15 @@ class ThreatAssessor:
         score = 0.0
 
         # Classification factor
-        hostile_classes = {"FIGHTER", "BOMBER", "ATTACK", "MBT", "IFV",
-                          "LOITERING", "COMBATANT"}
+        hostile_classes = {
+            "FIGHTER",
+            "BOMBER",
+            "ATTACK",
+            "MBT",
+            "IFV",
+            "LOITERING",
+            "COMBATANT",
+        }
         if any(h in classification.upper() for h in hostile_classes):
             score += 0.4
         elif classification == "UNKNOWN":
@@ -549,8 +602,7 @@ class ThreatAssessor:
         # Proximity factor
         if self.protected_points:
             min_dist = min(
-                self._haversine(position, pp)
-                for pp in self.protected_points
+                self._haversine(position, pp) for pp in self.protected_points
             )
             proximity_factor = max(0, 1.0 - min_dist / self.threat_radius_m)
             score += proximity_factor * 0.25
@@ -578,11 +630,15 @@ class ThreatAssessor:
         lat2, lon2 = math.radians(p2.lat), math.radians(p2.lon)
         dlat = lat2 - lat1
         dlon = lon2 - lon1
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+        )
         return 2 * R * math.asin(math.sqrt(a))
 
 
 # ── Unified Intent Predictor ───────────────────────────────
+
 
 class IntentPredictor:
     """
@@ -600,11 +656,14 @@ class IntentPredictor:
         self.trajectory.update(entity_id, kinematics)
         self.behavior.update(entity_id, kinematics.position)
 
-    def predict(self, entity_id: str,
-                reference_point: Optional[Position] = None,
-                classification: str = "UNKNOWN",
-                is_friendly: bool = False,
-                horizon_s: float = 300.0) -> IntentResult:
+    def predict(
+        self,
+        entity_id: str,
+        reference_point: Optional[Position] = None,
+        classification: str = "UNKNOWN",
+        is_friendly: bool = False,
+        horizon_s: float = 300.0,
+    ) -> IntentResult:
         """Full intent prediction."""
         # Predict trajectory
         predicted = self.trajectory.predict(entity_id, horizon_s)
@@ -618,8 +677,11 @@ class IntentPredictor:
 
         # Assess threat
         threat_level, threat_score = self.threat.assess(
-            entity_id, intent_probs, current_pos,
-            classification, is_friendly,
+            entity_id,
+            intent_probs,
+            current_pos,
+            classification,
+            is_friendly,
         )
 
         # Determine primary intent

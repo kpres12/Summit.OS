@@ -25,6 +25,7 @@ request arrives::
 The router can be imported and included in the FastAPI app without a
 registry — requests will return 503 until ``init_adapter_router`` is called.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,15 +39,15 @@ from fastapi import APIRouter, HTTPException
 # Path setup: make packages/ importable
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parents[3]  # apps/api-gateway/routers → repo root
-_PACKAGES  = str(_REPO_ROOT / "packages")
+_PACKAGES = str(_REPO_ROOT / "packages")
 if _PACKAGES not in sys.path:
     sys.path.insert(0, _PACKAGES)
 
 try:
     from adapters.registry import AdapterRegistry, BUILT_IN_ADAPTERS
 except ImportError as _import_err:
-    AdapterRegistry   = None  # type: ignore[misc,assignment]
-    BUILT_IN_ADAPTERS = []    # type: ignore[assignment]
+    AdapterRegistry = None  # type: ignore[misc,assignment]
+    BUILT_IN_ADAPTERS = []  # type: ignore[assignment]
     logging.getLogger("api-gateway.adapters").warning(
         "adapters package not importable: %s", _import_err
     )
@@ -70,8 +71,10 @@ def init_adapter_router(registry: "AdapterRegistry") -> None:
     """
     global _registry
     _registry = registry
-    logger.info("Adapter router initialised with registry (%d adapter(s)).",
-                len(registry._adapters))
+    logger.info(
+        "Adapter router initialised with registry (%d adapter(s)).",
+        len(registry._adapters),
+    )
 
 
 def _require_registry() -> "AdapterRegistry":
@@ -96,6 +99,7 @@ def _require_adapter(registry: "AdapterRegistry", adapter_id: str):
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "",
@@ -134,22 +138,24 @@ async def list_adapter_types():
 async def get_adapter(adapter_id: str):
     """Return health detail for a single adapter by its ``adapter_id``."""
     registry = _require_registry()
-    adapter  = _require_adapter(registry, adapter_id)
+    adapter = _require_adapter(registry, adapter_id)
 
     h = adapter.health()
     return {
-        "adapter_id":   adapter_id,
+        "adapter_id": adapter_id,
         "adapter_type": adapter.config.adapter_type,
         "display_name": adapter.config.display_name,
-        "description":  adapter.config.description,
-        "enabled":      adapter.config.enabled,
-        "status":           h.status,
-        "last_connected":   h.last_connected.isoformat() if h.last_connected else None,
-        "last_observation": h.last_observation.isoformat() if h.last_observation else None,
-        "observations_total":      h.observations_total,
+        "description": adapter.config.description,
+        "enabled": adapter.config.enabled,
+        "status": h.status,
+        "last_connected": h.last_connected.isoformat() if h.last_connected else None,
+        "last_observation": (
+            h.last_observation.isoformat() if h.last_observation else None
+        ),
+        "observations_total": h.observations_total,
         "observations_per_minute": round(h.observations_per_minute, 2),
-        "error_message":           h.error_message,
-        "uptime_seconds":          round(h.uptime_seconds, 1),
+        "error_message": h.error_message,
+        "uptime_seconds": round(h.uptime_seconds, 1),
     }
 
 
@@ -166,7 +172,7 @@ async def enable_adapter(adapter_id: str):
     across restarts, update the ``adapters.json`` config file.
     """
     registry = _require_registry()
-    adapter  = _require_adapter(registry, adapter_id)
+    adapter = _require_adapter(registry, adapter_id)
 
     if adapter.config.enabled:
         return {"adapter_id": adapter_id, "status": "already_enabled"}
@@ -174,6 +180,7 @@ async def enable_adapter(adapter_id: str):
     adapter.config.enabled = True
 
     import asyncio
+
     if adapter_id not in registry._tasks or registry._tasks[adapter_id].done():
         task = asyncio.create_task(
             adapter.start(),
@@ -198,7 +205,7 @@ async def disable_adapter(adapter_id: str):
     across restarts, update the ``adapters.json`` config file.
     """
     registry = _require_registry()
-    adapter  = _require_adapter(registry, adapter_id)
+    adapter = _require_adapter(registry, adapter_id)
 
     if not adapter.config.enabled:
         return {"adapter_id": adapter_id, "status": "already_disabled"}

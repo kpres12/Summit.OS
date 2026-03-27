@@ -7,6 +7,7 @@ Every adapter must declare a manifest. Summit.OS uses it to:
 - Enforce permission boundaries (a READ-only adapter cannot send actuator commands)
 - Version-check compatibility
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -16,35 +17,37 @@ from typing import List, Optional
 
 class Protocol(str, Enum):
     """Physical/network protocol the adapter speaks."""
-    MODBUS    = "modbus"
-    OPCUA     = "opcua"
-    MAVLINK   = "mavlink"
-    ADSB      = "adsb"
-    TLE       = "tle"          # satellite orbital elements
-    MQTT      = "mqtt"
-    HTTP      = "http"
+
+    MODBUS = "modbus"
+    OPCUA = "opcua"
+    MAVLINK = "mavlink"
+    ADSB = "adsb"
+    TLE = "tle"  # satellite orbital elements
+    MQTT = "mqtt"
+    HTTP = "http"
     WEBSOCKET = "websocket"
-    SERIAL    = "serial"
-    CAN       = "can"
-    ROS2      = "ros2"
-    RTSP      = "rtsp"         # camera / video streams
-    AIS       = "ais"          # maritime AIS
-    CUSTOM    = "custom"
+    SERIAL = "serial"
+    CAN = "can"
+    ROS2 = "ros2"
+    RTSP = "rtsp"  # camera / video streams
+    AIS = "ais"  # maritime AIS
+    CUSTOM = "custom"
 
 
 class Capability(str, Enum):
     """What the adapter can do."""
-    READ       = "read"        # can read sensor/state data
-    WRITE      = "write"       # can send commands to hardware (requires approval policy)
-    SUBSCRIBE  = "subscribe"   # uses push/subscription model (not polling)
-    STREAM     = "stream"      # produces continuous high-rate data
-    DISCOVER   = "discover"    # can enumerate available devices/nodes
+
+    READ = "read"  # can read sensor/state data
+    WRITE = "write"  # can send commands to hardware (requires approval policy)
+    SUBSCRIBE = "subscribe"  # uses push/subscription model (not polling)
+    STREAM = "stream"  # produces continuous high-rate data
+    DISCOVER = "discover"  # can enumerate available devices/nodes
 
 
 class EntityType(str, Enum):
-    ASSET   = "ASSET"
-    TRACK   = "TRACK"
-    ALERT   = "ALERT"
+    ASSET = "ASSET"
+    TRACK = "TRACK"
+    ALERT = "ALERT"
     MISSION = "MISSION"
 
 
@@ -56,6 +59,7 @@ class AdapterManifest:
     This is the contract between an adapter and Summit.OS.
     The platform refuses to load an adapter without a valid manifest.
     """
+
     name: str
     """Unique adapter name. Used as source_id prefix in entities. Use kebab-case."""
 
@@ -104,7 +108,10 @@ class AdapterManifest:
             errors.append("capabilities must not be empty")
         if not self.entity_types:
             errors.append("entity_types must not be empty")
-        if Capability.WRITE in self.capabilities and Capability.READ not in self.capabilities:
+        if (
+            Capability.WRITE in self.capabilities
+            and Capability.READ not in self.capabilities
+        ):
             errors.append("WRITE capability requires READ capability")
         return errors
 

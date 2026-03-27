@@ -8,6 +8,7 @@ Pattern matching is deliberately simple: tag overlap + asset type overlap,
 ranked by success_rate × log(use_count). No ML needed — the pattern library
 is useful from the very first mission and becomes more valuable with each one.
 """
+
 from __future__ import annotations
 
 import json
@@ -43,19 +44,20 @@ UTC = timezone.utc
 # Data class
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MissionPattern:
-    pattern_id:    str
-    name:          str
-    description:   str
-    asset_types:   list[str]   # what kinds of assets were used
-    asset_count:   int
+    pattern_id: str
+    name: str
+    description: str
+    asset_types: list[str]  # what kinds of assets were used
+    asset_count: int
     avg_duration_s: float
-    success_rate:  float
-    use_count:     int
-    domain_tags:   list[str]   # e.g. ["wildfire", "search_rescue", "surveillance"]
-    template:      dict        # parameterized mission template
-    last_used:     datetime
+    success_rate: float
+    use_count: int
+    domain_tags: list[str]  # e.g. ["wildfire", "search_rescue", "surveillance"]
+    template: dict  # parameterized mission template
+    last_used: datetime
 
     def to_dict(self) -> dict:
         d = asdict(self)
@@ -72,18 +74,18 @@ _metadata = MetaData()
 patterns_table = Table(
     "mission_patterns",
     _metadata,
-    Column("id",             Integer, primary_key=True, autoincrement=True),
-    Column("pattern_id",     String(64), nullable=False, unique=True),
-    Column("name",           String(256), nullable=False),
-    Column("description",    Text, nullable=False, default=""),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("pattern_id", String(64), nullable=False, unique=True),
+    Column("name", String(256), nullable=False),
+    Column("description", Text, nullable=False, default=""),
     Column("asset_types_json", Text, nullable=False, default="[]"),
-    Column("asset_count",    Integer, nullable=False, default=1),
+    Column("asset_count", Integer, nullable=False, default=1),
     Column("avg_duration_s", Float, nullable=False, default=0.0),
-    Column("success_rate",   Float, nullable=False, default=0.0),
-    Column("use_count",      Integer, nullable=False, default=1),
+    Column("success_rate", Float, nullable=False, default=0.0),
+    Column("use_count", Integer, nullable=False, default=1),
     Column("domain_tags_json", Text, nullable=False, default="[]"),
-    Column("template_json",  Text, nullable=False, default="{}"),
-    Column("last_used",      DateTime(timezone=True), nullable=False),
+    Column("template_json", Text, nullable=False, default="{}"),
+    Column("last_used", DateTime(timezone=True), nullable=False),
     Index("ix_mp_pattern_id", "pattern_id"),
     Index("ix_mp_success_rate", "success_rate"),
 )
@@ -92,6 +94,7 @@ patterns_table = Table(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_asset_types(mission: dict) -> list[str]:
     """Pull asset type identifiers out of a mission dict."""
@@ -154,6 +157,7 @@ def _asset_overlap(a: list[str], b: list[str]) -> float:
 # Library
 # ---------------------------------------------------------------------------
 
+
 class MissionPatternLibrary:
     """
     Records completed missions and identifies reusable patterns.
@@ -200,8 +204,8 @@ class MissionPatternLibrary:
 
     async def record_mission(
         self,
-        mission:    dict,
-        outcome:    str,    # 'completed' | 'failed' | 'aborted'
+        mission: dict,
+        outcome: str,  # 'completed' | 'failed' | 'aborted'
         duration_s: float,
     ) -> None:
         """
@@ -217,21 +221,23 @@ class MissionPatternLibrary:
         success = outcome == "completed"
         asset_types = _extract_asset_types(mission)
         domain_tags = _extract_domain_tags(mission)
-        asset_count = max(1, len(mission.get("assets", []) or mission.get("asset_ids", [])) or 1)
+        asset_count = max(
+            1, len(mission.get("assets", []) or mission.get("asset_ids", [])) or 1
+        )
 
         # Load all existing patterns to find the best match
         all_patterns = await self.get_all_patterns()
         best_match: Optional[MissionPattern] = None
-        best_score  = 0.0
+        best_score = 0.0
         MERGE_THRESHOLD = 0.6
 
         for p in all_patterns:
-            tag_sim   = _tag_overlap(domain_tags, p.domain_tags)
+            tag_sim = _tag_overlap(domain_tags, p.domain_tags)
             asset_sim = _asset_overlap(asset_types, p.asset_types)
-            combined  = 0.5 * tag_sim + 0.5 * asset_sim
+            combined = 0.5 * tag_sim + 0.5 * asset_sim
             if combined >= MERGE_THRESHOLD and combined > best_score:
-                best_score  = combined
-                best_match  = p
+                best_score = combined
+                best_match = p
 
         now = datetime.now(UTC)
 
@@ -242,10 +248,12 @@ class MissionPatternLibrary:
             # Running average for duration
             new_avg_duration = (best_match.avg_duration_s * n + duration_s) / new_n
             # Running average for success rate
-            new_success_rate = (best_match.success_rate * n + (1.0 if success else 0.0)) / new_n
+            new_success_rate = (
+                best_match.success_rate * n + (1.0 if success else 0.0)
+            ) / new_n
             # Merge asset types and domain tags (union)
             merged_types = list(set(best_match.asset_types) | set(asset_types))
-            merged_tags  = list(set(best_match.domain_tags) | set(domain_tags))
+            merged_tags = list(set(best_match.domain_tags) | set(domain_tags))
 
             engine = self._ensure_engine()
             async with engine.begin() as conn:
@@ -263,15 +271,19 @@ class MissionPatternLibrary:
                 )
             logger.debug(
                 "Folded mission into pattern '%s' (use_count=%d success_rate=%.2f)",
-                best_match.pattern_id, new_n, new_success_rate,
+                best_match.pattern_id,
+                new_n,
+                new_success_rate,
             )
 
         else:
             # Create a new pattern from this mission
-            pattern_id  = str(uuid.uuid4())
-            name        = _build_pattern_name(asset_types, domain_tags)
-            description = _build_pattern_description(mission, asset_types, domain_tags, outcome)
-            template    = _build_template(mission, asset_types, domain_tags)
+            pattern_id = str(uuid.uuid4())
+            name = _build_pattern_name(asset_types, domain_tags)
+            description = _build_pattern_description(
+                mission, asset_types, domain_tags, outcome
+            )
+            template = _build_template(mission, asset_types, domain_tags)
 
             engine = self._ensure_engine()
             async with engine.begin() as conn:
@@ -290,15 +302,13 @@ class MissionPatternLibrary:
                         last_used=now,
                     )
                 )
-            logger.debug(
-                "Created new mission pattern '%s' (%s)", pattern_id, name
-            )
+            logger.debug("Created new mission pattern '%s' (%s)", pattern_id, name)
 
     async def suggest_templates(
         self,
-        asset_types:  list[str],
+        asset_types: list[str],
         context_tags: list[str] = [],
-        limit:        int = 5,
+        limit: int = 5,
     ) -> list[MissionPattern]:
         """
         Return mission patterns relevant to the current situation.
@@ -314,7 +324,7 @@ class MissionPatternLibrary:
         for p in all_patterns:
             if p.success_rate <= 0.0:
                 continue  # never suggest a pattern that has only failed
-            tag_sim   = _tag_overlap(context_tags, p.domain_tags)
+            tag_sim = _tag_overlap(context_tags, p.domain_tags)
             asset_sim = _asset_overlap(asset_types, p.asset_types)
             relevance = 0.5 * tag_sim + 0.5 * asset_sim
             if relevance <= 0.0:
@@ -341,9 +351,7 @@ class MissionPatternLibrary:
         engine = self._ensure_engine()
         async with engine.connect() as conn:
             result = await conn.execute(
-                select(patterns_table).where(
-                    patterns_table.c.pattern_id == pattern_id
-                )
+                select(patterns_table).where(patterns_table.c.pattern_id == pattern_id)
             )
             row = result.first()
         return self._row_to_pattern(row) if row else None
@@ -353,9 +361,10 @@ class MissionPatternLibrary:
 # Template / name helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_pattern_name(asset_types: list[str], domain_tags: list[str]) -> str:
     asset_str = "+".join(sorted(asset_types)[:2]) or "asset"
-    tag_str   = "/".join(sorted(domain_tags)[:2]) or "general"
+    tag_str = "/".join(sorted(domain_tags)[:2]) or "general"
     return f"{asset_str.title()} — {tag_str.replace('_', ' ').title()}"
 
 
@@ -388,19 +397,29 @@ def _build_template(
     Strips instance-specific IDs while preserving structural intent.
     """
     return {
-        "asset_types":  sorted(asset_types),
-        "domain_tags":  sorted(domain_tags),
-        "objective":    mission.get("objective") or mission.get("description") or "",
-        "priority":     mission.get("priority") or "MEDIUM",
-        "waypoints":    [],   # stripped — location is instance-specific
+        "asset_types": sorted(asset_types),
+        "domain_tags": sorted(domain_tags),
+        "objective": mission.get("objective") or mission.get("description") or "",
+        "priority": mission.get("priority") or "MEDIUM",
+        "waypoints": [],  # stripped — location is instance-specific
         "rules_of_engagement": mission.get("rules_of_engagement") or {},
-        "parameters":   {
+        "parameters": {
             k: v
             for k, v in mission.items()
-            if k not in (
-                "id", "mission_id", "asset_id", "asset_ids", "assets",
-                "created_at", "updated_at", "ts_iso", "waypoints",
-                "location", "lat", "lon",
+            if k
+            not in (
+                "id",
+                "mission_id",
+                "asset_id",
+                "asset_ids",
+                "assets",
+                "created_at",
+                "updated_at",
+                "ts_iso",
+                "waypoints",
+                "location",
+                "lat",
+                "lon",
             )
             and not isinstance(v, (list, dict))
         },

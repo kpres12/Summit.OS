@@ -31,49 +31,55 @@ from dataclasses import dataclass, field
 from typing import List, Tuple
 
 # ── constants ──────────────────────────────────────────────────────────────────
-EARTH_R_M   = 6_371_000.0  # mean radius in metres
-DEG_PER_M   = 1.0 / 111_320.0  # approximate degrees latitude per metre at equator
+EARTH_R_M = 6_371_000.0  # mean radius in metres
+DEG_PER_M = 1.0 / 111_320.0  # approximate degrees latitude per metre at equator
 
 # Min/max swarm size
-MIN_SWARM   = 2
-MAX_SWARM   = int(os.getenv("KOFA_MAX_SWARM_SIZE", "12"))
+MIN_SWARM = 2
+MAX_SWARM = int(os.getenv("KOFA_MAX_SWARM_SIZE", "12"))
 
 # Default coverage radius when the base plan has no explicit radius
 DEFAULT_RADIUS_M = {
-    "SEARCH":    800.0,
-    "SURVEY":    600.0,
+    "SEARCH": 800.0,
+    "SURVEY": 600.0,
     "PERIMETER": 400.0,
-    "MONITOR":   200.0,
-    "ORBIT":     150.0,
+    "MONITOR": 200.0,
+    "ORBIT": 150.0,
 }
 
 
 # ── waypoint ──────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class Waypoint:
     lat: float
     lon: float
     alt_m: float
-    action: str = "WAYPOINT"   # WAYPOINT | LOITER | PHOTO | RTB
+    action: str = "WAYPOINT"  # WAYPOINT | LOITER | PHOTO | RTB
 
 
 # ── sector ────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Sector:
     """One drone's assigned area + ordered list of waypoints to fly."""
+
     sector_id: str
     drone_index: int
     waypoints: List[Waypoint]
-    coverage_deg_start: float = 0.0   # for radial/perimeter sectors
-    coverage_deg_end:   float = 360.0
+    coverage_deg_start: float = 0.0  # for radial/perimeter sectors
+    coverage_deg_end: float = 360.0
     swarm_id: str = ""
 
 
 # ── geo helpers ────────────────────────────────────────────────────────────────
 
-def _offset(lat: float, lon: float, bearing_deg: float, dist_m: float) -> Tuple[float, float]:
+
+def _offset(
+    lat: float, lon: float, bearing_deg: float, dist_m: float
+) -> Tuple[float, float]:
     """Return (lat, lon) offset from a point by dist_m in bearing_deg (true north = 0)."""
     bearing = math.radians(bearing_deg)
     dlat = (dist_m * math.cos(bearing)) / EARTH_R_M
@@ -84,11 +90,17 @@ def _offset(lat: float, lon: float, bearing_deg: float, dist_m: float) -> Tuple[
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(math.radians(lat1))
+        * math.cos(math.radians(lat2))
+        * math.sin(dlon / 2) ** 2
+    )
     return EARTH_R_M * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 # ── sector decomposition ──────────────────────────────────────────────────────
+
 
 def _lawnmower_grid(
     center_lat: float,
@@ -115,8 +127,12 @@ def _lawnmower_grid(
         x_center = x_start + strip_w / 2
 
         # Convert x to lon offset
-        lon_start  = center_lon + (x_start  / (EARTH_R_M * math.cos(math.radians(center_lat)))) * (180 / math.pi)
-        lon_center = center_lon + (x_center / (EARTH_R_M * math.cos(math.radians(center_lat)))) * (180 / math.pi)
+        lon_start = center_lon + (
+            x_start / (EARTH_R_M * math.cos(math.radians(center_lat)))
+        ) * (180 / math.pi)
+        lon_center = center_lon + (
+            x_center / (EARTH_R_M * math.cos(math.radians(center_lat)))
+        ) * (180 / math.pi)
 
         # Rows within the strip (north→south, capped by the circle)
         rows = []
@@ -129,9 +145,16 @@ def _lawnmower_grid(
                 row_lat = center_lat + (y / EARTH_R_M) * (180 / math.pi)
                 # Alternate direction for lawnmower
                 if row_idx % 2 == 0:
-                    lon_a, lon_b = lon_start, lon_start + (strip_w / (EARTH_R_M * math.cos(math.radians(center_lat)))) * (180 / math.pi)
+                    lon_a, lon_b = lon_start, lon_start + (
+                        strip_w / (EARTH_R_M * math.cos(math.radians(center_lat)))
+                    ) * (180 / math.pi)
                 else:
-                    lon_a, lon_b = lon_start + (strip_w / (EARTH_R_M * math.cos(math.radians(center_lat)))) * (180 / math.pi), lon_start
+                    lon_a, lon_b = (
+                        lon_start
+                        + (strip_w / (EARTH_R_M * math.cos(math.radians(center_lat))))
+                        * (180 / math.pi),
+                        lon_start,
+                    )
                 rows.append(Waypoint(lat=row_lat, lon=lon_a, alt_m=alt_m))
                 rows.append(Waypoint(lat=row_lat, lon=lon_b, alt_m=alt_m))
             y -= row_spacing_m
@@ -139,14 +162,18 @@ def _lawnmower_grid(
 
         if not rows:
             # Empty strip (outside circle) — put one waypoint at center of strip
-            rows = [Waypoint(lat=center_lat, lon=lon_center, alt_m=alt_m, action="LOITER")]
+            rows = [
+                Waypoint(lat=center_lat, lon=lon_center, alt_m=alt_m, action="LOITER")
+            ]
 
-        sectors.append(Sector(
-            sector_id=f"s{i+1}",
-            drone_index=i,
-            waypoints=rows,
-            swarm_id=swarm_id,
-        ))
+        sectors.append(
+            Sector(
+                sector_id=f"s{i+1}",
+                drone_index=i,
+                waypoints=rows,
+                swarm_id=swarm_id,
+            )
+        )
 
     return sectors
 
@@ -170,7 +197,7 @@ def _radial_sectors(
 
     for i in range(n):
         start_deg = i * sector_deg
-        mid_deg   = start_deg + sector_deg / 2
+        mid_deg = start_deg + sector_deg / 2
 
         waypoints: List[Waypoint] = []
 
@@ -189,16 +216,20 @@ def _radial_sectors(
 
         # End loiter at midpoint of sector outer edge
         end_lat, end_lon = _offset(center_lat, center_lon, mid_deg, radius_m * 0.8)
-        waypoints.append(Waypoint(lat=end_lat, lon=end_lon, alt_m=alt_m, action="LOITER"))
+        waypoints.append(
+            Waypoint(lat=end_lat, lon=end_lon, alt_m=alt_m, action="LOITER")
+        )
 
-        sectors.append(Sector(
-            sector_id=f"s{i+1}",
-            drone_index=i,
-            waypoints=waypoints,
-            coverage_deg_start=start_deg,
-            coverage_deg_end=start_deg + sector_deg,
-            swarm_id=swarm_id,
-        ))
+        sectors.append(
+            Sector(
+                sector_id=f"s{i+1}",
+                drone_index=i,
+                waypoints=waypoints,
+                coverage_deg_start=start_deg,
+                coverage_deg_end=start_deg + sector_deg,
+                swarm_id=swarm_id,
+            )
+        )
 
     return sectors
 
@@ -222,32 +253,37 @@ def _perimeter_arcs(
 
     for i in range(n):
         start_deg = i * arc_deg
-        end_deg   = start_deg + arc_deg
+        end_deg = start_deg + arc_deg
 
         waypoints: List[Waypoint] = []
         for p in range(patrol_points + 1):
             angle = start_deg + (arc_deg / patrol_points) * p
             wp_lat, wp_lon = _offset(center_lat, center_lon, angle, radius_m)
             action = "LOITER" if p == patrol_points // 2 else "WAYPOINT"
-            waypoints.append(Waypoint(lat=wp_lat, lon=wp_lon, alt_m=alt_m, action=action))
+            waypoints.append(
+                Waypoint(lat=wp_lat, lon=wp_lon, alt_m=alt_m, action=action)
+            )
 
         # Return to start of arc for continuous patrol
         start_lat, start_lon = _offset(center_lat, center_lon, start_deg, radius_m)
         waypoints.append(Waypoint(lat=start_lat, lon=start_lon, alt_m=alt_m))
 
-        sectors.append(Sector(
-            sector_id=f"s{i+1}",
-            drone_index=i,
-            waypoints=waypoints,
-            coverage_deg_start=start_deg,
-            coverage_deg_end=end_deg,
-            swarm_id=swarm_id,
-        ))
+        sectors.append(
+            Sector(
+                sector_id=f"s{i+1}",
+                drone_index=i,
+                waypoints=waypoints,
+                coverage_deg_start=start_deg,
+                coverage_deg_end=end_deg,
+                swarm_id=swarm_id,
+            )
+        )
 
     return sectors
 
 
 # ── SwarmPlanner ───────────────────────────────────────────────────────────────
+
 
 class SwarmPlanner:
     """
@@ -272,11 +308,17 @@ class SwarmPlanner:
         r = radius_m or DEFAULT_RADIUS_M.get(base_plan.mission_type, 500.0)
 
         if base_plan.mission_type == "SEARCH":
-            sectors = _lawnmower_grid(base_plan.lat, base_plan.lon, r, n, base_plan.alt_m)
+            sectors = _lawnmower_grid(
+                base_plan.lat, base_plan.lon, r, n, base_plan.alt_m
+            )
         elif base_plan.mission_type in ("PERIMETER", "MONITOR", "ORBIT"):
-            sectors = _perimeter_arcs(base_plan.lat, base_plan.lon, r, n, base_plan.alt_m)
+            sectors = _perimeter_arcs(
+                base_plan.lat, base_plan.lon, r, n, base_plan.alt_m
+            )
         else:
-            sectors = _radial_sectors(base_plan.lat, base_plan.lon, r, n, base_plan.alt_m)
+            sectors = _radial_sectors(
+                base_plan.lat, base_plan.lon, r, n, base_plan.alt_m
+            )
 
         # Import here to avoid circular import (mission_planner imports nothing from here)
         from mission_planner import MissionPlan
@@ -287,23 +329,28 @@ class SwarmPlanner:
                 continue
             primary = sec.waypoints[0]
             sector_plan = MissionPlan(
-                mission_type  = base_plan.mission_type,
-                lat           = primary.lat,
-                lon           = primary.lon,
-                alt_m         = base_plan.alt_m,
-                priority      = base_plan.priority,
-                asset_class   = base_plan.asset_class,
-                loiter        = base_plan.loiter,
-                rationale     = f"{base_plan.rationale} [swarm {sec.swarm_id} sector {sec.sector_id}/{n}]",
-                raw_observation = {
+                mission_type=base_plan.mission_type,
+                lat=primary.lat,
+                lon=primary.lon,
+                alt_m=base_plan.alt_m,
+                priority=base_plan.priority,
+                asset_class=base_plan.asset_class,
+                loiter=base_plan.loiter,
+                rationale=f"{base_plan.rationale} [swarm {sec.swarm_id} sector {sec.sector_id}/{n}]",
+                raw_observation={
                     **base_plan.raw_observation,
-                    "_swarm_id":     sec.swarm_id,
-                    "_sector_id":    sec.sector_id,
-                    "_drone_index":  sec.drone_index,
-                    "_n_sectors":    n,
+                    "_swarm_id": sec.swarm_id,
+                    "_sector_id": sec.sector_id,
+                    "_drone_index": sec.drone_index,
+                    "_n_sectors": n,
                     # Full waypoint list for tasking service
                     "_waypoints": [
-                        {"lat": wp.lat, "lon": wp.lon, "alt_m": wp.alt_m, "action": wp.action}
+                        {
+                            "lat": wp.lat,
+                            "lon": wp.lon,
+                            "alt_m": wp.alt_m,
+                            "action": wp.action,
+                        }
                         for wp in sec.waypoints
                     ],
                 },
@@ -320,6 +367,7 @@ class SwarmPlanner:
 
 # Module-level singleton
 _swarm_planner: SwarmPlanner | None = None
+
 
 def get_swarm_planner() -> SwarmPlanner:
     global _swarm_planner

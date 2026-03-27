@@ -8,6 +8,7 @@ from enum import Enum
 
 class RiskLevel(str, Enum):
     """Risk level classifications."""
+
     LOW = "low"
     MODERATE = "moderate"
     HIGH = "high"
@@ -16,6 +17,7 @@ class RiskLevel(str, Enum):
 
 class RiskAssessment(BaseModel):
     """Risk assessment schema."""
+
     risk_id: str = Field(..., description="Unique risk assessment ID")
     risk_level: RiskLevel
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
@@ -27,6 +29,7 @@ class RiskAssessment(BaseModel):
 
 class IntelligenceSchema(BaseModel):
     """Intelligence data schema."""
+
     intelligence_id: str = Field(..., description="Unique intelligence ID")
     type: str = Field(..., description="Type of intelligence")
     summary: str = Field(..., description="Intelligence summary")

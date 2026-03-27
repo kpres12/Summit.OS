@@ -8,6 +8,7 @@ The full Argon2id hash string is self-describing and includes the algorithm,
 version, parameters, salt, and digest — making it safe to store directly in
 the database and enabling parameter upgrades via needs_rehash().
 """
+
 from __future__ import annotations
 
 import secrets

@@ -20,6 +20,7 @@ Leaf Nodes:
   - Condition: evaluates a predicate
   - Wait: succeeds after delay
 """
+
 from __future__ import annotations
 
 import time
@@ -131,8 +132,12 @@ class Sequence(Composite):
     Memory variant: remembers which child was running and resumes from there.
     """
 
-    def __init__(self, name: str = "Sequence", children: List[BTNode] | None = None,
-                 memory: bool = True):
+    def __init__(
+        self,
+        name: str = "Sequence",
+        children: List[BTNode] | None = None,
+        memory: bool = True,
+    ):
         super().__init__(name, children)
         self.memory = memory
         self._running_idx: int = 0
@@ -172,8 +177,12 @@ class Selector(Composite):
     Memory variant: remembers which child was running.
     """
 
-    def __init__(self, name: str = "Selector", children: List[BTNode] | None = None,
-                 memory: bool = True):
+    def __init__(
+        self,
+        name: str = "Selector",
+        children: List[BTNode] | None = None,
+        memory: bool = True,
+    ):
         super().__init__(name, children)
         self.memory = memory
         self._running_idx: int = 0
@@ -303,7 +312,9 @@ class Inverter(Decorator):
 class Repeat(Decorator):
     """Repeats child N times. Fails immediately if child fails."""
 
-    def __init__(self, name: str = "Repeat", child: BTNode | None = None, count: int = 3):
+    def __init__(
+        self, name: str = "Repeat", child: BTNode | None = None, count: int = 3
+    ):
         super().__init__(name, child)
         self.count = count
         self._current = 0
@@ -336,7 +347,9 @@ class Repeat(Decorator):
 class RetryUntilSuccess(Decorator):
     """Retries child up to max_retries times on failure."""
 
-    def __init__(self, name: str = "Retry", child: BTNode | None = None, max_retries: int = 3):
+    def __init__(
+        self, name: str = "Retry", child: BTNode | None = None, max_retries: int = 3
+    ):
         super().__init__(name, child)
         self.max_retries = max_retries
         self._attempts = 0
@@ -375,8 +388,12 @@ class RetryUntilSuccess(Decorator):
 class Timeout(Decorator):
     """Fails child if it runs longer than duration_sec."""
 
-    def __init__(self, name: str = "Timeout", child: BTNode | None = None,
-                 duration_sec: float = 10.0):
+    def __init__(
+        self,
+        name: str = "Timeout",
+        child: BTNode | None = None,
+        duration_sec: float = 10.0,
+    ):
         super().__init__(name, child)
         self.duration_sec = duration_sec
         self._start_time: Optional[float] = None
@@ -407,8 +424,12 @@ class Timeout(Decorator):
 class RateLimit(Decorator):
     """Throttles child execution to at most once per interval."""
 
-    def __init__(self, name: str = "RateLimit", child: BTNode | None = None,
-                 interval_sec: float = 1.0):
+    def __init__(
+        self,
+        name: str = "RateLimit",
+        child: BTNode | None = None,
+        interval_sec: float = 1.0,
+    ):
         super().__init__(name, child)
         self.interval_sec = interval_sec
         self._last_tick: float = 0.0
@@ -440,8 +461,11 @@ class Action(BTNode):
     The action receives the blackboard and returns a NodeStatus.
     """
 
-    def __init__(self, name: str = "Action",
-                 action: Callable[[Blackboard], NodeStatus] | None = None):
+    def __init__(
+        self,
+        name: str = "Action",
+        action: Callable[[Blackboard], NodeStatus] | None = None,
+    ):
         super().__init__(name)
         self.action = action
 
@@ -465,8 +489,11 @@ class Condition(BTNode):
     Never returns RUNNING.
     """
 
-    def __init__(self, name: str = "Condition",
-                 predicate: Callable[[Blackboard], bool] | None = None):
+    def __init__(
+        self,
+        name: str = "Condition",
+        predicate: Callable[[Blackboard], bool] | None = None,
+    ):
         super().__init__(name)
         self.predicate = predicate
 
@@ -528,8 +555,13 @@ class SetBlackboard(BTNode):
 class CheckBlackboard(BTNode):
     """Check if a blackboard key exists and optionally matches a value."""
 
-    def __init__(self, name: str = "CheckBB", key: str = "",
-                 expected: Any = None, check_exists_only: bool = False):
+    def __init__(
+        self,
+        name: str = "CheckBB",
+        key: str = "",
+        expected: Any = None,
+        check_exists_only: bool = False,
+    ):
         super().__init__(name)
         self.key = key
         self.expected = expected

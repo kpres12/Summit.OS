@@ -12,6 +12,7 @@ Two levels of protection are applied:
 Structural isolation (in brain.py) is the primary defence. Sanitization is the
 secondary, belt-and-suspenders layer.
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,18 +44,27 @@ _INJECTION_PATTERNS: list[re.Pattern] = [
     # Role/persona switching
     re.compile(r"act\s+as\s+(a\s+)?(different|new|evil|unrestricted|rogue)", re.I),
     re.compile(r"pretend\s+(you\s+are|to\s+be)", re.I),
-    re.compile(r"you\s+are\s+now\s+(a\s+)?(?!summit)", re.I),  # "you are now X" (not Summit)
+    re.compile(
+        r"you\s+are\s+now\s+(a\s+)?(?!summit)", re.I
+    ),  # "you are now X" (not Summit)
     # Structural tag injection — attempt to escape section boundaries
     re.compile(r"</?\s*(system|user|assistant|instruction|context|mission)\s*>", re.I),
-    re.compile(r"\[\s*(system|user|assistant|instruction|end.?context|end.?mission)\s*\]", re.I),
+    re.compile(
+        r"\[\s*(system|user|assistant|instruction|end.?context|end.?mission)\s*\]", re.I
+    ),
     # Known jailbreak keywords
     re.compile(r"\bDAN\s+mode\b", re.I),
     re.compile(r"\bjailbreak\b", re.I),
     re.compile(r"developer\s+mode\s*(enabled|on|activated)", re.I),
     re.compile(r"unrestricted\s+mode", re.I),
     # Prompt exfiltration attempts
-    re.compile(r"(print|repeat|output|reveal|show|display)\s+(your\s+)?(system\s+)?prompt", re.I),
-    re.compile(r"what\s+(are|were)\s+your\s+(initial|original|system)\s+instructions", re.I),
+    re.compile(
+        r"(print|repeat|output|reveal|show|display)\s+(your\s+)?(system\s+)?prompt",
+        re.I,
+    ),
+    re.compile(
+        r"what\s+(are|were)\s+your\s+(initial|original|system)\s+instructions", re.I
+    ),
 ]
 
 
@@ -71,7 +81,9 @@ def _safe_str(value: Any, max_len: int = 200) -> str:
     s = _CTRL_CHARS.sub("", s)
     for pattern in _INJECTION_PATTERNS:
         if pattern.search(s):
-            logger.warning("Prompt injection pattern in entity field — redacting: %r", s[:80])
+            logger.warning(
+                "Prompt injection pattern in entity field — redacting: %r", s[:80]
+            )
             s = pattern.sub("[REDACTED]", s)
     return s
 

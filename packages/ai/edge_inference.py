@@ -15,6 +15,7 @@ For fusion service integration:
     result = await client.detect(image_b64)  # remote
     result = client.detect_local(image_array)  # local fallback
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,6 +37,7 @@ logger = logging.getLogger("ai.edge")
 
 # ── ONNX Edge Detector ────────────────────────────────────
 
+
 class ONNXDetector(ObjectDetector):
     """
     ONNX Runtime-based detector for edge deployment.
@@ -45,19 +47,86 @@ class ONNXDetector(ObjectDetector):
     """
 
     COCO_CLASSES = [
-        "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train",
-        "truck", "boat", "traffic light", "fire hydrant", "stop sign",
-        "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep",
-        "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
-        "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard",
-        "sports ball", "kite", "baseball bat", "baseball glove", "skateboard",
-        "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork",
-        "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange",
-        "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
-        "couch", "potted plant", "bed", "dining table", "toilet", "tv",
-        "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave",
-        "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
-        "scissors", "teddy bear", "hair drier", "toothbrush",
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane",
+        "bus",
+        "train",
+        "truck",
+        "boat",
+        "traffic light",
+        "fire hydrant",
+        "stop sign",
+        "parking meter",
+        "bench",
+        "bird",
+        "cat",
+        "dog",
+        "horse",
+        "sheep",
+        "cow",
+        "elephant",
+        "bear",
+        "zebra",
+        "giraffe",
+        "backpack",
+        "umbrella",
+        "handbag",
+        "tie",
+        "suitcase",
+        "frisbee",
+        "skis",
+        "snowboard",
+        "sports ball",
+        "kite",
+        "baseball bat",
+        "baseball glove",
+        "skateboard",
+        "surfboard",
+        "tennis racket",
+        "bottle",
+        "wine glass",
+        "cup",
+        "fork",
+        "knife",
+        "spoon",
+        "bowl",
+        "banana",
+        "apple",
+        "sandwich",
+        "orange",
+        "broccoli",
+        "carrot",
+        "hot dog",
+        "pizza",
+        "donut",
+        "cake",
+        "chair",
+        "couch",
+        "potted plant",
+        "bed",
+        "dining table",
+        "toilet",
+        "tv",
+        "laptop",
+        "mouse",
+        "remote",
+        "keyboard",
+        "cell phone",
+        "microwave",
+        "oven",
+        "toaster",
+        "sink",
+        "refrigerator",
+        "book",
+        "clock",
+        "vase",
+        "scissors",
+        "teddy bear",
+        "hair drier",
+        "toothbrush",
     ]
 
     def __init__(
@@ -77,6 +146,7 @@ class ONNXDetector(ObjectDetector):
     def _load_model(self):
         try:
             import onnxruntime as ort
+
             self._session = ort.InferenceSession(
                 self.model_path, providers=self._providers
             )
@@ -89,9 +159,7 @@ class ONNXDetector(ObjectDetector):
         except Exception as e:
             logger.error(f"Failed to load ONNX model: {e}")
 
-    def detect(
-        self, image: Any, confidence_threshold: float = 0.5
-    ) -> DetectionResult:
+    def detect(self, image: Any, confidence_threshold: float = 0.5) -> DetectionResult:
         if self._session is None:
             return DetectionResult(detections=[], model_name="onnx-unavailable")
 
@@ -103,6 +171,7 @@ class ONNXDetector(ObjectDetector):
         if isinstance(image, str):
             try:
                 import cv2
+
                 image = cv2.imread(image)
             except ImportError:
                 return DetectionResult(detections=[], model_name="onnx-no-cv2")
@@ -116,9 +185,7 @@ class ONNXDetector(ObjectDetector):
         elapsed_ms = (time.time() - start) * 1000
 
         # Post-process (YOLO output format: [batch, num_detections, 4+num_classes])
-        detections = self._postprocess(
-            outputs, orig_w, orig_h, confidence_threshold
-        )
+        detections = self._postprocess(outputs, orig_w, orig_h, confidence_threshold)
 
         return DetectionResult(
             detections=detections,
@@ -134,6 +201,7 @@ class ONNXDetector(ObjectDetector):
 
         try:
             import cv2
+
             resized = cv2.resize(image, self.input_size)
         except ImportError:
             # Basic resize with numpy
@@ -216,6 +284,7 @@ class ONNXDetector(ObjectDetector):
 
 # ── Edge Detector Factory ─────────────────────────────────
 
+
 class EdgeDetector:
     """
     Factory that creates the best available edge detector.
@@ -240,9 +309,7 @@ class EdgeDetector:
         self._detector = MockDetector()
         self.backend = "mock"
 
-    def detect(
-        self, image: Any, confidence_threshold: float = 0.5
-    ) -> DetectionResult:
+    def detect(self, image: Any, confidence_threshold: float = 0.5) -> DetectionResult:
         return self._detector.detect(image, confidence_threshold)
 
     def get_class_names(self) -> List[str]:
@@ -250,6 +317,7 @@ class EdgeDetector:
 
 
 # ── Inference Client (remote + local fallback) ────────────
+
 
 class InferenceClient:
     """
@@ -299,9 +367,7 @@ class InferenceClient:
     ) -> DetectionResult:
         """Run inference locally using edge detector."""
         if self._local_detector is None:
-            self._local_detector = EdgeDetector(
-                model_path=self._local_model_path
-            )
+            self._local_detector = EdgeDetector(model_path=self._local_model_path)
         return self._local_detector.detect(image, confidence_threshold)
 
     def _detect_local_b64(
@@ -311,16 +377,16 @@ class InferenceClient:
         import base64
 
         if self._local_detector is None:
-            self._local_detector = EdgeDetector(
-                model_path=self._local_model_path
-            )
+            self._local_detector = EdgeDetector(model_path=self._local_model_path)
 
         # Decode image
         image_bytes = base64.b64decode(image_b64)
         try:
             import numpy as np
+
             try:
                 import cv2
+
                 arr = np.frombuffer(image_bytes, dtype=np.uint8)
                 image = cv2.imdecode(arr, cv2.IMREAD_COLOR)
             except ImportError:
@@ -342,6 +408,7 @@ class InferenceClient:
         """Check inference service health."""
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=2.0) as client:
                 r = await client.get(f"{self.service_url}/health")
                 r.raise_for_status()

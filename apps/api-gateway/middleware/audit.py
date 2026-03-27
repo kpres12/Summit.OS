@@ -76,6 +76,7 @@ _SKIP_PREFIXES = ("/health", "/metrics", "/favicon", "/static", "/_next")
 # Pool lifecycle
 # ---------------------------------------------------------------------------
 
+
 def _to_asyncpg_url(url: str) -> str:
     """asyncpg wants plain postgresql:// — strip the +asyncpg dialect if present."""
     if url.startswith("postgresql+asyncpg://"):
@@ -130,7 +131,11 @@ async def prune_old_entries(retention_days: int = 90) -> int:
         # asyncpg returns "DELETE N" as a string
         deleted = int(result.split()[-1]) if result else 0
         if deleted:
-            logger.info("Audit retention: pruned %d rows older than %d days", deleted, retention_days)
+            logger.info(
+                "Audit retention: pruned %d rows older than %d days",
+                deleted,
+                retention_days,
+            )
         return deleted
     except Exception as exc:
         logger.warning("Audit retention prune failed (non-fatal): %s", exc)
@@ -140,6 +145,7 @@ async def prune_old_entries(retention_days: int = 90) -> int:
 # ---------------------------------------------------------------------------
 # JWT claim extraction (no verification — gateway already verified elsewhere)
 # ---------------------------------------------------------------------------
+
 
 def _extract_jwt_claims(authorization: str | None) -> tuple[str | None, str | None]:
     """
@@ -163,18 +169,14 @@ def _extract_jwt_claims(authorization: str | None) -> tuple[str | None, str | No
         payload_bytes = base64.urlsafe_b64decode(payload_b64)
         claims: dict[str, Any] = json.loads(payload_bytes)
         # Common JWT claim names for user identity
-        user_id = (
-            claims.get("sub")
-            or claims.get("user_id")
-            or claims.get("uid")
-        )
+        user_id = claims.get("sub") or claims.get("user_id") or claims.get("uid")
         user_email = (
-            claims.get("email")
-            or claims.get("preferred_username")
-            or claims.get("upn")
+            claims.get("email") or claims.get("preferred_username") or claims.get("upn")
         )
-        return (str(user_id) if user_id else None,
-                str(user_email) if user_email else None)
+        return (
+            str(user_id) if user_id else None,
+            str(user_email) if user_email else None,
+        )
     except Exception:
         return None, None
 
@@ -182,6 +184,7 @@ def _extract_jwt_claims(authorization: str | None) -> tuple[str | None, str | No
 # ---------------------------------------------------------------------------
 # Event type classification
 # ---------------------------------------------------------------------------
+
 
 def _classify_event(method: str, path: str, status: int) -> str:
     m = method.upper()
@@ -218,7 +221,10 @@ def _classify_event(method: str, path: str, status: int) -> str:
 
     # Mission operations (2xx only)
     if status >= 200 and status < 300:
-        if m == "POST" and (p in ("/missions", "/api/missions") or p in ("/v1/missions", "/api/v1/missions")):
+        if m == "POST" and (
+            p in ("/missions", "/api/missions")
+            or p in ("/v1/missions", "/api/v1/missions")
+        ):
             return "MISSION_CREATE"
 
         if m in ("PUT", "PATCH") and ("/missions/" in p or "/v1/missions/" in p):
@@ -231,8 +237,12 @@ def _classify_event(method: str, path: str, status: int) -> str:
             return "SESSION_REVOKE"
 
     # Entity access
-    if m == "GET" and ("/entities/" in p or p.startswith("/entities/") or
-                       "/api/entities/" in p or p.startswith("/api/entities/")):
+    if m == "GET" and (
+        "/entities/" in p
+        or p.startswith("/entities/")
+        or "/api/entities/" in p
+        or p.startswith("/api/entities/")
+    ):
         return "ENTITY_ACCESS"
 
     # Admin actions (any method, any status)
@@ -245,6 +255,7 @@ def _classify_event(method: str, path: str, status: int) -> str:
 # ---------------------------------------------------------------------------
 # IP address extraction
 # ---------------------------------------------------------------------------
+
 
 def _get_ip(request: Request) -> str | None:
     forwarded_for = request.headers.get("x-forwarded-for")
@@ -260,6 +271,7 @@ def _get_ip(request: Request) -> str | None:
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
+
 
 class AuditLogMiddleware(BaseHTTPMiddleware):
     """

@@ -9,6 +9,7 @@ Detects anomalous behavior in entity telemetry streams:
 
 Feeds into the intelligence service for automated alerting.
 """
+
 from __future__ import annotations
 
 import math
@@ -25,6 +26,7 @@ logger = logging.getLogger("ai.anomaly")
 @dataclass
 class AnomalyResult:
     """Result of anomaly detection on a data point or window."""
+
     entity_id: str
     is_anomaly: bool
     score: float  # 0.0 = normal, 1.0 = extreme anomaly
@@ -51,6 +53,7 @@ class AnomalyResult:
 @dataclass
 class TimeSeriesPoint:
     """A single data point in a time series."""
+
     value: float
     timestamp: float = field(default_factory=time.time)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -58,11 +61,14 @@ class TimeSeriesPoint:
 
 # ── Abstract Detector ───────────────────────────────────────
 
+
 class AnomalyDetector(ABC):
     """Base class for anomaly detectors."""
 
     @abstractmethod
-    def ingest(self, entity_id: str, metric: str, point: TimeSeriesPoint) -> AnomalyResult:
+    def ingest(
+        self, entity_id: str, metric: str, point: TimeSeriesPoint
+    ) -> AnomalyResult:
         """Ingest a data point and check for anomaly."""
         ...
 
@@ -78,6 +84,7 @@ class AnomalyDetector(ABC):
 
 
 # ── Z-Score Detector ────────────────────────────────────────
+
 
 class ZScoreDetector(AnomalyDetector):
     """
@@ -95,7 +102,9 @@ class ZScoreDetector(AnomalyDetector):
             lambda: deque(maxlen=window_size)
         )
 
-    def ingest(self, entity_id: str, metric: str, point: TimeSeriesPoint) -> AnomalyResult:
+    def ingest(
+        self, entity_id: str, metric: str, point: TimeSeriesPoint
+    ) -> AnomalyResult:
         key = (entity_id, metric)
         window = self._windows[key]
         window.append(point.value)
@@ -105,8 +114,13 @@ class ZScoreDetector(AnomalyDetector):
         key = (entity_id, metric)
         window = self._windows.get(key)
         if not window:
-            return AnomalyResult(entity_id=entity_id, is_anomaly=False, score=0.0,
-                                 metric_name=metric, detector_name="zscore")
+            return AnomalyResult(
+                entity_id=entity_id,
+                is_anomaly=False,
+                score=0.0,
+                metric_name=metric,
+                detector_name="zscore",
+            )
         return self._check(entity_id, metric, window[-1])
 
     def _check(self, entity_id: str, metric: str, value: float) -> AnomalyResult:
@@ -115,8 +129,11 @@ class ZScoreDetector(AnomalyDetector):
 
         if len(window) < 5:
             return AnomalyResult(
-                entity_id=entity_id, is_anomaly=False, score=0.0,
-                metric_name=metric, value=value,
+                entity_id=entity_id,
+                is_anomaly=False,
+                score=0.0,
+                metric_name=metric,
+                value=value,
                 description="Insufficient data",
                 detector_name="zscore",
             )
@@ -151,6 +168,7 @@ class ZScoreDetector(AnomalyDetector):
 
 # ── Moving Average Detector ─────────────────────────────────
 
+
 class MovingAverageDetector(AnomalyDetector):
     """
     Exponential moving average (EMA) anomaly detector.
@@ -165,15 +183,20 @@ class MovingAverageDetector(AnomalyDetector):
         # (entity_id, metric) → (ema, ema_of_deviation)
         self._state: Dict[Tuple[str, str], Tuple[float, float, int]] = {}
 
-    def ingest(self, entity_id: str, metric: str, point: TimeSeriesPoint) -> AnomalyResult:
+    def ingest(
+        self, entity_id: str, metric: str, point: TimeSeriesPoint
+    ) -> AnomalyResult:
         key = (entity_id, metric)
         value = point.value
 
         if key not in self._state:
             self._state[key] = (value, 0.0, 1)
             return AnomalyResult(
-                entity_id=entity_id, is_anomaly=False, score=0.0,
-                metric_name=metric, value=value,
+                entity_id=entity_id,
+                is_anomaly=False,
+                score=0.0,
+                metric_name=metric,
+                value=value,
                 description="First observation",
                 detector_name="ema",
             )
@@ -207,12 +230,20 @@ class MovingAverageDetector(AnomalyDetector):
         key = (entity_id, metric)
         state = self._state.get(key)
         if not state:
-            return AnomalyResult(entity_id=entity_id, is_anomaly=False, score=0.0,
-                                 metric_name=metric, detector_name="ema")
+            return AnomalyResult(
+                entity_id=entity_id,
+                is_anomaly=False,
+                score=0.0,
+                metric_name=metric,
+                detector_name="ema",
+            )
         ema, ema_dev, count = state
         return AnomalyResult(
-            entity_id=entity_id, is_anomaly=False, score=0.0,
-            metric_name=metric, value=ema,
+            entity_id=entity_id,
+            is_anomaly=False,
+            score=0.0,
+            metric_name=metric,
+            value=ema,
             description=f"Current EMA: {ema:.2f}, EMA deviation: {ema_dev:.2f}",
             detector_name="ema",
         )
@@ -228,6 +259,7 @@ class MovingAverageDetector(AnomalyDetector):
 
 # ── Isolation Forest Detector ───────────────────────────────
 
+
 class IsolationForestDetector(AnomalyDetector):
     """
     Isolation Forest anomaly detector.
@@ -236,8 +268,12 @@ class IsolationForestDetector(AnomalyDetector):
     percentile-based approach otherwise.
     """
 
-    def __init__(self, contamination: float = 0.05, n_estimators: int = 100,
-                 buffer_size: int = 500):
+    def __init__(
+        self,
+        contamination: float = 0.05,
+        n_estimators: int = 100,
+        buffer_size: int = 500,
+    ):
         self.contamination = contamination
         self.n_estimators = n_estimators
         self.buffer_size = buffer_size
@@ -249,6 +285,7 @@ class IsolationForestDetector(AnomalyDetector):
     def _check_sklearn() -> bool:
         try:
             from sklearn.ensemble import IsolationForest
+
             return True
         except ImportError:
             return False
@@ -262,6 +299,7 @@ class IsolationForestDetector(AnomalyDetector):
         if self._sklearn_available:
             from sklearn.ensemble import IsolationForest
             import numpy as np
+
             X = np.array(buffer).reshape(-1, 1)
             model = IsolationForest(
                 contamination=self.contamination,
@@ -276,16 +314,22 @@ class IsolationForestDetector(AnomalyDetector):
             n = len(sorted_vals)
             low_idx = max(0, int(n * self.contamination / 2))
             high_idx = min(n - 1, int(n * (1 - self.contamination / 2)))
-            self._models[key] = ("percentile", sorted_vals[low_idx], sorted_vals[high_idx])
+            self._models[key] = (
+                "percentile",
+                sorted_vals[low_idx],
+                sorted_vals[high_idx],
+            )
 
-    def ingest(self, entity_id: str, metric: str, point: TimeSeriesPoint) -> AnomalyResult:
+    def ingest(
+        self, entity_id: str, metric: str, point: TimeSeriesPoint
+    ) -> AnomalyResult:
         key = (entity_id, metric)
         buffer = self._buffers[key]
         buffer.append(point.value)
 
         # Trim buffer
         if len(buffer) > self.buffer_size:
-            self._buffers[key] = buffer[-self.buffer_size:]
+            self._buffers[key] = buffer[-self.buffer_size :]
 
         # Refit periodically
         if len(buffer) % 50 == 0:
@@ -299,14 +343,18 @@ class IsolationForestDetector(AnomalyDetector):
 
         if model_info is None:
             return AnomalyResult(
-                entity_id=entity_id, is_anomaly=False, score=0.0,
-                metric_name=metric, value=value,
+                entity_id=entity_id,
+                is_anomaly=False,
+                score=0.0,
+                metric_name=metric,
+                value=value,
                 description="Model not yet fitted",
                 detector_name="iforest",
             )
 
         if model_info[0] == "sklearn":
             import numpy as np
+
             model = model_info[1]
             X = np.array([[value]])
             pred = model.predict(X)[0]
@@ -316,8 +364,11 @@ class IsolationForestDetector(AnomalyDetector):
             is_anomaly = pred == -1
 
             return AnomalyResult(
-                entity_id=entity_id, is_anomaly=is_anomaly,
-                score=normalized, metric_name=metric, value=value,
+                entity_id=entity_id,
+                is_anomaly=is_anomaly,
+                score=normalized,
+                metric_name=metric,
+                value=value,
                 description=f"IF score={score_val:.3f}",
                 detector_name="iforest",
             )
@@ -327,23 +378,34 @@ class IsolationForestDetector(AnomalyDetector):
             if value < low:
                 score = min(abs(value - low) / max(abs(low), 1e-6), 1.0)
                 return AnomalyResult(
-                    entity_id=entity_id, is_anomaly=True, score=score,
-                    metric_name=metric, value=value, threshold=low,
+                    entity_id=entity_id,
+                    is_anomaly=True,
+                    score=score,
+                    metric_name=metric,
+                    value=value,
+                    threshold=low,
                     description=f"Below {self.contamination*50:.1f}th percentile ({low:.2f})",
                     detector_name="iforest_fallback",
                 )
             elif value > high:
                 score = min(abs(value - high) / max(abs(high), 1e-6), 1.0)
                 return AnomalyResult(
-                    entity_id=entity_id, is_anomaly=True, score=score,
-                    metric_name=metric, value=value, threshold=high,
+                    entity_id=entity_id,
+                    is_anomaly=True,
+                    score=score,
+                    metric_name=metric,
+                    value=value,
+                    threshold=high,
                     description=f"Above {(1-self.contamination/2)*100:.1f}th percentile ({high:.2f})",
                     detector_name="iforest_fallback",
                 )
             else:
                 return AnomalyResult(
-                    entity_id=entity_id, is_anomaly=False, score=0.0,
-                    metric_name=metric, value=value,
+                    entity_id=entity_id,
+                    is_anomaly=False,
+                    score=0.0,
+                    metric_name=metric,
+                    value=value,
                     description="Within normal range",
                     detector_name="iforest_fallback",
                 )
@@ -352,8 +414,13 @@ class IsolationForestDetector(AnomalyDetector):
         key = (entity_id, metric)
         buffer = self._buffers.get(key)
         if not buffer:
-            return AnomalyResult(entity_id=entity_id, is_anomaly=False, score=0.0,
-                                 metric_name=metric, detector_name="iforest")
+            return AnomalyResult(
+                entity_id=entity_id,
+                is_anomaly=False,
+                score=0.0,
+                metric_name=metric,
+                detector_name="iforest",
+            )
         return self._predict(entity_id, metric, buffer[-1])
 
     def reset(self, entity_id: str, metric: Optional[str] = None) -> None:
@@ -369,6 +436,7 @@ class IsolationForestDetector(AnomalyDetector):
 
 # ── Ensemble Detector ───────────────────────────────────────
 
+
 class EnsembleDetector(AnomalyDetector):
     """
     Combines multiple anomaly detectors via majority voting.
@@ -377,8 +445,9 @@ class EnsembleDetector(AnomalyDetector):
     The final score is the weighted average of individual scores.
     """
 
-    def __init__(self, detectors: Optional[List[AnomalyDetector]] = None,
-                 vote_threshold: int = 2):
+    def __init__(
+        self, detectors: Optional[List[AnomalyDetector]] = None, vote_threshold: int = 2
+    ):
         self.detectors = detectors or [
             ZScoreDetector(),
             MovingAverageDetector(),
@@ -386,7 +455,9 @@ class EnsembleDetector(AnomalyDetector):
         ]
         self.vote_threshold = vote_threshold
 
-    def ingest(self, entity_id: str, metric: str, point: TimeSeriesPoint) -> AnomalyResult:
+    def ingest(
+        self, entity_id: str, metric: str, point: TimeSeriesPoint
+    ) -> AnomalyResult:
         results = [d.ingest(entity_id, metric, point) for d in self.detectors]
         return self._combine(entity_id, metric, point.value, results)
 
@@ -395,8 +466,9 @@ class EnsembleDetector(AnomalyDetector):
         value = results[0].value if results else 0.0
         return self._combine(entity_id, metric, value, results)
 
-    def _combine(self, entity_id: str, metric: str, value: float,
-                 results: List[AnomalyResult]) -> AnomalyResult:
+    def _combine(
+        self, entity_id: str, metric: str, value: float, results: List[AnomalyResult]
+    ) -> AnomalyResult:
         votes = sum(1 for r in results if r.is_anomaly)
         avg_score = sum(r.score for r in results) / max(len(results), 1)
         is_anomaly = votes >= self.vote_threshold

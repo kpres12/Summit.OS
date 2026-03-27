@@ -11,6 +11,7 @@ cryptographically valid.
 
 Backed by Postgres (production) or SQLite (development).
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,7 +21,10 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger("summit.identity.registry")
 
-_DB_URL = os.getenv("POSTGRES_URL", "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os")
+_DB_URL = os.getenv(
+    "POSTGRES_URL",
+    "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os",
+)
 
 
 class DeviceRegistry:
@@ -44,7 +48,14 @@ class DeviceRegistry:
         """Connect to database and create tables if needed."""
         try:
             from sqlalchemy import (
-                MetaData, Table, Column, String, Boolean, DateTime, JSON, text
+                MetaData,
+                Table,
+                Column,
+                String,
+                Boolean,
+                DateTime,
+                JSON,
+                text,
             )
             from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
             from sqlalchemy.orm import sessionmaker
@@ -80,7 +91,9 @@ class DeviceRegistry:
             logger.info("DeviceRegistry initialized with Postgres")
 
         except Exception as e:
-            logger.warning(f"DeviceRegistry DB init failed — using in-memory store: {e}")
+            logger.warning(
+                f"DeviceRegistry DB init failed — using in-memory store: {e}"
+            )
             self._use_db = False
 
     async def register(
@@ -113,20 +126,28 @@ class DeviceRegistry:
         if self._use_db:
             try:
                 from sqlalchemy.dialects.postgresql import insert
+
                 async with self._SessionLocal() as session:
-                    stmt = insert(self._devices).values(
-                        device_id=device_id,
-                        fingerprint=fingerprint,
-                        device_type=device_type,
-                        org_id=org_id,
-                        capabilities=capabilities or [],
-                        revoked=False,
-                        registered_at=datetime.now(timezone.utc),
-                        metadata=metadata or {},
-                    ).on_conflict_do_update(
-                        index_elements=["device_id"],
-                        set_={"fingerprint": fingerprint, "revoked": False,
-                              "registered_at": datetime.now(timezone.utc)},
+                    stmt = (
+                        insert(self._devices)
+                        .values(
+                            device_id=device_id,
+                            fingerprint=fingerprint,
+                            device_type=device_type,
+                            org_id=org_id,
+                            capabilities=capabilities or [],
+                            revoked=False,
+                            registered_at=datetime.now(timezone.utc),
+                            metadata=metadata or {},
+                        )
+                        .on_conflict_do_update(
+                            index_elements=["device_id"],
+                            set_={
+                                "fingerprint": fingerprint,
+                                "revoked": False,
+                                "registered_at": datetime.now(timezone.utc),
+                            },
+                        )
                     )
                     await session.execute(stmt)
                     await session.commit()
@@ -171,6 +192,7 @@ class DeviceRegistry:
         if self._use_db:
             try:
                 from sqlalchemy import update
+
                 async with self._SessionLocal() as session:
                     await session.execute(
                         update(self._devices)
@@ -184,7 +206,9 @@ class DeviceRegistry:
 
         if device_id in self._mem_store:
             self._mem_store[device_id]["revoked"] = True
-            self._mem_store[device_id]["revoked_at"] = datetime.now(timezone.utc).isoformat()
+            self._mem_store[device_id]["revoked_at"] = datetime.now(
+                timezone.utc
+            ).isoformat()
 
         logger.warning(f"Device REVOKED: {device_id} (reason={reason!r})")
         return True
@@ -194,9 +218,12 @@ class DeviceRegistry:
         if self._use_db:
             try:
                 from sqlalchemy import select
+
                 async with self._SessionLocal() as session:
                     result = await session.execute(
-                        select(self._devices).where(self._devices.c.device_id == device_id)
+                        select(self._devices).where(
+                            self._devices.c.device_id == device_id
+                        )
                     )
                     row = result.fetchone()
                     if row:
@@ -211,6 +238,7 @@ class DeviceRegistry:
         if self._use_db:
             try:
                 from sqlalchemy import select
+
                 async with self._SessionLocal() as session:
                     q = select(self._devices)
                     if org_id:

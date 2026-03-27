@@ -24,6 +24,7 @@ Minimal integration:
     adapter = MyDrone(device_id="drone-01", device_type="DRONE")
     asyncio.run(adapter.start())
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -230,7 +231,12 @@ class SummitAdapter:
 
     async def _dispatch_command(self, topic: str, payload: Dict[str, Any]):
         """Route incoming MQTT messages to handle_command."""
-        cmd = payload.get("action") or payload.get("command") or payload.get("cmd") or "unknown"
+        cmd = (
+            payload.get("action")
+            or payload.get("command")
+            or payload.get("cmd")
+            or "unknown"
+        )
         params = payload.get("params") or payload.get("waypoints") or payload
         try:
             ok = await self.handle_command(cmd, params)
@@ -332,8 +338,19 @@ class SummitAdapter:
                         "metadata": {
                             "battery": telem.get("battery"),
                             "type": self.device_type,
-                            **{k: v for k, v in telem.items()
-                               if k not in ("lat", "lon", "alt", "battery", "status", "sensors")},
+                            **{
+                                k: v
+                                for k, v in telem.items()
+                                if k
+                                not in (
+                                    "lat",
+                                    "lon",
+                                    "alt",
+                                    "battery",
+                                    "status",
+                                    "sensors",
+                                )
+                            },
                         },
                         "ts": datetime.now(timezone.utc).isoformat(),
                     }

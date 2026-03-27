@@ -7,6 +7,7 @@ completion, and marks missions FAILED when telemetry goes stale.
 
 This closes the loop between "waypoints dispatched" and "mission actually done."
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,18 +26,21 @@ from sqlalchemy.orm import sessionmaker
 logger = logging.getLogger("tasking.execution_monitor")
 
 FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
-ARRIVAL_RADIUS_M  = float(os.getenv("EXEC_ARRIVAL_RADIUS_M", "20"))
+ARRIVAL_RADIUS_M = float(os.getenv("EXEC_ARRIVAL_RADIUS_M", "20"))
 STALE_TELEMETRY_S = float(os.getenv("EXEC_STALE_TELEMETRY_S", "60"))
-POLL_INTERVAL_S   = float(os.getenv("EXEC_MONITOR_POLL_S", "5"))
+POLL_INTERVAL_S = float(os.getenv("EXEC_MONITOR_POLL_S", "5"))
 
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance in metres."""
     R = 6_371_000.0
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi  = math.radians(lat2 - lat1)
-    dlam  = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    dphi = math.radians(lat2 - lat1)
+    dlam = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dphi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    )
     return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
@@ -50,8 +54,8 @@ async def _get_entity_position(asset_id: str) -> Optional[Dict[str, Any]]:
                 entity = data.get("entity") or data
                 pos = entity.get("position") or {}
                 return {
-                    "lat":      float(pos.get("lat") or entity.get("latitude") or 0),
-                    "lon":      float(pos.get("lon") or entity.get("longitude") or 0),
+                    "lat": float(pos.get("lat") or entity.get("latitude") or 0),
+                    "lon": float(pos.get("lon") or entity.get("longitude") or 0),
                     "last_seen": float(entity.get("last_seen") or time.time()),
                 }
     except Exception:
@@ -75,7 +79,7 @@ class ExecutionMonitor:
 
     def __init__(self, session_factory: sessionmaker, mqtt_client: Any):
         self._session_factory = session_factory
-        self._mqtt_client     = mqtt_client
+        self._mqtt_client = mqtt_client
 
     async def run(self):
         logger.info(f"ExecutionMonitor started (poll={POLL_INTERVAL_S}s)")
@@ -91,22 +95,28 @@ class ExecutionMonitor:
     async def _tick(self):
         async with self._session_factory() as session:
             # 1. Active missions
-            missions = (await session.execute(
-                text("SELECT mission_id, name FROM missions WHERE status = 'ACTIVE'")
-            )).fetchall()
+            missions = (
+                await session.execute(
+                    text(
+                        "SELECT mission_id, name FROM missions WHERE status = 'ACTIVE'"
+                    )
+                )
+            ).fetchall()
 
             for mission in missions:
                 mission_id = mission.mission_id
                 await self._check_mission(session, mission_id)
 
     async def _check_mission(self, session, mission_id: str):
-        rows = (await session.execute(
-            text(
-                "SELECT id, asset_id, plan, status FROM mission_assignments "
-                "WHERE mission_id = :mid AND status = 'ACTIVE'"
-            ),
-            {"mid": mission_id},
-        )).fetchall()
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT id, asset_id, plan, status FROM mission_assignments "
+                    "WHERE mission_id = :mid AND status = 'ACTIVE'"
+                ),
+                {"mid": mission_id},
+            )
+        ).fetchall()
 
         if not rows:
             return
@@ -126,7 +136,9 @@ class ExecutionMonitor:
             if next_wp is None:
                 # This assignment is complete
                 await session.execute(
-                    text("UPDATE mission_assignments SET status='COMPLETED' WHERE id=:id"),
+                    text(
+                        "UPDATE mission_assignments SET status='COMPLETED' WHERE id=:id"
+                    ),
                     {"id": row.id},
                 )
                 continue
@@ -149,7 +161,9 @@ class ExecutionMonitor:
                 return
 
             # Arrival check
-            dist_m = _haversine_m(pos["lat"], pos["lon"], next_wp["lat"], next_wp["lon"])
+            dist_m = _haversine_m(
+                pos["lat"], pos["lon"], next_wp["lat"], next_wp["lon"]
+            )
             if dist_m <= ARRIVAL_RADIUS_M:
                 logger.info(
                     f"Mission {mission_id}: asset {row.asset_id} reached "
@@ -200,11 +214,13 @@ class ExecutionMonitor:
     def _publish_mission_event(self, mission_id: str, status: str):
         if not self._mqtt_client:
             return
-        payload = json.dumps({
-            "mission_id": mission_id,
-            "status":     status,
-            "ts_iso":     datetime.now(timezone.utc).isoformat(),
-        })
+        payload = json.dumps(
+            {
+                "mission_id": mission_id,
+                "status": status,
+                "ts_iso": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         try:
             self._mqtt_client.publish("missions/updates", payload, qos=1)
             self._mqtt_client.publish(f"missions/{mission_id}", payload, qos=1)

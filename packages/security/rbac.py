@@ -10,6 +10,7 @@ Provides:
 Roles mirror defense/operator structure:
   VIEWER → OPERATOR → MISSION_COMMANDER → ADMIN → SUPER_ADMIN
 """
+
 from __future__ import annotations
 
 import time
@@ -47,6 +48,7 @@ class Resource(str, Enum):
 @dataclass
 class Permission:
     """A permission grants an action on a resource."""
+
     action: Action
     resource: Resource
     conditions: Dict[str, Any] = field(default_factory=dict)
@@ -69,6 +71,7 @@ class Permission:
 @dataclass
 class Role:
     """A role with a set of permissions and optional parent roles."""
+
     name: str
     description: str = ""
     permissions: Set[Permission] = field(default_factory=set)
@@ -96,76 +99,86 @@ class RBACEngine:
     def _init_default_roles(self):
         """Initialize default role hierarchy."""
         # VIEWER: read-only access to tracks and entities
-        self.add_role(Role(
-            name="VIEWER",
-            description="Read-only access to operational picture",
-            permissions={
-                Permission(Action.READ, Resource.ENTITIES),
-                Permission(Action.READ, Resource.TRACKS),
-                Permission(Action.READ, Resource.ANALYTICS),
-            },
-            max_classification="UNCLASSIFIED",
-        ))
+        self.add_role(
+            Role(
+                name="VIEWER",
+                description="Read-only access to operational picture",
+                permissions={
+                    Permission(Action.READ, Resource.ENTITIES),
+                    Permission(Action.READ, Resource.TRACKS),
+                    Permission(Action.READ, Resource.ANALYTICS),
+                },
+                max_classification="UNCLASSIFIED",
+            )
+        )
 
         # OPERATOR: can interact with tasks and sensors
-        self.add_role(Role(
-            name="OPERATOR",
-            description="Standard operator with task and sensor access",
-            permissions={
-                Permission(Action.READ, Resource.TASKS),
-                Permission(Action.WRITE, Resource.TASKS),
-                Permission(Action.READ, Resource.SENSORS),
-                Permission(Action.EXECUTE, Resource.SENSORS),
-                Permission(Action.READ, Resource.VEHICLES),
-                Permission(Action.READ, Resource.MESH),
-            },
-            parent_roles=["VIEWER"],
-            max_classification="CONFIDENTIAL",
-        ))
+        self.add_role(
+            Role(
+                name="OPERATOR",
+                description="Standard operator with task and sensor access",
+                permissions={
+                    Permission(Action.READ, Resource.TASKS),
+                    Permission(Action.WRITE, Resource.TASKS),
+                    Permission(Action.READ, Resource.SENSORS),
+                    Permission(Action.EXECUTE, Resource.SENSORS),
+                    Permission(Action.READ, Resource.VEHICLES),
+                    Permission(Action.READ, Resource.MESH),
+                },
+                parent_roles=["VIEWER"],
+                max_classification="CONFIDENTIAL",
+            )
+        )
 
         # MISSION_COMMANDER: can create/manage missions
-        self.add_role(Role(
-            name="MISSION_COMMANDER",
-            description="Mission planning and command authority",
-            permissions={
-                Permission(Action.READ, Resource.MISSIONS),
-                Permission(Action.WRITE, Resource.MISSIONS),
-                Permission(Action.EXECUTE, Resource.MISSIONS),
-                Permission(Action.WRITE, Resource.VEHICLES),
-                Permission(Action.EXECUTE, Resource.VEHICLES),
-                Permission(Action.DELETE, Resource.TASKS),
-            },
-            parent_roles=["OPERATOR"],
-            max_classification="SECRET",
-        ))
+        self.add_role(
+            Role(
+                name="MISSION_COMMANDER",
+                description="Mission planning and command authority",
+                permissions={
+                    Permission(Action.READ, Resource.MISSIONS),
+                    Permission(Action.WRITE, Resource.MISSIONS),
+                    Permission(Action.EXECUTE, Resource.MISSIONS),
+                    Permission(Action.WRITE, Resource.VEHICLES),
+                    Permission(Action.EXECUTE, Resource.VEHICLES),
+                    Permission(Action.DELETE, Resource.TASKS),
+                },
+                parent_roles=["OPERATOR"],
+                max_classification="SECRET",
+            )
+        )
 
         # ADMIN: system administration
-        self.add_role(Role(
-            name="ADMIN",
-            description="System administrator",
-            permissions={
-                Permission(Action.ADMIN, Resource.USERS),
-                Permission(Action.ADMIN, Resource.SYSTEM),
-                Permission(Action.ADMIN, Resource.MESH),
-                Permission(Action.READ, Resource.AUDIT),
-                Permission(Action.READ, Resource.CLASSIFICATION),
-                Permission(Action.WRITE, Resource.CLASSIFICATION),
-            },
-            parent_roles=["MISSION_COMMANDER"],
-            max_classification="TOP_SECRET",
-        ))
+        self.add_role(
+            Role(
+                name="ADMIN",
+                description="System administrator",
+                permissions={
+                    Permission(Action.ADMIN, Resource.USERS),
+                    Permission(Action.ADMIN, Resource.SYSTEM),
+                    Permission(Action.ADMIN, Resource.MESH),
+                    Permission(Action.READ, Resource.AUDIT),
+                    Permission(Action.READ, Resource.CLASSIFICATION),
+                    Permission(Action.WRITE, Resource.CLASSIFICATION),
+                },
+                parent_roles=["MISSION_COMMANDER"],
+                max_classification="TOP_SECRET",
+            )
+        )
 
         # SUPER_ADMIN: unrestricted access
-        self.add_role(Role(
-            name="SUPER_ADMIN",
-            description="Unrestricted system access",
-            permissions={
-                Permission(action, resource)
-                for action in Action
-                for resource in Resource
-            },
-            max_classification="TOP_SECRET_SCI",
-        ))
+        self.add_role(
+            Role(
+                name="SUPER_ADMIN",
+                description="Unrestricted system access",
+                permissions={
+                    Permission(action, resource)
+                    for action in Action
+                    for resource in Resource
+                },
+                max_classification="TOP_SECRET_SCI",
+            )
+        )
 
     def add_role(self, role: Role) -> None:
         """Register a role."""
@@ -192,8 +205,9 @@ class RBACEngine:
             return True
         return False
 
-    def check_permission(self, user_id: str, action: Action,
-                         resource: Resource) -> bool:
+    def check_permission(
+        self, user_id: str, action: Action, resource: Resource
+    ) -> bool:
         """
         Check if a user has permission for an action on a resource.
 
@@ -202,11 +216,15 @@ class RBACEngine:
         effective_perms = self.get_effective_permissions(user_id)
         granted = any(p.matches(action, resource) for p in effective_perms)
 
-        self._log_audit(user_id, "permission_check", {
-            "action": action.value,
-            "resource": resource.value,
-            "granted": granted,
-        })
+        self._log_audit(
+            user_id,
+            "permission_check",
+            {
+                "action": action.value,
+                "resource": resource.value,
+                "granted": granted,
+            },
+        )
 
         return granted
 
@@ -234,8 +252,13 @@ class RBACEngine:
     def get_max_classification(self, user_id: str) -> str:
         """Get the highest classification level a user can access."""
         roles = self._user_roles.get(user_id, set())
-        levels = ["UNCLASSIFIED", "CONFIDENTIAL", "SECRET",
-                  "TOP_SECRET", "TOP_SECRET_SCI"]
+        levels = [
+            "UNCLASSIFIED",
+            "CONFIDENTIAL",
+            "SECRET",
+            "TOP_SECRET",
+            "TOP_SECRET_SCI",
+        ]
 
         max_level = "UNCLASSIFIED"
         for role_name in roles:
@@ -263,8 +286,9 @@ class RBACEngine:
         if len(self._audit_log) > 10000:
             self._audit_log = self._audit_log[-10000:]
 
-    def get_audit_log(self, user_id: Optional[str] = None,
-                      limit: int = 100) -> List[Dict]:
+    def get_audit_log(
+        self, user_id: Optional[str] = None, limit: int = 100
+    ) -> List[Dict]:
         """Get audit log entries."""
         log = self._audit_log
         if user_id:

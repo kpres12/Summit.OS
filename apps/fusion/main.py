@@ -31,6 +31,7 @@ from sqlalchemy.orm import sessionmaker
 
 import paho.mqtt.client as mqtt
 import numpy as np
+
 try:
     import cv2
 except ImportError:
@@ -72,6 +73,7 @@ _last_bearings: dict[str, dict] = {}
 # Multi-sensor track fusion (Gap 1)
 try:
     from track_manager import TrackManager
+
     _track_manager: Optional[TrackManager] = TrackManager()
 except Exception:
     _track_manager = None  # type: ignore
@@ -79,6 +81,7 @@ except Exception:
 # Cross-camera re-identification (Gap 8)
 try:
     from reid import get_reid, AppearanceReID
+
     _reid: Optional[AppearanceReID] = get_reid()
 except Exception:
     _reid = None  # type: ignore
@@ -105,7 +108,7 @@ observations = Table(
     Column("ts", DateTime(timezone=True), nullable=False),
     Column("source", String(128)),
     Column("attributes", JSONB),
-    Column("org_id", String(128))
+    Column("org_id", String(128)),
 )
 
 
@@ -119,7 +122,12 @@ async def lifespan(app: FastAPI):
         return
 
     # Database setup
-    pg_url = _to_asyncpg_url(os.getenv("POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"))
+    pg_url = _to_asyncpg_url(
+        os.getenv(
+            "POSTGRES_URL",
+            "postgresql://summit:summit_password@localhost:5432/summit_os",
+        )
+    )
     engine = create_async_engine(pg_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
@@ -128,12 +136,18 @@ async def lifespan(app: FastAPI):
         # Optional Timescale hypertable setup
         try:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
-            await conn.execute(text("SELECT create_hypertable('observations','ts', if_not_exists => TRUE)"))
+            await conn.execute(
+                text(
+                    "SELECT create_hypertable('observations','ts', if_not_exists => TRUE)"
+                )
+            )
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
     # Load JSON schema for generic Observation
-    schema_path = os.getenv("OBSERVATION_SCHEMA_PATH", "/contracts/jsonschemas/observation.schema.json")
+    schema_path = os.getenv(
+        "OBSERVATION_SCHEMA_PATH", "/contracts/jsonschemas/observation.schema.json"
+    )
     try:
         with open(schema_path, "r") as f:
             smoke_schema = json.load(f)
@@ -147,7 +161,7 @@ async def lifespan(app: FastAPI):
                 "ts_iso": {"type": "string"},
                 "confidence": {"type": "number"},
                 "lat": {"type": "number"},
-                "lon": {"type": "number"}
+                "lon": {"type": "number"},
             },
             "required": ["class", "ts_iso", "confidence"],
         }
@@ -159,7 +173,9 @@ async def lifespan(app: FastAPI):
 
     # Ensure consumer group for observations
     try:
-        await redis_client.xgroup_create("observations_stream", "fusion", id="$", mkstream=True)
+        await redis_client.xgroup_create(
+            "observations_stream", "fusion", id="$", mkstream=True
+        )
     except Exception as e:
         # BUSYGROUP means it exists; ignore others for now
         if "BUSYGROUP" not in str(e):
@@ -172,16 +188,20 @@ async def lifespan(app: FastAPI):
         model_path = os.getenv("FUSION_MODEL_PATH") or None
         conf = float(os.getenv("FUSION_CONF_THRESHOLD", "0.6"))
         # Lazy create inference
-        globals()['vision'] = VisionInference(model_path=model_path, conf_threshold=conf)
+        globals()["vision"] = VisionInference(
+            model_path=model_path, conf_threshold=conf
+        )
         # Optional tracking
         enable_tracking = os.getenv("FUSION_ENABLE_TRACKING", "false").lower() == "true"
         if enable_tracking and SimpleTracker is not None:
-            globals()['tracker'] = SimpleTracker(iou_threshold=float(os.getenv("FUSION_TRACK_IOU", "0.3")),
-                                                max_age_s=float(os.getenv("FUSION_TRACK_MAX_AGE_S", "1.0")))
+            globals()["tracker"] = SimpleTracker(
+                iou_threshold=float(os.getenv("FUSION_TRACK_IOU", "0.3")),
+                max_age_s=float(os.getenv("FUSION_TRACK_MAX_AGE_S", "1.0")),
+            )
         # MQTT client to receive images
         broker = os.getenv("MQTT_BROKER", "localhost")
         port = int(os.getenv("MQTT_PORT", "1883"))
-        globals()['mqtt_client'] = mqtt.Client()
+        globals()["mqtt_client"] = mqtt.Client()
         mqtt_client.connect(broker, port, 60)
         mqtt_client.on_message = _on_mqtt_image
         mqtt_client.subscribe("images/#", qos=0)
@@ -216,7 +236,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in CORS_ORIGINS if o.strip()],
@@ -241,6 +263,7 @@ class Observation(BaseModel):
 async def health():
     return {"status": "ok", "service": "fusion"}
 
+
 @app.get("/readyz")
 async def readyz():
     try:
@@ -252,7 +275,9 @@ async def readyz():
         return {"status": "ready"}
     except Exception as e:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=503, detail=f"Not ready: {e}")
+
 
 @app.get("/livez")
 async def livez():
@@ -261,11 +286,17 @@ async def livez():
 
 from fastapi import Request as _Req
 
+
 async def _get_org_id(req: _Req) -> str | None:
     return req.headers.get("X-Org-ID") or req.headers.get("x-org-id")
 
+
 @app.get("/observations", response_model=List[Observation])
-async def list_observations(cls: Optional[str] = None, limit: int = 50, org_id: str | None = Depends(_get_org_id)):
+async def list_observations(
+    cls: Optional[str] = None,
+    limit: int = 50,
+    org_id: str | None = Depends(_get_org_id),
+):
     assert SessionLocal is not None
     async with SessionLocal() as session:
         base = "SELECT id, class as cls, lat, lon, confidence, ts, source, attributes FROM observations"
@@ -277,7 +308,11 @@ async def list_observations(cls: Optional[str] = None, limit: int = 50, org_id: 
         if org_id:
             where.append("org_id = :org_id")
             params["org_id"] = org_id
-        sql = base + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT :lim"
+        sql = (
+            base
+            + (" WHERE " + " AND ".join(where) if where else "")
+            + " ORDER BY id DESC LIMIT :lim"
+        )
         rows = (await session.execute(text(sql), params)).all()
         return [Observation(**dict(r._mapping)) for r in rows]
 
@@ -306,6 +341,7 @@ async def detect_and_track(payload: dict):
     image_b64 = payload.get("image_b64")
     if not image_b64:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail="image_b64 required")
 
     conf_thr = float(payload.get("confidence_threshold", 0.5))
@@ -316,14 +352,18 @@ async def detect_and_track(payload: dict):
     # Call inference service
     async with httpx.AsyncClient(timeout=15.0) as client:
         try:
-            r = await client.post(f"{INFERENCE_URL}/detect", json={
-                "image_b64": image_b64,
-                "confidence_threshold": conf_thr,
-            })
+            r = await client.post(
+                f"{INFERENCE_URL}/detect",
+                json={
+                    "image_b64": image_b64,
+                    "confidence_threshold": conf_thr,
+                },
+            )
             r.raise_for_status()
             result = r.json()
         except Exception as e:
             from fastapi import HTTPException
+
             raise HTTPException(status_code=502, detail=f"Inference error: {e}")
 
     detections = result.get("detections", [])
@@ -339,6 +379,7 @@ async def detect_and_track(payload: dict):
             if crop_b64:
                 try:
                     import base64 as _b64
+
                     crop_bytes = _b64.b64decode(crop_b64)
                     crop_arr = np.frombuffer(crop_bytes, np.uint8)
                     crop_img = cv2.imdecode(crop_arr, cv2.IMREAD_COLOR) if cv2 else None
@@ -347,7 +388,9 @@ async def detect_and_track(payload: dict):
                             crop_img, camera_id=str(device_id)
                         )
                         # Register this crop for future matching
-                        local_id = det.get("track_id") or det.get("id") or str(device_id)
+                        local_id = (
+                            det.get("track_id") or det.get("id") or str(device_id)
+                        )
                         _reid.update(str(local_id), crop_img, camera_id=str(device_id))
                 except Exception:
                     pass
@@ -371,7 +414,9 @@ async def detect_and_track(payload: dict):
         }
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                er = await client.post(f"{FABRIC_URL}/api/v1/entities", json=entity_payload)
+                er = await client.post(
+                    f"{FABRIC_URL}/api/v1/entities", json=entity_payload
+                )
                 if er.status_code == 200:
                     entities_created.append(er.json().get("entity", {}).get("id"))
         except Exception:
@@ -397,16 +442,18 @@ async def get_tracks(status: Optional[str] = None, limit: int = 100):
         if status and track.state != status.upper():
             continue
         state = track.ekf_state
-        tracks_out.append({
-            "track_id":   tid,
-            "state":      track.state,
-            "class":      track.class_label,
-            "confidence": track.confidence,
-            "lat":        float(state.x[0]) if state is not None else None,
-            "lon":        float(state.x[1]) if state is not None else None,
-            "last_seen":  track.last_seen,
-            "cameras":    _reid.get_track_cameras(tid) if _reid else [],
-        })
+        tracks_out.append(
+            {
+                "track_id": tid,
+                "state": track.state,
+                "class": track.class_label,
+                "confidence": track.confidence,
+                "lat": float(state.x[0]) if state is not None else None,
+                "lon": float(state.x[1]) if state is not None else None,
+                "last_seen": track.last_seen,
+                "cameras": _reid.get_track_cameras(tid) if _reid else [],
+            }
+        )
         if len(tracks_out) >= limit:
             break
     return {"tracks": tracks_out, "count": len(tracks_out)}
@@ -415,6 +462,7 @@ async def get_tracks(status: Optional[str] = None, limit: int = 100):
 # HLS video streaming (Gap 4)
 try:
     from hls_router import router as _hls_router
+
     app.include_router(_hls_router, prefix="/api/v1/video", tags=["video"])
 except Exception as _vs_err:
     logger.warning(f"HLS router not mounted: {_vs_err}")
@@ -426,6 +474,7 @@ async def get_models():
     root = os.getenv("MODEL_REGISTRY", "/models")
     return {"models": list_models(root)}
 
+
 @app.post("/models/select")
 async def set_model(payload: dict):
     path = payload.get("path")
@@ -436,7 +485,9 @@ async def set_model(payload: dict):
         return {"status": "ok", "path": path}
     except Exception as e:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail=str(e))
+
 
 # MQTT image handler and vision inference path
 def _on_mqtt_image(client, userdata, msg):
@@ -471,7 +522,10 @@ def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
                 ts_iso = meta.get("ts_iso")
                 if ts_iso:
                     from datetime import datetime
-                    ts = datetime.fromisoformat(str(ts_iso).replace("Z", "+00:00")).timestamp()
+
+                    ts = datetime.fromisoformat(
+                        str(ts_iso).replace("Z", "+00:00")
+                    ).timestamp()
             except Exception:
                 ts = None
             detections = tracker.update(detections, timestamp=ts)
@@ -482,10 +536,13 @@ def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
         logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
-async def _persist_observations_from_detections(detections: List[Dict[str, Any]], meta: Dict[str, Any]):
+async def _persist_observations_from_detections(
+    detections: List[Dict[str, Any]], meta: Dict[str, Any]
+):
     assert SessionLocal is not None
     assert redis_client is not None
     from datetime import datetime, timezone
+
     ts = datetime.now(timezone.utc)
     async with SessionLocal() as session:
         for det in detections:
@@ -524,54 +581,93 @@ async def _persist_observations_from_detections(detections: List[Dict[str, Any]]
 _last_simulation_ts: float | None = None
 _last_simulation_point: tuple[float, float] | None = None
 
+
 async def _redis_stream_consumer():
     """Consume observations from Fabric's Redis Stream using consumer groups."""
     assert SessionLocal is not None
     assert redis_client is not None
 
     import socket
+
     consumer_name = f"fusion-{socket.gethostname()}"
 
     while True:
         try:
             # Read from consumer group; '>' means new messages for this consumer
-            messages = await redis_client.xreadgroup("fusion", consumer_name, {"observations_stream": ">"}, count=10, block=1000)
+            messages = await redis_client.xreadgroup(
+                "fusion",
+                consumer_name,
+                {"observations_stream": ">"},
+                count=10,
+                block=1000,
+            )
 
             if not messages:
                 continue
 
             for stream_name, stream_messages in messages:
                 for msg_id, fields in stream_messages:
-                    
+
                     try:
                         # Parse payload from Fabric
                         payload = fields.get("payload")
                         if not payload:
                             continue
-                        
+
                         data = json.loads(payload)
-                        
+
                         # Validate
                         assert validator is not None
                         validator.validate(data)
-                        
+
                         # Extract fields
-                        lat = float(data.get("lat")) if data.get("lat") is not None else None
-                        lon = float(data.get("lon")) if data.get("lon") is not None else None
+                        lat = (
+                            float(data.get("lat"))
+                            if data.get("lat") is not None
+                            else None
+                        )
+                        lon = (
+                            float(data.get("lon"))
+                            if data.get("lon") is not None
+                            else None
+                        )
                         conf = float(data.get("confidence", 0.0))
                         ts_str = data.get("ts_iso")
                         try:
-                            ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00")) if ts_str else datetime.now(timezone.utc)
+                            ts = (
+                                datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                                if ts_str
+                                else datetime.now(timezone.utc)
+                            )
                         except Exception:
                             ts = datetime.now(timezone.utc)
-                        
+
                         source = data.get("source")
-                        attributes = {k: v for k, v in data.items() if k not in {"class", "lat", "lon", "confidence", "ts_iso", "source"}}
+                        attributes = {
+                            k: v
+                            for k, v in data.items()
+                            if k
+                            not in {
+                                "class",
+                                "lat",
+                                "lon",
+                                "confidence",
+                                "ts_iso",
+                                "source",
+                            }
+                        }
 
                         # Optional triangulation: if bearing present, combine with previous from different source
                         try:
-                            if bearing_intersection is not None and attributes and lat is not None and lon is not None:
-                                bdeg = attributes.get("bearing") or attributes.get("bearing_deg")
+                            if (
+                                bearing_intersection is not None
+                                and attributes
+                                and lat is not None
+                                and lon is not None
+                            ):
+                                bdeg = attributes.get("bearing") or attributes.get(
+                                    "bearing_deg"
+                                )
                                 if bdeg is not None:
                                     src = str(source or "")
                                     now_ts = datetime.now(timezone.utc).timestamp()
@@ -581,30 +677,75 @@ async def _redis_stream_consumer():
                                         if s != src and now_ts - rec.get("ts", 0) < 120:
                                             prev = rec
                                             break
-                                    _last_bearings[src] = {"lat": lat, "lon": lon, "bearing": float(bdeg), "ts": now_ts}
+                                    _last_bearings[src] = {
+                                        "lat": lat,
+                                        "lon": lon,
+                                        "bearing": float(bdeg),
+                                        "ts": now_ts,
+                                    }
                                     if prev:
-                                        inter = bearing_intersection(lat, lon, float(bdeg), prev["lat"], prev["lon"], float(prev["bearing"]))
+                                        inter = bearing_intersection(
+                                            lat,
+                                            lon,
+                                            float(bdeg),
+                                            prev["lat"],
+                                            prev["lon"],
+                                            float(prev["bearing"]),
+                                        )
                                         if inter:
                                             ilat, ilon = inter
                                             # push as observation ignition estimate
                                             async with SessionLocal() as session2:
                                                 await session2.execute(
                                                     observations.insert().values(
-                                                        **{"class": "ignition_estimate", "lat": ilat, "lon": ilon, "confidence": max(conf, 0.8), "ts": ts, "source": "triangulation", "attributes": {"from": [src, "prev" ]}}
+                                                        **{
+                                                            "class": "ignition_estimate",
+                                                            "lat": ilat,
+                                                            "lon": ilon,
+                                                            "confidence": max(
+                                                                conf, 0.8
+                                                            ),
+                                                            "ts": ts,
+                                                            "source": "triangulation",
+                                                            "attributes": {
+                                                                "from": [src, "prev"]
+                                                            },
+                                                        }
                                                     )
                                                 )
                                                 await session2.commit()
                                             # Also notify downstream via stream
                                             try:
-                                                await redis_client.xadd("observations_stream", {"topic": "fusion/triangulation", "payload": json.dumps({"class":"ignition_estimate","lat": ilat, "lon": ilon, "confidence": max(conf,0.8), "ts_iso": ts.isoformat(), "source":"triangulation"}), "ts": ts.isoformat()})
+                                                await redis_client.xadd(
+                                                    "observations_stream",
+                                                    {
+                                                        "topic": "fusion/triangulation",
+                                                        "payload": json.dumps(
+                                                            {
+                                                                "class": "ignition_estimate",
+                                                                "lat": ilat,
+                                                                "lon": ilon,
+                                                                "confidence": max(
+                                                                    conf, 0.8
+                                                                ),
+                                                                "ts_iso": ts.isoformat(),
+                                                                "source": "triangulation",
+                                                            }
+                                                        ),
+                                                        "ts": ts.isoformat(),
+                                                    },
+                                                )
                                             except Exception as e:
-                                                logger.debug("Suppressed error", exc_info=True)  # was: pass
+                                                logger.debug(
+                                                    "Suppressed error", exc_info=True
+                                                )  # was: pass
                         except Exception as e:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
-                        
+
                         # Check for duplicates
                         try:
                             import hashlib
+
                             sig_src = {
                                 "class": data.get("class"),
                                 "lat": lat,
@@ -613,15 +754,24 @@ async def _redis_stream_consumer():
                                 "ts": ts.isoformat(),
                                 "source": source,
                             }
-                            sig = hashlib.sha1(json.dumps(sig_src, sort_keys=True).encode("utf-8")).hexdigest()
+                            sig = hashlib.sha1(
+                                json.dumps(sig_src, sort_keys=True).encode("utf-8")
+                            ).hexdigest()
                             key = f"obs_seen:{sig}"
                             # setex 600s; if already exists, skip
-                            if await redis_client.set(key, "1", ex=600, nx=True) is None:
+                            if (
+                                await redis_client.set(key, "1", ex=600, nx=True)
+                                is None
+                            ):
                                 # duplicate
                                 try:
-                                    await redis_client.xack("observations_stream", "fusion", msg_id)
+                                    await redis_client.xack(
+                                        "observations_stream", "fusion", msg_id
+                                    )
                                 except Exception as e:
-                                    logger.debug("Suppressed error", exc_info=True)  # was: pass
+                                    logger.debug(
+                                        "Suppressed error", exc_info=True
+                                    )  # was: pass
                                 continue
                         except Exception as e:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
@@ -630,13 +780,24 @@ async def _redis_stream_consumer():
                         async with SessionLocal() as session:
                             await session.execute(
                                 observations.insert().values(
-                                    **{"class": data["class"], "lat": lat, "lon": lon, "confidence": conf, "ts": ts, "source": source, "attributes": attributes, "org_id": None}
+                                    **{
+                                        "class": data["class"],
+                                        "lat": lat,
+                                        "lon": lon,
+                                        "confidence": conf,
+                                        "ts": ts,
+                                        "source": source,
+                                        "attributes": attributes,
+                                        "org_id": None,
+                                    }
                                 )
                             )
                             await session.commit()
                         # Ack message
                         try:
-                            await redis_client.xack("observations_stream", "fusion", msg_id)
+                            await redis_client.xack(
+                                "observations_stream", "fusion", msg_id
+                            )
                         except Exception as e:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
@@ -644,28 +805,49 @@ async def _redis_stream_consumer():
                         try:
                             cls_lower = str(data.get("class", "")).lower()
                             is_smoke = cls_lower in {"smoke", "fire.smoke", "fire"}
-                            conf_thr = float(os.getenv("SENTINEL_TRIGGER_CONF_THRESHOLD", "0.7"))
-                            debounce_s = float(os.getenv("SENTINEL_TRIGGER_DEBOUNCE_S", "60"))
-                            radius_m = float(os.getenv("SENTINEL_TRIGGER_DEBOUNCE_RADIUS_M", "200"))
+                            conf_thr = float(
+                                os.getenv("SENTINEL_TRIGGER_CONF_THRESHOLD", "0.7")
+                            )
+                            debounce_s = float(
+                                os.getenv("SENTINEL_TRIGGER_DEBOUNCE_S", "60")
+                            )
+                            radius_m = float(
+                                os.getenv("SENTINEL_TRIGGER_DEBOUNCE_RADIUS_M", "200")
+                            )
 
-                            if is_smoke and lat is not None and lon is not None and conf >= conf_thr:
+                            if (
+                                is_smoke
+                                and lat is not None
+                                and lon is not None
+                                and conf >= conf_thr
+                            ):
                                 # Debounce: skip if last call was very recent and nearby
                                 from time import time as _now
+
                                 global _last_simulation_ts, _last_simulation_point
                                 now_s = _now()
                                 should_call = True
-                                if _last_simulation_ts is not None and _last_simulation_point is not None:
+                                if (
+                                    _last_simulation_ts is not None
+                                    and _last_simulation_point is not None
+                                ):
                                     dt = now_s - _last_simulation_ts
                                     if dt < debounce_s:
                                         # compute haversine distance
                                         from math import radians, sin, cos, sqrt, atan2
+
                                         R = 6371000.0
                                         lat1, lon1 = map(radians, [lat, lon])
-                                        lat2, lon2 = map(radians, _last_simulation_point)
+                                        lat2, lon2 = map(
+                                            radians, _last_simulation_point
+                                        )
                                         dlat = lat2 - lat1
                                         dlon = lon2 - lon1
-                                        a = sin(dlat/2)**2 + cos(lat1)*cos(lat2)*sin(dlon/2)**2
-                                        dist = 2*R*atan2(sqrt(a), sqrt(1-a))
+                                        a = (
+                                            sin(dlat / 2) ** 2
+                                            + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+                                        )
+                                        dist = 2 * R * atan2(sqrt(a), sqrt(1 - a))
                                         if dist < radius_m:
                                             should_call = False
                                 if should_call:
@@ -673,24 +855,47 @@ async def _redis_stream_consumer():
                                     _last_simulation_point = (lat, lon)
                                     # Build basic conditions from attributes if present
                                     cond = {
-                                        "temperature_c": attributes.get("temperature") if isinstance(attributes, dict) else None,
-                                        "relative_humidity": attributes.get("humidity") if isinstance(attributes, dict) else None,
-                                        "wind_speed_mps": attributes.get("wind_speed") if isinstance(attributes, dict) else None,
-                                        "wind_direction_deg": attributes.get("wind_direction") if isinstance(attributes, dict) else None,
-                                        "elevation_m": attributes.get("elevation") if isinstance(attributes, dict) else None,
+                                        "temperature_c": (
+                                            attributes.get("temperature")
+                                            if isinstance(attributes, dict)
+                                            else None
+                                        ),
+                                        "relative_humidity": (
+                                            attributes.get("humidity")
+                                            if isinstance(attributes, dict)
+                                            else None
+                                        ),
+                                        "wind_speed_mps": (
+                                            attributes.get("wind_speed")
+                                            if isinstance(attributes, dict)
+                                            else None
+                                        ),
+                                        "wind_direction_deg": (
+                                            attributes.get("wind_direction")
+                                            if isinstance(attributes, dict)
+                                            else None
+                                        ),
+                                        "elevation_m": (
+                                            attributes.get("elevation")
+                                            if isinstance(attributes, dict)
+                                            else None
+                                        ),
                                     }
-                                    from sentinel_client import simulate_spread as _sentinel_sim
+                                    from sentinel_client import (
+                                        simulate_spread as _sentinel_sim,
+                                    )
+
                                     asyncio.create_task(_sentinel_sim(lat, lon, cond))
                         except Exception as _e:
                             # Non-fatal; continue stream processing
                             pass
-                    
+
                     except Exception as e:
                         print(f"Failed to process observation: {e}")
                         # DLQ: record bad payload for later inspection and ack to avoid poison pill
                         try:
                             if redis_client is not None:
-                                bad_payload = payload if 'payload' in locals() else None
+                                bad_payload = payload if "payload" in locals() else None
                                 await redis_client.xadd(
                                     "observations_dlq",
                                     {
@@ -700,13 +905,17 @@ async def _redis_stream_consumer():
                                     },
                                 )
                                 try:
-                                    await redis_client.xack("observations_stream", "fusion", msg_id)
+                                    await redis_client.xack(
+                                        "observations_stream", "fusion", msg_id
+                                    )
                                 except Exception as e:
-                                    logger.debug("Suppressed error", exc_info=True)  # was: pass
+                                    logger.debug(
+                                        "Suppressed error", exc_info=True
+                                    )  # was: pass
                         except Exception as e:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
                         continue
-        
+
         except Exception as e:
             print(f"Redis stream consumer error: {e}")
             try:
