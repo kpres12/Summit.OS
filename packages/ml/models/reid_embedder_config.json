@@ -1,0 +1,12 @@
+{
+  "input_size": [
+    128,
+    64
+  ],
+  "embedding_dim": 128,
+  "channels": 3,
+  "normalize": true,
+  "backend": "pytorch",
+  "trained_on": "Market-1501 (12936 real crops, 751 identities)",
+  "recall_at_1": 0.7559
+}

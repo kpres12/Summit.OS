@@ -247,30 +247,34 @@ def download_dfire() -> Dict[str, int]:
     images_extracted = 0
     labels_extracted = 0
 
+    # First pass: print a few paths so we can see the actual archive structure
+    # D-Fire has shipped with several layouts over time:
+    #   DFireDataset-master/Train/images/img.jpg  (older)
+    #   DFireDataset-master/images/train/img.jpg  (newer)
+    #   DFireDataset-master/Train/img.jpg          (flat)
+    # Accept any .jpg/.png/.jpeg regardless of directory depth.
     try:
         with zipfile.ZipFile(zip_path, "r") as zf:
             members = zf.namelist()
-            # D-Fire structure: DFireDataset-master/Train/images/, Train/labels/, Test/images/, Test/labels/
+            sample = [m for m in members if not m.endswith("/")][:5]
+            print(f"  Archive sample paths: {sample}")
+
             for member in members:
                 lower = member.lower()
-                # Images
-                if ("/images/" in lower or "/image/" in lower) and lower.endswith((".jpg", ".jpeg", ".png")):
-                    fname = os.path.basename(member)
-                    if not fname:
-                        continue
-                    # Preserve train/test split prefix in filename to avoid collisions
-                    prefix = "train_" if "/train/" in lower else "test_"
+                fname = os.path.basename(member)
+                if not fname or "__macosx" in lower or fname.startswith("."):
+                    continue
+                # Images — accept any jpg/jpeg/png in the archive
+                if lower.endswith((".jpg", ".jpeg", ".png")):
+                    prefix = "train_" if "train" in lower else "test_"
                     out_path = os.path.join(dest, "images", prefix + fname)
                     os.makedirs(os.path.dirname(out_path), exist_ok=True)
                     with zf.open(member) as src, open(out_path, "wb") as tgt:
                         tgt.write(src.read())
                     images_extracted += 1
-                # Labels (YOLO format)
-                elif ("/labels/" in lower or "/label/" in lower) and lower.endswith(".txt"):
-                    fname = os.path.basename(member)
-                    if not fname:
-                        continue
-                    prefix = "train_" if "/train/" in lower else "test_"
+                # Labels — .txt files that are YOLO annotations (skip README etc.)
+                elif lower.endswith(".txt") and fname.lower() not in ("readme.txt", "license.txt", "classes.txt"):
+                    prefix = "train_" if "train" in lower else "test_"
                     label_path = os.path.join(dest, "labels", prefix + fname)
                     os.makedirs(os.path.dirname(label_path), exist_ok=True)
                     with zf.open(member) as src:

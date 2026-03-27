@@ -1,0 +1,20 @@
+{
+  "0": "smoke",
+  "1": "fire",
+  "2": "fire_front",
+  "3": "person",
+  "4": "person_water",
+  "5": "life_raft",
+  "6": "oil_spill",
+  "7": "pipeline_damage",
+  "8": "chemical_plume",
+  "9": "crop_disease",
+  "10": "pest_damage",
+  "11": "dry_field",
+  "12": "vessel",
+  "13": "vessel_distress",
+  "14": "power_line_damage",
+  "15": "structural_crack",
+  "16": "solar_defect",
+  "17": "dangerous_animal"
+}
