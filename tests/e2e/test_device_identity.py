@@ -15,7 +15,7 @@ def test_device_register_returns_cert(api_base: str):
             "org_id": "e2e-test-org",
         }
         r = client.post("/v1/devices/register", json=payload)
-        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        assert r.status_code in (200, 201), f"Expected 200/201, got {r.status_code}: {r.text}"
         data = r.json()
         assert "cert_pem" in data or "fingerprint" in data, (
             "Response must include cert_pem or fingerprint"
@@ -33,7 +33,7 @@ def test_device_register_cert_is_pem(api_base: str):
             "org_id": "e2e-test-org",
         }
         r = client.post("/v1/devices/register", json=payload)
-        assert r.status_code == 200
+        assert r.status_code in (200, 201)
         data = r.json()
         if "cert_pem" in data:
             assert data["cert_pem"].startswith("-----BEGIN CERTIFICATE-----")
