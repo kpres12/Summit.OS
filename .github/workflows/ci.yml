@@ -171,7 +171,10 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
           GATEWAY_TEST_MODE: "true"
+          SUMMIT_CA_CERT: /tmp/summit-certs/summit-ca.crt
+          SUMMIT_CA_KEY: /tmp/summit-certs/summit-ca.key
         run: |
+          mkdir -p /tmp/summit-certs
           python -m pytest tests/e2e/test_api_version.py \
                            tests/e2e/test_device_identity.py \
             -v --tb=short
