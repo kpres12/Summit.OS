@@ -103,6 +103,24 @@ except Exception:
 # Test mode
 TASKING_TEST_MODE = os.getenv("TASKING_TEST_MODE", "false").lower() == "true"
 
+# ── Capability status at startup ──────────────────────────────────────────────
+def _log_capabilities() -> None:
+    """Log which optional subsystems loaded successfully so degraded state is visible."""
+    _OK  = "✓"
+    _OFF = "✗"
+    logger.info("─── Tasking service capabilities ───────────────────────────────")
+    logger.info("  %s  State machine      (mission lifecycle tracking)", _OK if STATE_MACHINE_AVAILABLE else _OFF)
+    logger.info("  %s  Assignment engine  (intent-based asset scoring)", _OK if ASSIGNMENT_ENGINE_AVAILABLE else _OFF)
+    logger.info("  %s  Coverage patterns  (grid/spiral/perimeter planners)", _OK if COVERAGE_PATTERNS_AVAILABLE else _OFF)
+    logger.info("  %s  World store        (mission entities in world model)", _OK if WORLD_STORE_AVAILABLE else _OFF)
+    logger.info("  %s  Prometheus metrics", _OK if PROM_AVAILABLE else _OFF)
+    logger.info("  %s  OIDC auth          (jose/jwt available)", _OK if OIDC_AVAILABLE else _OFF)
+    if not STATE_MACHINE_AVAILABLE:
+        logger.warning("  State machine unavailable — missions will not track PLANNING→ACTIVE lifecycle states")
+    if not WORLD_STORE_AVAILABLE:
+        logger.warning("  World store unavailable — missions will not appear in the real-time entity stream")
+    logger.info("────────────────────────────────────────────────────────────────")
+
 # Globals
 engine: Optional[AsyncEngine] = None
 SessionLocal: Optional[sessionmaker] = None
@@ -308,6 +326,8 @@ def _to_asyncpg_url(url: str) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, SessionLocal, mqtt_client
+
+    _log_capabilities()
 
     # DB setup
     if TASKING_TEST_MODE:

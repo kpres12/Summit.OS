@@ -1,3 +1,29 @@
+# Summit.OS — Docker Compose
+#
+# PROFILES
+# --------
+# (no profile)          Minimal — postgres, redis, mqtt, fabric, api-gateway, console
+#                       Gives you the real-time map + auth. Fast first-run experience.
+#
+# --profile full        Everything — adds fusion, intelligence, tasking, inference,
+#                       adapters (OpenSky/CelesTrak), plainview-adapter, keycloak-init
+#
+# --profile observability  Adds Prometheus, Alertmanager, Grafana, OPA, Jaeger
+#
+# --profile llm         Adds Ollama (local LLM brain — pull model after first start:
+#                       docker compose --profile llm exec ollama ollama pull llama3.1)
+#
+# --profile traefik     Adds Traefik HTTPS reverse proxy (set DOMAIN + ACME_EMAIL in .env)
+#
+# --profile keycloak    Adds Keycloak DB init (needed when wiring external Keycloak OIDC)
+#
+# --profile mtls        Adds nginx mTLS front-proxies
+#
+# EXAMPLES
+# --------
+#   docker compose up                                    # minimal, just the UI
+#   docker compose --profile full up                     # full intelligence stack
+#   docker compose --profile full --profile observability up  # full + monitoring
 
 services:
   # Infrastructure Services
@@ -56,9 +82,11 @@ services:
       retries: 5
 
   # One-time init: create the keycloak database in Postgres
+  # Only needed when running Keycloak OIDC. Enable with: --profile keycloak
   keycloak-db-init:
     image: postgres:15-alpine
     container_name: summit-keycloak-db-init
+    profiles: ["keycloak", "full"]
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:-summit_password}
     command: >
@@ -108,6 +136,7 @@ services:
     build:
       context: ../../apps/fusion
       dockerfile: Dockerfile
+    profiles: ["full"]
     container_name: summit-fusion
     ports:
       - "8002:8002"
@@ -149,6 +178,7 @@ services:
     build:
       context: ../../apps/intelligence
       dockerfile: Dockerfile
+    profiles: ["full"]
     container_name: summit-intelligence
     ports:
       - "8003:8003"
@@ -194,6 +224,7 @@ services:
       dockerfile: Dockerfile
       args:
         INCLUDE_PYMAVLINK: ${INCLUDE_PYMAVLINK-false}
+    profiles: ["full"]
     container_name: summit-tasking
     ports:
       - "8004:8004"
@@ -230,6 +261,7 @@ services:
     build:
       context: ../../apps/plainview-adapter
       dockerfile: Dockerfile
+    profiles: ["full"]
     container_name: summit-plainview-adapter
     ports:
       - "8005:8005"
@@ -258,6 +290,7 @@ services:
     build:
       context: ../../apps/inference
       dockerfile: Dockerfile
+    profiles: ["full"]
     container_name: summit-inference
     ports:
       - "8006:8006"
@@ -320,14 +353,10 @@ services:
     depends_on:
       fabric:
         condition: service_started
-      fusion:
-        condition: service_started
-      intelligence:
-        condition: service_started
-      tasking:
-        condition: service_started
       postgres:
         condition: service_healthy
+      # fusion, intelligence, tasking are full-profile services — api-gateway
+      # starts without them (their endpoints return 502 until --profile full)
     volumes:
       - ../../:/workspace
       - ../../apps/api-gateway:/app
@@ -437,6 +466,7 @@ services:
     build:
       context: ../../adapters
       dockerfile: Dockerfile
+    profiles: ["full"]
     container_name: summit-adapters
     environment:
       - MQTT_HOST=mqtt
@@ -463,9 +493,10 @@ services:
         condition: service_started
     restart: unless-stopped
 
-  # Observability
+  # Observability  (enable with: --profile observability)
   prometheus:
     image: prom/prometheus:latest
+    profiles: ["observability", "full"]
     container_name: summit-prometheus
     ports:
       - "9090:9090"
@@ -480,6 +511,7 @@ services:
 
   alertmanager:
     image: prom/alertmanager:latest
+    profiles: ["observability", "full"]
     container_name: summit-alertmanager
     ports:
       - "9093:9093"
@@ -493,6 +525,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    profiles: ["observability", "full"]
     container_name: summit-grafana
     ports:
       - "3001:3000"
@@ -505,6 +538,7 @@ services:
 
   opa:
     image: openpolicyagent/opa:latest-rootless
+    profiles: ["observability", "full"]
     container_name: summit-opa
     command: ["run", "--server", "/policy/policy.rego"]
     ports:
@@ -514,6 +548,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.52
+    profiles: ["observability", "full"]
     container_name: summit-jaeger
     ports:
       - "16686:16686"  # Jaeger UI
