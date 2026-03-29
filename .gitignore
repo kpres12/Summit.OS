@@ -173,3 +173,4 @@ docs/_build/
 # Downloaded model weights and test images
 *.pt
 bus.jpg
+*.mmdb
