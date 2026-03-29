@@ -4,15 +4,25 @@ Audit logging middleware for the Summit API Gateway.
 Captures security-relevant events and writes them to an append-only
 audit_log table in Postgres via asyncpg. Non-blocking: a failure to
 write an audit record NEVER fails the originating request.
+
+S3 shipping (optional):
+  Set AWS_AUDIT_BUCKET to enable. Audit records are batched in memory and
+  flushed to S3 every AUDIT_S3_FLUSH_INTERVAL seconds (default 300) or every
+  AUDIT_S3_BATCH_SIZE records (default 500), whichever comes first.
+  S3 keys:  audit/YYYY/MM/DD/HH/{uuid}.ndjson
+  IAM minimum: s3:PutObject on the configured bucket.
 """
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
+import os
 import time
 import uuid
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -28,6 +38,71 @@ logger = logging.getLogger("api-gateway.audit")
 # Module-level pool — initialised by init_audit_log()
 # ---------------------------------------------------------------------------
 _audit_pool: Optional[asyncpg.Pool] = None
+
+# ---------------------------------------------------------------------------
+# S3 shipping state
+# ---------------------------------------------------------------------------
+_S3_BUCKET: str = os.getenv("AWS_AUDIT_BUCKET", "")
+_S3_REGION: str = os.getenv("AWS_REGION", "us-east-1")
+_S3_BATCH_SIZE: int = int(os.getenv("AUDIT_S3_BATCH_SIZE", "500"))
+_S3_FLUSH_INTERVAL: int = int(os.getenv("AUDIT_S3_FLUSH_INTERVAL", "300"))  # seconds
+
+_s3_buffer: deque[dict] = deque()
+_s3_flush_task: Optional[asyncio.Task] = None
+
+
+async def _flush_to_s3(records: list[dict]) -> None:
+    """Ship a batch of audit records to S3 as NDJSON. Never raises."""
+    if not records or not _S3_BUCKET:
+        return
+    try:
+        import asyncio
+        import boto3  # type: ignore
+
+        now = datetime.now(timezone.utc)
+        key = (
+            f"audit/{now.year:04d}/{now.month:02d}/{now.day:02d}/"
+            f"{now.hour:02d}/{uuid.uuid4()}.ndjson"
+        )
+        body = "\n".join(json.dumps(r, default=str) for r in records)
+
+        def _put():
+            s3 = boto3.client("s3", region_name=_S3_REGION)
+            s3.put_object(
+                Bucket=_S3_BUCKET,
+                Key=key,
+                Body=body.encode("utf-8"),
+                ContentType="application/x-ndjson",
+                ServerSideEncryption="AES256",
+            )
+
+        await asyncio.to_thread(_put)
+        logger.debug("Audit S3: shipped %d records → s3://%s/%s", len(records), _S3_BUCKET, key)
+    except Exception as exc:
+        logger.warning("Audit S3 flush failed (non-fatal, records not lost from DB): %s", exc)
+
+
+async def _s3_flush_loop() -> None:
+    """Background task: flush S3 buffer every _S3_FLUSH_INTERVAL seconds."""
+    while True:
+        await asyncio.sleep(_S3_FLUSH_INTERVAL)
+        if _s3_buffer:
+            batch = []
+            while _s3_buffer:
+                batch.append(_s3_buffer.popleft())
+            await _flush_to_s3(batch)
+
+
+def _s3_buffer_record(record: dict) -> None:
+    """Add a record to the S3 buffer; flush immediately if batch is full."""
+    if not _S3_BUCKET:
+        return
+    _s3_buffer.append(record)
+    if len(_s3_buffer) >= _S3_BATCH_SIZE:
+        batch = []
+        while _s3_buffer:
+            batch.append(_s3_buffer.popleft())
+        asyncio.create_task(_flush_to_s3(batch))
 
 # ---------------------------------------------------------------------------
 # DDL — table + indexes (idempotent)
@@ -85,8 +160,8 @@ def _to_asyncpg_url(url: str) -> str:
 
 
 async def init_audit_log(database_url: str) -> None:
-    """Create the asyncpg pool and ensure the audit_log table exists."""
-    global _audit_pool
+    """Create the asyncpg pool, ensure the audit_log table, and start S3 flush loop."""
+    global _audit_pool, _s3_flush_task
     try:
         dsn = _to_asyncpg_url(database_url)
         _audit_pool = await asyncpg.create_pool(dsn, min_size=1, max_size=5)
@@ -100,10 +175,31 @@ async def init_audit_log(database_url: str) -> None:
         logger.warning("Audit log init failed (non-fatal): %s", exc)
         _audit_pool = None
 
+    if _S3_BUCKET:
+        _s3_flush_task = asyncio.create_task(_s3_flush_loop())
+        logger.info(
+            "Audit S3 shipping enabled → s3://%s (flush every %ds or %d records)",
+            _S3_BUCKET, _S3_FLUSH_INTERVAL, _S3_BATCH_SIZE,
+        )
+    else:
+        logger.info("Audit S3 shipping disabled (AWS_AUDIT_BUCKET not set)")
+
 
 async def close_audit_log() -> None:
-    """Gracefully close the asyncpg pool on shutdown."""
-    global _audit_pool
+    """Flush S3 buffer and close the asyncpg pool on shutdown."""
+    global _audit_pool, _s3_flush_task
+
+    # Cancel the periodic flush task
+    if _s3_flush_task is not None:
+        _s3_flush_task.cancel()
+        _s3_flush_task = None
+
+    # Final S3 flush — ship any buffered records before shutdown
+    if _s3_buffer:
+        batch = list(_s3_buffer)
+        _s3_buffer.clear()
+        await _flush_to_s3(batch)
+
     if _audit_pool is not None:
         try:
             await _audit_pool.close()
@@ -332,6 +428,25 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         if qs:
             extra["query_string"] = qs
 
+        record = {
+            "event_id": event_id,
+            "timestamp": timestamp.isoformat(),
+            "event_type": event_type,
+            "user_id": user_id,
+            "user_email": user_email,
+            "ip_address": ip_address,
+            "method": method,
+            "path": path,
+            "status_code": status_code,
+            "duration_ms": duration_ms,
+            "extra": extra,
+        }
+
+        # S3 buffer (async, non-blocking)
+        _s3_buffer_record(record)
+
+        if _audit_pool is None:
+            return
         try:
             async with _audit_pool.acquire() as conn:
                 await conn.execute(

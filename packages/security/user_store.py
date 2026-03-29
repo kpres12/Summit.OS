@@ -68,7 +68,8 @@ user_mfa = Table(
     Column("backup_codes_remaining", Integer, default=0),
     Column(
         "mfa_method", String(32), default="none"
-    ),  # 'none', 'totp', 'webauthn', 'both'
+    ),  # 'none', 'totp', 'webauthn', 'both', 'yubikey_otp'
+    Column("yubikey_identity", String(12), nullable=True),  # 12-char Yubico OTP public id
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
 )
@@ -701,3 +702,43 @@ class UserMFAStore:
             )
             count = result.scalar()
         return count or 0
+
+    async def get_yubikey_identity(self, user_id: str) -> Optional[str]:
+        """
+        Return the stored YubiKey OTP public identity (12-char modhex) for a user,
+        or None if no YubiKey OTP is registered.
+        """
+        async with self._engine.connect() as conn:
+            result = await conn.execute(
+                select(user_mfa.c.yubikey_identity).where(
+                    user_mfa.c.user_id == user_id
+                )
+            )
+            row = result.fetchone()
+        return row[0] if row else None
+
+    async def set_yubikey_identity(
+        self, user_id: str, identity: Optional[str]
+    ) -> None:
+        """
+        Store or clear a YubiKey OTP public identity for a user.
+
+        Args:
+            user_id: The user to update.
+            identity: 12-char modhex identity, or None to remove.
+        """
+        now = _now()
+        async with self._engine.begin() as conn:
+            existing = await conn.execute(
+                select(user_mfa.c.user_id).where(user_mfa.c.user_id == user_id)
+            )
+            if existing.fetchone():
+                await conn.execute(
+                    update(user_mfa)
+                    .where(user_mfa.c.user_id == user_id)
+                    .values(yubikey_identity=identity, updated_at=now)
+                )
+            else:
+                logger.warning(
+                    "set_yubikey_identity: user %s not found in user_mfa", user_id
+                )
