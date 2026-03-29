@@ -2,14 +2,23 @@
 Summit.OS Secret Client
 
 Resolves secrets with this priority chain:
-  1. HashiCorp Vault (KV v2) — production
-  2. Environment variable — development / fallback
-  3. Default value — non-sensitive config only
+  1. Infisical (cloud or self-hosted) — if INFISICAL_TOKEN is set
+  2. HashiCorp Vault (KV v2)         — if VAULT_ADDR is set
+  3. Environment variable            — development / fallback
+  4. Default value                   — non-sensitive config only
 
-This means you can run Summit.OS locally with plain env vars
-and deploy to production with Vault — zero code changes.
+This means you can run Summit.OS locally with plain env vars,
+move to Infisical (free) for a small team, or Vault for enterprise —
+zero code changes required.
 
 Environment variables:
+    # Infisical (https://infisical.com — free cloud or self-hosted)
+    INFISICAL_TOKEN       - Service token from Infisical project settings
+    INFISICAL_PROJECT_ID  - Infisical project ID
+    INFISICAL_ENVIRONMENT - "production" | "staging" | "development" (default: production)
+    INFISICAL_SITE_URL    - Self-hosted URL (default: https://app.infisical.com)
+
+    # HashiCorp Vault
     VAULT_ADDR          - Vault server URL (e.g. "https://vault.internal:8200")
     VAULT_TOKEN         - Vault token (for token auth)
     VAULT_ROLE_ID       - AppRole RoleID (for AppRole auth)
@@ -17,7 +26,8 @@ Environment variables:
     VAULT_NAMESPACE     - Vault namespace (Vault Enterprise only)
     VAULT_PATH_PREFIX   - KV path prefix (default: "summit")
     VAULT_MOUNT         - KV v2 mount path (default: "secret")
-    SECRET_BACKEND      - "vault" | "env" (default: auto-detect based on VAULT_ADDR)
+
+    SECRET_BACKEND      - "infisical" | "vault" | "env" (default: auto-detect)
 
 Usage:
     from packages.secrets import get_secret
@@ -45,6 +55,11 @@ _VAULT_MOUNT = os.getenv("VAULT_MOUNT", "secret")
 _VAULT_PATH_PREFIX = os.getenv("VAULT_PATH_PREFIX", "summit")
 _SECRET_BACKEND = os.getenv("SECRET_BACKEND", "auto")
 
+_INFISICAL_TOKEN = os.getenv("INFISICAL_TOKEN", "")
+_INFISICAL_PROJECT_ID = os.getenv("INFISICAL_PROJECT_ID", "")
+_INFISICAL_ENVIRONMENT = os.getenv("INFISICAL_ENVIRONMENT", "production")
+_INFISICAL_SITE_URL = os.getenv("INFISICAL_SITE_URL", "https://app.infisical.com")
+
 # Module-level token cache (filled by AppRole auth)
 _cached_token: Optional[str] = None
 
@@ -66,6 +81,10 @@ class SecretClient:
         mount: str = _VAULT_MOUNT,
         path_prefix: str = _VAULT_PATH_PREFIX,
         backend: str = _SECRET_BACKEND,
+        infisical_token: str = _INFISICAL_TOKEN,
+        infisical_project_id: str = _INFISICAL_PROJECT_ID,
+        infisical_environment: str = _INFISICAL_ENVIRONMENT,
+        infisical_site_url: str = _INFISICAL_SITE_URL,
     ):
         self.vault_addr = vault_addr.rstrip("/")
         self.vault_token = vault_token
@@ -74,14 +93,29 @@ class SecretClient:
         self.namespace = namespace
         self.mount = mount
         self.path_prefix = path_prefix
-        self._use_vault = self._should_use_vault(backend)
+        self.infisical_token = infisical_token
+        self.infisical_project_id = infisical_project_id
+        self.infisical_environment = infisical_environment
+        self.infisical_site_url = infisical_site_url.rstrip("/")
+        self._use_infisical = self._should_use_infisical(backend)
+        self._use_vault = self._should_use_vault(backend) and not self._use_infisical
 
-        if self._use_vault:
-            logger.info(f"SecretClient: using Vault at {self.vault_addr}")
+        if self._use_infisical:
+            logger.info("SecretClient: using Infisical at %s", self.infisical_site_url)
+        elif self._use_vault:
+            logger.info("SecretClient: using Vault at %s", self.vault_addr)
         else:
             logger.info(
-                "SecretClient: using environment variables (no Vault configured)"
+                "SecretClient: using environment variables (no secrets backend configured)"
             )
+
+    def _should_use_infisical(self, backend: str) -> bool:
+        if backend == "env" or backend == "vault":
+            return False
+        if backend == "infisical":
+            return True
+        # Auto: use Infisical if token + project ID are set
+        return bool(self.infisical_token and self.infisical_project_id)
 
     def _should_use_vault(self, backend: str) -> bool:
         if backend == "env":
@@ -136,12 +170,17 @@ class SecretClient:
         Returns:
             Secret value, or default if not found
         """
+        if self._use_infisical:
+            value = await self._get_from_infisical(key)
+            if value is not None:
+                return value
+            logger.debug("Secret '%s' not found in Infisical — falling back to env var", key)
+
         if self._use_vault:
             value = await self._get_from_vault(key)
             if value is not None:
                 return value
-            # Vault miss: fall through to env var
-            logger.debug(f"Secret '{key}' not found in Vault — falling back to env var")
+            logger.debug("Secret '%s' not found in Vault — falling back to env var", key)
 
         # Env var fallback
         value = os.getenv(key)
@@ -156,6 +195,36 @@ class SecretClient:
             f"Secret '{key}' not found in Vault or environment and no default provided"
         )
         return None
+
+    async def _get_from_infisical(self, key: str) -> Optional[str]:
+        """Fetch a secret from Infisical using the REST API (no SDK required)."""
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.infisical_token}",
+                "Content-Type": "application/json",
+            }
+            params = {
+                "workspaceId": self.infisical_project_id,
+                "environment": self.infisical_environment,
+                "secretPath": "/",
+                "type": "shared",
+            }
+            url = f"{self.infisical_site_url}/api/v3/secrets/raw/{key}"
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(url, headers=headers, params=params)
+                if resp.status_code == 404:
+                    return None
+                resp.raise_for_status()
+                return resp.json().get("secret", {}).get("secretValue")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 401:
+                logger.error("Infisical: unauthorized — check INFISICAL_TOKEN")
+            else:
+                logger.warning("Infisical error for '%s': %s", key, exc)
+            return None
+        except Exception as exc:
+            logger.warning("Infisical read failed for '%s': %s", key, exc)
+            return None
 
     async def _get_from_vault(self, key: str) -> Optional[str]:
         """Read a secret from Vault KV v2."""

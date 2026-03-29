@@ -7,10 +7,14 @@ Endpoints:
   POST /auth/mfa/totp/validate       — validate TOTP during login (checks partial session)
   POST /auth/mfa/totp/disable        — disable TOTP (requires current TOTP code)
 
-  POST /auth/mfa/webauthn/register/begin     — get registration options
+  POST /auth/mfa/webauthn/register/begin     — get registration options (FIDO2 / YubiKey)
   POST /auth/mfa/webauthn/register/complete  — verify + store credential
   POST /auth/mfa/webauthn/authenticate/begin     — get assertion options
   POST /auth/mfa/webauthn/authenticate/complete  — verify assertion
+
+  POST /auth/mfa/yubikey-otp/register   — bind a YubiKey OTP identity to the account
+  POST /auth/mfa/yubikey-otp/validate   — validate a YubiKey OTP during login
+  DELETE /auth/mfa/yubikey-otp          — remove YubiKey OTP from account
 
   GET  /auth/mfa/status              — current MFA status for user
   POST /auth/mfa/backup-codes/regenerate  — generate new backup codes (requires TOTP)
@@ -103,6 +107,8 @@ from security.mfa import (  # noqa: E402
     complete_registration as _webauthn_complete_registration,
     begin_authentication as _webauthn_begin_authentication,
     complete_authentication as _webauthn_complete_authentication,
+    get_yubikey_identity as _get_yubikey_identity,
+    verify_yubikey_otp as _verify_yubikey_otp,
 )
 from security.user_store import UserMFAStore  # noqa: E402
 
@@ -871,6 +877,121 @@ async def revoke_session(
     await store.revoke_session(session_id)
     logger.info("Session %s revoked for user %s", session_id, user_id)
     return {"message": "Session revoked."}
+
+
+# ---------------------------------------------------------------------------
+# YubiKey OTP endpoints
+# ---------------------------------------------------------------------------
+
+
+class YubikeyOtpRegisterBody(BaseModel):
+    """Body for /auth/mfa/yubikey-otp/register."""
+    otp: str  # 44-char OTP from a single YubiKey press
+
+
+class YubikeyOtpValidateBody(BaseModel):
+    """Body for /auth/mfa/yubikey-otp/validate."""
+    otp: str
+
+
+@router.post("/auth/mfa/yubikey-otp/register")
+async def yubikey_otp_register(
+    body: YubikeyOtpRegisterBody,
+    request: Request,
+    store: UserMFAStore = Depends(get_store),
+) -> dict[str, Any]:
+    """
+    Bind a YubiKey OTP identity to the authenticated account.
+
+    The user touches their YubiKey once; the generated OTP is sent here.
+    We verify it against YubiCloud, extract the 12-char public identity,
+    and store it. On subsequent logins, only this physical key is accepted.
+
+    Rate limited: 10 attempts per hour per IP.
+    """
+    claims = await _get_claims(request)
+    user_id, _ = _user_from_claims(claims)
+
+    try:
+        identity = _get_yubikey_identity(body.otp)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    try:
+        result = await _verify_yubikey_otp(body.otp)
+    except (ImportError, RuntimeError) as exc:
+        raise HTTPException(status_code=501, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if not result["valid"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"YubiKey OTP validation failed: {result['status']}",
+        )
+
+    await store.set_yubikey_identity(user_id, identity)
+    logger.info("YubiKey OTP registered for user %s (identity: %s)", user_id, identity)
+    return {
+        "message": "YubiKey OTP registered.",
+        "identity": identity,
+    }
+
+
+@router.post("/auth/mfa/yubikey-otp/validate")
+async def yubikey_otp_validate(
+    body: YubikeyOtpValidateBody,
+    request: Request,
+    store: UserMFAStore = Depends(get_store),
+) -> dict[str, Any]:
+    """
+    Validate a YubiKey OTP during login.
+
+    Verifies the OTP against YubiCloud and confirms the key identity matches
+    the one registered to this account. Returns a partial-session token on
+    success that the frontend exchanges for a full session JWT.
+
+    Rate limited: 5 attempts per minute per IP.
+    """
+    claims = await _get_claims(request)
+    user_id, _ = _user_from_claims(claims)
+
+    stored_identity = await store.get_yubikey_identity(user_id)
+    if not stored_identity:
+        raise HTTPException(
+            status_code=400,
+            detail="No YubiKey OTP registered for this account.",
+        )
+
+    try:
+        result = await _verify_yubikey_otp(body.otp, expected_identity=stored_identity)
+    except (ImportError, RuntimeError) as exc:
+        raise HTTPException(status_code=501, detail=str(exc))
+    except ValueError as exc:
+        # Identity mismatch — wrong physical key
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    if not result["valid"]:
+        status = result["status"]
+        if status == "REPLAYED_OTP":
+            raise HTTPException(status_code=400, detail="OTP already used. Touch your YubiKey again.")
+        raise HTTPException(status_code=400, detail=f"Invalid YubiKey OTP: {status}")
+
+    logger.info("YubiKey OTP validated for user %s", user_id)
+    return {"message": "YubiKey OTP verified.", "mfa_method": "yubikey_otp"}
+
+
+@router.delete("/auth/mfa/yubikey-otp")
+async def yubikey_otp_remove(
+    request: Request,
+    store: UserMFAStore = Depends(get_store),
+) -> dict[str, Any]:
+    """Remove YubiKey OTP from the account."""
+    claims = await _get_claims(request)
+    user_id, _ = _user_from_claims(claims)
+    await store.set_yubikey_identity(user_id, None)
+    logger.info("YubiKey OTP removed for user %s", user_id)
+    return {"message": "YubiKey OTP removed."}
 
 
 # ---------------------------------------------------------------------------

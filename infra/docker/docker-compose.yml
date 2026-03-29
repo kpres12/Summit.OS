@@ -26,6 +26,13 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../../infra/postgres/ssl:/etc/postgresql/ssl:ro
+    # Enable SSL — generate certs first: bash infra/postgres/generate-ssl-certs.sh
+    command: >
+      postgres
+      -c ssl=on
+      -c ssl_cert_file=/etc/postgresql/ssl/server.crt
+      -c ssl_key_file=/etc/postgresql/ssl/server.key
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U summit -d summit_os"]
       interval: 10s
@@ -73,7 +80,7 @@ services:
       - FABRIC_REDIS_URL=redis://redis:6379
       - FABRIC_MQTT_BROKER=mqtt
       - FABRIC_MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
       - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET:-dev_secret}
       - FABRIC_SKIP_MIGRATIONS=${FABRIC_SKIP_MIGRATIONS:-false}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
@@ -108,7 +115,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - OBSERVATION_SCHEMA_PATH=/contracts/jsonschemas/observation.schema.json
       - FUSION_ENABLE_VISION_AI=${FUSION_ENABLE_VISION_AI-false}
@@ -149,7 +156,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - INTELLIGENCE_ENABLE_XGB=${INTELLIGENCE_ENABLE_XGB-false}
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
@@ -194,7 +201,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
+      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - TASKING_DIRECT_AUTOPILOT=${TASKING_DIRECT_AUTOPILOT-false}
       - ENTERPRISE_MULTI_TENANT=${ENTERPRISE_MULTI_TENANT:-false}
@@ -283,18 +290,33 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - FABRIC_URL=http://fabric:8001
-      - FUSION_URL=http://fusion:8002
-      - INTELLIGENCE_URL=http://intelligence:8003
-      - TASKING_URL=http://tasking:8004
-      - INFERENCE_URL=http://inference:8006
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
-      - MISSIONS=sentinel
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      - API_KEY_ENFORCE=${API_KEY_ENFORCE:-false}
-      - ENTERPRISE_MULTI_TENANT=${ENTERPRISE_MULTI_TENANT:-false}
-      - PYTHONPATH=/workspace:/app
-      - OTLP_ENDPOINT=http://jaeger:4317
+      FABRIC_URL: http://fabric:8001
+      FUSION_URL: http://fusion:8002
+      INTELLIGENCE_URL: http://intelligence:8003
+      TASKING_URL: http://tasking:8004
+      INFERENCE_URL: http://inference:8006
+      POSTGRES_URL: postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
+      MISSIONS: sentinel
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      API_KEY_ENFORCE: ${API_KEY_ENFORCE:-false}
+      ENTERPRISE_MULTI_TENANT: ${ENTERPRISE_MULTI_TENANT:-false}
+      PYTHONPATH: /workspace:/app
+      OTLP_ENDPOINT: http://jaeger:4317
+      GEOIP_DB_PATH: /geoip/GeoLite2-Country.mmdb
+      # Audit log S3 shipping (optional — set to enable)
+      AWS_AUDIT_BUCKET: ${AWS_AUDIT_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      # Secrets backend (optional — Vault or Infisical)
+      VAULT_ADDR: ${VAULT_ADDR:-}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      INFISICAL_TOKEN: ${INFISICAL_TOKEN:-}
+      INFISICAL_PROJECT_ID: ${INFISICAL_PROJECT_ID:-}
+      INFISICAL_ENVIRONMENT: ${INFISICAL_ENVIRONMENT:-production}
+      # YubiKey OTP validation
+      YUBICO_CLIENT_ID: ${YUBICO_CLIENT_ID:-}
+      YUBICO_SECRET_KEY: ${YUBICO_SECRET_KEY:-}
     depends_on:
       fabric:
         condition: service_started
@@ -310,8 +332,13 @@ services:
       - ../../:/workspace
       - ../../apps/api-gateway:/app
       - ../../infra/geoip:/geoip:ro
-    environment:
-      GEOIP_DB_PATH: /geoip/GeoLite2-Country.mmdb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${DOMAIN:-localhost}`) && PathPrefix(`/api`, `/v1`, `/health`, `/docs`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.api.middlewares=secure-headers@file,rate-limit@file,compress@file"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
     command: uvicorn main:app --host 0.0.0.0 --port 8000 $( [ "${UVICORN_RELOAD:-false}" = "true" ] && echo "--reload" || echo "" )
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
@@ -520,6 +547,30 @@ services:
       retries: 3
       start_period: 30s
 
+  # ── Traefik reverse proxy + HTTPS termination ────────────────────────────────
+  # Enable with: docker compose --profile traefik up
+  # Local dev:   HTTP only (no ACME_EMAIL needed)
+  # Production:  Set ACME_EMAIL and DOMAIN in .env — Let's Encrypt auto-provisions
+  traefik:
+    image: traefik:v3.1
+    container_name: summit-traefik
+    profiles: ["traefik"]
+    command:
+      - "--configFile=/etc/traefik/traefik.yml"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"    # Traefik dashboard (disable in prod: set api.insecure: false)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../../infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ../../infra/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik_letsencrypt:/letsencrypt
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-}
+      DOMAIN: ${DOMAIN:-localhost}
+    restart: unless-stopped
+
   # ── GeoIP auto-updater ──────────────────────────────────────────────────────
   # Uses MaxMind's official geoipupdate image.
   # Checks for a new database every 24h; MaxMind publishes on Tuesdays ~2x/month.
@@ -546,3 +597,4 @@ volumes:
   mosquitto_data:
   mosquitto_log:
   ollama_data:
+  traefik_letsencrypt:

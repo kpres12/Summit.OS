@@ -3,6 +3,14 @@
 # K8s secrets (never commit real values)
 infra/k8s/secrets.yaml
 
+# Generated TLS certificates (never commit private keys)
+infra/postgres/ssl/server.key
+infra/postgres/ssl/server.crt
+infra/traefik/letsencrypt/
+
+# MaxMind GeoIP database (download via infra/geoip/download.sh)
+*.mmdb
+
 # Environment files
 .env
 .env.local

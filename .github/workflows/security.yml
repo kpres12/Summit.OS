@@ -1,0 +1,115 @@
+name: security
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run full scan every Monday at 06:00 UTC (catches new CVEs on existing deps)
+    - cron: '0 6 * * 1'
+
+jobs:
+  trivy-fs:
+    name: Trivy — filesystem & IaC
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload SARIF to GitHub Security tab
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Trivy filesystem scan (Python deps + IaC)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-fs.sarif
+          exit-code: '0'          # don't block CI on new CVEs — report only
+
+      - name: Upload filesystem SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem
+
+  trivy-images:
+    name: Trivy — Docker images
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: api-gateway
+            context: apps/api-gateway
+          - name: fabric
+            context: apps/fabric
+          - name: fusion
+            context: apps/fusion
+          - name: intelligence
+            context: apps/intelligence
+          - name: tasking
+            context: apps/tasking
+          - name: inference
+            context: apps/inference
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Build ${{ matrix.service.name }}
+        run: |
+          docker build \
+            -t summit-${{ matrix.service.name }}:scan \
+            ${{ matrix.service.context }}
+
+      - name: Trivy image scan — ${{ matrix.service.name }}
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: summit-${{ matrix.service.name }}:scan
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          format: sarif
+          output: trivy-${{ matrix.service.name }}.sarif
+          exit-code: '0'
+
+      - name: Upload image SARIF — ${{ matrix.service.name }}
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ matrix.service.name }}.sarif
+          category: trivy-image-${{ matrix.service.name }}
+
+  secret-scan:
+    name: Trivy — secret detection
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0    # full history for secret scanning
+
+      - name: Trivy secret scan (git history)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret
+          format: sarif
+          output: trivy-secrets.sarif
+          exit-code: '0'
+
+      - name: Upload secrets SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
