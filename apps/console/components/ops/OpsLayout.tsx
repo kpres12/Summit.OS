@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { EntityData, useEntityStream } from '@/hooks/useEntityStream';
-import { AlertAPI } from '@/lib/api';
+import React, { useState } from 'react';
+import { useEntityStream } from '@/hooks/useEntityStream';
+import { useInvestigation } from '@/hooks/useInvestigation';
+import { useMissionDraw } from '@/hooks/useMissionDraw';
+import { useReplay } from '@/hooks/useReplay';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import OpsTopBar from './OpsTopBar';
 import OpsNavRail from './OpsNavRail';
@@ -16,8 +18,8 @@ import OpsHardware from './OpsHardware';
 import OpsVideoPane from './OpsVideoPane';
 import OpsReplayControls from './OpsReplayControls';
 import OpsMissionBuilder from './OpsMissionBuilder';
-import { useReplay } from '@/hooks/useReplay';
-import type { WaypointPreview } from '@/lib/api';
+import OpsMapLayers from './OpsMapLayers';
+import OpsSystem from './OpsSystem';
 
 type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
 
@@ -25,180 +27,31 @@ interface OpsLayoutProps {
   onSwitchRole: () => void;
 }
 
-// Inline layer toggles panel
-function OpsMapLayers() {
-  const [layers, setLayers] = useState([
-    { id: 'entities', label: 'ENTITIES', enabled: true },
-    { id: 'tracks', label: 'TRACKS', enabled: true },
-    { id: 'geofences', label: 'GEOFENCES', enabled: false },
-    { id: 'grid', label: 'GRID OVERLAY', enabled: false },
-    { id: 'threat', label: 'ALERT ZONES', enabled: false },
-  ]);
-
-  const toggle = (id: string) => {
-    setLayers((prev) => prev.map((l) => l.id === id ? { ...l, enabled: !l.enabled } : l));
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <div
-        className="flex-none px-3 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
-      >
-        <span
-          className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
-        >
-          MAP LAYERS
-        </span>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-        {layers.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => toggle(l.id)}
-            className="flex items-center gap-3 text-left transition-colors"
-            style={{
-              background: l.enabled ? 'rgba(0,255,156,0.05)' : 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              borderLeft: `2px solid ${l.enabled ? '#00FF9C' : 'rgba(0,255,156,0.2)'}`,
-            }}
-          >
-            <div
-              className="w-3 h-3 border flex-none"
-              style={{
-                border: `1px solid ${l.enabled ? '#00FF9C' : 'rgba(0,255,156,0.3)'}`,
-                background: l.enabled ? '#00FF9C' : 'transparent',
-              }}
-            />
-            <span
-              className="text-xs tracking-wider"
-              style={{
-                fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: l.enabled ? '#00FF9C' : 'rgba(200,230,201,0.45)',
-              }}
-            >
-              {l.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Inline system info panel
-function OpsSystem() {
-  return (
-    <div className="flex flex-col h-full">
-      <div
-        className="flex-none px-3 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
-      >
-        <span
-          className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
-        >
-          SYSTEM
-        </span>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3">
-        {[
-          { label: 'NODE', value: 'CONSOLE-01' },
-          { label: 'VERSION', value: '1.0.0' },
-          { label: 'ENV', value: process.env.NODE_ENV?.toUpperCase() || 'PRODUCTION' },
-          { label: 'API', value: process.env.NEXT_PUBLIC_API_URL || 'localhost:8000' },
-          { label: 'WS', value: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001' },
-        ].map((row) => (
-          <div
-            key={row.label}
-            className="flex items-baseline justify-between py-1.5"
-            style={{ borderBottom: '1px solid rgba(0,255,156,0.06)' }}
-          >
-            <span
-              className="text-[10px]"
-              style={{ color: 'rgba(200,230,201,0.45)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-            >
-              {row.label}
-            </span>
-            <span
-              className="text-[10px] font-bold"
-              style={{ color: '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-            >
-              {row.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   const { entityList } = useEntityStream();
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
-  const [selectedEntity, setSelectedEntity] = useState<EntityData | null>(null);
-  const [flyToLocation, setFlyToLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [alertEntityIds, setAlertEntityIds] = useState<Set<string>>(new Set());
-  // Live video overlay (Gap 4)
+
+  // Investigation flow (alert → zoom → entity detail)
+  const investigation = useInvestigation(entityList);
+
+  // Live video overlay
   const [videoStreamId, setVideoStreamId] = useState<string | null>(null);
+
   // Mission replay
   const [replayMissionId, setReplayMissionId] = useState<string | null>(null);
   const replay = useReplay(replayMissionId);
-  // Mission builder
-  const [missionDrawMode, setMissionDrawMode] = useState(false);
-  const [missionPolygon, setMissionPolygon] = useState<{ lat: number; lon: number }[] | null>(null);
-  const [missionWaypoints, setMissionWaypoints] = useState<WaypointPreview[]>([]);
 
-  // Core investigate flow — the one interaction that has to be perfect.
-  // Finds the entity matching the alert source, zooms the map, opens entity detail.
-  const investigateAlert = useCallback((alert: AlertAPI) => {
-    const source = alert.source || '';
-    const match = entityList.find((e) =>
-      e.callsign === source ||
-      e.entity_id === source ||
-      e.entity_id.startsWith(source.slice(0, 8)) ||
-      source.toLowerCase().includes(e.entity_id.slice(0, 8).toLowerCase()) ||
-      source.toLowerCase().includes((e.callsign || '').toLowerCase())
-    ) || (entityList.length > 0 ? entityList[0] : null);
+  // Mission builder draw state
+  const missionDraw = useMissionDraw();
 
-    if (match) {
-      setSelectedEntity(match);
-      setFlyToLocation({ lat: match.position.lat, lon: match.position.lon });
-      // Mark this entity for alert pulse on the map
-      setAlertEntityIds((prev) => {
-        const next = new Set(prev);
-        next.add(match.entity_id);
-        return next;
-      });
-      // Clear pulse after animation completes (3 pulses × 600ms = ~1.8s)
-      setTimeout(() => {
-        setAlertEntityIds((prev) => {
-          const next = new Set(prev);
-          next.delete(match.entity_id);
-          return next;
-        });
-      }, 2000);
-    }
-    setActivePanel(null); // close the alert panel
-  }, [entityList]);
-
-  // Investigate by callsign — triggered from detection chips in bottom bar
-  const investigateEntity = useCallback((callsign: string) => {
-    const match = entityList.find((e) =>
-      e.callsign === callsign || e.entity_id.startsWith(callsign.slice(0, 8))
-    );
-    if (match) {
-      setSelectedEntity(match);
-      setFlyToLocation({ lat: match.position.lat, lon: match.position.lon });
-    }
-  }, [entityList]);
+  const handleInvestigateAlert = (alert: Parameters<typeof investigation.investigateAlert>[0]) => {
+    investigation.investigateAlert(alert);
+    setActivePanel(null); // close the alert panel after investigating
+  };
 
   const renderPanel = () => {
     switch (activePanel) {
-      case 'alerts': return <OpsAlertQueue onInvestigate={investigateAlert} />;
+      case 'alerts': return <OpsAlertQueue onInvestigate={handleInvestigateAlert} />;
       case 'entities': return <OpsEntityList />;
       case 'missions': return <OpsMissions onReplay={(id) => setReplayMissionId(id)} />;
       case 'layers': return <OpsMapLayers />;
@@ -208,15 +61,14 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
         <OpsMissionBuilder
           onMissionLaunched={() => {
             setActivePanel(null);
-            setMissionPolygon(null);
-            setMissionWaypoints([]);
+            missionDraw.resetMissionDraw();
           }}
           onRequestDrawArea={() => {
-            setMissionPolygon(null);
-            setMissionDrawMode(true);
+            missionDraw.setMissionPolygon(null);
+            missionDraw.setMissionDrawMode(true);
           }}
-          missionPolygon={missionPolygon}
-          onWaypointsChanged={setMissionWaypoints}
+          missionPolygon={missionDraw.missionPolygon}
+          onWaypointsChanged={missionDraw.setMissionWaypoints}
         />
       );
       default: return null;
@@ -227,45 +79,47 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
     <ErrorBoundary>
     <div
       className="fixed inset-0 flex flex-col"
-      style={{ background: '#080C0A' }}
+      style={{ background: 'var(--background)' }}
     >
-      {/* Top bar */}
+      {/* Top bar — ARIA banner */}
       <OpsTopBar onSwitchRole={onSwitchRole} />
 
       {/* Middle row */}
       <div className="flex flex-row flex-1 overflow-hidden">
-        {/* Nav rail */}
+        {/* Nav rail — ARIA navigation */}
         <OpsNavRail
           activePanel={activePanel}
           onSelect={(p) => setActivePanel(p as PanelId | null)}
         />
 
         {/* Sliding side panel */}
-        <div
+        <aside
+          role="complementary"
+          aria-label="Side panel"
           className="flex-none overflow-hidden transition-[width] duration-150 ease-out"
           style={{
             width: activePanel ? '320px' : '0px',
-            borderRight: activePanel ? '1px solid rgba(0,255,156,0.15)' : 'none',
-            background: '#0D1210',
+            borderRight: activePanel ? '1px solid var(--border)' : 'none',
+            background: 'var(--background-panel)',
           }}
         >
           <div style={{ width: '320px', height: '100%' }}>
             {renderPanel()}
           </div>
-        </div>
+        </aside>
 
-        {/* Map area */}
-        <div className="flex-1 relative overflow-hidden">
+        {/* Map area — ARIA main */}
+        <main role="main" aria-label="Map view" className="flex-1 relative overflow-hidden">
           <OpsMapView
-            onSelectEntity={setSelectedEntity}
-            flyToLocation={flyToLocation}
-            alertEntityIds={alertEntityIds}
-            missionDrawMode={missionDrawMode}
+            onSelectEntity={investigation.setSelectedEntity}
+            flyToLocation={investigation.flyToLocation}
+            alertEntityIds={investigation.alertEntityIds}
+            missionDrawMode={missionDraw.missionDrawMode}
             onMissionArea={(coords) => {
-              setMissionPolygon(coords);
-              setMissionDrawMode(false);
+              missionDraw.setMissionPolygon(coords);
+              missionDraw.setMissionDrawMode(false);
             }}
-            missionWaypoints={missionWaypoints}
+            missionWaypoints={missionDraw.missionWaypoints}
           />
           {/* Live video overlay */}
           {videoStreamId && (
@@ -283,30 +137,32 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
               />
             </div>
           )}
-        </div>
+        </main>
 
         {/* Entity detail panel */}
-        <div
+        <aside
+          role="complementary"
+          aria-label="Entity detail"
           className="flex-none overflow-hidden transition-[width] duration-150 ease-out"
           style={{
-            width: selectedEntity ? '384px' : '0px',
-            borderLeft: selectedEntity ? '1px solid rgba(0,255,156,0.15)' : 'none',
-            background: '#0D1210',
+            width: investigation.selectedEntity ? '384px' : '0px',
+            borderLeft: investigation.selectedEntity ? '1px solid var(--border)' : 'none',
+            background: 'var(--background-panel)',
           }}
         >
           <div style={{ width: '384px', height: '100%' }}>
             <OpsEntityDetail
-              entity={selectedEntity}
-              onClose={() => setSelectedEntity(null)}
-              onDispatch={() => setSelectedEntity(null)}
+              entity={investigation.selectedEntity}
+              onClose={() => investigation.setSelectedEntity(null)}
+              onDispatch={() => investigation.setSelectedEntity(null)}
               onLiveFeed={(streamId) => setVideoStreamId(streamId)}
             />
           </div>
-        </div>
+        </aside>
       </div>
 
-      {/* Bottom bar */}
-      <OpsBottomBar onInvestigateEntity={investigateEntity} />
+      {/* Bottom bar — ARIA contentinfo */}
+      <OpsBottomBar onInvestigateEntity={investigation.investigateEntity} />
     </div>
     </ErrorBoundary>
   );

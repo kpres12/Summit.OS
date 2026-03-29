@@ -1,0 +1,7 @@
+[
+  { "id": "default", "name": "Summit.OS", "file": "default.json" },
+  { "id": "fire", "name": "Wildfire Ops", "file": "fire.json" },
+  { "id": "pipeline", "name": "Pipeline Ops", "file": "pipeline.json" },
+  { "id": "sar", "name": "Search & Rescue", "file": "sar.json" },
+  { "id": "construction", "name": "Site Safety", "file": "construction.json" }
+]

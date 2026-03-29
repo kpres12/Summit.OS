@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 
 type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
 
@@ -21,42 +21,54 @@ interface OpsNavRailProps {
 }
 
 export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Arrow-key navigation within the nav rail
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('button[data-nav]');
+    if (!buttons?.length) return;
+    const idx = Array.from(buttons).findIndex((b) => b === document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      buttons[(idx + 1) % buttons.length].focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      buttons[(idx - 1 + buttons.length) % buttons.length].focus();
+    }
+  }, []);
+
   return (
-    <div
+    <nav
+      role="navigation"
+      aria-label="Operations panels"
       className="flex-none flex flex-col"
       style={{
         width: '48px',
-        background: '#0D1210',
-        borderRight: '1px solid rgba(0,255,156,0.15)',
+        background: 'var(--background-panel)',
+        borderRight: '1px solid var(--border)',
       }}
     >
       {/* Nav buttons */}
-      <div className="flex flex-col pt-2 flex-1">
+      <div ref={listRef} className="flex flex-col pt-2 flex-1" onKeyDown={handleKeyDown}>
         {NAV_ITEMS.map((item) => {
           const isActive = activePanel === item.id;
           return (
             <button
               key={item.id}
+              data-nav
               onClick={() => onSelect(isActive ? null : item.id)}
-              title={item.label}
-              className="relative flex items-center justify-center transition-colors"
+              aria-label={item.label}
+              aria-pressed={isActive}
+              className="summit-btn relative flex items-center justify-center"
               style={{
                 width: '48px',
                 height: '40px',
-                background: isActive ? 'rgba(0,255,156,0.08)' : 'transparent',
-                color: isActive ? '#00FF9C' : 'rgba(200,230,201,0.45)',
-                borderLeft: isActive ? '2px solid #00FF9C' : '2px solid transparent',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = '#00FF9C';
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,230,201,0.45)';
+                background: isActive ? 'var(--accent-5)' : 'transparent',
+                color: isActive ? 'var(--accent)' : 'var(--text-dim)',
+                borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
               }}
             >
-              <span className="text-base leading-none">{item.icon}</span>
+              <span className="text-base leading-none" aria-hidden="true">{item.icon}</span>
             </button>
           );
         })}
@@ -65,32 +77,29 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
       {/* Plan Mission — primary action button, pinned above OPS label */}
       <div className="flex-none px-1.5 pb-2">
         <button
+          data-nav
           onClick={() => onSelect(activePanel === PLAN_MISSION_ITEM.id ? null : PLAN_MISSION_ITEM.id)}
-          title={PLAN_MISSION_ITEM.label}
-          className="flex items-center justify-center w-full transition-colors"
+          aria-label={PLAN_MISSION_ITEM.label}
+          aria-pressed={activePanel === PLAN_MISSION_ITEM.id}
+          className="summit-btn flex items-center justify-center w-full"
           style={{
             height: '36px',
-            background: activePanel === PLAN_MISSION_ITEM.id ? 'rgba(0,255,156,0.12)' : 'rgba(0,255,156,0.06)',
-            border: `1px solid ${activePanel === PLAN_MISSION_ITEM.id ? 'rgba(0,255,156,0.5)' : 'rgba(0,255,156,0.2)'}`,
-            color: activePanel === PLAN_MISSION_ITEM.id ? '#00FF9C' : 'rgba(0,255,156,0.6)',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#00FF9C'; }}
-          onMouseLeave={(e) => {
-            if (activePanel !== PLAN_MISSION_ITEM.id)
-              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,156,0.6)';
+            background: activePanel === PLAN_MISSION_ITEM.id ? 'var(--accent-10)' : 'var(--accent-5)',
+            border: `1px solid ${activePanel === PLAN_MISSION_ITEM.id ? 'var(--accent-50)' : 'var(--accent-15)'}`,
+            color: activePanel === PLAN_MISSION_ITEM.id ? 'var(--accent)' : 'var(--accent-50)',
           }}
         >
-          <span className="text-base leading-none">{PLAN_MISSION_ITEM.icon}</span>
+          <span className="text-base leading-none" aria-hidden="true">{PLAN_MISSION_ITEM.icon}</span>
         </button>
       </div>
 
       {/* Bottom label */}
       <div
         className="flex items-center justify-center pb-3"
+        aria-hidden="true"
         style={{
           fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: 'rgba(0,255,156,0.3)',
+          color: 'var(--accent-30)',
           fontSize: '8px',
           letterSpacing: '0.1em',
           writingMode: 'vertical-rl',
@@ -99,6 +108,6 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
       >
         OPS
       </div>
-    </div>
+    </nav>
   );
 }
