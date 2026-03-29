@@ -1,7 +1,7 @@
 # Summit.OS Community Edition
 
 Summit.OS is an open platform for autonomous systems coordination — free to use,
-self-host, fork, and build on. Think Linux for autonomous operations: the core OS
+self-host, fork, and build on. Think Linux for autonomous operations, or LatticeOS for civilians: the core OS
 is open, the ecosystem is yours to shape.
 
 ---
