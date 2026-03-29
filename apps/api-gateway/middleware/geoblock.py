@@ -31,7 +31,6 @@ logger = logging.getLogger("api-gateway.geoblock")
 # AF  Afghanistan
 # IL  Israel  (PS / Palestine is explicitly NOT blocked)
 # BY  Belarus  — effectively a Russian proxy, significant state-sponsored ops
-# SY  Syria    — comprehensive US/EU sanctions, ongoing conflict
 #
 BLOCKED_COUNTRIES: frozenset[str] = frozenset({
     "KP",  # North Korea / DPRK
@@ -41,7 +40,6 @@ BLOCKED_COUNTRIES: frozenset[str] = frozenset({
     "AF",  # Afghanistan
     "IL",  # Israel  (NOT Palestine — PS is allowed)
     "BY",  # Belarus
-    "SY",  # Syria
 })
 
 # Private/reserved IP ranges — always allow (LAN, loopback, Docker networks)
