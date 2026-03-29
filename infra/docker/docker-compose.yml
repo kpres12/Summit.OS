@@ -520,6 +520,25 @@ services:
       retries: 3
       start_period: 30s
 
+  # ── GeoIP auto-updater ──────────────────────────────────────────────────────
+  # Uses MaxMind's official geoipupdate image.
+  # Checks for a new database every 24h; MaxMind publishes on Tuesdays ~2x/month.
+  # Set MAXMIND_ACCOUNT_ID and MAXMIND_LICENSE_KEY in .env to activate.
+  # Without credentials, this container exits cleanly and geoblocking still works
+  # off whatever .mmdb is already in infra/geoip/.
+  geoipupdate:
+    image: ghcr.io/maxmind/geoipupdate:latest
+    container_name: summit-geoipupdate
+    environment:
+      GEOIPUPDATE_ACCOUNT_ID: ${MAXMIND_ACCOUNT_ID:-0}
+      GEOIPUPDATE_LICENSE_KEY: ${MAXMIND_LICENSE_KEY:-}
+      GEOIPUPDATE_EDITION_IDS: GeoLite2-Country
+      GEOIPUPDATE_FREQUENCY: 24        # check every 24 hours
+      GEOIPUPDATE_PRESERVE_FILE_TIMES: "1"
+    volumes:
+      - ../../infra/geoip:/usr/share/GeoIP
+    restart: unless-stopped
+
 volumes:
   redis_data:
   postgres_data:
