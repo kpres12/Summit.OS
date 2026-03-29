@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Summit.OS — Open Platform for Autonomous Coordination</title>
+  <meta name="description" content="Summit.OS is the open-source platform for autonomous systems coordination. Sensor fusion, AI dispatch, real-time situational awareness. Free forever. Build anything on top." />
+  <meta property="og:title" content="Summit.OS" />
+  <meta property="og:description" content="The open platform for autonomous systems coordination." />
+  <meta property="og:image" content="https://bigmt-ai.github.io/Summit.OS/card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:  #00FF9C;
+      --amber:  #FFB300;
+      --red:    #FF3B3B;
+      --blue:   #4FC3F7;
+      --bg:     #080C0A;
+      --bg2:    #0D1210;
+      --bg3:    #111816;
+      --border: rgba(0,255,156,0.12);
+      --text:   #C8D8CC;
+      --dim:    #5A6B60;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Scanline overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 56px;
+      background: rgba(8,12,10,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.12em;
+      text-decoration: none;
+    }
+
+    .nav-logo span { color: var(--dim); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--green); }
+
+    .nav-cta {
+      padding: 7px 18px;
+      border: 1px solid var(--green);
+      color: var(--green) !important;
+      border-radius: 2px;
+      transition: background 0.2s !important;
+    }
+
+    .nav-cta:hover { background: rgba(0,255,156,0.08) !important; }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,255,156,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,195,247,0.04) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 36px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .hero h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.01em;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--green);
+    }
+
+    .hero-sub {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(13px, 2vw, 18px);
+      font-weight: 400;
+      color: var(--dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+
+    .hero-desc {
+      max-width: 600px;
+      font-size: 15px;
+      color: var(--text);
+      line-height: 1.8;
+      margin-bottom: 48px;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #080C0A;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: #00e088;
+      box-shadow: 0 0 24px rgba(0,255,156,0.3);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 48px;
+      margin-top: 72px;
+      padding-top: 48px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-item { text-align: center; }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--green);
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--dim);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── Section base ── */
+    section {
+      padding: 100px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(24px, 4vw, 40px);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+
+    .section-desc {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 16px;
+      color: var(--text);
+      max-width: 560px;
+      line-height: 1.8;
+      margin-bottom: 56px;
+    }
+
+    /* ── What it is ── */
+    .what-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .what-card {
+      background: var(--bg2);
+      padding: 32px;
+      transition: background 0.2s;
+    }
+
+    .what-card:hover { background: var(--bg3); }
+
+    .what-icon {
+      font-size: 22px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .what-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 10px;
+      letter-spacing: 0.06em;
+    }
+
+    .what-desc {
+      font-size: 13px;
+      color: var(--dim);
+      line-height: 1.7;
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    /* ── Build on it ── */
+    .build-section {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 100px 24px;
+    }
+
+    .build-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .build-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .build-item {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: border-color 0.2s;
+    }
+
+    .build-item:hover { border-color: rgba(0,255,156,0.3); }
+
+    .build-item-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--amber);
+      margin-bottom: 8px;
+      letter-spacing: 0.08em;
+    }
+
+    .build-item p {
+      font-size: 12px;
+      color: var(--dim);
+      font-family: 'IBM Plex Sans', sans-serif;
+      line-height: 1.6;
+    }
+
+    /* ── Architecture ── */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-top: 48px;
+    }
+
+    .arch-service {
+      background: var(--bg2);
+      padding: 24px 20px;
+      text-align: center;
+    }
+
+    .arch-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .arch-port {
+      font-size: 11px;
+      color: var(--dim);
+      margin-bottom: 10px;
+    }
+
+    .arch-desc {
+      font-size: 11px;
+      color: var(--dim);
+      font-family: 'IBM Plex Sans', sans-serif;
+      line-height: 1.5;
+    }
+
+    /* ── Editions ── */
+    .editions-section {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 100px 24px;
+    }
+
+    .editions-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .editions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    @media (max-width: 640px) {
+      .editions-grid { grid-template-columns: 1fr; }
+    }
+
+    .edition-card {
+      padding: 40px;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+
+    .edition-card.featured {
+      border-color: var(--green);
+    }
+
+    .edition-badge {
+      position: absolute;
+      top: -1px; right: 24px;
+      background: var(--green);
+      color: #080C0A;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      padding: 4px 12px;
+      text-transform: uppercase;
+    }
+
+    .edition-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+
+    .edition-price {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--green);
+      margin-bottom: 4px;
+    }
+
+    .edition-price span {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--dim);
+    }
+
+    .edition-desc {
+      font-size: 13px;
+      color: var(--dim);
+      font-family: 'IBM Plex Sans', sans-serif;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .edition-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    .edition-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .edition-features li::before {
+      content: '→';
+      color: var(--green);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Code block ── */
+    .quickstart {
+      margin-top: 80px;
+    }
+
+    .code-block {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 32px;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .code-block pre {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .code-block .comment { color: var(--dim); }
+    .code-block .cmd { color: var(--green); }
+    .code-block .arg { color: var(--blue); }
+
+    .code-label {
+      position: absolute;
+      top: 12px; right: 16px;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center;
+      padding: 120px 24px;
+    }
+
+    .cta-section h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 900;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .cta-section p {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 16px;
+      color: var(--dim);
+      max-width: 480px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      letter-spacing: 0.1em;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a {
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 12px;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--green); }
+
+    .footer-copy {
+      font-size: 11px;
+      color: var(--dim);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 20px; }
+      .nav-links { gap: 16px; }
+      .nav-links li:not(:last-child) { display: none; }
+      footer { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">SUMMIT<span>.OS</span></a>
+    <ul class="nav-links">
+      <li><a href="#capabilities">Capabilities</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#editions">Editions</a></li>
+      <li><a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank">GitHub</a></li>
+      <li><a href="mailto:enterprise@bigmt.ai" class="nav-cta">Enterprise</a></li>
+    </ul>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">Open Source · Apache 2.0 · v0.1.0</div>
+    <h1>The Open Platform for<br /><em>Autonomous Coordination</em></h1>
+    <p class="hero-sub">By BigMT.ai</p>
+    <p class="hero-desc">
+      Summit.OS is the open-core platform that fuses sensor data, runs AI dispatch,
+      and delivers real-time situational awareness for autonomous systems operations.
+      Free to use, self-host, and build on — forever.
+    </p>
+    <div class="hero-actions">
+      <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-primary" target="_blank">
+        ↗ Get Started on GitHub
+      </a>
+      <a href="mailto:enterprise@bigmt.ai" class="btn btn-secondary">
+        Enterprise Inquiry
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item">
+        <span class="stat-value">6</span>
+        <span class="stat-label">Microservices</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">3</span>
+        <span class="stat-label">Data Sources</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">ONNX</span>
+        <span class="stat-label">ML Runtime</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">Apache 2.0</span>
+        <span class="stat-label">License</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- Capabilities -->
+  <section id="capabilities">
+    <div class="section-label">// capabilities</div>
+    <h2 class="section-title">Everything your stack needs.<br />Nothing it doesn't.</h2>
+    <p class="section-desc">
+      A complete autonomous systems coordination stack — sensor ingestion to operator
+      dispatch — built as composable microservices you can run all at once or pick apart.
+    </p>
+    <div class="what-grid">
+      <div class="what-card">
+        <span class="what-icon">◈</span>
+        <div class="what-title">Sensor Fusion</div>
+        <p class="what-desc">Kalman EKF multi-source fusion. Ingests ADS-B, AIS, satellite, MQTT, and custom adapters into a unified world model.</p>
+      </div>
+      <div class="what-card">
+        <span class="what-icon">◉</span>
+        <div class="what-title">AI Dispatch</div>
+        <p class="what-desc">ONNX-native inference. Mission classifier and risk scorer trained on real-world data. Pluggable model registry.</p>
+      </div>
+      <div class="what-card">
+        <span class="what-icon">◎</span>
+        <div class="what-title">Real-Time Fabric</div>
+        <p class="what-desc">WebSocket entity streaming, MQTT pub/sub, Redis-backed world state. Sub-second updates across all connected operators.</p>
+      </div>
+      <div class="what-card">
+        <span class="what-icon">⬡</span>
+        <div class="what-title">Mission Tasking</div>
+        <p class="what-desc">Full mission state machine. Tiered response, autonomous escalation, drone dispatch, human-in-the-loop approval workflows.</p>
+      </div>
+      <div class="what-card">
+        <span class="what-icon">◇</span>
+        <div class="what-title">Operator Console</div>
+        <p class="what-desc">Three role-optimized views: OPS (full-screen map), COMMAND (3-column situational), DEV (adapter and schema tooling).</p>
+      </div>
+      <div class="what-card">
+        <span class="what-icon">○</span>
+        <div class="what-title">Adapter SDK</div>
+        <p class="what-desc">First-class adapter framework. OpenSky, AIS, CelesTrak built in. Extend with any sensor, protocol, or data source.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- Build on it -->
+  <div class="build-section">
+    <div class="build-inner">
+      <div class="section-label">// platform</div>
+      <h2 class="section-title">Build anything on top.</h2>
+      <p class="section-desc">
+        Summit.OS is a foundation, not a ceiling. Apache 2.0 means you can build
+        products, services, and integrations without restriction. Like Linux —
+        the OS is open, the ecosystem is yours.
+      </p>
+      <div class="build-grid">
+        <div class="build-item">
+          <div class="build-item-title">Wildfire Response</div>
+          <p>Custom alert ingestion, fire-spread modeling overlays, aerial asset dispatch, crew coordination.</p>
+        </div>
+        <div class="build-item">
+          <div class="build-item-title">UAV Fleet Ops</div>
+          <p>Commercial drone fleet management, geofencing, multi-vehicle tasking, telemetry dashboards.</p>
+        </div>
+        <div class="build-item">
+          <div class="build-item-title">Search & Rescue</div>
+          <p>Terrain analysis, resource tracking, multi-agency coordination, handoff brief generation.</p>
+        </div>
+        <div class="build-item">
+          <div class="build-item-title">Port & Maritime</div>
+          <p>AIS vessel tracking, anomaly detection, berth coordination, security zone enforcement.</p>
+        </div>
+        <div class="build-item">
+          <div class="build-item-title">Emergency Management</div>
+          <p>Multi-agency situational awareness, resource deconfliction, incident command support.</p>
+        </div>
+        <div class="build-item">
+          <div class="build-item-title">Custom Integrations</div>
+          <p>Any sensor. Any protocol. Any data source. The adapter SDK handles the heavy lifting.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <section id="architecture">
+    <div class="section-label">// architecture</div>
+    <h2 class="section-title">Composable microservices.<br />Deploy what you need.</h2>
+    <p class="section-desc">
+      Each service is independently deployable. Run the full stack with one command,
+      or drop individual services into your existing infrastructure.
+    </p>
+    <div class="arch-grid">
+      <div class="arch-service">
+        <div class="arch-name">API Gateway</div>
+        <div class="arch-port">:8000</div>
+        <div class="arch-desc">Auth, routing, RBAC, audit, approvals</div>
+      </div>
+      <div class="arch-service">
+        <div class="arch-name">Fabric</div>
+        <div class="arch-port">:8001</div>
+        <div class="arch-desc">World model, WebSocket streaming, MQTT</div>
+      </div>
+      <div class="arch-service">
+        <div class="arch-name">Fusion</div>
+        <div class="arch-port">:8002</div>
+        <div class="arch-desc">Kalman EKF sensor fusion pipeline</div>
+      </div>
+      <div class="arch-service">
+        <div class="arch-name">Intelligence</div>
+        <div class="arch-port">:8003</div>
+        <div class="arch-desc">AI classification and dispatch logic</div>
+      </div>
+      <div class="arch-service">
+        <div class="arch-name">Tasking</div>
+        <div class="arch-port">:8004</div>
+        <div class="arch-desc">Mission state machine, asset management</div>
+      </div>
+      <div class="arch-service">
+        <div class="arch-name">Inference</div>
+        <div class="arch-port">:8006</div>
+        <div class="arch-desc">ONNX model serving, vision AI</div>
+      </div>
+    </div>
+
+    <!-- Quickstart -->
+    <div class="quickstart">
+      <div class="section-label">// quickstart</div>
+      <div class="code-block">
+        <span class="code-label">bash</span>
+        <pre><span class="comment"># Clone and run</span>
+<span class="cmd">git clone</span> <span class="arg">https://github.com/BigMT-Ai/Summit.OS</span>
+<span class="cmd">cd</span> Summit.OS
+<span class="cmd">cp</span> .env.example .env
+<span class="cmd">make dev</span>
+
+<span class="comment"># Console opens at http://localhost:3002</span>
+<span class="comment"># API Gateway at http://localhost:8000</span>
+<span class="comment"># Grafana at http://localhost:3001</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Editions -->
+  <div class="editions-section" id="editions">
+    <div class="editions-inner">
+      <div class="section-label">// editions</div>
+      <h2 class="section-title">Open core. No lock-in.</h2>
+      <p class="section-desc">
+        Community is free forever. Enterprise adds multi-org isolation, enforced security,
+        and SLA-backed support. The code for both is in the same repo.
+      </p>
+      <div class="editions-grid">
+        <div class="edition-card">
+          <div class="edition-name">Community</div>
+          <div class="edition-price">$0 <span>/ forever</span></div>
+          <p class="edition-desc">Self-hosted. Apache 2.0. Full access to every capability. Build anything on top.</p>
+          <ul class="edition-features">
+            <li>Full sensor fusion pipeline</li>
+            <li>AI dispatch and ONNX inference</li>
+            <li>Real-time WebSocket streaming</li>
+            <li>Mission tasking and state machine</li>
+            <li>All built-in adapters + SDK</li>
+            <li>OPS / COMMAND / DEV console</li>
+            <li>Observability stack (Prometheus, Grafana, Jaeger)</li>
+            <li>Community support via GitHub</li>
+          </ul>
+          <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-secondary" target="_blank">
+            ↗ Get Started
+          </a>
+        </div>
+        <div class="edition-card featured">
+          <div class="edition-badge">Enterprise</div>
+          <div class="edition-name">Enterprise</div>
+          <div class="edition-price">$1,500 <span>/ month</span></div>
+          <p class="edition-desc">Multi-org isolation, enforced security, and priority support for teams running critical operations.</p>
+          <ul class="edition-features">
+            <li>Everything in Community</li>
+            <li>Multi-organization tenancy</li>
+            <li>Per-org WebSocket isolation</li>
+            <li>SSO / OIDC enforced</li>
+            <li>RBAC enforced</li>
+            <li>Append-only audit logging</li>
+            <li>Field-level encryption enforced</li>
+            <li>Priority support + SLA</li>
+          </ul>
+          <a href="mailto:enterprise@bigmt.ai" class="btn btn-primary">
+            Contact Us
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <h2>Start building today.</h2>
+    <p>Clone the repo, run one command, and have a full autonomous coordination stack running in minutes.</p>
+    <div class="hero-actions">
+      <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-primary" target="_blank">
+        ↗ View on GitHub
+      </a>
+      <a href="mailto:enterprise@bigmt.ai" class="btn btn-secondary">
+        enterprise@bigmt.ai
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-logo">SUMMIT.OS</div>
+    <div class="footer-links">
+      <a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank">GitHub</a>
+      <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/COMMUNITY.md" target="_blank">Community</a>
+      <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/SECURITY.md" target="_blank">Security</a>
+      <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/LICENSE" target="_blank">License</a>
+      <a href="mailto:enterprise@bigmt.ai">Enterprise</a>
+    </div>
+    <div class="footer-copy">© 2026 BigMT.ai — Apache 2.0</div>
+  </footer>
+
+</body>
+</html>
