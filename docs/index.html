@@ -3,111 +3,243 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Summit.OS — Open Platform for Autonomous Coordination</title>
-  <meta name="description" content="Summit.OS is the open-source platform for autonomous systems coordination. Sensor fusion, AI dispatch, real-time situational awareness. Free forever. Build anything on top." />
-  <meta property="og:title" content="Summit.OS" />
-  <meta property="og:description" content="The open platform for autonomous systems coordination." />
-  <meta property="og:image" content="https://bigmt-ai.github.io/Summit.OS/card.png" />
-  <meta name="twitter:card" content="summary_large_image" />
+  <title>SUMMIT.OS // TERMINAL</title>
+  <meta name="description" content="Summit.OS — Open platform for autonomous systems coordination. Sensor fusion, AI dispatch, real-time situational awareness." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --green:  #00FF9C;
-      --amber:  #FFB300;
-      --red:    #FF3B3B;
-      --blue:   #4FC3F7;
-      --bg:     #080C0A;
-      --bg2:    #0D1210;
-      --bg3:    #111816;
-      --border: rgba(0,255,156,0.12);
-      --text:   #C8D8CC;
-      --dim:    #5A6B60;
+      --amber:     #d4a017;
+      --amber-bright: #f0c800;
+      --amber-dim: #5a4400;
+      --amber-glow: rgba(212,160,23,0.15);
+      --bg:        #0d0d00;
+      --bg2:       #111100;
+      --bg3:       #161600;
+      --scanline:  rgba(0,0,0,0.35);
+      --green-pip: #4caf50;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
       background: var(--bg);
-      color: var(--text);
-      font-family: 'IBM Plex Mono', monospace;
+      color: var(--amber);
+      font-family: 'Share Tech Mono', monospace;
       font-size: 14px;
-      line-height: 1.7;
-      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: default;
     }
 
-    /* ── Scanline overlay ── */
+    /* ── CRT effects ── */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       background: repeating-linear-gradient(
         0deg,
-        transparent,
+        transparent 0px,
         transparent 2px,
-        rgba(0,0,0,0.08) 2px,
-        rgba(0,0,0,0.08) 4px
+        var(--scanline) 2px,
+        var(--scanline) 4px
       );
       pointer-events: none;
-      z-index: 1000;
+      z-index: 9999;
+      animation: scanroll 8s linear infinite;
     }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    @keyframes scanroll {
+      0%   { background-position: 0 0; }
+      100% { background-position: 0 40px; }
+    }
+
+    /* ── Flicker ── */
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96%            { opacity: 0.85; }
+      97%            { opacity: 1; }
+      98%            { opacity: 0.9; }
+    }
+
+    .flicker { animation: flicker 6s infinite; }
+
+    /* ── Phosphor glow text ── */
+    .glow {
+      text-shadow:
+        0 0 4px var(--amber),
+        0 0 12px var(--amber),
+        0 0 24px rgba(212,160,23,0.5);
+    }
+
+    .glow-sm {
+      text-shadow: 0 0 6px var(--amber), 0 0 14px rgba(212,160,23,0.4);
+    }
+
+    /* ── Boot screen ── */
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 5000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      transition: opacity 0.8s ease;
+    }
+
+    #boot.hidden { opacity: 0; pointer-events: none; }
+
+    #boot-logo {
+      font-family: 'VT323', monospace;
+      font-size: clamp(40px, 8vw, 80px);
+      color: var(--amber-bright);
+      text-shadow: 0 0 20px var(--amber), 0 0 40px rgba(212,160,23,0.5);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    #boot-sub {
+      font-size: 12px;
+      color: var(--amber-dim);
+      letter-spacing: 0.3em;
+      margin-bottom: 48px;
+      text-transform: uppercase;
+    }
+
+    #boot-log {
+      width: 100%;
+      max-width: 640px;
+      font-size: 13px;
+      color: var(--amber);
+      line-height: 1.8;
+      min-height: 220px;
+    }
+
+    #boot-log .ok   { color: var(--green-pip); }
+    #boot-log .warn { color: #ff9800; }
+    #boot-log .err  { color: #f44336; }
+
+    #boot-bar-wrap {
+      width: 100%;
+      max-width: 640px;
+      margin-top: 32px;
+    }
+
+    #boot-bar-label {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--amber-dim);
+      margin-bottom: 6px;
+    }
+
+    #boot-bar-track {
+      width: 100%;
+      height: 6px;
+      border: 1px solid var(--amber-dim);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #boot-bar-fill {
+      height: 100%;
+      background: var(--amber);
+      box-shadow: 0 0 8px var(--amber);
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    /* ── Main content (hidden until boot done) ── */
+    #main { opacity: 0; transition: opacity 1s ease; }
+    #main.visible { opacity: 1; }
 
     /* ── Nav ── */
     nav {
       position: fixed;
       top: 0; left: 0; right: 0;
       z-index: 100;
+      background: rgba(13,13,0,0.95);
+      border-bottom: 1px solid var(--amber-dim);
+      padding: 0 32px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 40px;
-      height: 56px;
-      background: rgba(8,12,10,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(4px);
     }
 
     .nav-logo {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--green);
-      letter-spacing: 0.12em;
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      color: var(--amber-bright);
+      text-shadow: 0 0 10px var(--amber);
+      letter-spacing: 0.1em;
       text-decoration: none;
     }
-
-    .nav-logo span { color: var(--dim); }
 
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 32px;
+      gap: 28px;
       list-style: none;
     }
 
     .nav-links a {
-      color: var(--dim);
+      color: var(--amber-dim);
       text-decoration: none;
       font-size: 12px;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      transition: color 0.2s;
+      transition: color 0.15s, text-shadow 0.15s;
     }
 
-    .nav-links a:hover { color: var(--green); }
+    .nav-links a:hover {
+      color: var(--amber-bright);
+      text-shadow: 0 0 8px var(--amber);
+    }
 
     .nav-cta {
-      padding: 7px 18px;
-      border: 1px solid var(--green);
-      color: var(--green) !important;
-      border-radius: 2px;
-      transition: background 0.2s !important;
+      border: 1px solid var(--amber-dim) !important;
+      padding: 4px 14px;
+      color: var(--amber) !important;
     }
 
-    .nav-cta:hover { background: rgba(0,255,156,0.08) !important; }
+    .nav-cta:hover {
+      border-color: var(--amber) !important;
+      background: var(--amber-glow);
+    }
+
+    /* ── Panel / box drawing ── */
+    .panel {
+      border: 1px solid var(--amber-dim);
+      background: var(--bg2);
+      position: relative;
+    }
+
+    .panel-title {
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--bg2);
+      padding: 0 8px;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+    }
 
     /* ── Hero ── */
     .hero {
@@ -117,81 +249,61 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 120px 24px 80px;
+      padding: 100px 24px 80px;
       position: relative;
-      overflow: hidden;
     }
 
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(0,255,156,0.06) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(79,195,247,0.04) 0%, transparent 60%);
-      pointer-events: none;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 14px;
-      border: 1px solid var(--border);
-      border-radius: 2px;
+    .hero-eyebrow {
       font-size: 11px;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.3em;
+      color: var(--amber-dim);
       text-transform: uppercase;
-      color: var(--green);
-      margin-bottom: 36px;
-    }
-
-    .hero-badge::before {
-      content: '';
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 8px var(--green);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+      margin-bottom: 24px;
     }
 
     .hero h1 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: clamp(36px, 6vw, 72px);
-      font-weight: 900;
-      line-height: 1.05;
-      letter-spacing: -0.01em;
-      color: #fff;
-      margin-bottom: 12px;
+      font-family: 'VT323', monospace;
+      font-size: clamp(52px, 9vw, 110px);
+      line-height: 1;
+      letter-spacing: 0.04em;
+      color: var(--amber-bright);
+      text-shadow:
+        0 0 10px var(--amber),
+        0 0 30px rgba(212,160,23,0.4),
+        0 0 60px rgba(212,160,23,0.2);
+      margin-bottom: 8px;
     }
 
-    .hero h1 em {
-      font-style: normal;
-      color: var(--green);
+    .hero-slash {
+      font-family: 'VT323', monospace;
+      font-size: clamp(18px, 3vw, 28px);
+      color: var(--amber-dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 36px;
     }
 
-    .hero-sub {
-      font-family: 'Orbitron', sans-serif;
-      font-size: clamp(13px, 2vw, 18px);
-      font-weight: 400;
-      color: var(--dim);
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      margin-bottom: 32px;
-    }
-
-    .hero-desc {
-      max-width: 600px;
+    #hero-typewriter {
       font-size: 15px;
-      color: var(--text);
+      color: var(--amber);
+      max-width: 580px;
+      min-height: 72px;
       line-height: 1.8;
       margin-bottom: 48px;
-      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    #hero-typewriter .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 16px;
+      background: var(--amber);
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
     }
 
     .hero-actions {
@@ -199,237 +311,295 @@
       gap: 16px;
       flex-wrap: wrap;
       justify-content: center;
+      margin-bottom: 64px;
     }
 
     .btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 10px 24px;
+      border: 1px solid;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.15s;
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 12px 28px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      letter-spacing: 0.06em;
-      text-decoration: none;
-      border-radius: 2px;
-      transition: all 0.2s;
-      cursor: pointer;
-      border: none;
     }
 
     .btn-primary {
-      background: var(--green);
-      color: #080C0A;
-      font-weight: 600;
+      border-color: var(--amber);
+      color: var(--bg);
+      background: var(--amber);
     }
 
     .btn-primary:hover {
-      background: #00e088;
-      box-shadow: 0 0 24px rgba(0,255,156,0.3);
+      background: var(--amber-bright);
+      border-color: var(--amber-bright);
+      box-shadow: 0 0 20px rgba(212,160,23,0.5);
     }
 
     .btn-secondary {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
+      border-color: var(--amber-dim);
+      color: var(--amber);
     }
 
     .btn-secondary:hover {
-      border-color: var(--green);
-      color: var(--green);
+      border-color: var(--amber);
+      box-shadow: 0 0 12px rgba(212,160,23,0.2);
+      background: var(--amber-glow);
     }
 
-    .hero-stats {
+    /* ── Status strip ── */
+    .status-strip {
       display: flex;
-      gap: 48px;
-      margin-top: 72px;
-      padding-top: 48px;
-      border-top: 1px solid var(--border);
+      gap: 32px;
       flex-wrap: wrap;
       justify-content: center;
+      padding: 24px;
+      border-top: 1px solid var(--amber-dim);
+      border-bottom: 1px solid var(--amber-dim);
+      width: 100%;
+      max-width: 800px;
     }
 
-    .stat-item { text-align: center; }
-
-    .stat-value {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--green);
-      display: block;
-    }
-
-    .stat-label {
-      font-size: 11px;
-      color: var(--dim);
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--amber-dim);
       letter-spacing: 0.1em;
-      text-transform: uppercase;
     }
 
-    /* ── Section base ── */
-    section {
-      padding: 100px 24px;
-      max-width: 1100px;
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green-pip);
+      box-shadow: 0 0 6px var(--green-pip);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Sections ── */
+    .section {
+      max-width: 1080px;
       margin: 0 auto;
+      padding: 80px 24px;
     }
 
-    .section-label {
-      font-size: 11px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--green);
-      margin-bottom: 16px;
+    .section-header {
+      margin-bottom: 48px;
     }
+
+    .section-tag {
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .section-tag::before { content: '> '; color: var(--amber); }
 
     .section-title {
-      font-family: 'Orbitron', sans-serif;
-      font-size: clamp(24px, 4vw, 40px);
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 16px;
+      font-family: 'VT323', monospace;
+      font-size: clamp(32px, 5vw, 52px);
+      color: var(--amber-bright);
+      letter-spacing: 0.04em;
+      line-height: 1.1;
     }
 
-    .section-desc {
-      font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 16px;
-      color: var(--text);
-      max-width: 560px;
-      line-height: 1.8;
-      margin-bottom: 56px;
-    }
-
-    /* ── What it is ── */
-    .what-grid {
+    /* ── Capability grid ── */
+    .cap-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
+      background: var(--amber-dim);
+      border: 1px solid var(--amber-dim);
     }
 
-    .what-card {
+    .cap-card {
       background: var(--bg2);
-      padding: 32px;
-      transition: background 0.2s;
+      padding: 28px;
+      transition: background 0.15s;
+      cursor: default;
     }
 
-    .what-card:hover { background: var(--bg3); }
+    .cap-card:hover { background: var(--bg3); }
 
-    .what-icon {
+    .cap-card-id {
+      font-size: 10px;
+      color: var(--amber-dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 10px;
+    }
+
+    .cap-card-title {
+      font-family: 'VT323', monospace;
       font-size: 22px;
-      margin-bottom: 16px;
-      display: block;
-    }
-
-    .what-title {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 13px;
-      font-weight: 600;
-      color: #fff;
+      color: var(--amber-bright);
       margin-bottom: 10px;
       letter-spacing: 0.06em;
     }
 
-    .what-desc {
-      font-size: 13px;
-      color: var(--dim);
+    .cap-card-desc {
+      font-size: 12px;
+      color: var(--amber-dim);
       line-height: 1.7;
-      font-family: 'IBM Plex Sans', sans-serif;
     }
 
-    /* ── Build on it ── */
-    .build-section {
+    /* ── Terminal block ── */
+    .terminal {
+      background: var(--bg);
+      border: 1px solid var(--amber-dim);
+      padding: 28px 32px;
+      position: relative;
+    }
+
+    .terminal-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 28px;
+      background: var(--amber-dim);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+
+    .terminal-bar-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
       background: var(--bg2);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 100px 24px;
+      opacity: 0.5;
     }
 
-    .build-inner {
-      max-width: 1100px;
-      margin: 0 auto;
+    .terminal-bar-title {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--bg);
+      margin-left: auto;
+      margin-right: auto;
+      opacity: 0.7;
     }
 
+    .terminal pre {
+      margin-top: 20px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      line-height: 2;
+      color: var(--amber);
+    }
+
+    .terminal .t-dim    { color: var(--amber-dim); }
+    .terminal .t-bright { color: var(--amber-bright); }
+    .terminal .t-green  { color: var(--green-pip); }
+    .terminal .t-prompt { color: var(--amber); }
+
+    /* ── Arch services ── */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1px;
+      background: var(--amber-dim);
+      border: 1px solid var(--amber-dim);
+      margin-top: 40px;
+    }
+
+    .arch-node {
+      background: var(--bg2);
+      padding: 20px 16px;
+      text-align: center;
+      transition: background 0.15s;
+    }
+
+    .arch-node:hover { background: var(--bg3); }
+
+    .arch-node-name {
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      color: var(--amber-bright);
+      margin-bottom: 4px;
+    }
+
+    .arch-node-port {
+      font-size: 10px;
+      color: var(--amber-dim);
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+
+    .arch-node-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 10px;
+      color: var(--green-pip);
+      letter-spacing: 0.1em;
+    }
+
+    .arch-node-status::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green-pip);
+      box-shadow: 0 0 4px var(--green-pip);
+    }
+
+    /* ── Build items ── */
     .build-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 24px;
-      margin-top: 48px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
     }
 
     .build-item {
-      padding: 24px;
-      border: 1px solid var(--border);
-      border-radius: 2px;
-      transition: border-color 0.2s;
+      border: 1px solid var(--amber-dim);
+      padding: 20px;
+      transition: border-color 0.15s, background 0.15s;
     }
 
-    .build-item:hover { border-color: rgba(0,255,156,0.3); }
+    .build-item:hover {
+      border-color: var(--amber);
+      background: var(--amber-glow);
+    }
+
+    .build-item-num {
+      font-size: 10px;
+      color: var(--amber-dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 8px;
+    }
 
     .build-item-title {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--amber);
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--amber-bright);
       margin-bottom: 8px;
-      letter-spacing: 0.08em;
     }
 
     .build-item p {
       font-size: 12px;
-      color: var(--dim);
-      font-family: 'IBM Plex Sans', sans-serif;
+      color: var(--amber-dim);
       line-height: 1.6;
     }
 
-    /* ── Architecture ── */
-    .arch-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1px;
-      background: var(--border);
-      border: 1px solid var(--border);
-      margin-top: 48px;
-    }
-
-    .arch-service {
-      background: var(--bg2);
-      padding: 24px 20px;
-      text-align: center;
-    }
-
-    .arch-name {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--green);
-      letter-spacing: 0.1em;
-      margin-bottom: 8px;
-    }
-
-    .arch-port {
-      font-size: 11px;
-      color: var(--dim);
-      margin-bottom: 10px;
-    }
-
-    .arch-desc {
-      font-size: 11px;
-      color: var(--dim);
-      font-family: 'IBM Plex Sans', sans-serif;
-      line-height: 1.5;
-    }
-
     /* ── Editions ── */
-    .editions-section {
+    .editions-wrap {
       background: var(--bg2);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      padding: 100px 24px;
-    }
-
-    .editions-inner {
-      max-width: 1100px;
-      margin: 0 auto;
+      border-top: 1px solid var(--amber-dim);
+      border-bottom: 1px solid var(--amber-dim);
+      padding: 80px 24px;
     }
 
     .editions-grid {
@@ -439,471 +609,577 @@
       margin-top: 48px;
     }
 
-    @media (max-width: 640px) {
-      .editions-grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 640px) { .editions-grid { grid-template-columns: 1fr; } }
 
     .edition-card {
-      padding: 40px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--amber-dim);
+      padding: 36px;
       position: relative;
+      transition: border-color 0.2s;
     }
 
-    .edition-card.featured {
-      border-color: var(--green);
+    .edition-card.active {
+      border-color: var(--amber);
+      box-shadow: 0 0 24px rgba(212,160,23,0.1), inset 0 0 24px rgba(212,160,23,0.03);
     }
 
-    .edition-badge {
+    .edition-tag {
       position: absolute;
-      top: -1px; right: 24px;
-      background: var(--green);
-      color: #080C0A;
+      top: -1px; right: 20px;
+      background: var(--amber);
+      color: var(--bg);
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.12em;
-      padding: 4px 12px;
+      letter-spacing: 0.2em;
+      padding: 3px 12px;
       text-transform: uppercase;
     }
 
     .edition-name {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 20px;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-
-    .edition-price {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 32px;
-      font-weight: 900;
-      color: var(--green);
+      font-family: 'VT323', monospace;
+      font-size: 28px;
+      color: var(--amber-bright);
       margin-bottom: 4px;
     }
 
-    .edition-price span {
-      font-size: 14px;
-      font-weight: 400;
-      color: var(--dim);
+    .edition-price {
+      font-family: 'VT323', monospace;
+      font-size: 48px;
+      color: var(--amber-bright);
+      text-shadow: 0 0 10px var(--amber);
+      line-height: 1;
+      margin-bottom: 4px;
     }
 
-    .edition-desc {
-      font-size: 13px;
-      color: var(--dim);
-      font-family: 'IBM Plex Sans', sans-serif;
-      margin-bottom: 32px;
-      line-height: 1.6;
+    .edition-price-sub {
+      font-size: 11px;
+      color: var(--amber-dim);
+      letter-spacing: 0.1em;
+      margin-bottom: 24px;
     }
 
     .edition-features {
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 36px;
+      gap: 8px;
+      margin-bottom: 32px;
     }
 
     .edition-features li {
+      font-size: 12px;
+      color: var(--amber-dim);
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      font-size: 13px;
-      color: var(--text);
-      font-family: 'IBM Plex Sans', sans-serif;
+      gap: 8px;
     }
 
-    .edition-features li::before {
-      content: '→';
-      color: var(--green);
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-
-    /* ── Code block ── */
-    .quickstart {
-      margin-top: 80px;
-    }
-
-    .code-block {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      padding: 32px;
-      position: relative;
-      overflow-x: auto;
-    }
-
-    .code-block pre {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      line-height: 1.8;
-      color: var(--text);
-    }
-
-    .code-block .comment { color: var(--dim); }
-    .code-block .cmd { color: var(--green); }
-    .code-block .arg { color: var(--blue); }
-
-    .code-label {
-      position: absolute;
-      top: 12px; right: 16px;
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      color: var(--dim);
-      text-transform: uppercase;
-    }
+    .edition-features li::before { content: '+'; color: var(--amber); }
 
     /* ── CTA ── */
     .cta-section {
       text-align: center;
-      padding: 120px 24px;
+      padding: 100px 24px;
     }
 
     .cta-section h2 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: clamp(28px, 5vw, 52px);
-      font-weight: 900;
-      color: #fff;
-      margin-bottom: 20px;
+      font-family: 'VT323', monospace;
+      font-size: clamp(40px, 7vw, 80px);
+      color: var(--amber-bright);
+      text-shadow: 0 0 20px rgba(212,160,23,0.4);
+      margin-bottom: 16px;
     }
 
     .cta-section p {
-      font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 16px;
-      color: var(--dim);
+      font-size: 13px;
+      color: var(--amber-dim);
       max-width: 480px;
-      margin: 0 auto 40px;
-      line-height: 1.7;
+      margin: 0 auto 36px;
+      line-height: 1.8;
     }
 
     /* ── Footer ── */
     footer {
-      border-top: 1px solid var(--border);
-      padding: 40px;
+      border-top: 1px solid var(--amber-dim);
+      padding: 28px 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: gap;
+      flex-wrap: wrap;
       gap: 16px;
     }
 
     .footer-logo {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--green);
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--amber);
       letter-spacing: 0.1em;
     }
 
     .footer-links {
       display: flex;
-      gap: 24px;
+      gap: 20px;
       flex-wrap: wrap;
     }
 
     .footer-links a {
-      color: var(--dim);
+      color: var(--amber-dim);
       text-decoration: none;
-      font-size: 12px;
-      transition: color 0.2s;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      transition: color 0.15s;
     }
 
-    .footer-links a:hover { color: var(--green); }
+    .footer-links a:hover { color: var(--amber); }
 
     .footer-copy {
       font-size: 11px;
-      color: var(--dim);
+      color: var(--amber-dim);
+      letter-spacing: 0.05em;
     }
 
-    /* ── Divider ── */
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      max-width: 1100px;
-      margin: 0 auto;
+    /* ── Progress bar (capability meter) ── */
+    .meter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
     }
 
-    /* ── Responsive ── */
+    .meter-label {
+      font-size: 11px;
+      color: var(--amber-dim);
+      letter-spacing: 0.08em;
+      width: 140px;
+      flex-shrink: 0;
+    }
+
+    .meter-track {
+      flex: 1;
+      height: 4px;
+      background: var(--bg3);
+      border: 1px solid var(--amber-dim);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .meter-val {
+      font-size: 11px;
+      color: var(--amber);
+      width: 36px;
+      text-align: right;
+    }
+
+    /* ── Hover sound target ── */
+    [data-sound] { transition: all 0.15s; }
+
     @media (max-width: 768px) {
-      nav { padding: 0 20px; }
-      .nav-links { gap: 16px; }
-      .nav-links li:not(:last-child) { display: none; }
+      nav { padding: 0 16px; }
+      .nav-links li:not(:last-child):not(:first-child) { display: none; }
       footer { flex-direction: column; text-align: center; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Nav -->
-  <nav>
-    <a href="#" class="nav-logo">SUMMIT<span>.OS</span></a>
-    <ul class="nav-links">
-      <li><a href="#capabilities">Capabilities</a></li>
-      <li><a href="#architecture">Architecture</a></li>
-      <li><a href="#editions">Editions</a></li>
-      <li><a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank">GitHub</a></li>
-      <li><a href="mailto:enterprise@bigmt.ai" class="nav-cta">Enterprise</a></li>
-    </ul>
-  </nav>
-
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-badge">Open Source · Apache 2.0 · v0.1.0</div>
-    <h1>The Open Platform for<br /><em>Autonomous Coordination</em></h1>
-    <p class="hero-sub">By BigMT.ai</p>
-    <p class="hero-desc">
-      Summit.OS is the open-core platform that fuses sensor data, runs AI dispatch,
-      and delivers real-time situational awareness for autonomous systems operations.
-      Free to use, self-host, and build on — forever.
-    </p>
-    <div class="hero-actions">
-      <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-primary" target="_blank">
-        ↗ Get Started on GitHub
-      </a>
-      <a href="mailto:enterprise@bigmt.ai" class="btn btn-secondary">
-        Enterprise Inquiry
-      </a>
-    </div>
-    <div class="hero-stats">
-      <div class="stat-item">
-        <span class="stat-value">6</span>
-        <span class="stat-label">Microservices</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">3</span>
-        <span class="stat-label">Data Sources</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">ONNX</span>
-        <span class="stat-label">ML Runtime</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">Apache 2.0</span>
-        <span class="stat-label">License</span>
-      </div>
+  <!-- ══════════════════════════════════════════════════════════
+       BOOT SCREEN
+  ══════════════════════════════════════════════════════════ -->
+  <div id="boot">
+    <div id="boot-logo" class="flicker">SUMMIT.OS</div>
+    <div id="boot-sub">BIGMT.AI // AUTONOMOUS COORDINATION PLATFORM</div>
+    <div id="boot-log"></div>
+    <div id="boot-bar-wrap">
+      <div id="boot-bar-label">INITIALIZING SYSTEMS...</div>
+      <div id="boot-bar-track"><div id="boot-bar-fill"></div></div>
     </div>
   </div>
 
-  <hr class="divider" />
+  <!-- ══════════════════════════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════════════════════ -->
+  <div id="main">
 
-  <!-- Capabilities -->
-  <section id="capabilities">
-    <div class="section-label">// capabilities</div>
-    <h2 class="section-title">Everything your stack needs.<br />Nothing it doesn't.</h2>
-    <p class="section-desc">
-      A complete autonomous systems coordination stack — sensor ingestion to operator
-      dispatch — built as composable microservices you can run all at once or pick apart.
-    </p>
-    <div class="what-grid">
-      <div class="what-card">
-        <span class="what-icon">◈</span>
-        <div class="what-title">Sensor Fusion</div>
-        <p class="what-desc">Kalman EKF multi-source fusion. Ingests ADS-B, AIS, satellite, MQTT, and custom adapters into a unified world model.</p>
+    <!-- Nav -->
+    <nav>
+      <a href="#" class="nav-logo" data-sound="click">SUMMIT.OS</a>
+      <ul class="nav-links">
+        <li><a href="#capabilities" data-sound="click">Systems</a></li>
+        <li><a href="#architecture" data-sound="click">Architecture</a></li>
+        <li><a href="#editions" data-sound="click">Access Tiers</a></li>
+        <li><a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank" data-sound="click">GitHub</a></li>
+        <li><a href="mailto:enterprise@bigmt.ai" class="nav-cta" data-sound="click">ENTERPRISE</a></li>
+      </ul>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero flicker">
+      <div class="hero-eyebrow">BIGMT.AI // OPEN SOURCE // APACHE 2.0</div>
+      <h1 class="glow">SUMMIT.OS</h1>
+      <div class="hero-slash">// AUTONOMOUS COORDINATION PLATFORM //</div>
+      <div id="hero-typewriter"><span class="cursor"></span></div>
+      <div class="hero-actions">
+        <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-primary" data-sound="click" target="_blank">
+          [ DEPLOY NOW ]
+        </a>
+        <a href="mailto:enterprise@bigmt.ai" class="btn btn-secondary" data-sound="click">
+          [ ENTERPRISE ACCESS ]
+        </a>
       </div>
-      <div class="what-card">
-        <span class="what-icon">◉</span>
-        <div class="what-title">AI Dispatch</div>
-        <p class="what-desc">ONNX-native inference. Mission classifier and risk scorer trained on real-world data. Pluggable model registry.</p>
-      </div>
-      <div class="what-card">
-        <span class="what-icon">◎</span>
-        <div class="what-title">Real-Time Fabric</div>
-        <p class="what-desc">WebSocket entity streaming, MQTT pub/sub, Redis-backed world state. Sub-second updates across all connected operators.</p>
-      </div>
-      <div class="what-card">
-        <span class="what-icon">⬡</span>
-        <div class="what-title">Mission Tasking</div>
-        <p class="what-desc">Full mission state machine. Tiered response, autonomous escalation, drone dispatch, human-in-the-loop approval workflows.</p>
-      </div>
-      <div class="what-card">
-        <span class="what-icon">◇</span>
-        <div class="what-title">Operator Console</div>
-        <p class="what-desc">Three role-optimized views: OPS (full-screen map), COMMAND (3-column situational), DEV (adapter and schema tooling).</p>
-      </div>
-      <div class="what-card">
-        <span class="what-icon">○</span>
-        <div class="what-title">Adapter SDK</div>
-        <p class="what-desc">First-class adapter framework. OpenSky, AIS, CelesTrak built in. Extend with any sensor, protocol, or data source.</p>
+      <div class="status-strip">
+        <div class="status-item"><span class="status-dot"></span>SYSTEMS NOMINAL</div>
+        <div class="status-item"><span class="status-dot"></span>v0.1.0 RELEASED</div>
+        <div class="status-item"><span class="status-dot"></span>6 SERVICES ONLINE</div>
+        <div class="status-item"><span class="status-dot"></span>APACHE 2.0</div>
       </div>
     </div>
-  </section>
 
-  <hr class="divider" />
+    <!-- Capabilities -->
+    <section class="section" id="capabilities">
+      <div class="section-header">
+        <div class="section-tag">SYSTEM MANIFEST</div>
+        <div class="section-title">FULL STACK.<br />ZERO DEPENDENCIES.</div>
+      </div>
+      <div class="cap-grid">
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">SYS-001 // INTELLIGENCE</div>
+          <div class="cap-card-title">SENSOR FUSION</div>
+          <p class="cap-card-desc">Kalman EKF multi-source fusion pipeline. Ingests ADS-B, AIS, satellite, MQTT, and custom adapters into a unified world model.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">SYS-002 // AI CORE</div>
+          <div class="cap-card-title">AI DISPATCH</div>
+          <p class="cap-card-desc">ONNX-native inference. Mission classifier and risk scorer. Tiered autonomous escalation with human-in-the-loop approval gates.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">SYS-003 // DATA LAYER</div>
+          <div class="cap-card-title">REAL-TIME FABRIC</div>
+          <p class="cap-card-desc">WebSocket entity streaming, MQTT pub/sub, Redis world state. Sub-second entity updates across all connected operators.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">SYS-004 // COMMAND</div>
+          <div class="cap-card-title">MISSION TASKING</div>
+          <p class="cap-card-desc">Full mission state machine. Multi-tier autonomous response, asset dispatch, drone coordination, and intervention tracking.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">SYS-005 // INTERFACE</div>
+          <div class="cap-card-title">OPERATOR CONSOLE</div>
+          <p class="cap-card-desc">Three role-optimized views: OPS (full-screen map), COMMAND (3-column situational), DEV (adapter registry and schema tooling).</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">SYS-006 // INTEGRATION</div>
+          <div class="cap-card-title">ADAPTER SDK</div>
+          <p class="cap-card-desc">First-class adapter framework. OpenSky ADS-B, AIS maritime, CelesTrak satellites built in. Extend with any sensor or protocol.</p>
+        </div>
+      </div>
 
-  <!-- Build on it -->
-  <div class="build-section">
-    <div class="build-inner">
-      <div class="section-label">// platform</div>
-      <h2 class="section-title">Build anything on top.</h2>
-      <p class="section-desc">
-        Summit.OS is a foundation, not a ceiling. Apache 2.0 means you can build
-        products, services, and integrations without restriction. Like Linux —
-        the OS is open, the ecosystem is yours.
+      <!-- System meters -->
+      <div style="margin-top:48px; max-width:480px;">
+        <div class="section-tag" style="margin-bottom:20px;">SYSTEM READINESS</div>
+        <div class="meter-row"><span class="meter-label">SENSOR FUSION</span><div class="meter-track"><div class="meter-fill" data-pct="0.95"></div></div><span class="meter-val">95%</span></div>
+        <div class="meter-row"><span class="meter-label">AI DISPATCH</span><div class="meter-track"><div class="meter-fill" data-pct="0.88"></div></div><span class="meter-val">88%</span></div>
+        <div class="meter-row"><span class="meter-label">DATA FABRIC</span><div class="meter-track"><div class="meter-fill" data-pct="0.97"></div></div><span class="meter-val">97%</span></div>
+        <div class="meter-row"><span class="meter-label">MISSION TASKING</span><div class="meter-track"><div class="meter-fill" data-pct="0.91"></div></div><span class="meter-val">91%</span></div>
+        <div class="meter-row"><span class="meter-label">OPERATOR UI</span><div class="meter-track"><div class="meter-fill" data-pct="0.85"></div></div><span class="meter-val">85%</span></div>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="section" id="architecture" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">ARCHITECTURE</div>
+        <div class="section-title">COMPOSABLE.<br />INDEPENDENTLY DEPLOYABLE.</div>
+      </div>
+
+      <div class="arch-grid">
+        <div class="arch-node" data-sound="hover"><div class="arch-node-name">API GATEWAY</div><div class="arch-node-port">:8000</div><div class="arch-node-status">ONLINE</div></div>
+        <div class="arch-node" data-sound="hover"><div class="arch-node-name">FABRIC</div><div class="arch-node-port">:8001</div><div class="arch-node-status">ONLINE</div></div>
+        <div class="arch-node" data-sound="hover"><div class="arch-node-name">FUSION</div><div class="arch-node-port">:8002</div><div class="arch-node-status">ONLINE</div></div>
+        <div class="arch-node" data-sound="hover"><div class="arch-node-name">INTELLIGENCE</div><div class="arch-node-port">:8003</div><div class="arch-node-status">ONLINE</div></div>
+        <div class="arch-node" data-sound="hover"><div class="arch-node-name">TASKING</div><div class="arch-node-port">:8004</div><div class="arch-node-status">ONLINE</div></div>
+        <div class="arch-node" data-sound="hover"><div class="arch-node-name">INFERENCE</div><div class="arch-node-port">:8006</div><div class="arch-node-status">ONLINE</div></div>
+      </div>
+
+      <div style="margin-top:48px;">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="terminal-bar-dot"></div>
+            <div class="terminal-bar-dot"></div>
+            <div class="terminal-bar-dot"></div>
+            <div class="terminal-bar-title">SUMMIT.OS // QUICKSTART</div>
+          </div>
+          <pre>
+<span class="t-dim"># Clone the platform</span>
+<span class="t-prompt">$</span> <span class="t-bright">git clone</span> https://github.com/BigMT-Ai/Summit.OS
+<span class="t-prompt">$</span> <span class="t-bright">cd</span> Summit.OS
+
+<span class="t-dim"># Configure environment</span>
+<span class="t-prompt">$</span> <span class="t-bright">cp</span> .env.example .env
+
+<span class="t-dim"># Launch all systems</span>
+<span class="t-prompt">$</span> <span class="t-bright">make dev</span>
+
+<span class="t-green">✓</span> <span class="t-dim">Console      →</span> http://localhost:3002
+<span class="t-green">✓</span> <span class="t-dim">API Gateway  →</span> http://localhost:8000
+<span class="t-green">✓</span> <span class="t-dim">Grafana      →</span> http://localhost:3001
+<span class="t-green">✓</span> <span class="t-dim">Prometheus   →</span> http://localhost:9090</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Build on it -->
+    <section class="section" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">PLATFORM</div>
+        <div class="section-title">BUILD ANYTHING<br />ON TOP.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:560px;line-height:1.8;margin-bottom:0;">
+        Apache 2.0. No lock-in. Summit.OS is a foundation — like Linux for autonomous ops.
+        The platform is open, the ecosystem is yours to shape.
       </p>
       <div class="build-grid">
-        <div class="build-item">
-          <div class="build-item-title">Wildfire Response</div>
-          <p>Custom alert ingestion, fire-spread modeling overlays, aerial asset dispatch, crew coordination.</p>
+        <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 01</div><div class="build-item-title">WILDFIRE RESPONSE</div><p>Custom alert ingestion, fire-spread modeling, aerial asset dispatch, crew coordination.</p></div>
+        <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 02</div><div class="build-item-title">UAV FLEET OPS</div><p>Commercial drone fleet management, geofencing, multi-vehicle tasking, telemetry dashboards.</p></div>
+        <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 03</div><div class="build-item-title">SEARCH & RESCUE</div><p>Terrain analysis, resource tracking, multi-agency coordination, handoff brief generation.</p></div>
+        <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 04</div><div class="build-item-title">PORT & MARITIME</div><p>AIS vessel tracking, anomaly detection, berth coordination, security zone enforcement.</p></div>
+        <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 05</div><div class="build-item-title">EMERGENCY MGMT</div><p>Multi-agency situational awareness, resource deconfliction, incident command support.</p></div>
+        <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 06</div><div class="build-item-title">CUSTOM INTEGRATION</div><p>Any sensor. Any protocol. Any data source. The adapter SDK handles the heavy lifting.</p></div>
+      </div>
+    </section>
+
+    <!-- Editions -->
+    <div class="editions-wrap" id="editions">
+      <div style="max-width:1080px;margin:0 auto;">
+        <div class="section-header">
+          <div class="section-tag">ACCESS TIERS</div>
+          <div class="section-title">OPEN CORE.<br />NO LOCK-IN.</div>
         </div>
-        <div class="build-item">
-          <div class="build-item-title">UAV Fleet Ops</div>
-          <p>Commercial drone fleet management, geofencing, multi-vehicle tasking, telemetry dashboards.</p>
-        </div>
-        <div class="build-item">
-          <div class="build-item-title">Search & Rescue</div>
-          <p>Terrain analysis, resource tracking, multi-agency coordination, handoff brief generation.</p>
-        </div>
-        <div class="build-item">
-          <div class="build-item-title">Port & Maritime</div>
-          <p>AIS vessel tracking, anomaly detection, berth coordination, security zone enforcement.</p>
-        </div>
-        <div class="build-item">
-          <div class="build-item-title">Emergency Management</div>
-          <p>Multi-agency situational awareness, resource deconfliction, incident command support.</p>
-        </div>
-        <div class="build-item">
-          <div class="build-item-title">Custom Integrations</div>
-          <p>Any sensor. Any protocol. Any data source. The adapter SDK handles the heavy lifting.</p>
+        <div class="editions-grid">
+          <div class="edition-card" data-sound="hover">
+            <div class="edition-name">COMMUNITY</div>
+            <div class="edition-price">$0</div>
+            <div class="edition-price-sub">FREE // SELF-HOSTED // FOREVER</div>
+            <ul class="edition-features">
+              <li>Full sensor fusion pipeline</li>
+              <li>AI dispatch + ONNX inference</li>
+              <li>Real-time WebSocket streaming</li>
+              <li>Mission tasking state machine</li>
+              <li>All adapters + SDK</li>
+              <li>OPS / COMMAND / DEV console</li>
+              <li>Full observability stack</li>
+              <li>Community support via GitHub</li>
+            </ul>
+            <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-secondary" data-sound="click" target="_blank">[ DEPLOY NOW ]</a>
+          </div>
+          <div class="edition-card active" data-sound="hover">
+            <div class="edition-tag">ENTERPRISE</div>
+            <div class="edition-name">ENTERPRISE</div>
+            <div class="edition-price">$1,500</div>
+            <div class="edition-price-sub">PER MONTH // MANAGED OR SELF-HOSTED</div>
+            <ul class="edition-features">
+              <li>Everything in Community</li>
+              <li>Multi-organization tenancy</li>
+              <li>Per-org data isolation</li>
+              <li>SSO / OIDC enforced</li>
+              <li>RBAC enforced</li>
+              <li>Append-only audit logging</li>
+              <li>Field-level encryption</li>
+              <li>Priority support + SLA</li>
+            </ul>
+            <a href="mailto:enterprise@bigmt.ai" class="btn btn-primary" data-sound="click">[ CONTACT US ]</a>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Architecture -->
-  <section id="architecture">
-    <div class="section-label">// architecture</div>
-    <h2 class="section-title">Composable microservices.<br />Deploy what you need.</h2>
-    <p class="section-desc">
-      Each service is independently deployable. Run the full stack with one command,
-      or drop individual services into your existing infrastructure.
-    </p>
-    <div class="arch-grid">
-      <div class="arch-service">
-        <div class="arch-name">API Gateway</div>
-        <div class="arch-port">:8000</div>
-        <div class="arch-desc">Auth, routing, RBAC, audit, approvals</div>
-      </div>
-      <div class="arch-service">
-        <div class="arch-name">Fabric</div>
-        <div class="arch-port">:8001</div>
-        <div class="arch-desc">World model, WebSocket streaming, MQTT</div>
-      </div>
-      <div class="arch-service">
-        <div class="arch-name">Fusion</div>
-        <div class="arch-port">:8002</div>
-        <div class="arch-desc">Kalman EKF sensor fusion pipeline</div>
-      </div>
-      <div class="arch-service">
-        <div class="arch-name">Intelligence</div>
-        <div class="arch-port">:8003</div>
-        <div class="arch-desc">AI classification and dispatch logic</div>
-      </div>
-      <div class="arch-service">
-        <div class="arch-name">Tasking</div>
-        <div class="arch-port">:8004</div>
-        <div class="arch-desc">Mission state machine, asset management</div>
-      </div>
-      <div class="arch-service">
-        <div class="arch-name">Inference</div>
-        <div class="arch-port">:8006</div>
-        <div class="arch-desc">ONNX model serving, vision AI</div>
+    <!-- CTA -->
+    <div class="cta-section">
+      <h2 class="glow">INITIATE DEPLOYMENT.</h2>
+      <p>Clone the repo. Run one command. Full autonomous coordination stack in minutes.</p>
+      <div class="hero-actions" style="justify-content:center;">
+        <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-primary" data-sound="click" target="_blank">[ VIEW ON GITHUB ]</a>
+        <a href="mailto:enterprise@bigmt.ai" class="btn btn-secondary" data-sound="click">[ ENTERPRISE@BIGMT.AI ]</a>
       </div>
     </div>
 
-    <!-- Quickstart -->
-    <div class="quickstart">
-      <div class="section-label">// quickstart</div>
-      <div class="code-block">
-        <span class="code-label">bash</span>
-        <pre><span class="comment"># Clone and run</span>
-<span class="cmd">git clone</span> <span class="arg">https://github.com/BigMT-Ai/Summit.OS</span>
-<span class="cmd">cd</span> Summit.OS
-<span class="cmd">cp</span> .env.example .env
-<span class="cmd">make dev</span>
-
-<span class="comment"># Console opens at http://localhost:3002</span>
-<span class="comment"># API Gateway at http://localhost:8000</span>
-<span class="comment"># Grafana at http://localhost:3001</span></pre>
+    <!-- Footer -->
+    <footer>
+      <div class="footer-logo">SUMMIT.OS // BIGMT.AI</div>
+      <div class="footer-links">
+        <a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank" data-sound="click">GitHub</a>
+        <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/COMMUNITY.md" target="_blank" data-sound="click">Community</a>
+        <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/SECURITY.md" target="_blank" data-sound="click">Security</a>
+        <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/LICENSE" target="_blank" data-sound="click">License</a>
+        <a href="mailto:enterprise@bigmt.ai" data-sound="click">Enterprise</a>
       </div>
-    </div>
-  </section>
+      <div class="footer-copy">© 2026 BIGMT.AI — APACHE 2.0</div>
+    </footer>
 
-  <!-- Editions -->
-  <div class="editions-section" id="editions">
-    <div class="editions-inner">
-      <div class="section-label">// editions</div>
-      <h2 class="section-title">Open core. No lock-in.</h2>
-      <p class="section-desc">
-        Community is free forever. Enterprise adds multi-org isolation, enforced security,
-        and SLA-backed support. The code for both is in the same repo.
-      </p>
-      <div class="editions-grid">
-        <div class="edition-card">
-          <div class="edition-name">Community</div>
-          <div class="edition-price">$0 <span>/ forever</span></div>
-          <p class="edition-desc">Self-hosted. Apache 2.0. Full access to every capability. Build anything on top.</p>
-          <ul class="edition-features">
-            <li>Full sensor fusion pipeline</li>
-            <li>AI dispatch and ONNX inference</li>
-            <li>Real-time WebSocket streaming</li>
-            <li>Mission tasking and state machine</li>
-            <li>All built-in adapters + SDK</li>
-            <li>OPS / COMMAND / DEV console</li>
-            <li>Observability stack (Prometheus, Grafana, Jaeger)</li>
-            <li>Community support via GitHub</li>
-          </ul>
-          <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-secondary" target="_blank">
-            ↗ Get Started
-          </a>
-        </div>
-        <div class="edition-card featured">
-          <div class="edition-badge">Enterprise</div>
-          <div class="edition-name">Enterprise</div>
-          <div class="edition-price">$1,500 <span>/ month</span></div>
-          <p class="edition-desc">Multi-org isolation, enforced security, and priority support for teams running critical operations.</p>
-          <ul class="edition-features">
-            <li>Everything in Community</li>
-            <li>Multi-organization tenancy</li>
-            <li>Per-org WebSocket isolation</li>
-            <li>SSO / OIDC enforced</li>
-            <li>RBAC enforced</li>
-            <li>Append-only audit logging</li>
-            <li>Field-level encryption enforced</li>
-            <li>Priority support + SLA</li>
-          </ul>
-          <a href="mailto:enterprise@bigmt.ai" class="btn btn-primary">
-            Contact Us
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
+  </div><!-- /main -->
 
-  <!-- CTA -->
-  <div class="cta-section">
-    <h2>Start building today.</h2>
-    <p>Clone the repo, run one command, and have a full autonomous coordination stack running in minutes.</p>
-    <div class="hero-actions">
-      <a href="https://github.com/BigMT-Ai/Summit.OS" class="btn btn-primary" target="_blank">
-        ↗ View on GitHub
-      </a>
-      <a href="mailto:enterprise@bigmt.ai" class="btn btn-secondary">
-        enterprise@bigmt.ai
-      </a>
-    </div>
-  </div>
+  <script>
+  // ══════════════════════════════════════════════════════════════
+  // AUDIO ENGINE
+  // ══════════════════════════════════════════════════════════════
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let ctx = null;
 
-  <!-- Footer -->
-  <footer>
-    <div class="footer-logo">SUMMIT.OS</div>
-    <div class="footer-links">
-      <a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank">GitHub</a>
-      <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/COMMUNITY.md" target="_blank">Community</a>
-      <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/SECURITY.md" target="_blank">Security</a>
-      <a href="https://github.com/BigMT-Ai/Summit.OS/blob/main/LICENSE" target="_blank">License</a>
-      <a href="mailto:enterprise@bigmt.ai">Enterprise</a>
-    </div>
-    <div class="footer-copy">© 2026 BigMT.ai — Apache 2.0</div>
-  </footer>
+  function getCtx() {
+    if (!ctx) ctx = new AudioCtx();
+    return ctx;
+  }
 
+  function beep(freq = 800, dur = 0.04, vol = 0.08, type = 'square') {
+    try {
+      const c = getCtx();
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.connect(gain);
+      gain.connect(c.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, c.currentTime);
+      gain.gain.setValueAtTime(vol, c.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      osc.start(c.currentTime);
+      osc.stop(c.currentTime + dur);
+    } catch(e) {}
+  }
+
+  function clickSound()  { beep(900, 0.03, 0.10); }
+  function hoverSound()  { beep(600, 0.02, 0.04); }
+  function typeSound()   { beep(700 + Math.random()*200, 0.015, 0.03); }
+  function bootBeep(f)   { beep(f, 0.08, 0.12); }
+
+  // Wire sound events
+  document.querySelectorAll('[data-sound="click"]').forEach(el => {
+    el.addEventListener('click', clickSound);
+  });
+  document.querySelectorAll('[data-sound="hover"]').forEach(el => {
+    el.addEventListener('mouseenter', hoverSound);
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // BOOT SEQUENCE
+  // ══════════════════════════════════════════════════════════════
+  const bootLog  = document.getElementById('boot-log');
+  const bootFill = document.getElementById('boot-bar-fill');
+
+  const bootLines = [
+    { text: 'BIOS v2.4.1 // BIGMT SYSTEMS',             cls: '',     delay: 0   },
+    { text: 'CPU: AUTONOMOUS COORDINATION ENGINE x8',   cls: '',     delay: 180 },
+    { text: 'RAM: 32768MB OK',                           cls: '',     delay: 120 },
+    { text: 'INITIALIZING DATA FABRIC...',               cls: '',     delay: 200 },
+    { text: '  > REDIS WORLDSTORE.............. [OK]',   cls: 'ok',   delay: 220 },
+    { text: '  > MQTT BROKER................... [OK]',   cls: 'ok',   delay: 180 },
+    { text: '  > POSTGRES...................... [OK]',   cls: 'ok',   delay: 160 },
+    { text: 'LOADING SENSOR FUSION ENGINE...',           cls: '',     delay: 220 },
+    { text: '  > KALMAN EKF MODULE............. [OK]',   cls: 'ok',   delay: 200 },
+    { text: '  > ADS-B ADAPTER (OPENSKY)....... [OK]',  cls: 'ok',   delay: 180 },
+    { text: '  > AIS ADAPTER................... [OK]',   cls: 'ok',   delay: 160 },
+    { text: '  > CELESTRAK ADAPTER............. [OK]',   cls: 'ok',   delay: 140 },
+    { text: 'LOADING AI INFERENCE ENGINE...',            cls: '',     delay: 220 },
+    { text: '  > ONNX RUNTIME.................. [OK]',   cls: 'ok',   delay: 200 },
+    { text: '  > MISSION CLASSIFIER............ [OK]',   cls: 'ok',   delay: 180 },
+    { text: '  > RISK SCORER................... [OK]',   cls: 'ok',   delay: 160 },
+    { text: 'STARTING OPERATOR CONSOLE...',              cls: '',     delay: 220 },
+    { text: '  > OPS VIEW...................... [OK]',   cls: 'ok',   delay: 180 },
+    { text: '  > COMMAND VIEW.................. [OK]',   cls: 'ok',   delay: 160 },
+    { text: '  > DEV VIEW...................... [OK]',   cls: 'ok',   delay: 140 },
+    { text: '',                                          cls: '',     delay: 100 },
+    { text: 'ALL SYSTEMS NOMINAL. SUMMIT.OS READY.',    cls: 'ok',   delay: 300 },
+  ];
+
+  async function runBoot() {
+    let total = bootLines.reduce((a, l) => a + l.delay, 0) + 600;
+    let elapsed = 0;
+
+    for (let i = 0; i < bootLines.length; i++) {
+      const line = bootLines[i];
+      await sleep(line.delay);
+      elapsed += line.delay;
+
+      if (line.text) {
+        const div = document.createElement('div');
+        div.textContent = line.text;
+        if (line.cls) div.classList.add(line.cls);
+        bootLog.appendChild(div);
+        bootLog.scrollTop = bootLog.scrollHeight;
+        bootBeep(400 + Math.random() * 300);
+      }
+
+      bootFill.style.width = Math.min((elapsed / total) * 100, 100) + '%';
+    }
+
+    bootFill.style.width = '100%';
+    await sleep(600);
+
+    // Hide boot
+    document.getElementById('boot').classList.add('hidden');
+    await sleep(900);
+    document.getElementById('main').classList.add('visible');
+
+    // Start typewriter
+    typewriter();
+
+    // Animate meters after a short delay
+    setTimeout(animateMeters, 600);
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  // ══════════════════════════════════════════════════════════════
+  // TYPEWRITER
+  // ══════════════════════════════════════════════════════════════
+  const heroText = 'Fuses sensor data from any source. Runs AI-powered dispatch. Delivers real-time situational awareness for autonomous systems operations. Free to use, self-host, and build on — forever.';
+
+  async function typewriter() {
+    const el = document.getElementById('hero-typewriter');
+    el.innerHTML = '<span class="cursor"></span>';
+    const cursor = el.querySelector('.cursor');
+
+    for (let i = 0; i < heroText.length; i++) {
+      cursor.insertAdjacentText('beforebegin', heroText[i]);
+      typeSound();
+      await sleep(heroText[i] === '.' ? 80 : heroText[i] === ',' ? 60 : 28);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // METER ANIMATION (Intersection Observer)
+  // ══════════════════════════════════════════════════════════════
+  function animateMeters() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const fill = entry.target;
+          const pct  = parseFloat(fill.dataset.pct);
+          fill.style.transform = `scaleX(${pct})`;
+          observer.unobserve(fill);
+        }
+      });
+    }, { threshold: 0.3 });
+
+    document.querySelectorAll('.meter-fill').forEach(el => observer.observe(el));
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // INIT
+  // ══════════════════════════════════════════════════════════════
+  window.addEventListener('load', runBoot);
+
+  // Re-wire dynamically added sound elements
+  document.querySelectorAll('.btn, .cap-card, .build-item, .arch-node, .edition-card').forEach(el => {
+    el.addEventListener('mouseenter', hoverSound);
+    el.addEventListener('click', clickSound);
+  });
+  </script>
 </body>
 </html>
