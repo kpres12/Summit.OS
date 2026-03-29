@@ -12,6 +12,10 @@ interface OpsMapViewProps {
   onSelectEntity?: (entity: EntityData | null) => void;
   flyToLocation?: { lat: number; lon: number } | null;
   alertEntityIds?: Set<string>;
+  // Mission builder integration
+  missionDrawMode?: boolean;
+  onMissionArea?: (coords: { lat: number; lon: number }[]) => void;
+  missionWaypoints?: { lat: number; lon: number; alt: number }[];
 }
 
 function markerColor(e: EntityData): string {
@@ -25,13 +29,18 @@ function markerColor(e: EntityData): string {
 
 type DrawVertex = { lat: number; lon: number };
 
-export default function OpsMapView({ onSelectEntity, flyToLocation, alertEntityIds }: OpsMapViewProps) {
+export default function OpsMapView({
+  onSelectEntity, flyToLocation, alertEntityIds,
+  missionDrawMode, onMissionArea, missionWaypoints,
+}: OpsMapViewProps) {
   const { entityList } = useEntityStream();
   const mapRef = useRef<MapRef>(null);
   const [drawMode, setDrawMode] = useState(false);
   const [vertices, setVertices] = useState<DrawVertex[]>([]);
   const [geoName, setGeoName] = useState('');
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
+  // Mission area draw (controlled externally via missionDrawMode prop)
+  const [missionVertices, setMissionVertices] = useState<DrawVertex[]>([]);
 
   // Fly to location when prop changes
   useEffect(() => {
@@ -43,16 +52,30 @@ export default function OpsMapView({ onSelectEntity, flyToLocation, alertEntityI
     });
   }, [flyToLocation]);
 
+  // Clear mission vertices when missionDrawMode turns off externally
+  useEffect(() => {
+    if (!missionDrawMode) setMissionVertices([]);
+  }, [missionDrawMode]);
+
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
+    if (missionDrawMode) {
+      setMissionVertices((prev) => [...prev, { lat: e.lngLat.lat, lon: e.lngLat.lng }]);
+      return;
+    }
     if (!drawMode) return;
     setVertices((prev) => [...prev, { lat: e.lngLat.lat, lon: e.lngLat.lng }]);
-  }, [drawMode]);
+  }, [drawMode, missionDrawMode]);
 
-  const handleMapDblClick = useCallback((_evt: MapLayerMouseEvent) => {
+  const handleMapDblClick = useCallback((_evt: MapLayerMouseEvent) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+    if (missionDrawMode && missionVertices.length >= 3) {
+      onMissionArea?.(missionVertices.map((v) => ({ lat: v.lat, lon: v.lon })));
+      setMissionVertices([]);
+      return;
+    }
     if (!drawMode || vertices.length < 3) return;
     finishPolygon();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawMode, vertices]);
+  }, [drawMode, vertices, missionDrawMode, missionVertices]);
 
   const finishPolygon = async () => {
     if (vertices.length < 3) return;
@@ -91,12 +114,47 @@ export default function OpsMapView({ onSelectEntity, flyToLocation, alertEntityI
         initialViewState={{ longitude: -98.5, latitude: 39.8, zoom: 4 }}
         style={{ width: '100%', height: '100%' }}
         mapStyle={DARK_STYLE}
-        cursor={drawMode ? 'crosshair' : 'grab'}
+        cursor={drawMode || missionDrawMode ? 'crosshair' : 'grab'}
         onClick={handleMapClick}
         onDblClick={handleMapDblClick}
       >
         <NavigationControl position="top-right" />
         <ScaleControl position="bottom-left" />
+
+        {/* Mission area in-progress polygon (blue) */}
+        {missionDrawMode && missionVertices.length >= 2 && (() => {
+          const coords = missionVertices.map((v): [number, number] => [v.lon, v.lat]);
+          if (missionVertices.length >= 3) coords.push(coords[0]);
+          return (
+            <Source id="mission-draw-line" type="geojson" data={{ type: 'Feature', geometry: { type: 'LineString', coordinates: coords }, properties: {} }}>
+              <Layer id="mission-draw-line-layer" type="line"
+                paint={{ 'line-color': '#4FC3F7', 'line-width': 2, 'line-dasharray': [4, 2] }} />
+            </Source>
+          );
+        })()}
+        {missionDrawMode && missionVertices.map((v, i) => (
+          <Marker key={`mv-${i}`} longitude={v.lon} latitude={v.lat}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: i === 0 ? '#4FC3F7' : 'rgba(79,195,247,0.5)', border: '1px solid #4FC3F7' }} />
+          </Marker>
+        ))}
+
+        {/* Mission waypoint preview dots */}
+        {missionWaypoints && missionWaypoints.length > 0 && (() => {
+          const geojson = {
+            type: 'FeatureCollection' as const,
+            features: missionWaypoints.map((wp) => ({
+              type: 'Feature' as const,
+              geometry: { type: 'Point' as const, coordinates: [wp.lon, wp.lat] },
+              properties: { alt: wp.alt },
+            })),
+          };
+          return (
+            <Source id="mission-waypoints" type="geojson" data={geojson}>
+              <Layer id="mission-waypoints-layer" type="circle"
+                paint={{ 'circle-radius': 3, 'circle-color': '#4FC3F7', 'circle-opacity': 0.6, 'circle-stroke-width': 0 }} />
+            </Source>
+          );
+        })()}
 
         {/* In-progress draw polygon */}
         {drawGeoJSON && (

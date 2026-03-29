@@ -47,7 +47,7 @@ python scripts/seed_demo.py  # seeds demo data so the map isn't empty
 
 The stack runs entirely local — all ML inference is on-device, no external API calls required. Designed to work air-gapped on field hardware.
 
-Apache 2.0. The trained models are included and also Apache 2.0.
+AGPL v3. The trained models are included under the same license. Commercial license available for proprietary deployments — see COMMERCIAL_LICENSE.md.
 
 ---
 
@@ -64,14 +64,14 @@ GitHub: https://github.com/bigmt-ai/summit-os
 ### r/drone
 **Title:** I built an open source autonomous coordination platform for UAV fleets — wildfire response, SAR, inspection [Show and Tell]
 
-Tired of watching expensive closed-source platforms get all the serious drone coordination work. Built Summit.OS — free, Apache 2.0, runs on docker compose. A camera detects smoke → UAV dispatches automatically in under 2 seconds, no LLM required. Trained ML models included. Would love feedback from anyone running real operations.
+Tired of watching expensive closed-source platforms get all the serious drone coordination work. Built Summit.OS — free, AGPL v3, runs on docker compose. A camera detects smoke → UAV dispatches automatically in under 2 seconds, no LLM required. Trained ML models included. Would love feedback from anyone running real operations.
 
 GitHub: https://github.com/bigmt-ai/summit-os
 
 ### r/ARES (Amateur Radio Emergency Service)
 **Title:** Open source autonomous coordination platform for emergency response — CoT/ATAK compatible
 
-Built Summit.OS for civilian emergency response coordination. Bidirectional CoT/ATAK bridge, so entities show up on your TAK devices. Runs air-gapped. Looking for ARES teams who'd want to pilot it. Apache 2.0, self-hosted.
+Built Summit.OS for civilian emergency response coordination. Bidirectional CoT/ATAK bridge, so entities show up on your TAK devices. Runs air-gapped. Looking for ARES teams who'd want to pilot it. AGPL v3, self-hosted.
 
 ### r/searchandrescue
 **Title:** Open source platform for autonomous UAV SAR coordination — looking for field testers
@@ -97,4 +97,4 @@ We're offering free pilot deployments to fire departments willing to give us fee
 Would a 30-minute call make sense?
 
 [Name]
-hello@bigmt.ai
+prestkyle@gmail.com

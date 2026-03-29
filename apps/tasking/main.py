@@ -170,6 +170,7 @@ async def http_exc_handler(_req: _FRequest, exc: HTTPException):
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 from routers import health, valves, tasks, assets, missions, tiered_missions
+from routers.mission_builder import router as _mission_builder_router
 
 app.include_router(health.router)
 app.include_router(valves.router)
@@ -177,3 +178,4 @@ app.include_router(tasks.router)
 app.include_router(assets.router)
 app.include_router(missions.router)
 app.include_router(tiered_missions.router)
+app.include_router(_mission_builder_router)

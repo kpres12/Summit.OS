@@ -99,6 +99,79 @@ BUILT_IN_ADAPTERS: list[dict] = [
         "name": "CoT/ATAK",
         "description": "Bidirectional Cursor on Target — first responder interoperability",
     },
+    # ── Ground robots & industrial ──────────────────────────────────────────
+    {
+        "type": "ros2",
+        "name": "ROS 2 Robot",
+        "description": "Any ROS 2 robot: Spot, Clearpath, AgileX, custom AMRs via standard topics",
+    },
+    {
+        "type": "spot",
+        "name": "Boston Dynamics Spot",
+        "description": "Spot robot dog via bosdyn-client SDK — state, battery, faults",
+    },
+    {
+        "type": "ur_robot",
+        "name": "Universal Robots",
+        "description": "UR cobots (UR3/5/10/16/20/30) via RTDE — TCP pose, safety status",
+    },
+    # ── Heavy vehicles & construction ───────────────────────────────────────
+    {
+        "type": "j1939",
+        "name": "J1939 / CAN Bus",
+        "description": "Heavy vehicles via SAE J1939: trucks, construction equipment, mining machinery",
+    },
+    {
+        "type": "isobus",
+        "name": "ISOBUS (ISO 11783)",
+        "description": "Agricultural machinery via ISOBUS: tractors, combines, sprayers, planters",
+    },
+    # ── Marine ──────────────────────────────────────────────────────────────
+    {
+        "type": "nmea2000",
+        "name": "NMEA 2000",
+        "description": "Modern marine electronics via NMEA 2000 CAN bus — vessels, autopilots",
+    },
+    # ── Consumer vehicles ────────────────────────────────────────────────────
+    {
+        "type": "tesla",
+        "name": "Tesla Fleet API",
+        "description": "Tesla vehicles via official Fleet API — location, charge, drive state",
+    },
+    # ── Building systems ────────────────────────────────────────────────────
+    {
+        "type": "bacnet",
+        "name": "BACnet/IP",
+        "description": "Building automation via BACnet/IP — HVAC, access control, elevators",
+    },
+    # ── IoT sensor networks ─────────────────────────────────────────────────
+    {
+        "type": "lorawan",
+        "name": "LoRaWAN (ChirpStack)",
+        "description": "Long-range IoT sensors via ChirpStack MQTT — wildfire, flood, perimeter",
+    },
+    {
+        "type": "zigbee",
+        "name": "Zigbee2MQTT",
+        "description": "Zigbee sensors via Zigbee2MQTT — motion, smoke, water leak, environmental",
+    },
+    # ── Satellite connectivity ────────────────────────────────────────────────
+    {
+        "type": "starlink",
+        "name": "Starlink Terminal",
+        "description": "Starlink dish telemetry via local gRPC API — GPS position, signal quality, connectivity state",
+    },
+    # ── Generic connectivity ─────────────────────────────────────────────────
+    {
+        "type": "serial",
+        "name": "Generic Serial",
+        "description": "RS-232/RS-485 serial devices with JSON, CSV, or regex response parsing",
+    },
+    {
+        "type": "websocket",
+        "name": "Generic WebSocket",
+        "description": "Any JSON-over-WebSocket telemetry feed with configurable field mapping",
+    },
 ]
 
 # Index by type for O(1) lookup
@@ -313,8 +386,39 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
     _builtins = [
         ("opensky.adapter", "OpenSkyAdapter"),
         ("celestrak.adapter", "CelesTrakAdapter"),
-        ("adapters.mavlink_adapter", "MAVLinkAdapter"),
-        ("atak.adapter", "ATAKAdapter"),
+        # Core adapters
+        ("adapters.mavlink_adapter",  "MAVLinkAdapter"),
+        ("adapters.modbus_adapter",   "ModbusAdapter"),
+        ("adapters.ais_adapter",      "AISAdapter"),
+        ("adapters.nmea_adapter",     "NMEAAdapter"),
+        ("adapters.rtsp_adapter",     "RTSPAdapter"),
+        ("adapters.onvif_adapter",    "ONVIFAdapter"),
+        ("adapters.webhook_adapter",  "WebhookAdapter"),
+        ("adapters.mqtt_relay_adapter", "MQTTRelayAdapter"),
+        ("adapters.weather_adapter",  "WeatherAdapter"),
+        ("adapters.cap_adapter",      "CAPAdapter"),
+        ("atak.adapter",              "ATAKAdapter"),
+        # Ground robots & industrial
+        ("adapters.ros2_adapter",     "ROS2Adapter"),
+        ("adapters.spot_adapter",     "SpotAdapter"),
+        ("adapters.ur_adapter",       "URAdapter"),
+        # Heavy vehicles & construction
+        ("adapters.j1939_adapter",    "J1939Adapter"),
+        ("adapters.isobus_adapter",   "ISOBUSAdapter"),
+        # Marine
+        ("adapters.nmea2000_adapter", "NMEA2000Adapter"),
+        # Consumer vehicles
+        ("adapters.tesla_adapter",    "TeslaAdapter"),
+        # Building systems
+        ("adapters.bacnet_adapter",   "BACnetAdapter"),
+        # IoT sensor networks
+        ("adapters.lorawan_adapter",  "LoRaWANAdapter"),
+        ("adapters.zigbee_adapter",   "ZigbeeAdapter"),
+        # Satellite connectivity
+        ("adapters.starlink_adapter", "StarlinkAdapter"),
+        # Generic connectivity
+        ("adapters.serial_adapter",   "SerialAdapter"),
+        ("adapters.websocket_adapter", "WebSocketAdapter"),
     ]
 
     for module_path, class_name in _builtins:

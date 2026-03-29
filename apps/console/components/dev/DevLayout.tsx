@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
+import { useEntityStream } from '@/hooks/useEntityStream';
 import { connectWebSocket } from '@/lib/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 

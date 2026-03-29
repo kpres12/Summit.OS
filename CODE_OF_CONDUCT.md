@@ -25,7 +25,7 @@ This Code of Conduct applies to all project spaces: GitHub issues, pull requests
 
 ## Enforcement
 
-Violations may be reported to the maintainers at **conduct@bigmt.ai**. All reports will be reviewed confidentially. Maintainers will respond within 72 hours and may take action ranging from a warning to a permanent ban, depending on severity.
+Violations may be reported to the maintainers at **prestkyle@gmail.com**. All reports will be reviewed confidentially. Maintainers will respond within 72 hours and may take action ranging from a warning to a permanent ban, depending on severity.
 
 ## Attribution
 

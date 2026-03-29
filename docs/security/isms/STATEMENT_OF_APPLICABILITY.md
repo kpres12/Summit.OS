@@ -87,7 +87,7 @@ This SoA covers the Summit.OS platform as operated by BigMT.ai / Branca.ai, incl
 | 6.5 | Responsibilities after termination or change of employment | ✅ | Deprovisioning procedure in `ACCESS_CONTROL_POLICY.md` §6; confidentiality obligations should be in contracts |
 | 6.6 | Confidentiality or non-disclosure agreements | ⚠️ | NDAs recommended for all staff and contractors; verify with legal |
 | 6.7 | Remote working | ✅ | MFA required; VPN/secure access required for production |
-| 6.8 | Information security event reporting | ✅ | Report to `security@bigmt.ai`; any employee obligation in ISP §4 |
+| 6.8 | Information security event reporting | ✅ | Report to `prestkyle@gmail.com`; any employee obligation in ISP §4 |
 
 ---
 

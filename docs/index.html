@@ -13,12 +13,12 @@
     :root {
       --amber:     #d4a017;
       --amber-bright: #f0c800;
-      --amber-dim: #5a4400;
+      --amber-dim: #a07820;
       --amber-glow: rgba(212,160,23,0.15);
       --bg:        #0d0d00;
       --bg2:       #111100;
       --bg3:       #161600;
-      --scanline:  rgba(0,0,0,0.35);
+      --scanline:  rgba(0,0,0,0.15);
       --green-pip: #4caf50;
     }
 
@@ -1423,11 +1423,13 @@
     <section class="section" id="security" style="border-top:1px solid var(--amber-dim)">
       <div class="section-header">
         <div class="section-tag">SECURITY POSTURE</div>
-        <div class="section-title">SOC2-READY<br />OUT OF THE BOX.</div>
+        <div class="section-title">SOC2 CONTROLS<br />IMPLEMENTED.</div>
       </div>
       <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:0;">
-        Every security control is implemented and off by default for local dev. Flip the env
-        flags and it's a hardened production deployment. No third-party security add-ons required.
+        Every technical control required for SOC2 compliance is built in — Argon2id, AES-256-GCM
+        field encryption, append-only audit logs, TLS, RBAC, geoblock. Off by default for local
+        dev; flip the env flags and it's a hardened production deployment. Summit.OS is built to
+        pass a SOC2 audit — not a shortcut around one.
       </p>
       <div class="sec-grid">
         <div class="sec-item">
@@ -1733,8 +1735,9 @@
         <div class="section-title">BUILD ANYTHING<br />ON TOP.</div>
       </div>
       <p style="font-size:13px;color:var(--amber-dim);max-width:560px;line-height:1.8;margin-bottom:0;">
-        Apache 2.0. No lock-in. Summit.OS is a foundation — like Linux for autonomous ops.
-        The platform is open, the ecosystem is yours to shape.
+        AGPL v3. No lock-in. Summit.OS is a foundation — like Linux for autonomous ops.
+        The platform is open, the ecosystem is yours to shape. Commercial license available
+        for proprietary deployments.
       </p>
       <div class="build-grid">
         <div class="build-item" data-sound="hover"><div class="build-item-num">USE CASE // 01</div><div class="build-item-title">WILDFIRE RESPONSE</div><p>Custom alert ingestion, fire-spread modeling, aerial asset dispatch, crew coordination.</p></div>

@@ -634,6 +634,6 @@ message_size_limit 268435456
 
 - **Documentation**: https://docs.summit-os.bigmt.ai
 - **Deployment Guide**: https://deploy.summit-os.bigmt.ai
-- **Support**: support@bigmt.ai
+- **Support**: prestkyle@gmail.com
 - **Community**: https://community.summit-os.bigmt.ai
 - **Status Page**: https://status.summit-os.bigmt.ai

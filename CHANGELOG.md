@@ -36,7 +36,7 @@ _Changes staged for the next release go here._
 - Docker Compose full-stack orchestration with health checks
 - `make` development workflow (dev, test, lint, format, smoke, health)
 - Seed demo script: registers assets, injects detections, fires auto-dispatch pipeline
-- Apache 2.0 license
+- AGPL v3 license
 
 [Unreleased]: https://github.com/bigmt-ai/summit-os/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/bigmt-ai/summit-os/releases/tag/v0.1.0

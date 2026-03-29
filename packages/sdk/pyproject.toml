@@ -7,7 +7,7 @@ name = "summit-sdk"
 version = "1.0.0"
 description = "Summit.OS Adapter SDK — build physical world adapters for the Summit.OS platform"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.11"
 dependencies = [
     "paho-mqtt>=1.6.0",

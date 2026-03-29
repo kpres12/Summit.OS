@@ -3,7 +3,7 @@
 > **Open source autonomous coordination for the physical world.**
 > The operational platform for wildfire response, search & rescue, disaster coordination, and commercial UAV fleets.
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![Next.js 15](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
 [![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](infra/docker/docker-compose.yml)
@@ -32,7 +32,7 @@ Summit.OS is the open-source alternative. Same architecture. Built for the civil
 
 |  | Summit.OS | LatticeOS / Defense platforms |
 |---|---|---|
-| License | Apache 2.0 | Proprietary |
+| License | AGPL v3 | Proprietary |
 | Access | Anyone | Defense contractors |
 | Cost | Free to self-host | $M/year |
 | Export restrictions | None | ITAR/EAR controlled |
@@ -423,7 +423,7 @@ Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the co
 
 | | Community | Enterprise |
 |---|---|---|
-| Core platform | ✓ Open source (Apache 2.0) | ✓ On-premise |
+| Core platform | ✓ Open source (AGPL v3) | ✓ On-premise |
 | ML models (base) | ✓ Included | ✓ Custom trained |
 | Observability stack | ✓ Self-host | ✓ Self-host or managed |
 | SLA | — | 99.9% + 4h response |
@@ -431,7 +431,7 @@ Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the co
 | Multi-org tenancy | — | ✓ Row-level isolation |
 | Custom model training | DIY | ✓ On your operator data |
 | Hardware integration support | Community | ✓ Dedicated |
-| Compliance (SOC 2 / ISO 27001) | DIY | ✓ Provided |
+| Compliance (SOC 2 / ISO 27001) | Controls built-in, self-certify | ✓ Audit support |
 | **Price** | **Free** | **Contact us** |
 
 ---
@@ -464,6 +464,6 @@ Summit.OS is a [BigMT.ai](https://bigmt.ai) project. Built for civilian operator
 
 ## License
 
-[Apache 2.0](LICENSE) — use it, fork it, build on it, sell services around it.
+[AGPL v3](LICENSE) — free to self-host, fork, and build on. If you deploy Summit.OS as a network service, the AGPL requires you to make your source available to users. For proprietary deployments where that's not workable, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
-The trained ML models in `packages/ml/models/` are trained on public data (NASA, NOAA, GBIF) and released under the same license.
+The trained ML models in `packages/ml/models/` are custom-built and trained by BigMT.ai and released under the same license.

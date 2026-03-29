@@ -1493,6 +1493,83 @@ async def delete_geofence_proxy(
 
 
 # -------------------------
+# Assets proxy
+# -------------------------
+
+
+@app.get("/v1/assets")
+async def list_assets_proxy(_claims: dict | None = Depends(verify_bearer)):
+    """List registered assets from the tasking service."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{TASKING_URL}/api/v1/assets")
+            r.raise_for_status()
+            return {"assets": r.json()}
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+# -------------------------
+# Mission builder proxies
+# -------------------------
+
+
+@app.post("/v1/missions/parse")
+async def parse_mission_nlp_proxy(
+    request: Request, _claims: dict | None = Depends(verify_bearer)
+):
+    """Parse a natural-language mission description via the tasking service."""
+    try:
+        body = await request.json()
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.post(
+                f"{TASKING_URL}/api/v1/missions/parse", json=body
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+@app.post("/v1/missions/preview")
+async def preview_mission_waypoints_proxy(
+    request: Request, _claims: dict | None = Depends(verify_bearer)
+):
+    """Generate a waypoint preview for a mission area via the tasking service."""
+    try:
+        body = await request.json()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(
+                f"{TASKING_URL}/api/v1/missions/preview", json=body
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+# -------------------------
+# Alerts acknowledge proxy
+# -------------------------
+
+
+@app.post("/v1/alerts/{alert_id}/acknowledge")
+async def acknowledge_alert_proxy(
+    alert_id: str, _claims: dict | None = Depends(verify_bearer)
+):
+    """Acknowledge an alert via the fabric service."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.post(
+                f"{FABRIC_URL}/api/v1/alerts/{alert_id}/acknowledge"
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
+# -------------------------
 # Contracts examples for UI/CI
 # -------------------------
 from fastapi.responses import JSONResponse

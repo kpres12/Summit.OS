@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import Image from 'next/image';
 
 type SetupType = 'totp' | 'webauthn';
 type TOTPStep  = 'qr' | 'verify' | 'backup';
@@ -112,7 +113,7 @@ function TOTPEnrollment({ onComplete, onCancel }: Props) {
         {busy && !qrUri
           ? <div style={{ width: 160, height: 160, background: '#eee' }} />
           : qrUri
-            ? <img src={qrUri} alt="TOTP QR Code" width={160} height={160} />
+            ? <Image src={qrUri} alt="TOTP QR Code" width={160} height={160} unoptimized />
             : null}
       </div>
 

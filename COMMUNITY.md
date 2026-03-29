@@ -12,8 +12,8 @@ Summit.OS follows the open-core model:
 
 | | Community | Enterprise |
 |---|---|---|
-| **License** | Apache 2.0 | Apache 2.0 + Commercial |
-| **Cost** | Free forever | Custom |
+| **License** | AGPL v3 | Commercial |
+| **Cost** | Free forever | $1,500 / month |
 | **Deployment** | Self-hosted | Self-hosted or BigMT.ai managed |
 | **Organizations** | Single (`default`) | Multi-org, fully isolated |
 | **Entity tracking** | Unlimited (self-hosted) | Unlimited + hosted limits by tier |
@@ -34,8 +34,9 @@ Summit.OS follows the open-core model:
 ## What You Can Build
 
 Summit.OS is designed to be a foundation, not a ceiling. Community edition is
-Apache 2.0 — you can build products, services, and integrations on top of it
-without restriction, as long as you comply with the license.
+AGPL v3 — free to use, fork, and self-host. If you deploy it as a network service,
+the AGPL requires you to share your modifications. For proprietary SaaS or embedded
+products, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
 Examples of things people build on Summit.OS:
 
@@ -51,7 +52,7 @@ Examples of things people build on Summit.OS:
   or data sources
 
 If you build something on Summit.OS, we'd love to know about it. Open a GitHub
-Discussion or reach out at hello@bigmt.ai.
+Discussion or reach out at prestkyle@gmail.com.
 
 ---
 

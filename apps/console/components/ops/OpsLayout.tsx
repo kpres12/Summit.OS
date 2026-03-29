@@ -15,9 +15,11 @@ import OpsMapView from './OpsMapView';
 import OpsHardware from './OpsHardware';
 import OpsVideoPane from './OpsVideoPane';
 import OpsReplayControls from './OpsReplayControls';
+import OpsMissionBuilder from './OpsMissionBuilder';
 import { useReplay } from '@/hooks/useReplay';
+import type { WaypointPreview } from '@/lib/api';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
 
 interface OpsLayoutProps {
   onSwitchRole: () => void;
@@ -142,9 +144,13 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   const [alertEntityIds, setAlertEntityIds] = useState<Set<string>>(new Set());
   // Live video overlay (Gap 4)
   const [videoStreamId, setVideoStreamId] = useState<string | null>(null);
-  // Mission replay (Gap 5)
+  // Mission replay
   const [replayMissionId, setReplayMissionId] = useState<string | null>(null);
   const replay = useReplay(replayMissionId);
+  // Mission builder
+  const [missionDrawMode, setMissionDrawMode] = useState(false);
+  const [missionPolygon, setMissionPolygon] = useState<{ lat: number; lon: number }[] | null>(null);
+  const [missionWaypoints, setMissionWaypoints] = useState<WaypointPreview[]>([]);
 
   // Core investigate flow — the one interaction that has to be perfect.
   // Finds the entity matching the alert source, zooms the map, opens entity detail.
@@ -198,6 +204,21 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       case 'layers': return <OpsMapLayers />;
       case 'hardware': return <OpsHardware />;
       case 'system': return <OpsSystem />;
+      case 'mission-builder': return (
+        <OpsMissionBuilder
+          onMissionLaunched={() => {
+            setActivePanel(null);
+            setMissionPolygon(null);
+            setMissionWaypoints([]);
+          }}
+          onRequestDrawArea={() => {
+            setMissionPolygon(null);
+            setMissionDrawMode(true);
+          }}
+          missionPolygon={missionPolygon}
+          onWaypointsChanged={setMissionWaypoints}
+        />
+      );
       default: return null;
     }
   };
@@ -239,6 +260,12 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             onSelectEntity={setSelectedEntity}
             flyToLocation={flyToLocation}
             alertEntityIds={alertEntityIds}
+            missionDrawMode={missionDrawMode}
+            onMissionArea={(coords) => {
+              setMissionPolygon(coords);
+              setMissionDrawMode(false);
+            }}
+            missionWaypoints={missionWaypoints}
           />
           {/* Live video overlay */}
           {videoStreamId && (
