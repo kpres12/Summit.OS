@@ -22,4 +22,4 @@ structlog==23.2.0
 geoip2==4.8.0
 yubico-client==1.13.0
 boto3==1.34.69
-infisical-python==1.4.2
+infisical-python==2.3.5
