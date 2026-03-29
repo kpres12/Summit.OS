@@ -250,6 +250,13 @@ class AdapterRegistry:
                 f"Register it first with registry.register_type(MyAdapter)."
             )
 
+        errors = cls.validate_extra(config.extra)
+        if errors:
+            raise ValueError(
+                f"Invalid config for adapter '{config.adapter_id}' "
+                f"(type={config.adapter_type}): {'; '.join(errors)}"
+            )
+
         adapter = cls(config=config, mqtt_client=mqtt_client)
         self._adapters[config.adapter_id] = adapter
         logger.info(

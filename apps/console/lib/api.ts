@@ -148,6 +148,19 @@ export async function acknowledgeAlert(alertId: string): Promise<unknown> {
   return apiJson(`/v1/alerts/${alertId}/acknowledge`, { method: 'POST' });
 }
 
+// --- Task Approval ---
+
+export async function approveTask(taskId: string, approvedBy: string): Promise<unknown> {
+  return apiJson(`/v1/tasks/${taskId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ approved_by: approvedBy }),
+  });
+}
+
+export async function fetchPendingApprovals(): Promise<{ task_id: string; asset_id: string; action: string; risk_level: string }[]> {
+  return apiJson('/v1/tasks/pending');
+}
+
 // --- Mission Replay ---
 
 export interface ReplayTimeline {

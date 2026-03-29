@@ -96,6 +96,10 @@ class StarlinkAdapter(BaseAdapter):
 
     adapter_type = "starlink"
 
+    @classmethod
+    def required_extra_fields(cls) -> list[str]:
+        return ["terminal_id"]
+
     def __init__(self, config: AdapterConfig, mqtt_client=None) -> None:
         super().__init__(config, mqtt_client)
         ex = config.extra

@@ -7,6 +7,7 @@ const cesiumSource = path.join(__dirname, 'node_modules', 'cesium', 'Build', 'Ce
 
 const nextConfig = {
   output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../../'),
   env: {
     CESIUM_BASE_URL: '/cesium',
   },
