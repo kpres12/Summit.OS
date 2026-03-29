@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import { useAuth } from '@/components/AuthProvider';
+import { useDomain } from '@/components/DomainProvider';
 import { highestRole, roleLabel } from '@/lib/rbac';
+import StatusDot from '@/components/ui/StatusDot';
 import SecuritySettings from '@/components/auth/SecuritySettings';
 
 interface OpsTopBarProps {
@@ -23,9 +25,11 @@ function utcString(d: Date): string {
 export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
   const { connected }             = useEntityStream();
   const { user, logout }          = useAuth();
+  const { config, setDomain, domains } = useDomain();
   const [now, setNow]             = useState<Date>(new Date());
   const [menuOpen, setMenuOpen]   = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
+  const [showDomainPicker, setShowDomainPicker] = useState(false);
   const menuRef                   = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,29 +58,37 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
 
   return (
     <>
-      <div
-        className="flex-none flex items-center px-4 relative"
+      <header
+        role="banner"
+        className="flex-none flex items-center px-4 relative crt-band"
         style={{
           height:       '40px',
-          background:   '#0D1210',
-          borderBottom: '1px solid rgba(0,255,156,0.15)',
+          background:   'var(--background-panel)',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         {/* Left */}
         <div className="flex items-center gap-3 z-10">
           <span
             className="text-sm font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
           >
             SUMMIT.OS
           </span>
-          <span style={{ color: 'rgba(0,255,156,0.3)' }}>|</span>
-          <span
-            className="text-xs italic"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.35)' }}
+          <span style={{ color: 'var(--accent-30)' }}>|</span>
+          <button
+            onClick={() => setShowDomainPicker(true)}
+            className="summit-btn text-xs italic"
+            aria-label="Change domain"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'var(--text-dim)',
+              background: 'none',
+              border: 'none',
+            }}
           >
-            NO ACTIVE MISSION
-          </span>
+            {config.name.toUpperCase()}
+          </button>
         </div>
 
         {/* Center — absolute */}
@@ -92,13 +104,10 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
           {/* Status pills */}
           {statusPills.map((p) => (
             <div key={p.label} className="flex items-center gap-1.5">
-              <div
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: p.ok ? '#00FF9C' : '#FF3B3B' }}
-              />
+              <StatusDot variant={p.ok ? 'accent' : 'critical'} glow={p.ok} />
               <span
                 className="text-[10px] tracking-widest"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)' }}
+                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
               >
                 {p.label}
               </span>
@@ -107,18 +116,15 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
 
           {/* WS indicator */}
           <div className="flex items-center gap-1.5">
-            <div
-              className="w-1.5 h-1.5 rounded-full"
-              style={{
-                background: connected ? '#00FF9C' : '#FF3B3B',
-                animation:  connected ? 'none' : 'blink 1s infinite',
-              }}
+            <StatusDot
+              variant={connected ? 'accent' : 'critical'}
+              glow={connected}
             />
             <span
               className="text-[10px] tracking-widest"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color:      connected ? '#00FF9C' : '#FF3B3B',
+                color:      connected ? 'var(--accent)' : 'var(--critical)',
               }}
             >
               {connected ? 'WS LIVE' : 'WS DOWN'}
@@ -128,20 +134,13 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
           {/* Role switch button */}
           <button
             onClick={onSwitchRole}
-            className="text-[10px] tracking-widest px-2 py-0.5 transition-colors"
+            aria-label="Switch role"
+            className="summit-btn text-[10px] tracking-widest px-2 py-0.5"
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color:      'rgba(200,230,201,0.45)',
-              border:     '1px solid rgba(0,255,156,0.15)',
+              color:      'var(--text-dim)',
+              border:     '1px solid var(--border)',
               background: 'transparent',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color       = '#00FF9C';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,156,0.5)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color       = 'rgba(200,230,201,0.45)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,156,0.15)';
             }}
           >
             ⊕ ROLE
@@ -248,7 +247,59 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
             )}
           </div>
         </div>
-      </div>
+      </header>
+
+      {/* Domain picker modal */}
+      {showDomainPicker && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.7)', zIndex: 200 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDomainPicker(false); }}
+        >
+          <div style={{
+            background: 'var(--background-panel)',
+            border: '1px solid var(--border)',
+            padding: '24px',
+            width: '400px',
+            maxWidth: '90vw',
+          }}>
+            <div
+              className="text-xs font-bold tracking-widest mb-4"
+              style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
+            >
+              SELECT DOMAIN
+            </div>
+            <div className="flex flex-col gap-2">
+              {domains.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => { setDomain(d.id); setShowDomainPicker(false); }}
+                  className="summit-btn text-left px-3 py-3"
+                  style={{
+                    background: config.id === d.id ? 'var(--accent-5)' : 'transparent',
+                    border: `1px solid ${config.id === d.id ? 'var(--accent-50)' : 'var(--border)'}`,
+                    color: config.id === d.id ? 'var(--accent)' : 'var(--text-dim)',
+                  }}
+                >
+                  <div style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>
+                    {d.name.toUpperCase()}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 9, marginTop: 2, color: 'var(--text-muted)' }}>
+                    {d.description}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowDomainPicker(false)}
+              className="summit-btn w-full mt-4 text-[10px] tracking-widest py-2"
+              style={{ color: 'var(--text-dim)', border: '1px solid var(--border)', background: 'transparent' }}
+            >
+              CANCEL
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Security settings modal */}
       {showSecurity && (

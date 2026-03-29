@@ -2,39 +2,9 @@
 
 import React from 'react';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
-
-function ageString(lastSeen: number): string {
-  const diff = Math.floor((Date.now() / 1000) - lastSeen);
-  if (diff < 60) return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  return `${Math.floor(diff / 3600)}h`;
-}
-
-function domainTag(domain: string): string {
-  switch (domain) {
-    case 'aerial': return 'UAV';
-    case 'ground': return 'GND';
-    case 'maritime': return 'MAR';
-    case 'fixed': return 'FIX';
-    case 'sensor': return 'SEN';
-    default: return domain.slice(0, 3).toUpperCase();
-  }
-}
-
-function entityTypeColor(type: string): string {
-  switch (type) {
-    case 'active': return '#00FF9C';
-    case 'alert': return '#FF3B3B';
-    case 'neutral': return 'rgba(200,230,201,0.45)';
-    default: return '#FFB300';
-  }
-}
-
-function batteryColor(pct: number): string {
-  if (pct > 40) return '#00FF9C';
-  if (pct > 20) return '#FFB300';
-  return '#FF3B3B';
-}
+import PanelHeader from '@/components/ui/PanelHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import { ageTerse, entityTypeColor, batteryColor, domainTag } from '@/lib/format';
 
 export default function OpsEntityList() {
   const { entityList, entityCount } = useEntityStream();
@@ -48,48 +18,13 @@ export default function OpsEntityList() {
   }, {});
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Panel header */}
-      <div
-        className="flex-none flex items-center justify-between px-3 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
-      >
-        <span
-          className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
-        >
-          ENTITY LIST
-        </span>
-        <span
-          className="text-[10px] px-1.5 py-0.5"
-          style={{
-            background: 'rgba(0,255,156,0.1)',
-            color: '#00FF9C',
-            border: '1px solid rgba(0,255,156,0.3)',
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-          }}
-        >
-          {entityCount}
-        </span>
-      </div>
+    <div className="flex flex-col h-full panel-scanline">
+      <PanelHeader title="ENTITY LIST" count={entityCount} />
 
       {/* Entity list */}
       <div className="flex-1 overflow-y-auto">
         {entityList.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 px-4">
-            <div
-              className="text-[10px] tracking-widest text-center"
-              style={{ color: 'rgba(200,230,201,0.35)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-            >
-              AWAITING CONNECTIONS
-            </div>
-            <div
-              className="text-[9px] text-center leading-relaxed"
-              style={{ color: 'rgba(200,230,201,0.2)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-            >
-              pip install summit-os-sdk
-            </div>
-          </div>
+          <EmptyState message="AWAITING CONNECTIONS" hint="pip install summit-os-sdk" />
         )}
 
         {Object.entries(grouped).map(([domain, entities]) => (
@@ -99,9 +34,9 @@ export default function OpsEntityList() {
               className="px-3 py-1 text-[9px] tracking-widest uppercase"
               style={{
                 fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-                color: 'rgba(0,255,156,0.4)',
-                background: 'rgba(0,255,156,0.03)',
-                borderBottom: '1px solid rgba(0,255,156,0.08)',
+                color: 'var(--accent-30)',
+                background: 'var(--accent-5)',
+                borderBottom: '1px solid var(--accent-5)',
               }}
             >
               {domain} ({entities.length})
@@ -123,10 +58,8 @@ function EntityRow({ entity }: { entity: EntityData }) {
 
   return (
     <div
-      className="px-3 py-2 flex flex-col gap-1 transition-colors"
-      style={{ borderBottom: '1px solid rgba(0,255,156,0.05)', cursor: 'pointer' }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.background = 'rgba(0,255,156,0.04)')}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.background = 'transparent')}
+      className="summit-btn px-3 py-2 flex flex-col gap-1"
+      style={{ borderBottom: '1px solid var(--accent-5)' }}
     >
       {/* Row 1: dot + callsign + domain + age */}
       <div className="flex items-center gap-2">
@@ -140,22 +73,22 @@ function EntityRow({ entity }: { entity: EntityData }) {
         >
           {callsign}
         </span>
-        <span
-          className="text-[9px] px-1"
-          style={{
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            color: 'rgba(200,230,201,0.4)',
-            border: '1px solid rgba(0,255,156,0.1)',
-          }}
-        >
-          {domainTag(entity.domain)}
-        </span>
-        <span
-          className="text-[9px]"
-          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.35)' }}
-        >
-          {ageString(entity.last_seen)}
-        </span>
+          <span
+            className="text-[9px] px-1"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'var(--text-dim)',
+              border: '1px solid var(--accent-10)',
+            }}
+          >
+            {domainTag(entity.domain)}
+          </span>
+          <span
+            className="text-[9px]"
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
+          >
+            {ageTerse(entity.last_seen)}
+          </span>
       </div>
 
       {/* Row 2: battery + speed */}

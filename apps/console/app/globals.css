@@ -1,22 +1,40 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Legacy aliases (keep for backwards compat) ─────────────────────── */
   --soviet-green: #00FF9C;
   --soviet-green-dim: #00CC74;
   --soviet-green-dark: #00AA5E;
   --alert-amber: #FFB300;
   --alert-red: #FF3B3B;
+
+  /* ── Semantic tokens (overridden at runtime by DomainProvider) ──────── */
+  --accent: #00FF9C;
+  --accent-dim: #00CC74;
+  --accent-dark: #00AA5E;
+  --accent-5: rgba(0,255,156,0.05);
+  --accent-10: rgba(0,255,156,0.10);
+  --accent-15: rgba(0,255,156,0.15);
+  --accent-30: rgba(0,255,156,0.30);
+  --accent-50: rgba(0,255,156,0.50);
+  --warning: #FFB300;
+  --critical: #FF3B3B;
+  --critical-dim: rgba(255,59,59,0.8);
+  --nominal: #4AEDC4;
+  --color-active: #4FC3F7;
+
   --background: #080C0A;
   --background-panel: #0D1210;
   --background-card: #111916;
-  --text-primary: #00FF9C;
-  --text-secondary: #00CC74;
+  --text-primary: var(--accent);
+  --text-secondary: var(--accent-dim);
   --text-dim: rgba(200,230,201,0.45);
-  --grid-line: rgba(0,255,156,0.15);
-  --border: rgba(0,255,156,0.15);
+  --text-muted: rgba(200,230,201,0.25);
+  --grid-line: var(--accent-15);
+  --border: var(--accent-15);
   /* Bumped from 0.03 → 0.05 — scanlines should be felt, not hunted for */
   --scanline: rgba(0,255,156,0.05);
-  --color-active: #4FC3F7;
+
   /* Full bleed — no inset */
   --app-inset: 0px;
   --font-orbitron: 'Orbitron', sans-serif;
@@ -242,6 +260,64 @@ body:has([data-shader-mode="CRT"])::after {
 
 /* Selection styling */
 ::selection {
-  background: var(--soviet-green-dark);
+  background: var(--accent-dark);
   color: var(--background);
+}
+
+/* ── Focus-visible — keyboard-only focus ring ────────────────────────────── */
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--accent-15);
+}
+
+/* Interactive elements: CSS hover + focus instead of JS onMouseEnter */
+.summit-btn {
+  transition: color 120ms, background 120ms, border-color 120ms, box-shadow 120ms;
+  cursor: pointer;
+}
+.summit-btn:hover,
+.summit-btn:focus-visible {
+  text-shadow: 0 0 6px var(--accent);
+}
+
+/* ── Pip-Boy: Phosphor bloom on hovered interactive elements ─────────────── */
+button:hover,
+a:hover {
+  text-shadow: 0 0 6px var(--accent);
+}
+button:focus-visible,
+a:focus-visible {
+  text-shadow: 0 0 8px var(--accent);
+}
+
+/* ── Pip-Boy: Panel scanline mask (lighter than body) ────────────────────── */
+.panel-scanline {
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.92) 50%, rgba(0,0,0,1) 50%);
+  mask-size: 100% 2px;
+}
+
+/* ── Pip-Boy: CRT refresh band sweep on header ───────────────────────────── */
+@keyframes crt-band {
+  0%   { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+.crt-band {
+  background-image: linear-gradient(
+    180deg,
+    transparent 40%,
+    var(--accent-5) 50%,
+    transparent 60%
+  );
+  background-size: 100% 300%;
+  animation: crt-band 8s linear infinite;
+}
+
+/* ── Pip-Boy: Amber/red alert pulse for critical severity ────────────────── */
+@keyframes severity-pulse {
+  0%, 100% { text-shadow: 0 0 4px var(--critical); }
+  50%      { text-shadow: 0 0 12px var(--critical), 0 0 24px rgba(255,59,59,0.3); }
+}
+.severity-critical {
+  animation: severity-pulse 2s ease-in-out infinite;
 }

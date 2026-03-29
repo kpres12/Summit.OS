@@ -2,26 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchMissions, connectWebSocket, MissionAPI } from '@/lib/api';
-
-function ageString(isoString: string | null): string {
-  if (!isoString) return '—';
-  const ts = new Date(isoString).getTime();
-  const diff = Math.floor((Date.now() - ts) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
-
-function statusColor(status: string): string {
-  switch (status.toUpperCase()) {
-    case 'ACTIVE': return '#00FF9C';
-    case 'PLANNING': return 'rgba(200,230,201,0.45)';
-    case 'FAILED': return '#FF3B3B';
-    case 'COMPLETED': return '#4FC3F7';
-    default: return 'rgba(200,230,201,0.45)';
-  }
-}
+import PanelHeader from '@/components/ui/PanelHeader';
+import StatusBadge from '@/components/ui/StatusBadge';
+import EmptyState from '@/components/ui/EmptyState';
+import { ageFromISO, statusColor } from '@/lib/format';
 
 const PHASE_ORDER = ['PLANNING', 'STAGING', 'ACTIVE', 'RETURNING', 'COMPLETED'];
 
@@ -105,49 +89,13 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
   }, [handleWsMessage]);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Panel header */}
-      <div
-        className="flex-none flex items-center justify-between px-3 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
-      >
-        <span
-          className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
-        >
-          MISSIONS
-        </span>
-        <span
-          className="text-[10px] px-1.5 py-0.5"
-          style={{
-            background: 'rgba(0,255,156,0.1)',
-            color: '#00FF9C',
-            border: '1px solid rgba(0,255,156,0.3)',
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-          }}
-        >
-          {missions.length}
-        </span>
-      </div>
+    <div className="flex flex-col h-full panel-scanline">
+      <PanelHeader title="MISSIONS" count={missions.length} />
 
       {/* Mission list */}
       <div className="flex-1 overflow-y-auto">
-        {loading && (
-          <div
-            className="flex items-center justify-center h-20 text-[10px]"
-            style={{ color: 'rgba(200,230,201,0.35)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-          >
-            LOADING...
-          </div>
-        )}
-        {!loading && missions.length === 0 && (
-          <div
-            className="flex items-center justify-center h-full text-[10px] tracking-widest"
-            style={{ color: 'rgba(200,230,201,0.35)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-          >
-            NO MISSIONS
-          </div>
-        )}
+        {loading && <EmptyState message="LOADING..." />}
+        {!loading && missions.length === 0 && <EmptyState message="NO MISSIONS" />}
 
         {missions.map((mission) => {
           const color = statusColor(mission.status);
@@ -157,29 +105,19 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
               key={mission.mission_id}
               className="mx-2 my-1.5 px-3 py-2"
               style={{
-                background: '#111916',
-                border: '1px solid rgba(0,255,156,0.15)',
+                background: 'var(--background-card)',
+                border: '1px solid var(--border)',
               }}
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-1.5">
                 <span
                   className="text-xs font-bold truncate flex-1 mr-2"
-                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00FF9C' }}
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)' }}
                 >
                   {name}
                 </span>
-                <span
-                  className="text-[9px] px-1.5 py-0.5 font-bold tracking-widest flex-none"
-                  style={{
-                    color,
-                    border: `1px solid ${color}`,
-                    background: `${color}15`,
-                    fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  }}
-                >
-                  {mission.status.toUpperCase()}
-                </span>
+                <StatusBadge label={mission.status.toUpperCase()} color={color} />
               </div>
 
               {/* ID */}
@@ -214,7 +152,7 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
                   className="text-[9px]"
                   style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.3)' }}
                 >
-                  {ageString(mission.created_at)}
+                {ageFromISO(mission.created_at)}
                 </div>
                 {onReplay && (mission.status === 'COMPLETED' || mission.status === 'FAILED') && (
                   <button

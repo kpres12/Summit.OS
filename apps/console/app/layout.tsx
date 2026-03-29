@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Orbitron } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../components/AuthProvider";
+import DomainProvider from "../components/DomainProvider";
 import PolicyNotifications from "../components/notifications/PolicyNotifications";
 import ErrorBoundary from "../components/ErrorBoundary";
 
@@ -34,9 +35,11 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <AuthProvider>
-            {children}
-            {/* Global policy notifications */}
-            <PolicyNotifications />
+            <DomainProvider>
+              {children}
+              {/* Global policy notifications */}
+              <PolicyNotifications />
+            </DomainProvider>
           </AuthProvider>
         </ErrorBoundary>
       </body>

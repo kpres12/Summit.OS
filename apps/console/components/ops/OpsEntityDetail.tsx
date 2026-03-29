@@ -3,69 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { EntityData } from '@/hooks/useEntityStream';
 import { dispatchTask, sendAgentCommand } from '@/lib/api';
+import SectionHeader from '@/components/ui/SectionHeader';
+import DataRow from '@/components/ui/DataRow';
+import { ageFromEpoch, entityTypeColor, batteryColor } from '@/lib/format';
 
 interface OpsEntityDetailProps {
   entity: EntityData | null;
   onClose: () => void;
   onDispatch?: (entity: EntityData) => void;
   onLiveFeed?: (streamId: string) => void;
-}
-
-function ageString(lastSeen: number): string {
-  const diff = Math.floor((Date.now() / 1000) - lastSeen);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
-}
-
-function entityTypeColor(type: string): string {
-  switch (type) {
-    case 'active': return '#00FF9C';
-    case 'alert': return '#FF3B3B';
-    case 'neutral': return 'rgba(200,230,201,0.45)';
-    default: return '#FFB300';
-  }
-}
-
-function batteryColor(pct: number): string {
-  if (pct > 40) return '#00FF9C';
-  if (pct > 20) return '#FFB300';
-  return '#FF3B3B';
-}
-
-function DataRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <div className="flex items-baseline justify-between py-0.5">
-      <span
-        className="text-[10px]"
-        style={{ color: 'rgba(200,230,201,0.45)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-      >
-        {label}
-      </span>
-      <span
-        className="text-[11px] font-bold"
-        style={{ color: valueColor || '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <div
-      className="text-[9px] font-bold tracking-widest pt-3 pb-1"
-      style={{
-        fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-        color: 'rgba(0,255,156,0.5)',
-        borderBottom: '1px solid rgba(0,255,156,0.1)',
-        marginBottom: '4px',
-      }}
-    >
-      {title}
-    </div>
-  );
 }
 
 // Generate mock AI reasoning based on entity state
@@ -274,7 +220,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
 
         {/* Meta section */}
         <SectionHeader title="META" />
-        <DataRow label="LAST SEEN" value={ageString(entity.last_seen)} />
+        <DataRow label="LAST SEEN" value={ageFromEpoch(entity.last_seen)} />
         <DataRow
           label="MISSION"
           value={entity.mission_id ? entity.mission_id.slice(0, 12) : 'UNASSIGNED'}
