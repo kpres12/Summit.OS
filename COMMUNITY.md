@@ -95,7 +95,7 @@ See [README.md](./README.md) for full setup instructions.
 
 ## Enterprise Inquiries
 
-Email **enterprise@bigmt.ai** or visit **bigmt.ai** to discuss enterprise
+Email **prestkyle@gmail.com** to discuss enterprise
 licensing, managed hosting, or custom deployment support.
 
 ---
