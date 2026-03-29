@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Summit.OS — AI Models</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green: #00ff9c;
+      --amber: #d4a017;
+      --amber-dim: #8a6810;
+      --red: #ff3b3b;
+      --blue: #4fc3f7;
+      --bg: #0d0d00;
+      --bg2: #111100;
+      --bg3: #1a1a00;
+      --border: #2a2a00;
+      --text: #c8c89a;
+      --text-dim: #6b6b50;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* CRT scanlines */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── NAV ──────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(13,13,0,0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 52px;
+    }
+
+    .nav-logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 900;
+      color: var(--amber);
+      letter-spacing: 0.12em;
+      text-decoration: none;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 2rem;
+    }
+
+    nav ul a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    nav ul a:hover, nav ul a.active { color: var(--amber); }
+
+    /* ── LAYOUT ───────────────────────────────────────── */
+    .page-wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 100px 2rem 4rem;
+    }
+
+    /* ── HERO ─────────────────────────────────────────── */
+    .page-hero {
+      text-align: center;
+      padding: 3rem 0 4rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4rem;
+    }
+
+    .page-hero h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      color: var(--amber);
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 30px rgba(212,160,23,0.4);
+      margin-bottom: 1rem;
+    }
+
+    .page-hero p {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── SECTION ──────────────────────────────────────── */
+    section {
+      margin-bottom: 5rem;
+    }
+
+    .section-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      font-family: 'VT323', monospace;
+      font-size: 2.2rem;
+      color: var(--amber);
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .section-desc {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-bottom: 2.5rem;
+      max-width: 700px;
+    }
+
+    /* ── PRIVACY BANNER ───────────────────────────────── */
+    .privacy-banner {
+      background: rgba(0,255,156,0.04);
+      border: 1px solid var(--green);
+      border-radius: 4px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 4rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-start;
+    }
+
+    .privacy-banner .icon {
+      font-size: 2rem;
+      line-height: 1;
+      flex-shrink: 0;
+      color: var(--green);
+      font-family: 'VT323', monospace;
+    }
+
+    .privacy-banner h3 {
+      font-family: 'VT323', monospace;
+      font-size: 1.6rem;
+      color: var(--green);
+      margin-bottom: 0.4rem;
+    }
+
+    .privacy-banner p {
+      font-size: 0.83rem;
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .privacy-banner strong { color: var(--green); }
+
+    /* ── MODEL GRID ───────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .model-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .model-card:hover {
+      border-color: var(--amber-dim);
+    }
+
+    .model-card .model-id {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    .model-card h3 {
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      color: var(--amber);
+      margin-bottom: 0.3rem;
+    }
+
+    .model-card .model-file {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-style: italic;
+      margin-bottom: 0.8rem;
+    }
+
+    .model-card p {
+      font-size: 0.8rem;
+      color: var(--text);
+      line-height: 1.65;
+      margin-bottom: 1rem;
+    }
+
+    .model-card .outputs-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      background: var(--bg3);
+    }
+
+    .tag.green { border-color: #00552b; color: var(--green); }
+    .tag.amber { border-color: var(--amber-dim); color: var(--amber); }
+    .tag.red { border-color: #661111; color: var(--red); }
+    .tag.blue { border-color: #1a4a5f; color: var(--blue); }
+
+    /* ── DETECTOR CLASSES ────────────────────────────── */
+    .detector-hero {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .detector-hero h3 {
+      font-family: 'VT323', monospace;
+      font-size: 1.8rem;
+      color: var(--amber);
+      margin-bottom: 0.3rem;
+    }
+
+    .detector-hero .sub {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 1.5rem;
+    }
+
+    .class-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.6rem;
+    }
+
+    .class-item {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .class-item .class-id {
+      font-size: 0.6rem;
+      color: var(--amber-dim);
+      min-width: 20px;
+    }
+
+    .class-item .class-name {
+      font-size: 0.78rem;
+      color: var(--text);
+    }
+
+    /* ── DATA SOURCES ────────────────────────────────── */
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .source-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem 1.5rem;
+    }
+
+    .source-card .source-org {
+      font-size: 0.6rem;
+      letter-spacing: 0.15em;
+      color: var(--amber-dim);
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    .source-card h4 {
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      color: var(--amber);
+      margin-bottom: 0.5rem;
+    }
+
+    .source-card p {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    /* ── EXTERNAL CALLS ──────────────────────────────── */
+    .call-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .call-table th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      background: var(--bg3);
+      color: var(--amber-dim);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .call-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .call-table tr:last-child td { border-bottom: none; }
+
+    .call-table .svc { color: var(--amber); font-family: 'VT323', monospace; font-size: 1rem; }
+    .call-table .opt { color: var(--green); font-size: 0.7rem; }
+    .call-table .cond { color: var(--text-dim); font-size: 0.75rem; }
+
+    /* ── RETRAIN ─────────────────────────────────────── */
+    .retrain-steps {
+      counter-reset: step;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .retrain-step {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+
+    .retrain-step::before {
+      counter-increment: step;
+      content: counter(step, decimal-leading-zero);
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      color: var(--amber-dim);
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .retrain-step h4 {
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      color: var(--amber);
+      margin-bottom: 0.3rem;
+    }
+
+    .retrain-step p, .retrain-step code {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    .retrain-step code {
+      display: block;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      border-radius: 2px;
+      margin-top: 0.4rem;
+      color: var(--green);
+    }
+
+    /* ── CODE BLOCK ──────────────────────────────────── */
+    pre {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1.25rem 1.5rem;
+      overflow-x: auto;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: var(--green);
+      margin-top: 1.5rem;
+    }
+
+    pre .cm { color: var(--text-dim); }
+    pre .kw { color: var(--amber); }
+    pre .st { color: var(--blue); }
+    pre .fn { color: var(--green); }
+
+    /* ── FOOTER ──────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 3rem 2rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+    }
+
+    footer a { color: var(--amber-dim); text-decoration: none; }
+    footer a:hover { color: var(--amber); }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="index.html" class="nav-logo">BIGMT.AI</a>
+  <ul>
+    <li><a href="index.html#how-it-works">How It Works</a></li>
+    <li><a href="index.html#connect">Hardware</a></li>
+    <li><a href="index.html#missions">Missions</a></li>
+    <li><a href="ml.html" class="active">AI Models</a></li>
+    <li><a href="index.html#security">Security</a></li>
+    <li><a href="index.html#editions">Pricing</a></li>
+    <li><a href="mailto:prestkyle@gmail.com" style="color:var(--amber)">Contact</a></li>
+  </ul>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- HERO -->
+  <div class="page-hero">
+    <p class="section-label">// intelligence layer</p>
+    <h1>AI MODELS</h1>
+    <p>Summit.OS ships with eleven production-ready ONNX models trained on public real-world datasets.
+       They run entirely on your hardware — no cloud, no API calls, no data leaves your network.</p>
+  </div>
+
+  <!-- PRIVACY BANNER -->
+  <div class="privacy-banner">
+    <div class="icon">[✓]</div>
+    <div>
+      <h3>ZERO DATA COLLECTION</h3>
+      <p>
+        If you download and run this repo, <strong>no data is sent anywhere</strong>.
+        Summit.OS has no telemetry, no analytics, no crash reporting, no ping-home behavior of any kind.
+        Your sensor feeds, entity tracks, operator decisions, and mission history <strong>never leave your deployment</strong>.
+        <br><br>
+        The only optional outbound network calls are the three external feeds listed in the
+        <a href="#external" style="color:var(--amber)">External API Calls</a> section below —
+        all disabled by default and opt-in via environment variable.
+      </p>
+    </div>
+  </div>
+
+  <!-- VISUAL DETECTOR FEATURED -->
+  <section id="detector">
+    <p class="section-label">// flagship model</p>
+    <h2>VISUAL DETECTOR</h2>
+    <p class="section-desc">
+      Real-time object detection from drone cameras, CCTV feeds, and satellite imagery.
+      YOLOv8-architecture ONNX model with 18 mission-critical detection classes.
+    </p>
+
+    <div class="detector-hero">
+      <h3>summit_detector.onnx</h3>
+      <p class="sub">YOLOv8n-based · 640×640 input · 18 detection classes · &lt;15ms inference on CPU</p>
+      <div class="class-grid">
+        <div class="class-item"><span class="class-id">00</span><span class="class-name">smoke</span></div>
+        <div class="class-item"><span class="class-id">01</span><span class="class-name">fire</span></div>
+        <div class="class-item"><span class="class-id">02</span><span class="class-name">fire_front</span></div>
+        <div class="class-item"><span class="class-id">03</span><span class="class-name">person</span></div>
+        <div class="class-item"><span class="class-id">04</span><span class="class-name">person_water</span></div>
+        <div class="class-item"><span class="class-id">05</span><span class="class-name">life_raft</span></div>
+        <div class="class-item"><span class="class-id">06</span><span class="class-name">oil_spill</span></div>
+        <div class="class-item"><span class="class-id">07</span><span class="class-name">pipeline_damage</span></div>
+        <div class="class-item"><span class="class-id">08</span><span class="class-name">chemical_plume</span></div>
+        <div class="class-item"><span class="class-id">09</span><span class="class-name">crop_disease</span></div>
+        <div class="class-item"><span class="class-id">10</span><span class="class-name">pest_damage</span></div>
+        <div class="class-item"><span class="class-id">11</span><span class="class-name">dry_field</span></div>
+        <div class="class-item"><span class="class-id">12</span><span class="class-name">vessel</span></div>
+        <div class="class-item"><span class="class-id">13</span><span class="class-name">vessel_distress</span></div>
+        <div class="class-item"><span class="class-id">14</span><span class="class-name">power_line_damage</span></div>
+        <div class="class-item"><span class="class-id">15</span><span class="class-name">structural_crack</span></div>
+        <div class="class-item"><span class="class-id">16</span><span class="class-name">solar_defect</span></div>
+        <div class="class-item"><span class="class-id">17</span><span class="class-name">dangerous_animal</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALL 11 MODELS -->
+  <section id="models">
+    <p class="section-label">// full model inventory</p>
+    <h2>ALL 11 MODELS</h2>
+    <p class="section-desc">
+      Every model ships as an ONNX file in <code style="color:var(--amber)">packages/ml/models/</code>.
+      No PyTorch, no GPU required — inference runs on any CPU via onnxruntime.
+    </p>
+
+    <div class="model-grid">
+
+      <div class="model-card">
+        <div class="model-id">// mission planning</div>
+        <h3>MISSION CLASSIFIER</h3>
+        <div class="model-file">mission_classifier.onnx</div>
+        <p>Given a detected event (class + coordinates + risk level), predicts the optimal mission type
+           to dispatch. Feeds the tasking engine to auto-generate missions from sensor detections.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag amber">SURVEY</span>
+          <span class="tag amber">MONITOR</span>
+          <span class="tag amber">SEARCH</span>
+          <span class="tag amber">PERIMETER</span>
+          <span class="tag amber">ORBIT</span>
+          <span class="tag amber">DELIVER</span>
+          <span class="tag amber">INSPECT</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// threat assessment</div>
+        <h3>RISK SCORER</h3>
+        <div class="model-file">risk_scorer.onnx</div>
+        <p>Assigns a threat level to any detected event based on class, confidence, location context,
+           and environmental factors. Drives alert severity and PENDING_APPROVAL gating for high-stakes missions.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag green">LOW</span>
+          <span class="tag blue">MEDIUM</span>
+          <span class="tag amber">HIGH</span>
+          <span class="tag red">CRITICAL</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// alert quality</div>
+        <h3>FALSE POSITIVE FILTER</h3>
+        <div class="model-file">false_positive_filter.onnx</div>
+        <p>Binary classifier that suppresses noisy detections before they reach the operator alert queue.
+           Trained on historical confirmed vs. discarded alert patterns.
+           Reduces operator alert fatigue.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag green">CONFIRMED</span>
+          <span class="tag red">FALSE_POSITIVE</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// alert triage</div>
+        <h3>ESCALATION PREDICTOR</h3>
+        <div class="model-file">escalation_predictor.onnx</div>
+        <p>Predicts whether an active alert will escalate in severity within the next observation window.
+           Used to pre-position assets and alert commanders before a situation worsens.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag green">STABLE</span>
+          <span class="tag amber">ESCALATING</span>
+          <span class="tag red">CRITICAL_ESCALATION</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// pattern recognition</div>
+        <h3>INCIDENT CORRELATOR</h3>
+        <div class="model-file">incident_correlator.onnx</div>
+        <p>Groups spatially and temporally related alerts into unified incidents. Prevents operators
+           from being flooded with duplicate alerts for the same underlying event
+           (e.g., fire spread across multiple sensor zones).</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag blue">CLUSTER_ID</span>
+          <span class="tag blue">CORRELATION_SCORE</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// mission intelligence</div>
+        <h3>OUTCOME PREDICTOR</h3>
+        <div class="model-file">outcome_predictor.onnx</div>
+        <p>Estimates the probability of mission success before launch. Considers asset capabilities,
+           environmental conditions, mission type, and target characteristics.
+           Informs human-in-the-loop DISPATCH decisions.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag blue">SUCCESS_PROBABILITY</span>
+          <span class="tag amber">RECOMMENDED / CAUTION / ABORT</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// resource optimization</div>
+        <h3>ASSET ASSIGNMENT</h3>
+        <div class="model-file">asset_assignment.onnx</div>
+        <p>Optimal asset-to-mission matching. Given available assets (drones, ground units, sensors)
+           and pending missions, scores each pairing and surfaces the best allocation.
+           Accounts for proximity, fuel, payload, and capability.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag blue">ASSIGNMENT_SCORE</span>
+          <span class="tag amber">RANKED_ASSET_LIST</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// anomaly detection</div>
+        <h3>SEQUENCE ANOMALY</h3>
+        <div class="model-file">sequence_anomaly.onnx</div>
+        <p>LSTM-based model that detects anomalous entity behavior in time-series tracks.
+           Flags unusual movement patterns, loitering, erratic flight paths, or unexpected sensor dropouts
+           that rule-based filters miss.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag green">NORMAL</span>
+          <span class="tag red">ANOMALY</span>
+          <span class="tag blue">ANOMALY_SCORE</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// environmental risk</div>
+        <h3>WEATHER RISK SCORER</h3>
+        <div class="model-file">weather_risk_scorer.onnx</div>
+        <p>Assesses operational risk from weather conditions: wind speed, precipitation, visibility,
+           temperature, and lightning proximity. Used to auto-hold missions when conditions
+           exceed safe operating thresholds.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag green">GO</span>
+          <span class="tag amber">MARGINAL</span>
+          <span class="tag red">NO_GO</span>
+          <span class="tag blue">RISK_SCORE</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// visual intelligence</div>
+        <h3>RE-ID EMBEDDER</h3>
+        <div class="model-file">reid_embedder.onnx</div>
+        <p>Generates 128-dimensional visual embeddings for detected objects. Enables cross-camera
+           entity re-identification — track a person or vehicle as they move between
+           non-overlapping camera fields of view.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag blue">128-DIM EMBEDDING VECTOR</span>
+        </div>
+      </div>
+
+      <div class="model-card">
+        <div class="model-id">// flagship · visual detection</div>
+        <h3>SUMMIT DETECTOR</h3>
+        <div class="model-file">summit_detector.onnx</div>
+        <p>YOLOv8-based visual detector with 18 mission-critical classes. See full class list above.
+           Primary inference engine for video feeds from drones, CCTV, and aerial imagery.
+           Runs at real-time frame rates on CPU.</p>
+        <div class="outputs-label">outputs</div>
+        <div class="tag-list">
+          <span class="tag amber">BBOX</span>
+          <span class="tag amber">CLASS</span>
+          <span class="tag amber">CONFIDENCE</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- TRAINING DATA -->
+  <section id="training-data">
+    <p class="section-label">// where the data came from</p>
+    <h2>TRAINING DATA</h2>
+    <p class="section-desc">
+      All models are trained on publicly available datasets — no proprietary data, no user data,
+      no scraped content. Sources are listed below. Synthetic data was generated via
+      <code style="color:var(--amber)">packages/ml/generate_data.py</code> for low-frequency edge cases.
+    </p>
+
+    <div class="source-grid">
+      <div class="source-card">
+        <div class="source-org">NASA FIRMS</div>
+        <h4>Active Fire Detections</h4>
+        <p>Global wildfire and fire front detections updated every 10 minutes from MODIS and VIIRS satellite instruments. Primary source for smoke/fire/fire_front training samples.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">NOAA Storm Events</div>
+        <h4>Severe Weather 1950–Present</h4>
+        <p>1.5M+ severe weather records including floods, tornadoes, hurricanes, and hail. Primary source for weather risk and escalation predictor training.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">PHMSA</div>
+        <h4>Pipeline &amp; Hazmat Incidents</h4>
+        <p>Pipeline failure and hazardous materials incident reports from 2010–present. Source for pipeline_damage, oil_spill, and chemical_plume detection labels.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">GBIF</div>
+        <h4>Wildlife Occurrences</h4>
+        <p>Global Biodiversity Information Facility — 2B+ wildlife occurrence observations. Used for dangerous_animal and wildlife-related detection class training.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">USGS</div>
+        <h4>Earthquake Catalog M2.5+</h4>
+        <p>Real-time global earthquake feed. Used for structural risk scoring and incident correlation training data for ground movement events.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">NASA EONET</div>
+        <h4>Natural Events</h4>
+        <p>Earth Observatory Natural Event Tracker — volcanoes, floods, wildfires, landslides, dust storms, and sea/lake ice events with georeferenced coordinates.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">iNaturalist</div>
+        <h4>100M+ Observations</h4>
+        <p>Crowd-sourced wildlife observations including threatened and endangered species. Supplementary source for ecological detection classes and rare event distributions.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">OpenAQ</div>
+        <h4>Air Quality Readings</h4>
+        <p>Global air quality monitoring data used as a proxy for fire smoke concentration and chemical plume dispersion during training.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">GDACS</div>
+        <h4>Global Disaster Alerts</h4>
+        <p>Global Disaster Alert and Coordination System — earthquakes, cyclones, floods, volcanoes, and tsunamis with severity scoring. Used for risk scorer calibration.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">ReliefWeb</div>
+        <h4>Humanitarian Crisis Events</h4>
+        <p>UN OCHA humanitarian reporting database — floods, earthquakes, epidemics, conflicts. Used for high-level incident type classification training.</p>
+      </div>
+      <div class="source-card">
+        <div class="source-org">Synthetic</div>
+        <h4>Edge Case Generation</h4>
+        <p>Low-frequency scenarios (e.g., simultaneous multi-hazard events, extreme sensor noise) generated via <code style="color:var(--amber)">generate_data.py</code> to ensure model robustness at the margins.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXTERNAL API CALLS -->
+  <section id="external">
+    <p class="section-label">// optional external network calls</p>
+    <h2>EXTERNAL API CALLS</h2>
+    <p class="section-desc">
+      Summit.OS makes <strong>no outbound calls</strong> by default.
+      The following are opt-in integrations, all disabled unless you set the corresponding env var.
+      None of these calls send your operational data — they only pull in public reference feeds.
+    </p>
+
+    <table class="call-table">
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>What it does</th>
+          <th>Enabled by</th>
+          <th>What's sent</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="svc">OpenSky</span><br><span class="opt">OPTIONAL</span></td>
+          <td>Live ADS-B aircraft positions for the spatial intelligence overlay</td>
+          <td class="cond"><code>OPENSKY_ENABLED=true</code></td>
+          <td class="cond">Your bounding box coordinates (or nothing for worldwide). No entity data sent outbound.</td>
+        </tr>
+        <tr>
+          <td><span class="svc">CelesTrak</span><br><span class="opt">OPTIONAL</span></td>
+          <td>TLE orbital elements for satellite position propagation on the 3D globe</td>
+          <td class="cond"><code>CELESTRAK_ENABLED=true</code></td>
+          <td class="cond">HTTP GET request for TLE data file only. No user data sent.</td>
+        </tr>
+        <tr>
+          <td><span class="svc">MaxMind</span><br><span class="opt">OPTIONAL</span></td>
+          <td>GeoIP database auto-update for geoblocking enforcement</td>
+          <td class="cond"><code>MAXMIND_LICENSE_KEY=</code> set</td>
+          <td class="cond">Authenticated download of GeoLite2-Country.mmdb. No user IP addresses sent.</td>
+        </tr>
+        <tr>
+          <td><span class="svc">YubiCloud</span><br><span class="opt">OPTIONAL</span></td>
+          <td>OTP validation for YubiKey hardware authentication (Yubico OTP protocol)</td>
+          <td class="cond"><code>YUBICO_CLIENT_ID=</code> set</td>
+          <td class="cond">YubiKey OTP token sent to Yubico's validation servers. No user data. Can be replaced with self-hosted YK-VAL server.</td>
+        </tr>
+        <tr>
+          <td><span class="svc">Infisical / Vault</span><br><span class="opt">OPTIONAL</span></td>
+          <td>Secrets management backend for production deployments</td>
+          <td class="cond"><code>INFISICAL_TOKEN=</code> or <code>VAULT_ADDR=</code> set</td>
+          <td class="cond">Secret key names only — no operational data, no user data.</td>
+        </tr>
+        <tr>
+          <td><span class="svc">S3</span><br><span class="opt">OPTIONAL</span></td>
+          <td>Audit log shipping for SOC2 compliance retention</td>
+          <td class="cond"><code>AWS_AUDIT_BUCKET=</code> set</td>
+          <td class="cond">Append-only audit log entries (operator actions, auth events). Only your own bucket — Anthropic/BigMT never receives this data.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- RETRAIN -->
+  <section id="retrain">
+    <p class="section-label">// bring your own data</p>
+    <h2>RETRAIN WITH YOUR DATA</h2>
+    <p class="section-desc">
+      All training scripts are open source in <code style="color:var(--amber)">packages/ml/</code>.
+      Fine-tune any model on your own operator history for higher accuracy in your specific environment.
+    </p>
+
+    <div class="retrain-steps">
+
+      <div class="retrain-step">
+        <div>
+          <h4>COLLECT OPERATOR FEEDBACK</h4>
+          <p>Every alert confirm/discard and mission outcome is logged to the audit trail in NDJSON format.
+             Export your deployment's history or label new samples using your own sensor data.</p>
+        </div>
+      </div>
+
+      <div class="retrain-step">
+        <div>
+          <h4>DOWNLOAD PUBLIC DATA (OPTIONAL)</h4>
+          <p>Run the public data downloader to augment your dataset with fresh global event data.</p>
+          <code>cd packages/ml &amp;&amp; python download_real_data.py</code>
+        </div>
+      </div>
+
+      <div class="retrain-step">
+        <div>
+          <h4>TRAIN THE MODEL</h4>
+          <p>Each model has its own training script. Example for the risk scorer:</p>
+          <code>python train_risk_scorer.py</code>
+          <p style="margin-top:0.4rem">Visual detector and re-ID embedder training are Colab notebooks (GPU recommended):</p>
+          <code>packages/ml/colab/colab_visual_detector.ipynb<br>packages/ml/colab/colab_reid_embedder.ipynb</code>
+        </div>
+      </div>
+
+      <div class="retrain-step">
+        <div>
+          <h4>DROP IN THE NEW MODEL</h4>
+          <p>Replace the corresponding <code>.onnx</code> file in <code>packages/ml/models/</code> and restart the intelligence service.
+             No code changes required — all services load models from the path in <code>PLANNER_MODEL_PATH</code> or the default models directory.</p>
+          <code>docker compose restart intelligence</code>
+        </div>
+      </div>
+
+    </div>
+
+    <pre><span class="cm"># Run all tabular model training scripts in sequence</span>
+<span class="kw">for</span> script <span class="kw">in</span> train_risk_scorer train_mission_classifier train_false_positive_filter \
+              train_escalation_predictor train_incident_correlator train_outcome_predictor \
+              train_asset_assignment train_sequence_anomaly train_weather_risk_scorer; <span class="kw">do</span>
+  <span class="fn">echo</span> <span class="st">"=== Training $script ==="</span>
+  python packages/ml/<span class="fn">${script}</span>.py
+<span class="kw">done</span></pre>
+  </section>
+
+</div>
+
+<footer>
+  <p>
+    &copy; 2025 BigMT.ai — Summit.OS &nbsp;·&nbsp;
+    <a href="index.html">Home</a> &nbsp;·&nbsp;
+    <a href="mailto:prestkyle@gmail.com">prestkyle@gmail.com</a>
+  </p>
+  <p style="margin-top:0.5rem; font-size:0.65rem; color:#3a3a20">
+    Models trained on public data. Zero telemetry. Self-hosted.
+  </p>
+</footer>
+
+</body>
+</html>
