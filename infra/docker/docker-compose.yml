@@ -77,6 +77,7 @@ services:
       - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET:-dev_secret}
       - FABRIC_SKIP_MIGRATIONS=${FABRIC_SKIP_MIGRATIONS:-false}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - ENTERPRISE_MULTI_TENANT=${ENTERPRISE_MULTI_TENANT:-false}
       - PYTHONPATH=/workspace:/app
     depends_on:
       redis:
@@ -194,8 +195,9 @@ services:
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
       - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - TASKING_DIRECT_AUTOPILOT=${TASKING_DIRECT_AUTOPILOT-false}
+      - ENTERPRISE_MULTI_TENANT=${ENTERPRISE_MULTI_TENANT:-false}
       - PYTHONPATH=/workspace:/app
       - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
@@ -290,6 +292,7 @@ services:
       - MISSIONS=sentinel
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - API_KEY_ENFORCE=${API_KEY_ENFORCE:-false}
+      - ENTERPRISE_MULTI_TENANT=${ENTERPRISE_MULTI_TENANT:-false}
       - PYTHONPATH=/workspace:/app
       - OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
@@ -411,8 +414,8 @@ services:
       - OPENSKY_ENABLED=${OPENSKY_ENABLED:-true}
       - OPENSKY_POLL_INTERVAL=${OPENSKY_POLL_INTERVAL:-10}
       - OPENSKY_BBOX=${OPENSKY_BBOX:-}
-      - OPENSKY_USERNAME=${OPENSKY_USERNAME:-}
-      - OPENSKY_PASSWORD=${OPENSKY_PASSWORD:-}
+      - OPENSKY_CLIENT_ID=${OPENSKY_CLIENT_ID:-}
+      - OPENSKY_CLIENT_SECRET=${OPENSKY_CLIENT_SECRET:-}
       - CELESTRAK_ENABLED=${CELESTRAK_ENABLED:-true}
       - CELESTRAK_MAX_SATS=${CELESTRAK_MAX_SATS:-200}
       - CELESTRAK_PROPAGATE_INTERVAL=${CELESTRAK_PROPAGATE_INTERVAL:-30}

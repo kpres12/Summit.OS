@@ -24,8 +24,14 @@ help:
 	@echo "  make format        - Format code"
 	@echo "  make install-deps  - Install all dependencies"
 	@echo ""
+	@echo "Database:"
+	@echo "  make db-setup      - Enable PostGIS extension"
+	@echo "  make db-migrate    - Run Alembic migrations (upgrade head)"
+	@echo "  make db-rollback   - Roll back last migration"
+	@echo "  make db-status     - Show current migration revision"
+	@echo ""
 	@echo "Services:"
-	@echo "  - Console: http://localhost:3000"
+	@echo "  - Console: http://localhost:3002"
 	@echo "  - API Gateway: http://localhost:8000"
 	@echo "  - Data Fabric: http://localhost:8001"
 	@echo "  - Sensor Fusion: http://localhost:8002"
@@ -38,7 +44,7 @@ help:
 dev: install-deps dev-services
 	@echo "Starting Summit.OS development environment..."
 	@echo "Services will be available at:"
-	@echo "  - Console: http://localhost:3000"
+	@echo "  - Console: http://localhost:3002"
 	@echo "  - API Gateway: http://localhost:8000"
 	@echo "  - Grafana: http://localhost:3001"
 	@echo ""
@@ -49,7 +55,7 @@ dev: install-deps dev-services
 # Infrastructure services only
 dev-services:
 	@echo "Starting infrastructure services..."
-	@docker-compose -f infra/docker/docker-compose.yml up -d redis postgres mqtt prometheus grafana
+	@docker compose -f infra/docker/docker-compose.yml up -d redis postgres mqtt prometheus grafana
 	@echo "Waiting for services to be ready..."
 	@sleep 15
 	@echo "Infrastructure services started!"
@@ -57,20 +63,20 @@ dev-services:
 # Summit.OS applications
 dev-apps:
 	@echo "Starting Summit.OS applications..."
-	@docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking inference api-gateway adapters console
-	@echo "Applications started! Check logs with: docker-compose -f infra/docker/docker-compose.yml logs -f"
+	@docker compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking inference api-gateway adapters console
+	@echo "Applications started! Check logs with: docker compose -f infra/docker/docker-compose.yml logs -f"
 
 # External infra (use .env with external endpoints)
 .PHONY: dev-external
 dev-external:
 	@echo "Starting Summit.OS apps against external infra (see .env)..."
-	@docker-compose --env-file .env -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.external.yml --profile external up -d fabric fusion intelligence tasking api-gateway console
+	@docker compose --env-file .env -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.external.yml --profile external up -d fabric fusion intelligence tasking api-gateway console
 	@echo "External mode started!"
 
 # External data adapters only
 dev-adapters:
 	@echo "Starting external data adapters..."
-	@docker-compose -f infra/docker/docker-compose.yml up -d adapters
+	@docker compose -f infra/docker/docker-compose.yml up -d adapters
 	@echo "Adapters started (OpenSky + CelesTrak)"
 
 # No-Docker dev: mock server + console (great for local dev without Docker)
@@ -91,12 +97,12 @@ dev-console:
 # Backend services only
 dev-backend:
 	@echo "Starting backend services..."
-	@docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking inference api-gateway
+	@docker compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking inference api-gateway
 
 # Clean up
 clean:
 	@echo "Cleaning up Summit.OS environment..."
-	@docker-compose -f infra/docker/docker-compose.yml down -v
+	@docker compose -f infra/docker/docker-compose.yml down -v
 	@docker system prune -f
 	@echo "Cleanup complete!"
 
@@ -161,11 +167,27 @@ format:
 	@cd apps/console && npm run format
 	@echo "Code formatted!"
 
-# Development database setup
+# Development database setup (PostGIS extension)
 db-setup:
 	@echo "Setting up development database..."
-	@docker-compose -f infra/docker/docker-compose.yml exec postgres psql -U summit -d summit_os -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+	@docker compose -f infra/docker/docker-compose.yml exec postgres psql -U summit -d summit_os -c "CREATE EXTENSION IF NOT EXISTS postgis;"
 	@echo "Database setup complete!"
+
+# Run Alembic migrations (fabric service — upgrade to latest revision)
+db-migrate:
+	@echo "Running database migrations..."
+	@cd apps/fabric && POSTGRES_URL=$${POSTGRES_URL:-postgresql://summit:summit_password@localhost:5433/summit_os} python -m alembic upgrade head
+	@echo "Migrations complete!"
+
+# Roll back the last migration revision
+db-rollback:
+	@echo "Rolling back last migration..."
+	@cd apps/fabric && POSTGRES_URL=$${POSTGRES_URL:-postgresql://summit:summit_password@localhost:5433/summit_os} python -m alembic downgrade -1
+	@echo "Rollback complete!"
+
+# Show current migration revision
+db-status:
+	@cd apps/fabric && POSTGRES_URL=$${POSTGRES_URL:-postgresql://summit:summit_password@localhost:5433/summit_os} python -m alembic current
 
 # Generate mock data
 mock-data:
@@ -212,21 +234,21 @@ smoke:
 
 # Logs
 logs:
-	@docker-compose -f infra/docker/docker-compose.yml logs -f
+	@docker compose -f infra/docker/docker-compose.yml logs -f
 
 # Stop all services
 stop:
 	@echo "Stopping Summit.OS services..."
-	@docker-compose -f infra/docker/docker-compose.yml down
+	@docker compose -f infra/docker/docker-compose.yml down
 	@echo "Services stopped!"
 
 # Toggle direct autopilot fallback (TASKING service)
 tasking-direct-on:
 	@echo "Enabling TASKING_DIRECT_AUTOPILOT and restarting tasking service..."
-	@TASKING_DIRECT_AUTOPILOT=true docker-compose -f infra/docker/docker-compose.yml up -d --no-deps --build tasking
+	@TASKING_DIRECT_AUTOPILOT=true docker compose -f infra/docker/docker-compose.yml up -d --no-deps --build tasking
 	@echo "Direct autopilot enabled."
 
 tasking-direct-off:
 	@echo "Disabling TASKING_DIRECT_AUTOPILOT and restarting tasking service..."
-	@TASKING_DIRECT_AUTOPILOT=false docker-compose -f infra/docker/docker-compose.yml up -d --no-deps --build tasking
+	@TASKING_DIRECT_AUTOPILOT=false docker compose -f infra/docker/docker-compose.yml up -d --no-deps --build tasking
 	@echo "Direct autopilot disabled."

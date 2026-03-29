@@ -454,3 +454,162 @@ async def stripe_webhook(
             logger.debug("Unhandled Stripe event type: %s", event_type)
 
     return {"received": True}
+
+
+# ---------------------------------------------------------------------------
+# POST /v1/billing/webhooks/polar
+# Polar.sh subscription lifecycle events → org tier updates.
+# Docs: https://docs.polar.sh/integrate/webhooks
+#
+# Signature verification: HMAC-SHA256 over
+#   "{webhook-id}.{webhook-timestamp}.{raw_body}"
+# using POLAR_WEBHOOK_SECRET. Skip verification if secret not set (dev only).
+# ---------------------------------------------------------------------------
+
+# Polar product name → internal tier.  Adjust if you rename products in Polar.
+_POLAR_PRODUCT_TIER: dict[str, str] = {
+    "enterprise": "enterprise",
+    "enterprise+": "enterprise",
+    "summit.os enterprise": "enterprise",
+    "summit.os enterprise+": "enterprise",
+}
+
+
+def _verify_polar_signature(
+    raw_body: bytes, webhook_id: str, webhook_ts: str, secret: str
+) -> bool:
+    """Verify Polar webhook signature (HMAC-SHA256)."""
+    msg = f"{webhook_id}.{webhook_ts}.".encode() + raw_body
+    expected = hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest()
+    # Polar sends "v1,<hex>" format
+    return hmac.compare_digest(f"v1,{expected}", webhook_id) or any(
+        hmac.compare_digest(part.strip(), f"v1,{expected}")
+        for part in webhook_id.split(",")
+    )
+
+
+@billing_router.post("/webhooks/polar")
+async def polar_webhook(
+    request: Request,
+    webhook_id: Optional[str] = Header(None, alias="webhook-id"),
+    webhook_timestamp: Optional[str] = Header(None, alias="webhook-timestamp"),
+    webhook_signature: Optional[str] = Header(None, alias="webhook-signature"),
+) -> dict:
+    """Handle Polar.sh webhook events.
+
+    Verifies the signature using POLAR_WEBHOOK_SECRET env var.
+    Handles:
+      - subscription.created  → provision enterprise tier
+      - subscription.updated  → sync tier and status
+      - subscription.revoked  → downgrade to free
+    """
+    polar_secret = os.getenv("POLAR_WEBHOOK_SECRET", "")
+    raw_body = await request.body()
+
+    if polar_secret and webhook_id and webhook_timestamp and webhook_signature:
+        msg = f"{webhook_id}.{webhook_timestamp}.".encode() + raw_body
+        expected = hmac.new(polar_secret.encode(), msg, hashlib.sha256).hexdigest()
+        sig_values = [s.strip() for s in (webhook_signature or "").split(" ")]
+        valid = any(
+            hmac.compare_digest(s, f"v1,{expected}") for s in sig_values
+        )
+        if not valid:
+            raise HTTPException(status_code=400, detail="Invalid Polar signature")
+
+    try:
+        payload = _json_mod.loads(raw_body)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    event_type: str = payload.get("type", "")
+    data: dict = payload.get("data", {})
+
+    # Extract customer email and product name from Polar payload
+    customer_email: str = (
+        data.get("customer", {}).get("email", "")
+        or data.get("user", {}).get("email", "")
+        or ""
+    ).lower()
+    product_name: str = (
+        data.get("product", {}).get("name", "") or ""
+    ).lower().strip()
+    polar_sub_id: str = data.get("id", "")
+    polar_status: str = data.get("status", "active")
+
+    tier = _POLAR_PRODUCT_TIER.get(product_name, "enterprise")
+
+    if _SessionLocal is None:
+        logger.warning("Billing DB not ready — ignoring Polar event %s", event_type)
+        return {"received": True}
+
+    async with _SessionLocal() as session:
+        if event_type in ("subscription.created", "subscription.updated"):
+            internal_status = (
+                "active" if polar_status in ("active", "trialing") else "past_due"
+            )
+            defaults = TIER_DEFAULTS.get(tier, TIER_DEFAULTS["enterprise"])
+
+            # Try to match by polar_subscription_id first, then email
+            result = await session.execute(
+                select(orgs_table).where(
+                    orgs_table.c.polar_subscription_id == polar_sub_id
+                )
+            )
+            org_row = result.first()
+
+            if org_row is None and customer_email:
+                result = await session.execute(
+                    select(orgs_table).where(
+                        orgs_table.c.billing_email == customer_email
+                    )
+                )
+                org_row = result.first()
+
+            if org_row is not None:
+                await session.execute(
+                    update(orgs_table)
+                    .where(orgs_table.c.org_id == org_row.org_id)
+                    .values(
+                        tier=tier,
+                        subscription_status=internal_status,
+                        polar_subscription_id=polar_sub_id,
+                        entity_limit=defaults["entity_limit"],
+                        operator_limit=defaults["operator_limit"],
+                    )
+                )
+                await session.commit()
+                logger.info(
+                    "polar event=%s org=%s tier=%s status=%s",
+                    event_type, org_row.org_id, tier, internal_status,
+                )
+            else:
+                logger.warning(
+                    "polar event=%s — no org matched sub=%s email=%s",
+                    event_type, polar_sub_id, customer_email,
+                )
+
+        elif event_type == "subscription.revoked":
+            result = await session.execute(
+                select(orgs_table).where(
+                    orgs_table.c.polar_subscription_id == polar_sub_id
+                )
+            )
+            org_row = result.first()
+            if org_row is not None:
+                free = TIER_DEFAULTS["free"]
+                await session.execute(
+                    update(orgs_table)
+                    .where(orgs_table.c.org_id == org_row.org_id)
+                    .values(
+                        tier="free",
+                        subscription_status="cancelled",
+                        entity_limit=free["entity_limit"],
+                        operator_limit=free["operator_limit"],
+                    )
+                )
+                await session.commit()
+                logger.info("polar revoked: org=%s downgraded to free", org_row.org_id)
+        else:
+            logger.debug("Unhandled Polar event type: %s", event_type)
+
+    return {"received": True}

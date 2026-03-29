@@ -45,7 +45,7 @@ Summit.OS is the open-source alternative. Same architecture. Built for the civil
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                         Operator Console :3000                          │
+│                         Operator Console :3002                          │
 │  MapLibre live map · Alert queue · Mission feed · Live video · Replay   │
 └───────────────────────────┬─────────────────────────────────────────────┘
                             │  REST + WebSocket
@@ -105,14 +105,21 @@ class MyDrone(SummitAdapter):
 
 ---
 
+> [!WARNING]
+> **Security defaults are open for local development.** Out of the box, authentication is disabled (`OIDC_ENFORCE=false`, `RBAC_ENFORCE=false`, `API_KEY_ENFORCE=false`) and PII field encryption is off. This is intentional for local dev — running `docker compose up` should just work without configuring an identity provider.
+>
+> **Before connecting Summit.OS to any real network, real hardware, or real incident data**, read the [Production Hardening](#production-hardening) section below. The API Gateway will print a visible warning banner at startup until you set these values.
+
+---
+
 ## Quick Start
 
 **Prerequisites:** Docker Desktop (or Docker + Compose V2), 8 GB RAM, 10 GB disk.
 
 ```bash
 # 1. Clone
-git clone https://github.com/bigmt-ai/summit-os.git
-cd summit-os
+git clone https://github.com/BigMT-Ai/Summit.OS.git
+cd Summit.OS
 
 # 2. Configure (defaults work for local dev)
 cp .env.example .env
@@ -251,7 +258,7 @@ Summit.OS ships with built-in adapters for:
 - **CoT/ATAK** — bidirectional UDP, multicast at 239.2.3.1:6969
 - **ONVIF cameras** — discovery + RTSP stream registration
 - **OpenSky Network** — live ADS-B aircraft (no account needed)
-- **AIS vessels** — maritime vessel positions via AISHub
+- **AIS vessels** — maritime vessel positions (simulation mode; plug in AISHub credentials for live data)
 - **CelesTrak** — satellite orbital positions
 
 Custom hardware: subclass `SummitAdapter` in `packages/adapters/`. See `examples/` for a complete template.
@@ -291,7 +298,7 @@ See `.env.example` for the full reference.
 
 ```bash
 # Infrastructure only (Postgres, Redis, MQTT, Prometheus)
-docker compose up redis postgres mqtt prometheus grafana
+docker compose -f infra/docker/docker-compose.yml up -d redis postgres mqtt prometheus grafana
 
 # Individual services (from their app directory)
 cd apps/fabric && uvicorn main:app --reload --port 8001
@@ -304,8 +311,24 @@ python -m pytest apps/tasking/tests/
 python -m pytest apps/intelligence/tests/
 
 # Hot reload all Python services
-UVICORN_RELOAD=true docker compose up
+UVICORN_RELOAD=true docker compose -f infra/docker/docker-compose.yml up
 ```
+
+**Database migrations:**
+
+```bash
+# Fresh install — enable PostGIS, then apply all migrations
+make db-setup
+make db-migrate
+
+# Check migration state
+make db-status
+
+# Roll back one revision
+make db-rollback
+```
+
+Migration files are in `apps/fabric/alembic/versions/`. Every schema change needs an Alembic migration — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
 
 ---
 
@@ -317,36 +340,109 @@ UVICORN_RELOAD=true docker compose up
 docker compose -f infra/docker/docker-compose.yml up --build -d
 ```
 
-**Cloud:** Any Kubernetes cluster. Helm chart in progress — contributions welcome.
+**Cloud:** Any Kubernetes cluster. Helm chart is on the roadmap — contributions welcome.
 
 **Air-gapped / edge:** All ML inference runs locally. No external API calls required. Designed to operate on field hardware with no internet connection.
 
 ---
 
+## Production Hardening
+
+> [!IMPORTANT]
+> The steps below are **required** before deploying Summit.OS to any environment where it handles real incident data or real hardware.
+
+### 1. Enable authentication
+
+```bash
+# In your .env
+OIDC_ENFORCE=true
+OIDC_ISSUER=https://your-keycloak/realms/summit
+OIDC_AUDIENCE=summit-api
+OIDC_JWKS_URL=https://your-keycloak/realms/summit/protocol/openid-connect/certs
+RBAC_ENFORCE=true
+API_KEY_ENFORCE=true
+```
+
+Keycloak is the recommended identity provider — `infra/docker/docker-compose.keycloak.yml` stands up a pre-configured instance. Any OIDC-compliant provider (Auth0, Okta, Authentik) works.
+
+### 2. Set strong secrets
+
+```bash
+POSTGRES_PASSWORD=$(openssl rand -hex 32)
+FABRIC_JWT_SECRET=$(openssl rand -hex 32)
+FIELD_ENCRYPTION_KEY=$(openssl rand -base64 32)
+GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 16)
+```
+
+### 3. Enable MQTT TLS
+
+The default Mosquitto config uses plaintext port 1883 — fine inside Docker's internal network, not fine if your MQTT broker is reachable externally. To enable TLS:
+
+```bash
+# Generate broker certs (writes to infra/docker/certs/)
+bash scripts/gen_mqtt_certs.sh
+
+# Then in infra/docker/mosquitto.conf:
+# Uncomment the TLS listener block and comment out the dev block
+# Update MQTT_PORT=8883 in your .env
+```
+
+The TLS configuration block is included (commented out) in `infra/docker/mosquitto.conf`.
+
+### 4. CORS origins
+
+Update `CORS_ORIGINS` to your actual console domain:
+
+```bash
+CORS_ORIGINS=https://console.yourdomain.com
+```
+
+### 5. Data retention
+
+Configure how long audit logs and mission replays are kept:
+
+```bash
+AUDIT_RETENTION_DAYS=90    # audit log entries (default: 90)
+```
+
+Mission replay snapshots are stored indefinitely by default. For long-running deployments, implement a periodic cleanup of old `mission_snapshots` rows in Postgres based on your operational and legal requirements. SAR and emergency response operators should consult their jurisdiction's incident record-keeping requirements before reducing retention.
+
+### 6. mTLS (optional, high-security deployments)
+
+Enable the Nginx mTLS proxy layer for service-to-service encryption:
+
+```bash
+docker compose --profile mtls up
+```
+
+Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the configuration.
+
+---
+
 ## Editions
 
-| | Community | Cloud | Enterprise |
-|---|---|---|---|
-| Core platform | ✓ Open source | ✓ Managed | ✓ On-premise |
-| ML models (base) | ✓ Included | ✓ Updated monthly | ✓ Custom trained |
-| Observability stack | ✓ Self-host | ✓ Managed | ✓ Managed |
-| SLA | — | 99.5% | 99.9% + 4h response |
-| Auth (OIDC/RBAC) | ✓ Self-configure | ✓ Managed | ✓ SSO + MFA |
-| Custom model training | DIY | — | ✓ On your operator data |
-| Hardware integration support | Community | — | ✓ Dedicated |
-| Compliance (SOC 2 / ISO 27001) | DIY | — | ✓ Provided |
-| **Price** | **Free** | **~$500–2k/mo** | **Contact us** |
+| | Community | Enterprise |
+|---|---|---|
+| Core platform | ✓ Open source (Apache 2.0) | ✓ On-premise |
+| ML models (base) | ✓ Included | ✓ Custom trained |
+| Observability stack | ✓ Self-host | ✓ Self-host or managed |
+| SLA | — | 99.9% + 4h response |
+| Auth (OIDC/RBAC) | ✓ Self-configure | ✓ SSO + MFA enforced |
+| Multi-org tenancy | — | ✓ Row-level isolation |
+| Custom model training | DIY | ✓ On your operator data |
+| Hardware integration support | Community | ✓ Dedicated |
+| Compliance (SOC 2 / ISO 27001) | DIY | ✓ Provided |
+| **Price** | **Free** | **Contact us** |
 
 ---
 
 ## Roadmap
 
-- [ ] Helm chart for Kubernetes deployment
+- [ ] Helm chart for Kubernetes deployment _(not yet available — Docker Compose is the supported deployment path for v0.1.0)_
 - [ ] USCG SAR data integration (SEARCH model improvement)
 - [ ] Behavior tree editor in the console (visual mission programming)
 - [ ] Hardware-in-the-loop SITL testing environment
-- [ ] Mobile companion app (iOS/Android) for field operators
-- [ ] Multi-org tenancy in Community edition
+- [ ] Managed hosting via BigMT.ai (self-hosted is the supported path for v0.1.0)
 - [ ] Pre-built adapters: Skydio, Autel, Parrot, Reach RTK
 - [ ] Federated learning — improve shared base models without sharing raw data
 

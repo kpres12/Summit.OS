@@ -123,6 +123,29 @@ OIDC_AUDIENCE = os.getenv("OIDC_AUDIENCE")
 # DB metadata and tables
 metadata = MetaData()
 
+# org_id helper (Enterprise multi-tenancy)
+_ENTERPRISE_MULTI_TENANT = os.getenv("ENTERPRISE_MULTI_TENANT", "false").lower() == "true"
+
+
+def _get_org_id(request: Request) -> str:
+    """Extract org_id from X-Org-ID header or JWT claims. Returns 'default' in Community mode."""
+    if not _ENTERPRISE_MULTI_TENANT:
+        return "default"
+    org_id = request.headers.get("X-Org-ID") or request.headers.get("x-org-id")
+    if org_id:
+        return org_id.strip()
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer ") and OIDC_AVAILABLE:
+        try:
+            claims = jwt.get_unverified_claims(auth[7:])
+            org_id = claims.get("org_id") or claims.get("org") or claims.get("tenant")
+            if org_id:
+                return str(org_id).strip()
+        except Exception:
+            pass
+    return "default"
+
+
 # Legacy task table (kept for backward compatibility)
 tasks = Table(
     "tasks",
@@ -135,6 +158,7 @@ tasks = Table(
     Column("created_at", DateTime(timezone=True)),
     Column("started_at", DateTime(timezone=True)),
     Column("completed_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 assets = Table(
@@ -148,6 +172,7 @@ assets = Table(
     Column("link", String(32), nullable=True),
     Column("constraints", JSON, nullable=True),
     Column("updated_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 missions = Table(
@@ -163,6 +188,7 @@ missions = Table(
     Column("created_at", DateTime(timezone=True)),
     Column("started_at", DateTime(timezone=True)),
     Column("completed_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 mission_assignments = Table(
@@ -175,6 +201,7 @@ mission_assignments = Table(
     Column(
         "status", String(32), nullable=False
     ),  # ASSIGNED, DISPATCHED, ACTIVE, COMPLETED, FAILED
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 # Tiered response tables
@@ -198,6 +225,7 @@ tiered_missions = Table(
     Column("fire_threshold", JSON, nullable=True),
     Column("created_at", DateTime(timezone=True)),
     Column("updated_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 drone_boxes = Table(
@@ -213,6 +241,7 @@ drone_boxes = Table(
     Column("recovery_timeout", Float, nullable=False, default=1800),
     Column("weather_limits", JSON, nullable=True),
     Column("updated_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 interventions = Table(
@@ -231,6 +260,7 @@ interventions = Table(
     Column("effectiveness", Float, nullable=True),  # 0.0 - 1.0 success rate
     Column("deployed_at", DateTime(timezone=True)),
     Column("completed_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 # Metrics
@@ -1578,7 +1608,7 @@ async def create_mission(req: MissionCreateRequest, request: Request):
         # Transitions: PLANNING → POLICY_CHECK
 
     # Policy validation (org-scoped)
-    org_id = request.headers.get("X-Org-ID") or request.headers.get("x-org-id")
+    org_id = _get_org_id(request)
 
     if sm:
         sm.transition(MissionState.POLICY_CHECK)  # → POLICY_CHECK
@@ -1654,6 +1684,7 @@ async def create_mission(req: MissionCreateRequest, request: Request):
                 status="ACTIVE",
                 created_at=created_at,
                 started_at=created_at,
+                org_id=org_id,
             )
         )
         for asset_id, plan in assignments_map.items():
@@ -1663,6 +1694,7 @@ async def create_mission(req: MissionCreateRequest, request: Request):
                     asset_id=asset_id,
                     plan=plan,
                     status="ASSIGNED",
+                    org_id=org_id,
                 )
             )
         await session.commit()
@@ -1780,14 +1812,19 @@ async def get_mission(mission_id: str):
 
 
 @app.get("/api/v1/missions")
-async def list_missions(limit: int = 50, status: Optional[str] = None):
+async def list_missions(request: Request, limit: int = 50, status: Optional[str] = None):
     assert SessionLocal is not None
-    query = "SELECT mission_id, name, objectives, status, created_at, started_at, completed_at FROM missions"
+    org_id = _get_org_id(request)
+    conditions = []
     params: Dict[str, Any] = {"lim": limit}
     if status:
-        query += " WHERE status = :st"
+        conditions.append("status = :st")
         params["st"] = status
-    query += " ORDER BY id DESC LIMIT :lim"
+    if _ENTERPRISE_MULTI_TENANT:
+        conditions.append("org_id = :org_id")
+        params["org_id"] = org_id
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    query = f"SELECT mission_id, name, objectives, status, created_at, started_at, completed_at FROM missions {where} ORDER BY id DESC LIMIT :lim"
     async with SessionLocal() as session:
         res = await session.execute(text(query), params)
         rows = res.all()
@@ -1814,6 +1851,7 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
     await _require_auth(request)
     assert SessionLocal is not None
 
+    org_id = _get_org_id(request)
     mission_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc)
 
@@ -1861,6 +1899,7 @@ async def create_tiered_mission(req: TieredMissionRequest, request: Request):
                 ),
                 created_at=created_at,
                 updated_at=created_at,
+                org_id=org_id,
             )
         )
 
@@ -2154,16 +2193,28 @@ async def get_tiered_mission(mission_id: str):
 
 
 @app.get("/api/v1/tiered-missions")
-async def list_tiered_missions(limit: int = 50, tier: Optional[str] = None):
+async def list_tiered_missions(
+    limit: int = 50, tier: Optional[str] = None, request: Request = None
+):
     """List tiered missions."""
     assert SessionLocal is not None
 
+    org_id = _get_org_id(request) if request else "default"
+
     query = "SELECT mission_id, alert_id, current_tier, tier_1_status, tier_2_status, tier_3_status, created_at, updated_at FROM tiered_missions"
     params: Dict[str, Any] = {"lim": limit}
+    conditions = []
+
+    if _ENTERPRISE_MULTI_TENANT and org_id != "default":
+        conditions.append("org_id = :org_id")
+        params["org_id"] = org_id
 
     if tier:
-        query += " WHERE current_tier = :tier"
+        conditions.append("current_tier = :tier")
         params["tier"] = tier
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
 
     query += " ORDER BY id DESC LIMIT :lim"
 

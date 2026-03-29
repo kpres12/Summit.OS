@@ -3,6 +3,18 @@ Multi-Link Communication Manager for Summit.OS
 
 Manages multiple communication links (radio mesh, cellular, satellite, WiFi)
 with automatic failover, QoS, and autonomous operation capabilities.
+
+Hardware integration notes
+--------------------------
+RadioMeshLink, CellularLink, and SatelliteLink are reference stubs that define
+the expected interface. They require hardware-specific implementation before use.
+
+To integrate your hardware:
+1. Subclass the appropriate link class (or CommunicationLink directly)
+2. Implement initialize(), send_data(), receive_data(), get_metrics(), shutdown()
+3. Register your implementation with MultiLinkManager.add_link()
+
+See the SDK examples directory for a complete working implementation template.
 """
 
 import asyncio
@@ -103,182 +115,115 @@ class CommunicationLink(ABC):
 
 
 class RadioMeshLink(CommunicationLink):
-    """802.11s mesh networking link for low-latency local communication"""
+    """
+    802.11s mesh networking link for low-latency local communication.
+
+    This is a hardware integration stub. Implement the methods below for your
+    specific mesh hardware (e.g. Silvus, Rajant, 802.11s kernel interface).
+    """
 
     async def initialize(self) -> bool:
-        try:
-            # Initialize mesh interface
-            mesh_config = self.config.config
-            frequency = mesh_config.get("frequency", "900MHz")
-            mesh_id = mesh_config.get("mesh_id", "summit-mesh")
-
-            logger.info(f"Initializing radio mesh on {frequency} (mesh_id: {mesh_id})")
-
-            # TODO: Implement actual mesh setup
-            # This would configure the wireless interface in mesh mode
-
-            self.status = LinkStatus.ACTIVE
-            self.metrics.reliability_score = 0.9  # High for local mesh
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize radio mesh: {e}")
-            self.status = LinkStatus.FAILED
-            return False
+        mesh_config = self.config.config
+        frequency = mesh_config.get("frequency", "900MHz")
+        mesh_id = mesh_config.get("mesh_id", "summit-mesh")
+        logger.info(f"Initializing radio mesh on {frequency} (mesh_id: {mesh_id})")
+        raise NotImplementedError(
+            "RadioMeshLink.initialize() requires hardware-specific implementation. "
+            "Subclass RadioMeshLink and implement this method for your mesh hardware."
+        )
 
     async def send_data(self, data: bytes, priority: int = 0) -> bool:
-        if self.status != LinkStatus.ACTIVE:
-            return False
-
-        try:
-            # TODO: Implement mesh data transmission
-            # This would send data via the mesh interface
-            return True
-        except Exception as e:
-            logger.error(f"Mesh send error: {e}")
-            return False
+        raise NotImplementedError(
+            "RadioMeshLink.send_data() requires hardware-specific implementation."
+        )
 
     async def receive_data(self) -> Optional[bytes]:
-        if self.status != LinkStatus.ACTIVE:
-            return None
-
-        try:
-            # TODO: Implement mesh data reception
-            return None
-        except Exception as e:
-            logger.error(f"Mesh receive error: {e}")
-            return None
+        raise NotImplementedError(
+            "RadioMeshLink.receive_data() requires hardware-specific implementation."
+        )
 
     async def get_metrics(self) -> LinkMetrics:
-        # TODO: Get actual metrics from mesh interface
-        self.metrics.latency_ms = 10.0  # Low latency for local mesh
-        self.metrics.bandwidth_mbps = 50.0
-        self.metrics.packet_loss_pct = 0.1
-        self.metrics.last_update = time.time()
-        return self.metrics
+        raise NotImplementedError(
+            "RadioMeshLink.get_metrics() requires hardware-specific implementation."
+        )
 
     async def shutdown(self) -> None:
-        # TODO: Shutdown mesh interface
         self.status = LinkStatus.DISABLED
         logger.info("Radio mesh link shutdown")
 
 
 class CellularLink(CommunicationLink):
-    """Cellular (LTE/5G) communication link"""
+    """
+    Cellular (LTE/5G) communication link.
+
+    This is a hardware integration stub. Implement the methods below for your
+    specific cellular hardware (e.g. Sierra Wireless, Quectel, u-blox modems).
+    """
 
     async def initialize(self) -> bool:
-        try:
-            cellular_config = self.config.config
-            apn = cellular_config.get("apn", "")
-            bands = cellular_config.get("bands", [])
-
-            logger.info(f"Initializing cellular link (APN: {apn})")
-
-            # TODO: Implement cellular modem initialization
-
-            self.status = LinkStatus.ACTIVE
-            self.metrics.reliability_score = 0.8  # Good reliability
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize cellular: {e}")
-            self.status = LinkStatus.FAILED
-            return False
+        cellular_config = self.config.config
+        apn = cellular_config.get("apn", "")
+        logger.info(f"Initializing cellular link (APN: {apn})")
+        raise NotImplementedError(
+            "CellularLink.initialize() requires hardware-specific implementation. "
+            "Subclass CellularLink and implement this method for your cellular modem."
+        )
 
     async def send_data(self, data: bytes, priority: int = 0) -> bool:
-        if self.status != LinkStatus.ACTIVE:
-            return False
-
-        try:
-            # TODO: Send data via cellular modem
-            return True
-        except Exception as e:
-            logger.error(f"Cellular send error: {e}")
-            return False
+        raise NotImplementedError(
+            "CellularLink.send_data() requires hardware-specific implementation."
+        )
 
     async def receive_data(self) -> Optional[bytes]:
-        if self.status != LinkStatus.ACTIVE:
-            return None
-
-        try:
-            # TODO: Receive data from cellular modem
-            return None
-        except Exception as e:
-            logger.error(f"Cellular receive error: {e}")
-            return None
+        raise NotImplementedError(
+            "CellularLink.receive_data() requires hardware-specific implementation."
+        )
 
     async def get_metrics(self) -> LinkMetrics:
-        # TODO: Get actual metrics from cellular modem
-        self.metrics.latency_ms = 50.0  # Moderate latency
-        self.metrics.bandwidth_mbps = 20.0
-        self.metrics.packet_loss_pct = 0.5
-        self.metrics.signal_strength_dbm = -70.0
-        self.metrics.last_update = time.time()
-        return self.metrics
+        raise NotImplementedError(
+            "CellularLink.get_metrics() requires hardware-specific implementation."
+        )
 
     async def shutdown(self) -> None:
-        # TODO: Shutdown cellular modem
         self.status = LinkStatus.DISABLED
         logger.info("Cellular link shutdown")
 
 
 class SatelliteLink(CommunicationLink):
-    """Satellite communication link (Starlink, etc.)"""
+    """
+    Satellite communication link (Starlink, Iridium, Inmarsat, etc.).
+
+    This is a hardware integration stub. Implement the methods below for your
+    specific satellite terminal. Note: Starlink has no public SDK; most
+    implementations use the router API or a serial AT-command interface.
+    """
 
     async def initialize(self) -> bool:
-        try:
-            sat_config = self.config.config
-            provider = sat_config.get("provider", "starlink")
-            dish_type = sat_config.get("dish_type", "mobile")
-
-            logger.info(f"Initializing satellite link ({provider}, {dish_type})")
-
-            # TODO: Implement satellite terminal initialization
-
-            self.status = (
-                LinkStatus.STANDBY if self.config.backup_only else LinkStatus.ACTIVE
-            )
-            self.metrics.reliability_score = 0.7  # Good but weather dependent
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize satellite: {e}")
-            self.status = LinkStatus.FAILED
-            return False
+        sat_config = self.config.config
+        provider = sat_config.get("provider", "starlink")
+        dish_type = sat_config.get("dish_type", "mobile")
+        logger.info(f"Initializing satellite link ({provider}, {dish_type})")
+        raise NotImplementedError(
+            "SatelliteLink.initialize() requires hardware-specific implementation. "
+            "Subclass SatelliteLink and implement this method for your satellite terminal."
+        )
 
     async def send_data(self, data: bytes, priority: int = 0) -> bool:
-        if self.status not in [LinkStatus.ACTIVE, LinkStatus.STANDBY]:
-            return False
-
-        # Only use satellite for critical data or when primary links are down
-        if self.config.backup_only and priority < 5:
-            return False
-
-        try:
-            # TODO: Send data via satellite terminal
-            return True
-        except Exception as e:
-            logger.error(f"Satellite send error: {e}")
-            return False
+        raise NotImplementedError(
+            "SatelliteLink.send_data() requires hardware-specific implementation."
+        )
 
     async def receive_data(self) -> Optional[bytes]:
-        if self.status not in [LinkStatus.ACTIVE, LinkStatus.STANDBY]:
-            return None
-
-        try:
-            # TODO: Receive data from satellite terminal
-            return None
-        except Exception as e:
-            logger.error(f"Satellite receive error: {e}")
-            return None
+        raise NotImplementedError(
+            "SatelliteLink.receive_data() requires hardware-specific implementation."
+        )
 
     async def get_metrics(self) -> LinkMetrics:
-        # TODO: Get actual metrics from satellite terminal
-        self.metrics.latency_ms = 600.0  # High latency (GEO satellites)
-        self.metrics.bandwidth_mbps = 100.0  # High bandwidth
-        self.metrics.packet_loss_pct = 1.0
-        self.metrics.last_update = time.time()
-        return self.metrics
+        raise NotImplementedError(
+            "SatelliteLink.get_metrics() requires hardware-specific implementation."
+        )
 
     async def shutdown(self) -> None:
-        # TODO: Shutdown satellite terminal
         self.status = LinkStatus.DISABLED
         logger.info("Satellite link shutdown")
 
@@ -385,8 +330,8 @@ class MultiLinkManager:
     def enable_autonomous_mode(self, buffer_size_mb: int = 100):
         """Enable autonomous operation mode"""
         self.autonomous_mode = True
-        # TODO: Set buffer size limit
-        logger.info("Autonomous mode enabled")
+        self._buffer_size_limit = buffer_size_mb * 1024 * 1024  # bytes
+        logger.info(f"Autonomous mode enabled (buffer limit: {buffer_size_mb} MB)")
 
     def disable_autonomous_mode(self):
         """Disable autonomous operation mode"""

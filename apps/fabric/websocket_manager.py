@@ -17,17 +17,18 @@ class WebSocketManager:
         self.active_connections: List[WebSocket] = []
         self.connection_info: Dict[WebSocket, Dict[str, Any]] = {}
 
-    async def connect(self, websocket: WebSocket):
-        """Accept new WebSocket connection."""
+    async def connect(self, websocket: WebSocket, org_id: str = "default"):
+        """Accept new WebSocket connection, tagged with the org_id it belongs to."""
         await websocket.accept()
         self.active_connections.append(websocket)
         self.connection_info[websocket] = {
             "connected_at": datetime.now(timezone.utc),
             "subscriptions": set(),
             "client_info": {},
+            "org_id": org_id,
         }
         logging.info(
-            f"WebSocket connected. Total connections: {len(self.active_connections)}"
+            f"WebSocket connected (org={org_id}). Total connections: {len(self.active_connections)}"
         )
 
     def disconnect(self, websocket: WebSocket):
@@ -48,16 +49,37 @@ class WebSocketManager:
             self.disconnect(websocket)
 
     async def broadcast(self, message: str):
-        """Broadcast message to all connected clients."""
+        """Broadcast message to all connected clients (Community / fallback)."""
         if not self.active_connections:
             return
 
-        # Create tasks for all connections
         tasks = []
         for connection in self.active_connections.copy():
             tasks.append(self._send_to_connection(connection, message))
 
-        # Wait for all tasks to complete
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def broadcast_to_org(self, message: str, org_id: str):
+        """
+        Broadcast message only to connections belonging to org_id.
+
+        Used in Enterprise multi-tenant mode to prevent cross-org data leakage.
+        Falls back to broadcast() when org_id is "default" (Community mode).
+        """
+        if org_id == "default":
+            await self.broadcast(message)
+            return
+
+        if not self.active_connections:
+            return
+
+        tasks = []
+        for connection in self.active_connections.copy():
+            conn_org = self.connection_info.get(connection, {}).get("org_id", "default")
+            if conn_org == org_id:
+                tasks.append(self._send_to_connection(connection, message))
+
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
