@@ -13,7 +13,7 @@ Summit.OS follows the open-core model:
 | | Community | Enterprise |
 |---|---|---|
 | **License** | Apache 2.0 | Apache 2.0 + Commercial |
-| **Cost** | Free forever | $1,500 / month |
+| **Cost** | Free forever | Custom |
 | **Deployment** | Self-hosted | Self-hosted or BigMT.ai managed |
 | **Organizations** | Single (`default`) | Multi-org, fully isolated |
 | **Entity tracking** | Unlimited (self-hosted) | Unlimited + hosted limits by tier |
