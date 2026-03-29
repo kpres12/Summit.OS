@@ -27,7 +27,7 @@ curl -fsSL \
   "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" \
   -o "${TMP}/geolite2.tar.gz"
 
-tar -xzf "${TMP}/geolite2.tar.gz" -C "${TMP}" --wildcards "*.mmdb"
+tar -xzf "${TMP}/geolite2.tar.gz" -C "${TMP}"
 find "${TMP}" -name "GeoLite2-Country.mmdb" -exec mv {} "${DEST}" \;
 
 rm -rf "${TMP}"
