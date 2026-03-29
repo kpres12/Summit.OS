@@ -484,8 +484,9 @@
   <div class="page-hero">
     <p class="section-label">// intelligence layer</p>
     <h1>AI MODELS</h1>
-    <p>Summit.OS ships with eleven production-ready ONNX models trained on public real-world datasets.
-       They run entirely on your hardware — no cloud, no API calls, no data leaves your network.</p>
+    <p>Summit.OS ships with eleven production-ready ONNX models <strong style="color:var(--amber)">custom-built and trained by BigMT.ai</strong> —
+       domain-expert feature engineering, purpose-built training pipelines, and real-world public datasets blended with
+       scenario-specific synthetic data. They run entirely on your hardware — no cloud, no API calls, no data leaves your network.</p>
   </div>
 
   <!-- PRIVACY BANNER -->
@@ -545,8 +546,9 @@
     <p class="section-label">// full model inventory</p>
     <h2>ALL 11 MODELS</h2>
     <p class="section-desc">
-      Every model ships as an ONNX file in <code style="color:var(--amber)">packages/ml/models/</code>.
-      No PyTorch, no GPU required — inference runs on any CPU via onnxruntime.
+      All eleven models were designed, trained, and exported by BigMT.ai — not fine-tuned from
+      third-party checkpoints. Training scripts live in <code style="color:var(--amber)">packages/ml/</code>
+      and are fully open. Every model ships as ONNX — no PyTorch, no GPU required at runtime.
     </p>
 
     <div class="model-grid">
@@ -554,9 +556,10 @@
       <div class="model-card">
         <div class="model-id">// mission planning</div>
         <h3>MISSION CLASSIFIER</h3>
-        <div class="model-file">mission_classifier.onnx</div>
+        <div class="model-file">mission_classifier.onnx &nbsp;·&nbsp; HistGradientBoosting · sklearn → ONNX</div>
         <p>Given a detected event (class + coordinates + risk level), predicts the optimal mission type
-           to dispatch. Feeds the tasking engine to auto-generate missions from sensor detections.</p>
+           to dispatch. Feeds the tasking engine to auto-generate missions from sensor detections.
+           Supports progressive fine-tuning from real operator-approved mission history.</p>
         <div class="outputs-label">outputs</div>
         <div class="tag-list">
           <span class="tag amber">SURVEY</span>
@@ -572,7 +575,7 @@
       <div class="model-card">
         <div class="model-id">// threat assessment</div>
         <h3>RISK SCORER</h3>
-        <div class="model-file">risk_scorer.onnx</div>
+        <div class="model-file">risk_scorer.onnx &nbsp;·&nbsp; HistGradientBoosting · sklearn → ONNX</div>
         <p>Assigns a threat level to any detected event based on class, confidence, location context,
            and environmental factors. Drives alert severity and PENDING_APPROVAL gating for high-stakes missions.</p>
         <div class="outputs-label">outputs</div>
@@ -657,7 +660,7 @@
       <div class="model-card">
         <div class="model-id">// anomaly detection</div>
         <h3>SEQUENCE ANOMALY</h3>
-        <div class="model-file">sequence_anomaly.onnx</div>
+        <div class="model-file">sequence_anomaly.onnx &nbsp;·&nbsp; LSTM · PyTorch → ONNX</div>
         <p>LSTM-based model that detects anomalous entity behavior in time-series tracks.
            Flags unusual movement patterns, loitering, erratic flight paths, or unexpected sensor dropouts
            that rule-based filters miss.</p>
@@ -688,7 +691,7 @@
       <div class="model-card">
         <div class="model-id">// visual intelligence</div>
         <h3>RE-ID EMBEDDER</h3>
-        <div class="model-file">reid_embedder.onnx</div>
+        <div class="model-file">reid_embedder.onnx &nbsp;·&nbsp; custom CNN · Colab notebook</div>
         <p>Generates 128-dimensional visual embeddings for detected objects. Enables cross-camera
            entity re-identification — track a person or vehicle as they move between
            non-overlapping camera fields of view.</p>
@@ -701,7 +704,7 @@
       <div class="model-card">
         <div class="model-id">// flagship · visual detection</div>
         <h3>SUMMIT DETECTOR</h3>
-        <div class="model-file">summit_detector.onnx</div>
+        <div class="model-file">summit_detector.onnx &nbsp;·&nbsp; YOLOv8n · custom trained · Colab notebook</div>
         <p>YOLOv8-based visual detector with 18 mission-critical classes. See full class list above.
            Primary inference engine for video feeds from drones, CCTV, and aerial imagery.
            Runs at real-time frame rates on CPU.</p>
@@ -721,9 +724,11 @@
     <p class="section-label">// where the data came from</p>
     <h2>TRAINING DATA</h2>
     <p class="section-desc">
-      All models are trained on publicly available datasets — no proprietary data, no user data,
-      no scraped content. Sources are listed below. Synthetic data was generated via
-      <code style="color:var(--amber)">packages/ml/generate_data.py</code> for low-frequency edge cases.
+      BigMT.ai built custom training pipelines and domain-expert synthetic data generators covering
+      10+ operational domains — wildfire, search &amp; rescue, maritime, infrastructure, agriculture,
+      hazmat, and more. Public real-world datasets were downloaded, preprocessed, and blended with
+      scenario-specific synthetic samples to cover edge cases and low-frequency events. No proprietary
+      data, no user data, no scraped content.
     </p>
 
     <div class="source-grid">
