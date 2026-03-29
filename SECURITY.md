@@ -11,7 +11,9 @@
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Report security issues to: **prestkyle@gmail.com**
+Report security issues via:
+1. **GitHub Security Advisories (preferred):** [Security → Advisories → New draft](https://github.com/BigMT-Ai/Summit.OS/security/advisories/new)
+2. **Email:** prestkyle@gmail.com *(will migrate to security@summit-os.dev once domain is active)*
 
 Please include:
 - A description of the vulnerability and its potential impact
@@ -43,6 +45,21 @@ MQTT_PORT=8883
 
 See `.env.example` and the README Configuration section for full details.
 
+## Production Hardening Checklist
+
+- [ ] **OIDC authentication** — Connect to Keycloak, Auth0, or Okta. Set `OIDC_ENFORCE=true`.
+- [ ] **RBAC enforcement** — Set `RBAC_ENFORCE=true`. Assign roles (VIEWER, OPERATOR, MISSION_COMMANDER, ADMIN) in your identity provider.
+- [ ] **API key enforcement** — Set `API_KEY_ENFORCE=true` for machine-to-machine access.
+- [ ] **Field encryption** — Set `FIELD_ENCRYPTION_KEY` to encrypt PII at rest.
+- [ ] **TLS everywhere** — Terminate TLS at your load balancer. Internal services should use mTLS.
+- [ ] **MQTT authentication** — Configure Mosquitto with credentials or client certificates.
+- [ ] **PostgreSQL credentials** — Change default `summit:summit_password`. Use your secrets manager.
+- [ ] **Secrets backend** — Configure Infisical or HashiCorp Vault (`SECRET_BACKEND=infisical` or `vault`).
+- [ ] **Network isolation** — Only the API Gateway should be public-facing.
+- [ ] **Audit logging** — Verify: `SELECT count(*) FROM summit_audit_log;`
+- [ ] **Rate limiting** — Default 100 req/min per IP. Adjust in `apps/api-gateway/middleware/rate_limit.py`.
+- [ ] **CORS** — Restrict allowed origins to your console's domain.
+
 ## Threat Model
 
 Summit.OS is designed for self-hosted deployment on trusted infrastructure (private cloud, on-premises, or air-gapped edge). It is not designed to be exposed directly to the public internet without a reverse proxy and authentication enforcement.
@@ -52,6 +69,14 @@ Key trust boundaries:
 - **MQTT broker** should be on a private network or require client certificate auth
 - **WebSocket endpoint** (`/ws/{org_id}`) requires a valid JWT when `OIDC_ENFORCE=true`
 - **OPA policies** in `infra/policy/` define role-based access for all mission operations
+
+Summit.OS operates autonomous physical systems. A compromised instance could:
+- **Dispatch hardware** to incorrect locations
+- **Suppress alerts** that should reach operators
+- **Exfiltrate position data** of personnel and assets
+- **Inject false entities** into the common operating picture
+
+Treat every deployment as critical infrastructure.
 
 ## Known Limitations
 

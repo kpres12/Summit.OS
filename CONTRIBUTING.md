@@ -155,10 +155,21 @@ python packages/ml/train_mission_classifier.py \
 
 To contribute improved base models back upstream, open a PR with the new `.onnx` files and the training metrics from the run (accuracy, F1 per class, training data size).
 
+## Contributor License Agreement (CLA)
+
+All contributors must sign the Summit.OS CLA before their first pull request can be merged. The CLA grants the project maintainers the right to distribute your contributions under both the AGPL v3 (community edition) and commercial licenses (enterprise edition).
+
+**How it works:**
+1. Open a pull request
+2. The [CLA Assistant](https://cla-assistant.io/) bot will comment asking you to sign
+3. Click the link, authenticate with GitHub — done (one-time)
+
+The full CLA text is in [CLA.md](CLA.md).
+
 ## Code of Conduct
 
 This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). Be respectful.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the GNU Affero General Public License v3 (AGPL v3).
+By contributing, you agree that your contributions will be licensed under the GNU Affero General Public License v3 (AGPL v3). The CLA additionally grants the project maintainers the right to offer the project under commercial license terms.
