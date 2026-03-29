@@ -19,3 +19,4 @@ opentelemetry-api==1.21.0
 opentelemetry-sdk==1.21.0
 opentelemetry-exporter-otlp-proto-grpc==1.21.0
 structlog==23.2.0
+geoip2==4.8.0

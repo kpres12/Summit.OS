@@ -377,6 +377,15 @@ class _VersionHeaderMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(_VersionHeaderMiddleware)
 
+# ── GeoBlock ──────────────────────────────────────────────────────────────────
+try:
+    from middleware.geoblock import GeoBlockMiddleware
+
+    app.add_middleware(GeoBlockMiddleware)
+    logger.info("GeoBlock middleware registered")
+except Exception as _geo_exc:
+    logger.warning("GeoBlock middleware failed to load (non-fatal): %s", _geo_exc)
+
 # ── Rate limiting (slowapi) ───────────────────────────────────────────────────
 try:
     from slowapi import Limiter, _rate_limit_exceeded_handler
