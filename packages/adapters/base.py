@@ -247,6 +247,41 @@ class BaseAdapter(ABC):
         )
 
     # -------------------------------------------------------------------------
+    # Config validation — subclasses may override
+    # -------------------------------------------------------------------------
+
+    @classmethod
+    def required_extra_fields(cls) -> list[str]:
+        """
+        Return a list of ``extra`` field names that are required for this
+        adapter type.  The registry calls this before instantiating adapters
+        to surface missing-config errors to the operator.
+
+        Override in subclasses::
+
+            @classmethod
+            def required_extra_fields(cls) -> list[str]:
+                return ["host", "port"]
+        """
+        return []
+
+    @classmethod
+    def validate_extra(cls, extra: dict) -> list[str]:
+        """
+        Validate the adapter's ``extra`` config dict.
+
+        Returns a list of human-readable error strings (empty = valid).
+        Subclasses may override for richer validation; this base
+        implementation checks that all ``required_extra_fields()`` are
+        present and non-empty.
+        """
+        errors: list[str] = []
+        for field in cls.required_extra_fields():
+            if not extra.get(field):
+                errors.append(f"Missing required config field: '{field}'")
+        return errors
+
+    # -------------------------------------------------------------------------
     # Abstract interface — subclasses implement these three methods
     # -------------------------------------------------------------------------
 

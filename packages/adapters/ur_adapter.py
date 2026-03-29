@@ -90,6 +90,10 @@ class URAdapter(BaseAdapter):
 
     adapter_type = "ur_robot"
 
+    @classmethod
+    def required_extra_fields(cls) -> list[str]:
+        return ["host"]
+
     def __init__(self, config: AdapterConfig, mqtt_client=None) -> None:
         super().__init__(config, mqtt_client)
         ex = config.extra

@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from celestrak.adapter import CelesTrakAdapter, _ecef_to_lla, _velocity_magnitude
+from celestrak.adapter import CelesTrakAdapter, _ecef_to_lla, _velocity_mps
 
 # Sample TLE data (ISS)
 SAMPLE_TLE_TEXT = """ISS (ZARYA)
@@ -36,7 +36,7 @@ class TestECEFConversion:
         assert lat > 89.0  # near 90°
 
     def test_velocity_magnitude(self):
-        v = _velocity_magnitude(5.0, 5.0, 5.0)
+        v = _velocity_mps(5.0, 5.0, 5.0)
         expected = math.sqrt(75.0) * 1000  # km/s → m/s
         assert abs(v - expected) < 0.01
 
@@ -46,8 +46,7 @@ class TestCelesTrakTLEParsing:
 
     @pytest.mark.asyncio
     async def test_fetch_tles_parses_correctly(self):
-        mqtt = MagicMock()
-        adapter = CelesTrakAdapter(mqtt_client=mqtt, max_sats=10)
+        adapter = CelesTrakAdapter(max_sats=10)
 
         mock_response = MagicMock()
         mock_response.text = SAMPLE_TLE_TEXT
@@ -66,8 +65,7 @@ class TestCelesTrakTLEParsing:
 
     @pytest.mark.asyncio
     async def test_fetch_tles_respects_max_sats(self):
-        mqtt = MagicMock()
-        adapter = CelesTrakAdapter(mqtt_client=mqtt, max_sats=1)
+        adapter = CelesTrakAdapter(max_sats=1)
 
         mock_response = MagicMock()
         mock_response.text = SAMPLE_TLE_TEXT
@@ -85,8 +83,7 @@ class TestCelesTrakPropagation:
 
     @pytest.mark.asyncio
     async def test_propagate_publishes_entities(self):
-        mqtt = MagicMock()
-        adapter = CelesTrakAdapter(mqtt_client=mqtt, max_sats=10)
+        adapter = CelesTrakAdapter(max_sats=10)
 
         # Load TLEs
         mock_response = MagicMock()
@@ -98,36 +95,30 @@ class TestCelesTrakPropagation:
 
         await adapter._fetch_tles(mock_client)
 
-        # Propagate
-        adapter._propagate_and_publish()
+        with patch.object(adapter, "publish") as mock_pub:
+            adapter._propagate_and_publish()
 
-        # Should publish entities for each satellite
-        assert mqtt.publish.call_count >= 1
-        topic = mqtt.publish.call_args_list[0][0][0]
-        payload = json.loads(mqtt.publish.call_args_list[0][0][1])
+        assert mock_pub.call_count >= 1
+        entity = mock_pub.call_args_list[0][0][0]
 
-        assert "celestrak-25544" in topic
-        assert payload["entity_type"] == "TRACK"
-        assert payload["domain"] == "AERIAL"
-        assert payload["class_label"] == "satellite"
-        assert payload["name"] == "ISS (ZARYA)"
+        assert entity["entity_id"].startswith("celestrak-25544")
+        assert entity["entity_type"] == "TRACK"
+        assert entity["domain"] == "AERIAL"
+        assert entity["class_label"] == "satellite"
+        assert entity["name"] == "ISS (ZARYA)"
 
-        # Check position is reasonable
-        pos = payload["kinematics"]["position"]
+        pos = entity["kinematics"]["position"]
         assert -90 <= pos["latitude"] <= 90
         assert -180 <= pos["longitude"] <= 180
         assert pos["altitude_msl"] > 100000  # ISS > 100km
 
-        # Check speed is orbital (~7.5 km/s = ~7500 m/s)
-        speed = payload["kinematics"]["speed_mps"]
+        speed = entity["kinematics"]["speed_mps"]
         assert 5000 < speed < 10000
 
     def test_entity_payload_has_required_fields(self):
-        """Verify the MQTT payload matches what Fabric's _handle_entity_update expects."""
-        mqtt = MagicMock()
-        adapter = CelesTrakAdapter(mqtt_client=mqtt, max_sats=10)
+        """Verify entity structure matches what Fabric's _handle_entity_update expects."""
+        adapter = CelesTrakAdapter(max_sats=10)
 
-        # Manually load a satellite
         try:
             from sgp4.api import Satrec
             line1 = "1 25544U 98067A   24001.50000000  .00016717  00000-0  10270-3 0  9993"
@@ -143,15 +134,15 @@ class TestCelesTrakPropagation:
         except ImportError:
             pytest.skip("sgp4 not installed")
 
-        adapter._propagate_and_publish()
+        with patch.object(adapter, "publish") as mock_pub:
+            adapter._propagate_and_publish()
 
-        payload = json.loads(mqtt.publish.call_args[0][1])
-        # Required by _handle_entity_update in fabric/main.py
-        assert "entity_id" in payload
-        assert "id" in payload
-        assert "entity_type" in payload
-        assert "domain" in payload
-        assert "kinematics" in payload
-        assert "position" in payload["kinematics"]
-        assert "latitude" in payload["kinematics"]["position"]
-        assert "longitude" in payload["kinematics"]["position"]
+        entity = mock_pub.call_args[0][0]
+        assert "entity_id" in entity
+        assert "id" in entity
+        assert "entity_type" in entity
+        assert "domain" in entity
+        assert "kinematics" in entity
+        assert "position" in entity["kinematics"]
+        assert "latitude" in entity["kinematics"]["position"]
+        assert "longitude" in entity["kinematics"]["position"]

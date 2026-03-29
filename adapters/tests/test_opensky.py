@@ -1,5 +1,4 @@
 """Tests for OpenSky Network adapter."""
-import json
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 
@@ -37,11 +36,17 @@ SAMPLE_API_RESPONSE = {
 }
 
 
+def _make_adapter(**kwargs):
+    """Create an OpenSkyAdapter without connecting to MQTT."""
+    return OpenSkyAdapter(**kwargs)
+
+
 class TestOpenSkyEntityConversion:
     """Test state vector → entity dict conversion."""
 
     def test_basic_conversion(self):
-        entity = OpenSkyAdapter._state_vector_to_entity(SAMPLE_STATE_VECTOR, "2024-01-01T00:00:00Z")
+        adapter = _make_adapter()
+        entity = adapter._state_vector_to_entity(SAMPLE_STATE_VECTOR)
         assert entity is not None
         assert entity["entity_id"] == "opensky-abc123"
         assert entity["entity_type"] == "TRACK"
@@ -51,84 +56,91 @@ class TestOpenSkyEntityConversion:
         assert entity["state"] == "ACTIVE"
 
     def test_kinematics(self):
-        entity = OpenSkyAdapter._state_vector_to_entity(SAMPLE_STATE_VECTOR, "2024-01-01T00:00:00Z")
+        adapter = _make_adapter()
+        entity = adapter._state_vector_to_entity(SAMPLE_STATE_VECTOR)
         k = entity["kinematics"]
         assert k["position"]["latitude"] == 37.619
         assert k["position"]["longitude"] == -122.375
-        assert k["position"]["altitude_msl"] == 10668.0
+        assert k["position"]["altitude_msl"] == 10668.0  # baro_alt
         assert k["heading_deg"] == 180.5
         assert k["speed_mps"] == 257.0
         assert k["climb_rate"] == -2.5
 
     def test_aerial_data(self):
-        entity = OpenSkyAdapter._state_vector_to_entity(SAMPLE_STATE_VECTOR, "2024-01-01T00:00:00Z")
+        adapter = _make_adapter()
+        entity = adapter._state_vector_to_entity(SAMPLE_STATE_VECTOR)
         a = entity["aerial"]
-        assert a["altitude_msl"] == 10972.0
+        assert a["altitude_msl"] == 10668.0  # uses baro_alt via .at()
         assert a["airspeed_mps"] == 257.0
         assert a["flight_mode"] == "AIRBORNE"
 
     def test_metadata(self):
-        entity = OpenSkyAdapter._state_vector_to_entity(SAMPLE_STATE_VECTOR, "2024-01-01T00:00:00Z")
+        adapter = _make_adapter()
+        entity = adapter._state_vector_to_entity(SAMPLE_STATE_VECTOR)
         m = entity["metadata"]
         assert m["icao24"] == "abc123"
         assert m["callsign"] == "UAL123"
         assert m["origin_country"] == "United States"
         assert m["squawk"] == "1200"
-        assert m["source"] == "opensky"
+        # source is in provenance, not metadata
+        assert entity["provenance"]["source_id"] == "opensky"
 
     def test_on_ground_aircraft(self):
+        adapter = _make_adapter()
         sv = list(SAMPLE_STATE_VECTOR)
         sv[8] = True  # on_ground
-        entity = OpenSkyAdapter._state_vector_to_entity(sv, "2024-01-01T00:00:00Z")
+        entity = adapter._state_vector_to_entity(sv)
         assert entity["aerial"]["flight_mode"] == "GROUND"
         assert entity["metadata"]["on_ground"] == "true"
 
     def test_missing_position_returns_none(self):
+        adapter = _make_adapter()
         sv = list(SAMPLE_STATE_VECTOR)
         sv[6] = None  # latitude
-        entity = OpenSkyAdapter._state_vector_to_entity(sv, "2024-01-01T00:00:00Z")
+        entity = adapter._state_vector_to_entity(sv)
         assert entity is None
 
     def test_missing_icao_returns_none(self):
+        adapter = _make_adapter()
         sv = list(SAMPLE_STATE_VECTOR)
         sv[0] = None
-        entity = OpenSkyAdapter._state_vector_to_entity(sv, "2024-01-01T00:00:00Z")
+        entity = adapter._state_vector_to_entity(sv)
         assert entity is None
 
     def test_null_velocity_defaults_to_zero(self):
+        adapter = _make_adapter()
         sv = list(SAMPLE_STATE_VECTOR)
         sv[9] = None  # velocity
-        entity = OpenSkyAdapter._state_vector_to_entity(sv, "2024-01-01T00:00:00Z")
+        entity = adapter._state_vector_to_entity(sv)
         assert entity["kinematics"]["speed_mps"] == 0
 
     def test_ttl_set(self):
-        entity = OpenSkyAdapter._state_vector_to_entity(SAMPLE_STATE_VECTOR, "2024-01-01T00:00:00Z")
+        adapter = _make_adapter()
+        entity = adapter._state_vector_to_entity(SAMPLE_STATE_VECTOR)
         assert entity["ttl_seconds"] == 60
 
     def test_no_callsign_falls_back_to_icao(self):
+        adapter = _make_adapter()
         sv = list(SAMPLE_STATE_VECTOR)
         sv[1] = "        "  # empty callsign
-        entity = OpenSkyAdapter._state_vector_to_entity(sv, "2024-01-01T00:00:00Z")
+        entity = adapter._state_vector_to_entity(sv)
         assert entity["name"] == "ABC123"
 
 
 class TestOpenSkyAdapter:
-    """Test adapter polling and MQTT publish."""
+    """Test adapter polling and publish."""
 
     def test_bbox_parsing(self):
-        mqtt = MagicMock()
-        adapter = OpenSkyAdapter(mqtt_client=mqtt, bbox="25.0,-130.0,50.0,-60.0")
+        adapter = _make_adapter(bbox="25.0,-130.0,50.0,-60.0")
         assert adapter._bbox == (25.0, -130.0, 50.0, -60.0)
 
     def test_bbox_empty(self):
-        mqtt = MagicMock()
-        adapter = OpenSkyAdapter(mqtt_client=mqtt, bbox="")
+        adapter = _make_adapter(bbox="")
         assert adapter._bbox is None
 
     @pytest.mark.asyncio
     async def test_poll_publishes_entities(self):
-        mqtt = MagicMock()
-        adapter = OpenSkyAdapter(mqtt_client=mqtt)
+        adapter = _make_adapter()
 
         mock_response = MagicMock()
         mock_response.json.return_value = SAMPLE_API_RESPONSE
@@ -137,20 +149,18 @@ class TestOpenSkyAdapter:
         mock_client = AsyncMock()
         mock_client.get.return_value = mock_response
 
-        await adapter._poll(mock_client)
+        with patch.object(adapter, "publish") as mock_pub:
+            await adapter._poll(mock_client)
 
-        # Should have published one entity
-        assert mqtt.publish.call_count == 1
-        topic = mqtt.publish.call_args[0][0]
-        payload = json.loads(mqtt.publish.call_args[0][1])
-        assert topic == "entities/opensky-abc123/update"
-        assert payload["entity_type"] == "TRACK"
-        assert payload["domain"] == "AERIAL"
+        assert mock_pub.call_count == 1
+        entity = mock_pub.call_args[0][0]
+        assert entity["entity_id"] == "opensky-abc123"
+        assert entity["entity_type"] == "TRACK"
+        assert entity["domain"] == "AERIAL"
 
     @pytest.mark.asyncio
     async def test_poll_handles_empty_response(self):
-        mqtt = MagicMock()
-        adapter = OpenSkyAdapter(mqtt_client=mqtt)
+        adapter = _make_adapter()
 
         mock_response = MagicMock()
         mock_response.json.return_value = {"time": 0, "states": None}
@@ -159,5 +169,7 @@ class TestOpenSkyAdapter:
         mock_client = AsyncMock()
         mock_client.get.return_value = mock_response
 
-        await adapter._poll(mock_client)
-        assert mqtt.publish.call_count == 0
+        with patch.object(adapter, "publish") as mock_pub:
+            await adapter._poll(mock_client)
+
+        assert mock_pub.call_count == 0

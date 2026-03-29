@@ -66,7 +66,7 @@ export default function OpsMapView({
     setVertices((prev) => [...prev, { lat: e.lngLat.lat, lon: e.lngLat.lng }]);
   }, [drawMode, missionDrawMode]);
 
-  const handleMapDblClick = useCallback((_evt: MapLayerMouseEvent) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+  const handleMapDblClick = useCallback((_evt: MapLayerMouseEvent) => {
     if (missionDrawMode && missionVertices.length >= 3) {
       onMissionArea?.(missionVertices.map((v) => ({ lat: v.lat, lon: v.lon })));
       setMissionVertices([]);

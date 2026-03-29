@@ -1493,6 +1493,89 @@ async def delete_geofence_proxy(
 
 
 # -------------------------
+# Video / HLS proxies (fusion service)
+# -------------------------
+
+
+@app.post("/v1/video/hls/{stream_id}/start")
+async def start_hls_stream_proxy(
+    stream_id: str, request: Request, _claims: dict | None = Depends(verify_bearer)
+):
+    """Start an HLS stream via the fusion service."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.post(
+                f"{FUSION_URL}/api/v1/video/hls/{stream_id}/start", json=body
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fusion upstream error: {e}")
+
+
+@app.delete("/v1/video/hls/{stream_id}")
+async def stop_hls_stream_proxy(
+    stream_id: str, _claims: dict | None = Depends(verify_bearer)
+):
+    """Stop an HLS stream via the fusion service."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.delete(f"{FUSION_URL}/api/v1/video/hls/{stream_id}")
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fusion upstream error: {e}")
+
+
+# -------------------------
+# Mission replay proxies (tasking service)
+# -------------------------
+
+
+@app.get("/v1/missions/{mission_id}/replay/timeline")
+async def replay_timeline_proxy(
+    mission_id: str, _claims: dict | None = Depends(verify_bearer)
+):
+    """Fetch replay timeline for a mission."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"{TASKING_URL}/api/v1/missions/{mission_id}/replay/timeline"
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+@app.get("/v1/missions/{mission_id}/replay/snapshot")
+async def replay_snapshot_proxy(
+    mission_id: str, t: float | None = None, idx: int | None = None,
+    _claims: dict | None = Depends(verify_bearer)
+):
+    """Fetch a replay snapshot for a mission at a given time or index."""
+    params = {}
+    if t is not None:
+        params["t"] = t
+    if idx is not None:
+        params["idx"] = idx
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"{TASKING_URL}/api/v1/missions/{mission_id}/replay/snapshot",
+                params=params,
+            )
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Tasking upstream error: {e}")
+
+
+# -------------------------
 # Assets proxy
 # -------------------------
 
