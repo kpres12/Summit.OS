@@ -84,6 +84,21 @@ FABRIC_TEST_MODE = os.getenv("FABRIC_TEST_MODE", "false").lower() == "true"
 if FABRIC_TEST_MODE:
     GEO_AVAILABLE = False
 
+# ── Capability status at startup ──────────────────────────────────────────────
+def _log_capabilities() -> None:
+    _OK  = "✓"
+    _OFF = "✗"
+    _log = logging.getLogger("fabric")
+    _log.info("─── Fabric service capabilities ────────────────────────────────")
+    _log.info("  %s  World store   (entity stream + world model API)", _OK if WORLD_STORE_AVAILABLE else _OFF)
+    _log.info("  %s  Mesh peer     (CRDT gossip sync for disconnected ops)", _OK if MESH_AVAILABLE else _OFF)
+    _log.info("  %s  GeoSpatial    (PostGIS geometry columns)", _OK if GEO_AVAILABLE else _OFF)
+    if not WORLD_STORE_AVAILABLE:
+        _log.warning("  World store unavailable — /v1/entities and real-time entity stream will be empty")
+    if not MESH_AVAILABLE:
+        _log.warning("  Mesh peer unavailable — multi-node CRDT sync disabled")
+    _log.info("────────────────────────────────────────────────────────────────")
+
 # Configure structured logging
 structlog.configure(
     processors=[
@@ -211,6 +226,7 @@ async def lifespan(app: FastAPI):
 
     settings = Settings()
 
+    _log_capabilities()
     logger.info("Starting Summit.OS Data Fabric Service")
 
     # Resolve sensitive secrets via secrets client (Vault → env var fallback)
