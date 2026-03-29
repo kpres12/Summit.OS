@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
 
 const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
   { id: 'alerts', icon: '⚠', label: 'Alerts' },
@@ -12,6 +12,8 @@ const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
   { id: 'hardware', icon: '⊕', label: 'Hardware' },
   { id: 'system', icon: '⚙', label: 'System' },
 ];
+
+const PLAN_MISSION_ITEM = { id: 'mission-builder' as PanelId, icon: '✛', label: 'Plan Mission' };
 
 interface OpsNavRailProps {
   activePanel: string | null;
@@ -58,6 +60,29 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
             </button>
           );
         })}
+      </div>
+
+      {/* Plan Mission — primary action button, pinned above OPS label */}
+      <div className="flex-none px-1.5 pb-2">
+        <button
+          onClick={() => onSelect(activePanel === PLAN_MISSION_ITEM.id ? null : PLAN_MISSION_ITEM.id)}
+          title={PLAN_MISSION_ITEM.label}
+          className="flex items-center justify-center w-full transition-colors"
+          style={{
+            height: '36px',
+            background: activePanel === PLAN_MISSION_ITEM.id ? 'rgba(0,255,156,0.12)' : 'rgba(0,255,156,0.06)',
+            border: `1px solid ${activePanel === PLAN_MISSION_ITEM.id ? 'rgba(0,255,156,0.5)' : 'rgba(0,255,156,0.2)'}`,
+            color: activePanel === PLAN_MISSION_ITEM.id ? '#00FF9C' : 'rgba(0,255,156,0.6)',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#00FF9C'; }}
+          onMouseLeave={(e) => {
+            if (activePanel !== PLAN_MISSION_ITEM.id)
+              (e.currentTarget as HTMLButtonElement).style.color = 'rgba(0,255,156,0.6)';
+          }}
+        >
+          <span className="text-base leading-none">{PLAN_MISSION_ITEM.icon}</span>
+        </button>
       </div>
 
       {/* Bottom label */}

@@ -166,7 +166,7 @@ export default function OpsHardware() {
       } else {
         setFeedback({ ok: false, msg: data.error || 'Connection failed' });
       }
-    } catch (err) {
+    } catch {
       setFeedback({ ok: false, msg: 'Could not reach server' });
     } finally {
       setAdding(false);

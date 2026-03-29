@@ -107,7 +107,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         }
       })
       .catch(() => setThoughts(buildThoughts(entity)));
-  }, [entity?.entity_id]);
+  }, [entity?.entity_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!entity) return null;
 

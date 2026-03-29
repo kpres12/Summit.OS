@@ -182,6 +182,64 @@ export async function stopHLSStream(streamId: string) {
   return apiJson(`/v1/video/hls/${streamId}`, { method: 'DELETE' });
 }
 
+// --- Assets ---
+
+export interface AssetAPI {
+  asset_id: string;
+  type: string;
+  capabilities?: string[];
+  battery?: number;
+  link?: string;
+}
+
+export async function fetchAssets(): Promise<{ assets: AssetAPI[] }> {
+  return apiJson('/v1/assets');
+}
+
+// --- Mission Builder: NLP parse ---
+
+export interface NlpParseResponse {
+  mission_type: string;
+  pattern: string;
+  altitude_m: number;
+  asset_hint: string | null;
+  objectives: string[];
+  confidence: number;
+  interpretation: string;
+}
+
+export async function parseMissionNlp(text: string): Promise<NlpParseResponse> {
+  return apiJson('/v1/missions/parse', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
+// --- Mission Builder: waypoint preview ---
+
+export interface WaypointPreview {
+  lat: number;
+  lon: number;
+  alt: number;
+}
+
+export interface PreviewResponse {
+  waypoints: WaypointPreview[];
+  pattern: string;
+  count: number;
+}
+
+export async function previewMissionWaypoints(params: {
+  pattern: string;
+  altitude_m: number;
+  area: { lat: number; lon: number }[];
+}): Promise<PreviewResponse> {
+  return apiJson('/v1/missions/preview', {
+    method: 'POST',
+    body: JSON.stringify(params),
+  });
+}
+
 // --- World State ---
 
 export async function fetchWorldState() {

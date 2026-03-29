@@ -11,7 +11,7 @@
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Report security issues to: **security@bigmt.ai**
+Report security issues to: **prestkyle@gmail.com**
 
 Please include:
 - A description of the vulnerability and its potential impact

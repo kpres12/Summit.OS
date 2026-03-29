@@ -625,5 +625,5 @@ mission = await client.tasking.create_mission({
 - **Documentation**: https://docs.summit-os.bigmt.ai
 - **SDK Downloads**: https://github.com/bigmt/summit-os-sdk
 - **Integration Examples**: https://github.com/bigmt/summit-os-examples
-- **Support**: support@bigmt.ai
+- **Support**: prestkyle@gmail.com
 - **Community**: https://community.summit-os.bigmt.ai

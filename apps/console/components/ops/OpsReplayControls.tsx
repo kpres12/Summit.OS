@@ -42,7 +42,6 @@ export default function OpsReplayControls({ replay, onClose }: OpsReplayControls
     );
   }
 
-  const pct = timeline.count > 1 ? (index / (timeline.count - 1)) * 100 : 0;
   const currentTs = snapshot?.ts_iso
     ? new Date(snapshot.ts_iso).toLocaleTimeString()
     : '--:--:--';

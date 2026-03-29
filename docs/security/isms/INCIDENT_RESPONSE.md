@@ -38,7 +38,7 @@ This procedure defines how Summit.OS responds to security incidents — from ini
 - **Automated alerts** — Prometheus/Alertmanager: `AuthFailureSpike`, `AccessDeniedSpike`, `ServiceDown`, `HighErrorRate`
 - **Audit log review** — Monthly anomaly review of `audit_log` table; automated alerts on spikes
 - **pip-audit / Bandit** — CI pipeline CVE and SAST findings
-- **External report** — Vulnerability disclosures to `security@bigmt.ai`
+- **External report** — Vulnerability disclosures to `prestkyle@gmail.com`
 - **Customer report** — Operator reports unexpected behavior or suspected compromise
 - **Employee observation** — Any employee who suspects a security issue must report immediately
 
