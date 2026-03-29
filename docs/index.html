@@ -1042,9 +1042,11 @@
       <ul class="nav-links">
         <li><a href="#capabilities" data-sound="click">Systems</a></li>
         <li><a href="#how-it-works" data-sound="click">How It Works</a></li>
-        <li><a href="#workflow" data-sound="click">Workflow</a></li>
+        <li><a href="#connect" data-sound="click">Hardware</a></li>
+        <li><a href="#missions" data-sound="click">Missions</a></li>
         <li><a href="#auth" data-sound="click">Auth</a></li>
         <li><a href="#security" data-sound="click">Security</a></li>
+        <li><a href="ml.html" data-sound="click">AI Models</a></li>
         <li><a href="#editions" data-sound="click">Access Tiers</a></li>
         <li><a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank" data-sound="click">GitHub</a></li>
         <li><a href="mailto:prestkyle@gmail.com" class="nav-cta" data-sound="click">ENTERPRISE</a></li>
@@ -1473,6 +1475,254 @@
           <div class="sec-item-title">SECRETS VAULT CHAIN</div>
           <div class="sec-item-desc">Priority chain: Infisical → HashiCorp Vault → env vars. Swap backends at deploy time without code changes. No secrets ever need to live on disk in production.</div>
         </div>
+      </div>
+    </section>
+
+    <!-- Connect Hardware -->
+    <section class="section" id="connect" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">HARDWARE INTEGRATION</div>
+        <div class="section-title">CONNECT<br />ANYTHING.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:600px;line-height:1.8;margin-bottom:40px;">
+        Summit.OS doesn't care what your hardware is. Drone, robot, CCTV camera, weather station,
+        Modbus PLC, AIS transponder — if it produces data, it can talk to Summit.OS. Built-in adapters
+        handle the most common sources. For everything else, the SDK is 10 lines of Python.
+      </p>
+
+      <!-- Protocol grid -->
+      <div class="section-tag" style="margin-bottom:20px;">SUPPORTED PROTOCOLS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--amber-dim);border:1px solid var(--amber-dim);margin-bottom:48px;">
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">MAVLINK</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">DJI, ArduPilot, PX4, any autopilot. Full telemetry + command.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">RTSP / ONVIF</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">IP cameras, CCTV, PTZ. Discovery + stream registration.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">MODBUS</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Industrial PLCs, sensors, RTUs over TCP or serial.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">OPC-UA</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Factory automation, SCADA, industrial IoT.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">ROS2</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Ground robots, robotic arms, autonomous ground vehicles.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">ADS-B</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Live aircraft via OpenSky. Or plug in a local SDR receiver.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">AIS</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Maritime vessel positions. Simulation built-in, or connect AISHub.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">CoT / ATAK</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Cursor-on-Target bidirectional UDP. ATAK team integration.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">MQTT</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Any IoT device. Temperature, pressure, vibration, anything.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">HTTP / REST</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Poll any web API. Webhooks. Generic JSON/XML sources.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">SERIAL / CAN</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Raw serial devices, vehicle CAN bus, embedded sensors.</div>
+        </div>
+        <div style="background:var(--bg2);padding:16px 18px;">
+          <div style="font-family:'VT323',monospace;font-size:18px;color:var(--amber-bright);margin-bottom:4px;">CUSTOM</div>
+          <div style="font-size:11px;color:var(--amber-dim);line-height:1.5;">Subclass BaseAdapter. If it produces data, it works.</div>
+        </div>
+      </div>
+
+      <!-- Custom adapter code -->
+      <div class="section-tag" style="margin-bottom:20px;">WRITE A CUSTOM ADAPTER // ~10 LINES</div>
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-bar-dot"></div><div class="terminal-bar-dot"></div><div class="terminal-bar-dot"></div>
+          <div class="terminal-bar-title">MY_SENSOR // CUSTOM ADAPTER</div>
+        </div>
+        <pre>
+<span class="t-dim">from summit_sdk import BaseAdapter, AdapterManifest, EntityBuilder, Protocol, Capability</span>
+
+<span class="t-bright">class</span> MySensorAdapter(BaseAdapter):
+
+    MANIFEST = AdapterManifest(
+        name=<span class="t-green">"my-temperature-sensor"</span>,
+        version=<span class="t-green">"1.0.0"</span>,
+        protocol=Protocol.MQTT,
+        capabilities=[Capability.READ, Capability.STREAM],
+        entity_types=[<span class="t-green">"ASSET"</span>],
+    )
+
+    <span class="t-bright">async def</span> run(self):
+        <span class="t-bright">while not</span> self.stopped:
+            reading = <span class="t-bright">await</span> self.read_sensor()   <span class="t-dim"># your hardware call</span>
+
+            entity = (EntityBuilder(self.device_id, <span class="t-green">"ASSET"</span>)
+                .position(reading.lat, reading.lon, reading.alt)
+                .metadata(<span class="t-green">"temperature"</span>, reading.celsius)
+                .metadata(<span class="t-green">"unit"</span>, <span class="t-green">"sensor-station"</span>)
+                .build())
+
+            self.publish(entity)           <span class="t-dim"># → Summit.OS world model</span>
+            <span class="t-bright">await</span> self.sleep(10)           <span class="t-dim"># poll every 10s</span>
+
+<span class="t-dim"># Run it</span>
+<span class="t-prompt">$</span> <span class="t-bright">python</span> my_sensor_adapter.py
+<span class="t-green">✓</span> <span class="t-dim">Adapter registered → entity streaming → visible on map</span></pre>
+      </div>
+
+      <p style="font-size:12px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-top:24px;">
+        The adapter publishes entities over MQTT. Summit.OS picks them up, runs them through fusion,
+        scores them, and displays them on the map — all automatically. The only thing you write is
+        the hardware read logic. See <code style="color:var(--amber)">packages/adapters/examples/</code> for
+        complete templates for drones, cameras, PLCs, and weather stations.
+      </p>
+    </section>
+
+    <!-- Missions -->
+    <section class="section" id="missions" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">MISSION SYSTEM</div>
+        <div class="section-title">CREATE A MISSION.<br />THREE WAYS.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:600px;line-height:1.8;margin-bottom:40px;">
+        A mission is an assigned task with a type, a target entity, an asset, and a lifecycle.
+        It can be created by the operator, by the AI, or directly via the API.
+        Every mission goes through the same state machine regardless of how it was created.
+      </p>
+
+      <!-- Mission types -->
+      <div class="section-tag" style="margin-bottom:20px;">MISSION TYPES</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:48px;">
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // SURVEY</div>
+          <div class="build-item-title">SURVEY</div>
+          <p>Cover a defined area. Used for fire-spread mapping, search grids, field inspection.</p>
+        </div>
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // MONITOR</div>
+          <div class="build-item-title">MONITOR</div>
+          <p>Watch a specific entity or location. Loiter, track, and report status changes.</p>
+        </div>
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // SEARCH</div>
+          <div class="build-item-title">SEARCH</div>
+          <p>Active SAR pattern. Systematic coverage of a zone with missing person or vessel protocols.</p>
+        </div>
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // PERIMETER</div>
+          <div class="build-item-title">PERIMETER</div>
+          <p>Patrol a boundary. Security zone enforcement, fence inspection, border monitoring.</p>
+        </div>
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // DELIVER</div>
+          <div class="build-item-title">DELIVER</div>
+          <p>Asset delivery to a waypoint. Medical supply drops, equipment transfer, logistics.</p>
+        </div>
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // INSPECT</div>
+          <div class="build-item-title">INSPECT</div>
+          <p>Close-range inspection of a specific target. Pipeline, powerline, structure, or vessel.</p>
+        </div>
+        <div class="build-item" data-sound="hover">
+          <div class="build-item-num">TYPE // ORBIT</div>
+          <div class="build-item-title">ORBIT</div>
+          <p>Circle a point of interest at altitude. Wide-area observation, incident watch.</p>
+        </div>
+      </div>
+
+      <!-- Mission lifecycle -->
+      <div class="section-tag" style="margin-bottom:20px;">MISSION LIFECYCLE</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0;margin-bottom:48px;border:1px solid var(--amber-dim);overflow:hidden;">
+        <div style="flex:1;min-width:120px;padding:16px 20px;background:var(--bg2);border-right:1px solid var(--amber-dim);text-align:center;">
+          <div style="font-family:'VT323',monospace;font-size:20px;color:var(--amber-bright);">PENDING</div>
+          <div style="font-size:10px;color:var(--amber-dim);margin-top:4px;letter-spacing:0.15em;">CREATED</div>
+        </div>
+        <div style="padding:0 8px;color:var(--amber-dim);font-family:'VT323',monospace;font-size:22px;">→</div>
+        <div style="flex:1;min-width:150px;padding:16px 20px;background:var(--bg2);border-right:1px solid var(--amber-dim);text-align:center;">
+          <div style="font-family:'VT323',monospace;font-size:20px;color:var(--amber-bright);">PENDING APPROVAL</div>
+          <div style="font-size:10px;color:var(--amber-dim);margin-top:4px;letter-spacing:0.15em;">HIGH RISK ONLY</div>
+        </div>
+        <div style="padding:0 8px;color:var(--amber-dim);font-family:'VT323',monospace;font-size:22px;">→</div>
+        <div style="flex:1;min-width:100px;padding:16px 20px;background:var(--bg2);border-right:1px solid var(--amber-dim);text-align:center;">
+          <div style="font-family:'VT323',monospace;font-size:20px;color:var(--green-pip);text-shadow:0 0 8px var(--green-pip);">ACTIVE</div>
+          <div style="font-size:10px;color:var(--amber-dim);margin-top:4px;letter-spacing:0.15em;">IN PROGRESS</div>
+        </div>
+        <div style="padding:0 8px;color:var(--amber-dim);font-family:'VT323',monospace;font-size:22px;">→</div>
+        <div style="flex:1;min-width:110px;padding:16px 20px;background:var(--bg2);text-align:center;">
+          <div style="font-family:'VT323',monospace;font-size:20px;color:var(--amber-bright);">COMPLETE</div>
+          <div style="font-size:10px;color:var(--amber-dim);margin-top:4px;letter-spacing:0.15em;">RESOLVED</div>
+        </div>
+      </div>
+
+      <!-- Three ways to create -->
+      <div class="section-tag" style="margin-bottom:20px;">THREE WAYS TO CREATE A MISSION</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-bottom:48px;">
+        <div style="border:1px solid var(--amber-dim);padding:28px;">
+          <div style="font-size:10px;color:var(--amber);letter-spacing:0.25em;margin-bottom:8px;">METHOD 01 // OPERATOR UI</div>
+          <div style="font-family:'VT323',monospace;font-size:22px;color:var(--amber-bright);margin-bottom:12px;">DISPATCH BUTTON</div>
+          <div style="font-size:12px;color:var(--amber-dim);line-height:1.7;">
+            Alert fires → operator clicks INVESTIGATE → reviews AI assessment → taps DISPATCH.
+            Mission type is suggested by the classifier. Operator can override before confirming.
+            Zero typing required for routine incidents.
+          </div>
+        </div>
+        <div style="border:1px solid var(--amber-dim);padding:28px;">
+          <div style="font-size:10px;color:var(--amber);letter-spacing:0.25em;margin-bottom:8px;">METHOD 02 // AUTONOMOUS</div>
+          <div style="font-family:'VT323',monospace;font-size:22px;color:var(--amber-bright);margin-bottom:12px;">AI AUTO-DISPATCH</div>
+          <div style="font-size:12px;color:var(--amber-dim);line-height:1.7;">
+            For LOW and MEDIUM risk incidents, the tasking service creates missions automatically
+            when the classifier fires. No human in the loop for routine events. HIGH and CRITICAL
+            always require operator approval — the state machine enforces this and cannot be bypassed.
+          </div>
+        </div>
+        <div style="border:1px solid var(--amber-dim);padding:28px;">
+          <div style="font-size:10px;color:var(--amber);letter-spacing:0.25em;margin-bottom:8px;">METHOD 03 // API</div>
+          <div style="font-family:'VT323',monospace;font-size:22px;color:var(--amber-bright);margin-bottom:12px;">REST API</div>
+          <div style="font-size:12px;color:var(--amber-dim);line-height:1.7;">
+            Create missions programmatically from any external system. Your existing dispatch
+            software, a scheduler, or a custom workflow can POST a mission directly.
+            Full API docs at <code style="color:var(--amber)">localhost:8000/docs</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- API example -->
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="terminal-bar-dot"></div><div class="terminal-bar-dot"></div><div class="terminal-bar-dot"></div>
+          <div class="terminal-bar-title">CREATE MISSION // REST API</div>
+        </div>
+        <pre>
+<span class="t-dim"># Create a SURVEY mission via API</span>
+<span class="t-prompt">$</span> <span class="t-bright">curl</span> -X POST http://localhost:8000/v1/missions \
+    -H <span class="t-green">"Authorization: Bearer &lt;token&gt;"</span> \
+    -H <span class="t-green">"Content-Type: application/json"</span> \
+    -d '{
+      <span class="t-green">"mission_type"</span>:  <span class="t-green">"SURVEY"</span>,
+      <span class="t-green">"entity_id"</span>:    <span class="t-green">"entity-abc123"</span>,
+      <span class="t-green">"asset_id"</span>:     <span class="t-green">"drone-01"</span>,
+      <span class="t-green">"priority"</span>:     <span class="t-green">"HIGH"</span>,
+      <span class="t-green">"notes"</span>:        <span class="t-green">"Smoke detected northeast sector"</span>
+    }'
+
+<span class="t-green">201 Created</span>
+{
+  <span class="t-green">"mission_id"</span>:  <span class="t-green">"msn-7f3a..."</span>,
+  <span class="t-green">"status"</span>:      <span class="t-green">"PENDING_APPROVAL"</span>,  <span class="t-dim">// HIGH = requires operator confirm</span>
+  <span class="t-green">"assigned_to"</span>: <span class="t-green">"drone-01"</span>,
+  <span class="t-green">"created_at"</span>:  <span class="t-green">"2026-03-29T14:22:11Z"</span>
+}</pre>
       </div>
     </section>
 
