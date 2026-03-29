@@ -604,6 +604,224 @@
       line-height: 1.6;
     }
 
+    /* ── Pipeline flow ── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 40px;
+      position: relative;
+    }
+
+    .pipeline-step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 24px;
+      padding: 28px 0;
+      border-bottom: 1px solid rgba(212,160,23,0.15);
+      cursor: default;
+      transition: background 0.15s;
+    }
+
+    .pipeline-step:last-child { border-bottom: none; }
+    .pipeline-step:hover { background: var(--amber-glow); }
+
+    .pipeline-num {
+      font-family: 'VT323', monospace;
+      font-size: 32px;
+      color: var(--amber);
+      text-shadow: 0 0 12px var(--amber);
+      line-height: 1;
+      padding-top: 2px;
+    }
+
+    .pipeline-title {
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      color: var(--amber-bright);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .pipeline-sub {
+      font-size: 11px;
+      color: var(--amber-dim);
+      letter-spacing: 0.2em;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .pipeline-desc {
+      font-size: 13px;
+      color: var(--amber-dim);
+      line-height: 1.7;
+      max-width: 640px;
+    }
+
+    /* ── Operator workflow timeline ── */
+    .workflow-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 40px;
+      border-left: 1px solid var(--amber-dim);
+      padding-left: 28px;
+      position: relative;
+    }
+
+    .wf-step {
+      position: relative;
+      padding: 24px 0 28px;
+      border-bottom: 1px solid rgba(212,160,23,0.1);
+    }
+
+    .wf-step:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .wf-step::before {
+      content: '';
+      position: absolute;
+      left: -34px;
+      top: 28px;
+      width: 10px; height: 10px;
+      border: 1px solid var(--amber);
+      background: var(--bg);
+      box-shadow: 0 0 8px var(--amber);
+    }
+
+    .wf-step-label {
+      font-size: 10px;
+      color: var(--amber);
+      letter-spacing: 0.3em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .wf-step-title {
+      font-family: 'VT323', monospace;
+      font-size: 24px;
+      color: var(--amber-bright);
+      margin-bottom: 8px;
+    }
+
+    .wf-step-desc {
+      font-size: 13px;
+      color: var(--amber-dim);
+      line-height: 1.7;
+      max-width: 600px;
+    }
+
+    .wf-step-time {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 10px;
+      color: var(--amber);
+      border: 1px solid var(--amber-dim);
+      padding: 2px 8px;
+      letter-spacing: 0.15em;
+    }
+
+    /* ── Auth section ── */
+    .auth-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    .auth-card {
+      border: 1px solid var(--amber-dim);
+      padding: 28px;
+      transition: border-color 0.2s, background 0.2s;
+      cursor: default;
+    }
+
+    .auth-card:hover {
+      border-color: var(--amber);
+      background: var(--amber-glow);
+    }
+
+    .auth-card-icon {
+      font-family: 'VT323', monospace;
+      font-size: 36px;
+      color: var(--amber);
+      text-shadow: 0 0 12px var(--amber);
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .auth-card-title {
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--amber-bright);
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .auth-card-tag {
+      font-size: 10px;
+      color: var(--amber);
+      letter-spacing: 0.2em;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .auth-card-desc {
+      font-size: 12px;
+      color: var(--amber-dim);
+      line-height: 1.7;
+    }
+
+    /* ── Security grid ── */
+    .sec-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--amber-dim);
+      border: 1px solid var(--amber-dim);
+      margin-top: 40px;
+    }
+
+    .sec-item {
+      background: var(--bg2);
+      padding: 24px 28px;
+      transition: background 0.15s;
+      cursor: default;
+    }
+
+    .sec-item:hover { background: var(--amber-glow); }
+
+    .sec-item-status {
+      font-size: 10px;
+      color: var(--green-pip);
+      letter-spacing: 0.2em;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sec-item-status::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green-pip);
+      box-shadow: 0 0 4px var(--green-pip);
+      flex-shrink: 0;
+    }
+
+    .sec-item-title {
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--amber-bright);
+      margin-bottom: 8px;
+    }
+
+    .sec-item-desc {
+      font-size: 12px;
+      color: var(--amber-dim);
+      line-height: 1.7;
+    }
+
     /* ── Editions ── */
     .editions-wrap {
       background: var(--bg2);
@@ -823,7 +1041,10 @@
       <a href="#" class="nav-logo" data-sound="click">BIGMT.AI</a>
       <ul class="nav-links">
         <li><a href="#capabilities" data-sound="click">Systems</a></li>
-        <li><a href="#architecture" data-sound="click">Architecture</a></li>
+        <li><a href="#how-it-works" data-sound="click">How It Works</a></li>
+        <li><a href="#workflow" data-sound="click">Workflow</a></li>
+        <li><a href="#auth" data-sound="click">Auth</a></li>
+        <li><a href="#security" data-sound="click">Security</a></li>
         <li><a href="#editions" data-sound="click">Access Tiers</a></li>
         <li><a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank" data-sound="click">GitHub</a></li>
         <li><a href="mailto:prestkyle@gmail.com" class="nav-cta" data-sound="click">ENTERPRISE</a></li>
@@ -946,6 +1167,315 @@
       </div>
     </section>
 
+    <!-- How It Works -->
+    <section class="section" id="how-it-works" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">DATA PIPELINE</div>
+        <div class="section-title">FROM RAW SENSOR<br />TO HUMAN DECISION.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:0;">
+        Every event in Summit.OS follows the same path: raw signal in, fused world model out,
+        AI scoring, mission creation, operator action. Here's what happens at each stage.
+      </p>
+      <div class="pipeline">
+        <div class="pipeline-step">
+          <div class="pipeline-num">01</div>
+          <div>
+            <div class="pipeline-sub">INGESTION // ADAPTERS</div>
+            <div class="pipeline-title">SENSOR DATA ARRIVES</div>
+            <div class="pipeline-desc">
+              Aircraft positions stream in via OpenSky ADS-B. Vessel locations arrive over AIS.
+              Satellites propagate from TLE data. Your custom sensors publish over MQTT or HTTP.
+              All of it hits the same adapter interface — Summit.OS doesn't care what the source is.
+            </div>
+          </div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">02</div>
+          <div>
+            <div class="pipeline-sub">FUSION // WORLD MODEL</div>
+            <div class="pipeline-title">ENTITIES ARE FUSED</div>
+            <div class="pipeline-desc">
+              The Fusion service runs a Kalman Extended Kalman Filter over all incoming signals.
+              Multiple reports of the same object are merged. Positions are interpolated between
+              updates. The result is a clean, unified world model — one record per real-world entity,
+              updated in real time and broadcast over WebSocket to every connected operator.
+            </div>
+          </div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">03</div>
+          <div>
+            <div class="pipeline-sub">INFERENCE // AI CORE</div>
+            <div class="pipeline-title">AI SCORES EVERY ENTITY</div>
+            <div class="pipeline-desc">
+              The Intelligence service runs ONNX inference on the live world model. A mission
+              classifier scores each entity against trained threat patterns. A risk scorer assigns
+              severity tiers (LOW / MEDIUM / HIGH / CRITICAL). This happens continuously, not just
+              on arrival — an entity's score changes as its behavior evolves. No LLM required;
+              the ONNX models run locally on CPU.
+            </div>
+          </div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">04</div>
+          <div>
+            <div class="pipeline-sub">TASKING // MISSION ENGINE</div>
+            <div class="pipeline-title">MISSIONS ARE CREATED</div>
+            <div class="pipeline-desc">
+              High-severity scores trigger the Tasking service, which creates a mission in the
+              state machine (PENDING → ACTIVE → COMPLETE). Depending on risk tier, missions are
+              either auto-dispatched or held for human approval. Asset assignments, drone coordination,
+              and intervention tracking all live here. Every state change is logged with a timestamp
+              and the operator or automated system that triggered it.
+            </div>
+          </div>
+        </div>
+        <div class="pipeline-step">
+          <div class="pipeline-num">05</div>
+          <div>
+            <div class="pipeline-sub">OPERATOR // CONSOLE</div>
+            <div class="pipeline-title">OPERATOR SEES AND ACTS</div>
+            <div class="pipeline-desc">
+              The operator console receives the live world model over WebSocket. Alerts land in the
+              queue. The operator investigates — the map flies to the entity, a detail panel slides in.
+              They review the AI assessment and tap DISPATCH. The mission is confirmed, assets are
+              tasked, and the incident moves to resolution. The full loop, start to finish, is designed
+              to take under 3 seconds of operator time for a known entity type.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Operator Workflow -->
+    <section class="section" id="workflow" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">OPERATOR WORKFLOW</div>
+        <div class="section-title">ALERT IN.<br />DECISION OUT.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:0;">
+        This is what it looks like in practice. An anomaly is detected. What happens next.
+      </p>
+      <div class="workflow-timeline">
+        <div class="wf-step">
+          <div class="wf-step-label">T+00:00 // DETECTION</div>
+          <div class="wf-step-title">ANOMALY DETECTED</div>
+          <div class="wf-step-desc">
+            A sensor reports an entity behaving outside normal parameters. The fusion pipeline
+            merges corroborating signals. The AI classifier flags it. An alert is created with
+            severity, a description, and a link to the source entity.
+          </div>
+          <span class="wf-step-time">AUTOMATED</span>
+        </div>
+        <div class="wf-step">
+          <div class="wf-step-label">T+00:01 // ALERT QUEUE</div>
+          <div class="wf-step-title">ALERT APPEARS IN QUEUE</div>
+          <div class="wf-step-desc">
+            The alert lands in the operator's queue, color-coded by severity. On high or critical
+            alerts, the entity pulses on the map automatically. The operator sees the alert
+            description without needing to find the entity manually.
+          </div>
+          <span class="wf-step-time">OPERATOR NOTIFIED</span>
+        </div>
+        <div class="wf-step">
+          <div class="wf-step-label">T+00:03 // INVESTIGATION</div>
+          <div class="wf-step-title">OPERATOR INVESTIGATES</div>
+          <div class="wf-step-desc">
+            The operator clicks INVESTIGATE. The map flies to the entity in 800ms.
+            The entity detail panel slides in from the right — showing position, velocity,
+            type, history, and the AI's risk assessment. All the context needed to make
+            a decision is in one place, no tab-switching required.
+          </div>
+          <span class="wf-step-time">&lt; 3 SECONDS OPERATOR TIME</span>
+        </div>
+        <div class="wf-step">
+          <div class="wf-step-label">T+00:05 // DISPATCH</div>
+          <div class="wf-step-title">OPERATOR DISPATCHES</div>
+          <div class="wf-step-desc">
+            The operator reviews the AI assessment and taps DISPATCH. A mission is created,
+            assets are assigned, and the state machine moves to ACTIVE. The panel closes.
+            The operator is back in the queue in under 10 seconds total, incident owned.
+          </div>
+          <span class="wf-step-time">MISSION CREATED</span>
+        </div>
+        <div class="wf-step">
+          <div class="wf-step-label">T+ongoing // TRACKING</div>
+          <div class="wf-step-title">MISSION TRACKED TO CLOSE</div>
+          <div class="wf-step-desc">
+            The mission lives in the COMMAND view alongside every other active incident.
+            Asset status, intervention records, and timeline are updated in real time.
+            When the incident resolves, the operator marks it complete. Every action
+            is timestamped in the append-only audit log.
+          </div>
+          <span class="wf-step-time">FULL AUDIT TRAIL</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Auth & Access -->
+    <section class="section" id="auth" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">ACCESS CONTROL</div>
+        <div class="section-title">WHO GETS IN.<br />HOW THEY PROVE IT.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:0;">
+        Summit.OS ships with auth off by default so you can run it locally without setting up
+        an identity provider. Flip the flags and every endpoint is locked down.
+      </p>
+      <div class="auth-grid">
+        <div class="auth-card">
+          <span class="auth-card-icon">[DEV]</span>
+          <div class="auth-card-title">DEV MODE</div>
+          <span class="auth-card-tag">DEFAULT // LOCAL ONLY</span>
+          <div class="auth-card-desc">
+            No auth required. Run <code style="color:var(--amber)">docker compose up</code> and every
+            endpoint is open. Designed for local development and demos. Never run this on a
+            public network — the API will warn you at startup if security flags are off.
+          </div>
+        </div>
+        <div class="auth-card">
+          <span class="auth-card-icon">[OIDC]</span>
+          <div class="auth-card-title">SSO / OIDC</div>
+          <span class="auth-card-tag">PRODUCTION // SET OIDC_ENFORCE=TRUE</span>
+          <div class="auth-card-desc">
+            Plug in any OIDC-compatible provider: Keycloak (self-hosted, free), Auth0, Okta,
+            Google Workspace, GitHub. The API gateway validates JWT tokens on every request.
+            Users log in through your provider — Summit.OS never sees their password.
+          </div>
+        </div>
+        <div class="auth-card">
+          <span class="auth-card-icon">[MFA]</span>
+          <div class="auth-card-title">TOTP / AUTHENTICATOR</div>
+          <span class="auth-card-tag">OPTIONAL // SOFTWARE-BASED</span>
+          <div class="auth-card-desc">
+            Standard 6-digit one-time codes. Works with any TOTP app: Google Authenticator,
+            Authy, 1Password, Bitwarden. TOTP secrets are encrypted at rest with AES-256-GCM
+            before being stored. Backup codes are hashed with Argon2id.
+          </div>
+        </div>
+        <div class="auth-card">
+          <span class="auth-card-icon">[KEY]</span>
+          <div class="auth-card-title">HARDWARE KEY</div>
+          <span class="auth-card-tag">HIGHEST SECURITY // YUBIKEY + FIDO2</span>
+          <div class="auth-card-desc">
+            Physical USB/NFC security keys. Two modes: FIDO2 (tap to sign — no code to type,
+            phishing impossible), and Yubico OTP (press button, 44-char one-time code validated
+            against YubiCloud). All YubiKey 5 Series, Bio, and FIPS variants are supported.
+          </div>
+        </div>
+        <div class="auth-card">
+          <span class="auth-card-icon">[RBAC]</span>
+          <div class="auth-card-title">ROLE-BASED ACCESS</div>
+          <span class="auth-card-tag">OPTIONAL // SET RBAC_ENFORCE=TRUE</span>
+          <div class="auth-card-desc">
+            Roles come from JWT claims. Built-in: OPERATOR (read + dispatch), COMMANDER (read +
+            approve), ANALYST (read-only), ADMIN (full access), SUPER_ADMIN (Enterprise only —
+            org management). Set RBAC_ENFORCE=true to reject requests with missing or
+            insufficient role claims.
+          </div>
+        </div>
+        <div class="auth-card">
+          <span class="auth-card-icon">[API]</span>
+          <div class="auth-card-title">API KEYS</div>
+          <span class="auth-card-tag">SERVICE ACCOUNTS // SET API_KEY_ENFORCE=TRUE</span>
+          <div class="auth-card-desc">
+            For machine-to-machine integrations. Scoped keys with expiry and rotation support.
+            Each key is associated with a role so it inherits RBAC rules. API keys are hashed
+            before storage — if the database is compromised, raw keys are not exposed.
+          </div>
+        </div>
+      </div>
+
+      <!-- Sign-in flow terminal -->
+      <div style="margin-top:48px;">
+        <div class="section-tag" style="margin-bottom:20px;">PRODUCTION AUTH FLOW</div>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="terminal-bar-dot"></div>
+            <div class="terminal-bar-dot"></div>
+            <div class="terminal-bar-dot"></div>
+            <div class="terminal-bar-title">AUTH SEQUENCE // OIDC + YUBIKEY</div>
+          </div>
+          <pre>
+<span class="t-dim"># Step 1 — User navigates to console</span>
+<span class="t-dim"># Console redirects to OIDC provider (Keycloak / Auth0 / etc)</span>
+<span class="t-prompt">→</span> <span class="t-bright">GET</span> /auth/callback?code=<span class="t-dim">[authorization_code]</span>
+
+<span class="t-dim"># Step 2 — Gateway validates JWT</span>
+<span class="t-prompt">→</span> <span class="t-bright">POST</span> /auth/token  <span class="t-green">200 OK</span>  <span class="t-dim">{ roles: ["OPERATOR"], mfa_required: true }</span>
+
+<span class="t-dim"># Step 3 — MFA challenge (if enrolled)</span>
+<span class="t-prompt">→</span> <span class="t-bright">POST</span> /auth/mfa/webauthn/authenticate/begin
+<span class="t-dim"># Browser prompts: "Touch your security key"</span>
+<span class="t-prompt">→</span> <span class="t-bright">POST</span> /auth/mfa/webauthn/authenticate/complete  <span class="t-green">200 OK</span>
+
+<span class="t-dim"># Step 4 — Full session issued</span>
+<span class="t-green">✓</span> <span class="t-dim">Session JWT issued  →  valid 8h  →  RBAC enforced on every request</span>
+<span class="t-green">✓</span> <span class="t-dim">Audit log entry created: AUTH_LOGIN // user@domain.com // ip: x.x.x.x</span></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security -->
+    <section class="section" id="security" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">SECURITY POSTURE</div>
+        <div class="section-title">SOC2-READY<br />OUT OF THE BOX.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:0;">
+        Every security control is implemented and off by default for local dev. Flip the env
+        flags and it's a hardened production deployment. No third-party security add-ons required.
+      </p>
+      <div class="sec-grid">
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">ARGON2ID PASSWORDS</div>
+          <div class="sec-item-desc">OWASP 2024 recommended parameters (64MB memory, t=3). The hardest standard algorithm to brute-force if your database is ever stolen.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">AES-256-GCM FIELD ENCRYPTION</div>
+          <div class="sec-item-desc">PII fields are encrypted at the application layer before hitting the database. A stolen database dump is unreadable without the encryption key.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">APPEND-ONLY AUDIT LOG</div>
+          <div class="sec-item-desc">Every API call is logged with user, IP, path, and latency. Logs are batched to S3 for tamper-proof retention. Configurable 90-day pruning on the DB copy.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">POSTGRES TLS</div>
+          <div class="sec-item-desc">All database connections require TLS (sslmode=require). Self-signed certs are generated at setup. Swap for CA-signed in production.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">GEOBLOCK // 7 COUNTRIES</div>
+          <div class="sec-item-desc">Hard blocks on KP, CN, RU, IR, AF, IL, BY at the API gateway. MaxMind GeoLite2 database refreshes automatically every 24 hours. Returns HTTP 451.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">RATE LIMITING</div>
+          <div class="sec-item-desc">Per-IP rate limits on all public endpoints via slowapi. Auth endpoints are separately limited (5/min for TOTP, 5/min for WebAuthn auth).</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">TRIVY SECURITY SCANNING</div>
+          <div class="sec-item-desc">Every push to GitHub triggers CVE scans on all Docker images and Python dependencies. Secret detection runs across the full commit history.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">mTLS + TRAEFIK</div>
+          <div class="sec-item-desc">Optional mTLS proxy for service-to-service encryption. Traefik handles HTTPS termination with automatic Let's Encrypt certs for public deployments.</div>
+        </div>
+        <div class="sec-item">
+          <div class="sec-item-status">ACTIVE</div>
+          <div class="sec-item-title">SECRETS VAULT CHAIN</div>
+          <div class="sec-item-desc">Priority chain: Infisical → HashiCorp Vault → env vars. Swap backends at deploy time without code changes. No secrets ever need to live on disk in production.</div>
+        </div>
+      </div>
+    </section>
+
     <!-- Build on it -->
     <section class="section" style="border-top:1px solid var(--amber-dim)">
       <div class="section-header">
@@ -993,8 +1523,8 @@
           <div class="edition-card active" data-sound="hover">
             <div class="edition-tag">ENTERPRISE</div>
             <div class="edition-name">ENTERPRISE</div>
-            <div class="edition-price">$1,500</div>
-            <div class="edition-price-sub">PER MONTH // MANAGED OR SELF-HOSTED</div>
+            <div class="edition-price" style="font-size:36px;padding-top:6px;">CONTACT</div>
+            <div class="edition-price-sub">MANAGED OR SELF-HOSTED // CUSTOM PRICING</div>
             <ul class="edition-features">
               <li>Everything in Community</li>
               <li>Multi-organization tenancy</li>
