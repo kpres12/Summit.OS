@@ -85,7 +85,75 @@ make smoke
 
 ## Adding a New SDK Adapter
 
-See `INTEGRATION_GUIDE.md` and `examples/quickstart_adapter.py`.
+Summit.OS uses a base adapter class. Any hardware or data source can be integrated in ~30 minutes.
+
+```python
+# packages/adapters/my_sensor.py
+from packages.sdk import SummitAdapter, AdapterManifest, EntityBuilder
+
+class MySensorAdapter(SummitAdapter):
+    async def get_telemetry(self):
+        # Return current position, status, etc.
+        return {"lat": ..., "lon": ..., "alt": ...}
+
+    async def handle_command(self, cmd):
+        # Execute missions, waypoints, etc.
+        pass
+```
+
+1. Subclass `SummitAdapter` in `packages/adapters/` or your own repo
+2. Implement `get_telemetry()` and `handle_command()`
+3. Register via `AdapterRegistry.add()` or `adapters.json` config
+4. Test with `python -m pytest packages/adapters/tests/`
+
+See `docs/INTEGRATION_GUIDE.md` and `examples/quickstart_adapter.py` for a complete working example.
+
+## Database Migrations
+
+Summit.OS uses [Alembic](https://alembic.sqlalchemy.org/) for schema migrations, wired to the Fabric service.
+
+```bash
+# Apply all pending migrations (fresh install or upgrade)
+make db-migrate
+
+# Check current revision
+make db-status
+
+# Roll back one migration
+make db-rollback
+```
+
+Migration files live in `apps/fabric/alembic/versions/`. To create a new migration after changing the schema:
+
+```bash
+cd apps/fabric
+POSTGRES_URL=postgresql://summit:summit_password@localhost:5433/summit_os \
+  python -m alembic revision --autogenerate -m "describe your change"
+```
+
+**Rules:**
+- Every schema change needs a migration file — never modify existing migration files
+- Always include a `downgrade()` function
+- Test both `upgrade` and `downgrade` before opening a PR
+
+## Retraining the ML Models
+
+The mission classifier and risk scorer ship as pre-trained ONNX files. To retrain on your own data:
+
+```bash
+# 1. Download fresh public training data (NASA FIRMS, NOAA, GBIF)
+python packages/ml/download_real_data.py --years 2022 2023 2024
+
+# 2. Train — optionally blend in your operator-approved mission history from Postgres
+python packages/ml/train_mission_classifier.py \
+  --real-csv packages/ml/data/real_combined.csv \
+  --real-data postgresql://summit:password@localhost:5432/summit_os
+
+# 3. New .onnx files drop into packages/ml/models/ automatically
+# 4. Inference picks them up without a restart (hot-swap supported)
+```
+
+To contribute improved base models back upstream, open a PR with the new `.onnx` files and the training metrics from the run (accuracy, F1 per class, training data size).
 
 ## Code of Conduct
 
@@ -93,4 +161,4 @@ This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). Be respectf
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the Apache 2.0 License.

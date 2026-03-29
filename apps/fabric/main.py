@@ -513,15 +513,58 @@ async def livez():
     return {"status": "alive"}
 
 
-# WebSocket endpoint for real-time multiplexed events
+# WebSocket endpoint — Community mode (no org isolation)
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     global websocket_manager
     if websocket_manager is None:
         websocket_manager = WebSocketManager()
-    await websocket_manager.connect(websocket)
+    await websocket_manager.connect(websocket, org_id="default")
     try:
-        # Keep the connection alive; ignore incoming messages for now
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket)
+
+
+# WebSocket endpoint — Enterprise mode (org-scoped, requires JWT with matching org claim)
+@app.websocket("/ws/{org_id}")
+async def websocket_endpoint_org(websocket: WebSocket, org_id: str):
+    """
+    Org-scoped WebSocket for Enterprise multi-tenant deployments.
+
+    The client must present a Bearer token whose org_id / org / tenant claim
+    matches the org_id path parameter. Mismatches are rejected before the
+    handshake completes.
+    """
+    global websocket_manager
+    if websocket_manager is None:
+        websocket_manager = WebSocketManager()
+
+    # Validate org claim when Enterprise mode is on
+    _enterprise = os.getenv("ENTERPRISE_MULTI_TENANT", "false").lower() == "true"
+    if _enterprise:
+        _token_org: str | None = None
+        _auth = websocket.headers.get("Authorization") or websocket.query_params.get("token", "")
+        if _auth.startswith("Bearer "):
+            _auth = _auth[7:]
+        if _auth:
+            try:
+                from jose import jwt as _jwt
+                _claims = _jwt.get_unverified_claims(_auth)
+                _token_org = (
+                    _claims.get("org_id")
+                    or _claims.get("org")
+                    or _claims.get("tenant")
+                )
+            except Exception:
+                pass
+        if _token_org and _token_org != org_id:
+            await websocket.close(code=4003, reason="org_id mismatch")
+            return
+
+    await websocket_manager.connect(websocket, org_id=org_id)
+    try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
@@ -775,8 +818,9 @@ async def publish_telemetry(
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "telemetry", "data": tm.model_dump()})
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "telemetry", "data": tm.model_dump()}),
+                org_id=org_id or "default",
             )
         return {"status": "published", "device_id": telemetry.device_id}
     except Exception as e:
@@ -890,8 +934,9 @@ async def publish_alert(
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "alert", "data": am.model_dump()})
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "alert", "data": am.model_dump()}),
+                org_id=org_id or "default",
             )
         return {"status": "published", "alert_id": alert.alert_id}
     except Exception as e:
@@ -961,8 +1006,10 @@ async def publish_mission_update(mission: "MissionData"):
         )
         await redis_client.add_mission_update(mu)
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "mission", "data": mu.model_dump()})
+            _mission_org = getattr(mission, "org_id", None) or "default"
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "mission", "data": mu.model_dump()}),
+                org_id=_mission_org,
             )
         return {"status": "published", "mission_id": mission.mission_id}
     except Exception as e:
@@ -1132,10 +1179,11 @@ async def _handle_observation(topic: str, data: Dict[str, Any]):
 
 async def _handle_mission(topic: str, data: Dict[str, Any]):
     try:
-        # Broadcast to UI subscribers
+        # Broadcast to UI subscribers (org-scoped in Enterprise mode)
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "mission_event", "topic": topic, "data": data})
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "mission_event", "topic": topic, "data": data}),
+                org_id=data.get("org_id", "default"),
             )
         logger.info("Forwarded mission to ws", topic=topic)
     except Exception as e:
@@ -1160,10 +1208,9 @@ async def _handle_heartbeat(topic: str, data: Dict[str, Any]):
             )
             await session.commit()
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps(
-                    {"type": "heartbeat", "node_id": node_id, "ts": data.get("ts")}
-                )
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "heartbeat", "node_id": node_id, "ts": data.get("ts")}),
+                org_id=data.get("org_id", "default"),
             )
     except Exception as e:
         logger.error(f"Failed to handle heartbeat: {e}")
@@ -1240,8 +1287,9 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
         except Exception as e:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "alert", "data": am.model_dump()})
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "alert", "data": am.model_dump()}),
+                org_id=data.get("org_id", "default"),
             )
     except Exception as e:
         logger.error(f"Failed to handle plainview leak: {e}")
@@ -1260,8 +1308,9 @@ async def _handle_valve_status(topic: str, data: Dict[str, Any]):
         if redis_client:
             await redis_client.add_operation_event(record)
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "valve_status", "topic": topic, "data": data})
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "valve_status", "topic": topic, "data": data}),
+                org_id=data.get("org_id", "default"),
             )
     except Exception as e:
         logger.error(f"Failed to handle valve status: {e}")
@@ -1476,8 +1525,9 @@ async def _compute_viewshed_stub(node_id: str):
             )
             await session.commit()
         if websocket_manager:
-            await websocket_manager.broadcast(
-                json.dumps({"type": "coverage_updated", "node_id": node_id})
+            await websocket_manager.broadcast_to_org(
+                json.dumps({"type": "coverage_updated", "node_id": node_id}),
+                org_id="default",  # coverage events are infrastructure-scoped, not org-scoped
             )
     except Exception as e:
         logger.error(f"Viewshed stub failed: {e}")

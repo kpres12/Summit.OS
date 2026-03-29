@@ -78,6 +78,8 @@ orgs_table = Table(
     Column("tier", String(32), nullable=False, default="free"),
     Column("stripe_customer_id", String(128), nullable=True),
     Column("stripe_subscription_id", String(128), nullable=True),
+    Column("polar_subscription_id", String(128), nullable=True),
+    Column("billing_email", String(256), nullable=True),
     Column("subscription_status", String(32), nullable=False, default="active"),
     Column("entity_limit", Integer, nullable=False, default=10),
     Column("operator_limit", Integer, nullable=False, default=1),

@@ -47,6 +47,7 @@ approvals = Table(
     Column("approved_by", String(128)),
     Column("created_at", DateTime(timezone=True)),
     Column("approved_at", DateTime(timezone=True)),
+    Column("org_id", String(128), nullable=True, index=True),
 )
 
 
@@ -72,9 +73,47 @@ except Exception:
         return os.getenv(key, default)
 
 
+def _startup_security_check() -> None:
+    """Emit loud warnings for insecure defaults at startup."""
+    if GATEWAY_TEST_MODE:
+        return
+
+    warnings = []
+    if os.getenv("OIDC_ENFORCE", "false").lower() != "true":
+        warnings.append("  ⚠  OIDC_ENFORCE=false  — all requests are unauthenticated")
+    if os.getenv("RBAC_ENFORCE", "false").lower() != "true":
+        warnings.append("  ⚠  RBAC_ENFORCE=false  — role-based access control is OFF")
+    if os.getenv("API_KEY_ENFORCE", "false").lower() != "true":
+        warnings.append("  ⚠  API_KEY_ENFORCE=false — API key enforcement is OFF")
+    if not os.getenv("FIELD_ENCRYPTION_KEY", ""):
+        warnings.append(
+            "  ⚠  FIELD_ENCRYPTION_KEY not set — PII fields stored as plaintext"
+        )
+
+    if warnings:
+        border = "=" * 72
+        logger.warning(border)
+        logger.warning("  SUMMIT.OS SECURITY WARNING — NOT SAFE FOR PRODUCTION")
+        logger.warning(border)
+        for w in warnings:
+            logger.warning(w)
+        logger.warning("")
+        logger.warning("  To harden this deployment, set in your .env:")
+        logger.warning("    OIDC_ENFORCE=true")
+        logger.warning("    OIDC_ISSUER=https://your-keycloak/realms/summit")
+        logger.warning("    RBAC_ENFORCE=true")
+        logger.warning("    API_KEY_ENFORCE=true")
+        logger.warning("    FIELD_ENCRYPTION_KEY=$(openssl rand -base64 32)")
+        logger.warning("")
+        logger.warning("  See SECURITY.md for the full production hardening checklist.")
+        logger.warning(border)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine, SessionLocal
+
+    _startup_security_check()
 
     # Setup DB for approvals
     if GATEWAY_TEST_MODE:
@@ -92,6 +131,26 @@ async def lifespan(app: FastAPI):
 
     async with engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
+
+    # ── Enterprise multi-tenancy: organisations table + org router ─────────
+    try:
+        import sys as _sys
+        from pathlib import Path as _Path
+
+        _packages_dir = str(_Path(__file__).resolve().parents[2] / "packages")
+        if _packages_dir not in _sys.path:
+            _sys.path.insert(0, _packages_dir)
+
+        from multi_tenant.models import organizations as _orgs_table
+        from routers.orgs import init_orgs_router
+
+        async with engine.begin() as _conn:
+            await _conn.run_sync(_orgs_table.metadata.create_all)
+
+        init_orgs_router(SessionLocal, _orgs_table)
+        logger.info("Enterprise org management ready (table: summit_organizations)")
+    except Exception as exc:
+        logger.warning("Org management init failed (non-fatal): %s", exc)
 
     # Initialise audit log (append-only Postgres table via asyncpg)
     try:
@@ -416,6 +475,15 @@ try:
     app.include_router(audit_router)
 except Exception as exc:
     logger.warning("Audit router load failed: %s", exc)
+
+# Enterprise multi-tenancy: org management router (SUPER_ADMIN only)
+try:
+    from routers.orgs import router as orgs_router
+
+    app.include_router(orgs_router)
+    logger.info("Org management router loaded (Enterprise)")
+except Exception as exc:
+    logger.warning("Org router load failed: %s", exc)
 
 # CORS for local dev (console at 3000)
 try:

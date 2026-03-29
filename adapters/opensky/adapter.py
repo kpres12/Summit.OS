@@ -11,16 +11,23 @@ Environment variables:
     OPENSKY_ENABLED          - "true" to enable (default: "true")
     OPENSKY_POLL_INTERVAL    - seconds between polls (default: 10)
     OPENSKY_BBOX             - bounding box "lat_min,lon_min,lat_max,lon_max"
-    OPENSKY_USERNAME         - optional credentials for higher rate limits
-    OPENSKY_PASSWORD         - optional
+    OPENSKY_CLIENT_ID        - OAuth2 client_id from your OpenSky account page
+    OPENSKY_CLIENT_SECRET    - OAuth2 client_secret from your OpenSky account page
     MQTT_HOST / MQTT_PORT    - broker connection
+
+Authentication:
+    OpenSky deprecated basic auth on March 18 2026. This adapter uses the
+    OAuth2 client credentials flow. Create an API client at:
+    https://opensky-network.org (Account → API clients)
+    Token endpoint: https://auth.opensky-network.org/auth/realms/opensky-network/...
+    Without credentials the adapter falls back to anonymous access (400 credits/day).
 """
 from __future__ import annotations
 
 import logging
-import math
 import os
 import sys
+import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -32,6 +39,12 @@ from sdk import BaseAdapter, AdapterManifest, EntityBuilder, Protocol, Capabilit
 
 logger = logging.getLogger("summit.adapter.opensky")
 
+_OPENSKY_TOKEN_URL = (
+    "https://auth.opensky-network.org/auth/realms/opensky-network"
+    "/protocol/openid-connect/token"
+)
+_TOKEN_REFRESH_MARGIN = 30  # seconds before expiry to refresh proactively
+
 # OpenSky state vector field indices
 IDX_ICAO24, IDX_CALLSIGN, IDX_ORIGIN_COUNTRY = 0, 1, 2
 IDX_LONGITUDE, IDX_LATITUDE = 5, 6
@@ -40,32 +53,67 @@ IDX_VELOCITY, IDX_TRUE_TRACK, IDX_VERTICAL_RATE = 9, 10, 11
 IDX_GEO_ALTITUDE, IDX_SQUAWK = 13, 14
 
 
+class _TokenManager:
+    """Fetches and caches an OpenSky OAuth2 Bearer token."""
+
+    def __init__(self, client_id: str, client_secret: str):
+        self._client_id = client_id
+        self._client_secret = client_secret
+        self._token: Optional[str] = None
+        self._expires_at: float = 0.0
+
+    async def get_token(self, client: httpx.AsyncClient) -> str:
+        if self._token and time.monotonic() < self._expires_at:
+            return self._token
+        return await self._refresh(client)
+
+    async def _refresh(self, client: httpx.AsyncClient) -> str:
+        resp = await client.post(
+            _OPENSKY_TOKEN_URL,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": self._client_id,
+                "client_secret": self._client_secret,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        self._token = data["access_token"]
+        expires_in = int(data.get("expires_in", 1800))
+        self._expires_at = time.monotonic() + expires_in - _TOKEN_REFRESH_MARGIN
+        logger.debug("OpenSky token refreshed (expires_in=%ds)", expires_in)
+        return self._token
+
+
 class OpenSkyAdapter(BaseAdapter):
     """Polls OpenSky Network and publishes aircraft TRACK entities."""
 
     MANIFEST = AdapterManifest(
         name="opensky",
-        version="1.0.0",
+        version="1.1.0",
         protocol=Protocol.ADSB,
         capabilities=[Capability.READ, Capability.SUBSCRIBE],
         entity_types=["TRACK"],
         description="Live ADS-B aircraft positions from the OpenSky Network",
         homepage="https://opensky-network.org",
-        optional_env=["OPENSKY_USERNAME", "OPENSKY_PASSWORD", "OPENSKY_BBOX"],
+        optional_env=["OPENSKY_CLIENT_ID", "OPENSKY_CLIENT_SECRET", "OPENSKY_BBOX"],
     )
 
     def __init__(
         self,
         poll_interval: float = float(os.getenv("OPENSKY_POLL_INTERVAL", "10")),
         bbox: Optional[str] = os.getenv("OPENSKY_BBOX", ""),
-        username: Optional[str] = os.getenv("OPENSKY_USERNAME"),
-        password: Optional[str] = os.getenv("OPENSKY_PASSWORD"),
+        client_id: Optional[str] = os.getenv("OPENSKY_CLIENT_ID"),
+        client_secret: Optional[str] = os.getenv("OPENSKY_CLIENT_SECRET"),
         **kwargs,
     ):
         super().__init__(device_id="opensky", **kwargs)
-        self.poll_interval = max(poll_interval, 5.0)  # OpenSky rate-limits below 5s
-        self.username = username
-        self.password = password
+        self.poll_interval = max(poll_interval, 5.0)
+        self._token_manager: Optional[_TokenManager] = None
+        if client_id and client_secret:
+            self._token_manager = _TokenManager(client_id, client_secret)
         self._bbox: Optional[Tuple[float, float, float, float]] = None
         self._stats = {"polls": 0, "aircraft": 0, "errors": 0}
 
@@ -79,8 +127,9 @@ class OpenSkyAdapter(BaseAdapter):
         return os.getenv("OPENSKY_ENABLED", "true").lower() == "true"
 
     async def run(self):
+        auth_mode = "OAuth2" if self._token_manager else "anonymous"
         logger.info(
-            f"OpenSky adapter running (interval={self.poll_interval}s, "
+            f"OpenSky adapter running (auth={auth_mode}, interval={self.poll_interval}s, "
             f"bbox={self._bbox or 'worldwide'})"
         )
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -99,8 +148,16 @@ class OpenSkyAdapter(BaseAdapter):
             params.update({"lamin": lat_min, "lomin": lon_min,
                            "lamax": lat_max, "lomax": lon_max})
 
-        auth = httpx.BasicAuth(self.username, self.password) if (self.username and self.password) else None
-        resp = await client.get("https://opensky-network.org/api/states/all", params=params, auth=auth)
+        headers: Dict[str, str] = {}
+        if self._token_manager:
+            token = await self._token_manager.get_token(client)
+            headers["Authorization"] = f"Bearer {token}"
+
+        resp = await client.get(
+            "https://opensky-network.org/api/states/all",
+            params=params,
+            headers=headers,
+        )
         resp.raise_for_status()
 
         states: List[list] = resp.json().get("states") or []
