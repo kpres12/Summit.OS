@@ -20,10 +20,10 @@ interface OpsMapViewProps {
 
 function markerColor(e: EntityData): string {
   switch (e.entity_type) {
-    case 'active': return '#00FF9C';
-    case 'alert': return '#FF3B3B';
-    case 'neutral': return 'rgba(200,230,201,0.6)';
-    default: return '#FFB300';
+    case 'active': return 'var(--accent)';
+    case 'alert': return 'var(--critical)';
+    case 'neutral': return 'var(--text-dim)';
+    default: return 'var(--warning)';
   }
 }
 
@@ -134,7 +134,7 @@ export default function OpsMapView({
         })()}
         {missionDrawMode && missionVertices.map((v, i) => (
           <Marker key={`mv-${i}`} longitude={v.lon} latitude={v.lat}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: i === 0 ? '#4FC3F7' : 'rgba(79,195,247,0.5)', border: '1px solid #4FC3F7' }} />
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: i === 0 ? 'var(--color-active)' : 'color-mix(in srgb, var(--color-active) 50%, transparent)', border: '1px solid var(--color-active)' }} />
           </Marker>
         ))}
 
@@ -172,8 +172,8 @@ export default function OpsMapView({
           <Marker key={`v-${i}`} longitude={v.lon} latitude={v.lat}>
             <div style={{
               width: '8px', height: '8px', borderRadius: '50%',
-              background: i === 0 ? '#FFB300' : '#FFB30080',
-              border: '1px solid #FFB300',
+              background: i === 0 ? 'var(--warning)' : 'color-mix(in srgb, var(--warning) 50%, transparent)',
+              border: '1px solid var(--warning)',
             }} />
           </Marker>
         ))}
@@ -220,9 +220,9 @@ export default function OpsMapView({
             className="text-[10px] px-2 py-1"
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: savedFeedback.startsWith('SAVE FAILED') ? '#FF3B3B' : '#00FF9C',
-              background: '#0D1210',
-              border: `1px solid ${savedFeedback.startsWith('SAVE FAILED') ? 'rgba(255,59,59,0.4)' : 'rgba(0,255,156,0.4)'}`,
+              color: savedFeedback.startsWith('SAVE FAILED') ? 'var(--critical)' : 'var(--accent)',
+              background: 'var(--background-panel)',
+              border: `1px solid ${savedFeedback.startsWith('SAVE FAILED') ? 'color-mix(in srgb, var(--critical) 40%, transparent)' : 'var(--accent-30)'}`,
             }}
           >
             {savedFeedback}
@@ -239,13 +239,13 @@ export default function OpsMapView({
               className="text-[10px] px-2 py-1 outline-none"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                background: '#0D1210',
-                border: '1px solid rgba(255,179,0,0.4)',
-                color: '#FFB300',
+                background: 'var(--background-panel)',
+                border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)',
+                color: 'var(--warning)',
                 width: '140px',
               }}
             />
-            <div className="text-[9px] px-2" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(255,179,0,0.7)' }}>
+            <div className="text-[9px] px-2" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'color-mix(in srgb, var(--warning) 70%, transparent)' }}>
               {vertices.length < 3 ? `CLICK TO ADD POINTS (${vertices.length}/3 min)` : 'DOUBLE-CLICK TO CLOSE'}
             </div>
             <div className="flex gap-1">
@@ -255,7 +255,7 @@ export default function OpsMapView({
                   className="text-[10px] px-2 py-1 tracking-wider"
                   style={{
                     fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                    color: '#080C0A', background: '#FFB300', border: 'none', cursor: 'pointer',
+                    color: 'var(--background)', background: 'var(--warning)', border: 'none', cursor: 'pointer',
                   }}
                 >
                   SAVE
@@ -266,7 +266,7 @@ export default function OpsMapView({
                 className="text-[10px] px-2 py-1 tracking-wider"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: '#FF3B3B', background: 'transparent', border: '1px solid rgba(255,59,59,0.4)', cursor: 'pointer',
+                  color: 'var(--critical)', background: 'transparent', border: '1px solid color-mix(in srgb, var(--critical) 40%, transparent)', cursor: 'pointer',
                 }}
               >
                 CANCEL
@@ -281,9 +281,9 @@ export default function OpsMapView({
             className="text-[10px] px-2 py-1 tracking-wider"
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: '#FFB300',
-              background: '#0D1210',
-              border: '1px solid rgba(255,179,0,0.3)',
+              color: 'var(--warning)',
+              background: 'var(--background-panel)',
+              border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
               cursor: 'pointer',
             }}
             title="Draw geofence polygon"

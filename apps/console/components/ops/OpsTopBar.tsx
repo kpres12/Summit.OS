@@ -94,7 +94,7 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
         {/* Center — absolute */}
         <div
           className="absolute left-1/2 -translate-x-1/2 text-xs"
-          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)' }}
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
         >
           {utcString(now)}
         </div>
@@ -155,8 +155,8 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                 alignItems:    'center',
                 gap:           '6px',
                 padding:       '3px 8px',
-                background:    menuOpen ? 'rgba(0,255,156,0.08)' : 'transparent',
-                border:        `1px solid ${menuOpen ? 'rgba(0,255,156,0.4)' : 'rgba(0,255,156,0.15)'}`,
+                background:    menuOpen ? 'var(--accent-5)' : 'transparent',
+                border:        `1px solid ${menuOpen ? 'var(--accent-30)' : 'var(--border)'}`,
                 cursor:        'pointer',
                 transition:    'all 150ms',
               }}
@@ -165,13 +165,13 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                 width:        '18px',
                 height:       '18px',
                 borderRadius: '50%',
-                background:   'rgba(0,255,156,0.15)',
-                border:       '1px solid rgba(0,255,156,0.3)',
+                background:   'var(--accent-15)',
+                border:       '1px solid var(--accent-30)',
                 display:      'flex',
                 alignItems:   'center',
                 justifyContent: 'center',
                 fontSize:     '8px',
-                color:        '#00FF9C',
+                color:        'var(--accent)',
                 fontFamily:   'var(--font-orbitron), Orbitron, sans-serif',
                 flexShrink:   0,
               }}>
@@ -181,13 +181,13 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                 <span style={{
                   fontFamily:    'var(--font-ibm-plex-mono), monospace',
                   fontSize:      '9px',
-                  color:         'rgba(200,230,201,0.5)',
+                  color:         'var(--text-dim)',
                   letterSpacing: '0.1em',
                 }}>
                   {topRole}
                 </span>
               )}
-              <span style={{ color: 'rgba(0,255,156,0.4)', fontSize: '8px' }}>▾</span>
+              <span style={{ color: 'var(--accent-30)', fontSize: '8px' }}>▾</span>
             </button>
 
             {/* Dropdown */}
@@ -197,15 +197,15 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                 top:        'calc(100% + 4px)',
                 right:      0,
                 width:      '220px',
-                background: '#0D1210',
-                border:     '1px solid rgba(0,255,156,0.2)',
+                background: 'var(--background-panel)',
+                border:     '1px solid var(--accent-15)',
                 boxShadow:  '0 8px 32px rgba(0,0,0,0.6)',
                 zIndex:     100,
               }}>
                 {/* User info */}
                 <div style={{
                   padding:      '12px 14px',
-                  borderBottom: '1px solid rgba(0,255,156,0.08)',
+                  borderBottom: '1px solid var(--accent-5)',
                 }}>
                   <div style={{
                     fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -222,7 +222,7 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                     <div style={{
                       fontFamily:    'var(--font-ibm-plex-mono), monospace',
                       fontSize:      '8px',
-                      color:         '#00FF9C',
+                      color:         'var(--accent)',
                       letterSpacing: '0.1em',
                     }}>
                       {roleLabel(topRole)}
@@ -236,7 +236,7 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                   label="SECURITY SETTINGS"
                   onClick={() => { setMenuOpen(false); setShowSecurity(true); }}
                 />
-                <div style={{ borderTop: '1px solid rgba(0,255,156,0.06)', margin: '4px 0' }} />
+                <div style={{ borderTop: '1px solid var(--accent-5)', margin: '4px 0' }} />
                 <MenuItem
                   icon="⏻"
                   label="SIGN OUT"
@@ -340,29 +340,23 @@ function MenuItem({ icon, label, onClick, danger = false }: {
   onClick: () => void;
   danger?: boolean;
 }) {
-  const [hovered, setHovered] = useState(false);
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={danger ? 'menu-item-danger' : 'menu-item'}
       style={{
         width:      '100%',
         display:    'flex',
         alignItems: 'center',
         gap:        '10px',
         padding:    '9px 14px',
-        background: hovered ? (danger ? 'rgba(255,59,59,0.06)' : 'rgba(0,255,156,0.04)') : 'transparent',
         border:     'none',
-        color:      danger
-          ? (hovered ? '#FF3B3B' : 'rgba(255,59,59,0.6)')
-          : (hovered ? '#00FF9C' : 'rgba(200,230,201,0.5)'),
         fontFamily:    'var(--font-ibm-plex-mono), monospace',
         fontSize:      '9px',
         letterSpacing: '0.15em',
         cursor:        'pointer',
         textAlign:     'left',
-        transition:    'all 120ms',
+        background:    'transparent',
       }}
     >
       <span style={{ fontSize: '11px' }}>{icon}</span>
