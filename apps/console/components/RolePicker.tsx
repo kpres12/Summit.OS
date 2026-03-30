@@ -58,7 +58,7 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center"
-      style={{ background: '#080C0A' }}
+      style={{ background: 'var(--background)' }}
     >
       {/* Wordmark */}
       <div className="mb-2 text-center">
@@ -66,15 +66,15 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
           className="text-3xl font-bold tracking-widest"
           style={{
             fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-            color: '#00FF9C',
-            textShadow: '0 0 20px rgba(0,255,156,0.4), 0 0 40px rgba(0,255,156,0.2)',
+            color: 'var(--accent)',
+            textShadow: '0 0 20px var(--accent-30), 0 0 40px var(--accent-15)',
           }}
         >
           SUMMIT.OS
         </h1>
         <div
           className="mt-1 text-xs tracking-[0.3em]"
-          style={{ color: 'rgba(200,230,201,0.45)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+          style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
         >
           SELECT OPERATOR MODE
         </div>
@@ -83,7 +83,7 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
       {/* Separator */}
       <div
         className="w-64 my-8"
-        style={{ height: '1px', background: 'rgba(0,255,156,0.15)' }}
+        style={{ height: '1px', background: 'var(--accent-15)' }}
       />
 
       {/* Role cards — only what this user can access */}
@@ -96,15 +96,15 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
       ) : (
         <div style={{
           padding:    '24px 32px',
-          background: 'rgba(255,59,59,0.06)',
-          border:     '1px solid rgba(255,59,59,0.2)',
+          background: 'color-mix(in srgb, var(--critical) 6%, transparent)',
+          border:     '1px solid color-mix(in srgb, var(--critical) 20%, transparent)',
           fontFamily: 'var(--font-ibm-plex-mono), monospace',
           fontSize:   '11px',
-          color:      '#FF3B3B',
+          color:      'var(--critical)',
           textAlign:  'center',
         }}>
           ACCESS DENIED — NO ROLES ASSIGNED<br />
-          <span style={{ color: 'rgba(200,230,201,0.3)', fontSize: '9px', marginTop: '6px', display: 'block' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '9px', marginTop: '6px', display: 'block' }}>
             Contact your administrator to be assigned a role.
           </span>
         </div>
@@ -119,15 +119,15 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
           gap:        '10px',
           fontFamily: 'var(--font-ibm-plex-mono), monospace',
           fontSize:   '9px',
-          color:      'rgba(200,230,201,0.3)',
+          color:      'var(--text-muted)',
         }}>
           <span>{user.email}</span>
           {topRole && (
             <span style={{
               padding:       '2px 8px',
-              background:    'rgba(0,255,156,0.06)',
-              border:        '1px solid rgba(0,255,156,0.2)',
-              color:         '#00FF9C',
+              background:    'var(--accent-5)',
+              border:        '1px solid var(--accent-15)',
+              color:         'var(--accent)',
               letterSpacing: '0.1em',
             }}>
               {roleLabel(topRole)}
@@ -139,7 +139,7 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
       {/* Footer */}
       <div
         className="mt-8 text-[10px] tracking-widest"
-        style={{ color: 'rgba(200,230,201,0.25)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+        style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
       >
         AUTONOMOUS SYSTEMS COORDINATION PLATFORM
       </div>
@@ -148,37 +148,26 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
 }
 
 function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role) => void }) {
-  const [hovered, setHovered] = React.useState(false);
-
   return (
     <button
       onClick={() => onSelect(card.role)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="flex flex-col items-center text-left transition-all duration-150 cursor-pointer"
-      style={{
-        width: '200px',
-        padding: '24px 20px',
-        background: hovered ? 'rgba(0,255,156,0.05)' : '#0D1210',
-        border: `1px solid ${hovered ? 'rgba(0,255,156,0.6)' : 'rgba(0,255,156,0.15)'}`,
-        boxShadow: hovered ? '0 0 20px rgba(0,255,156,0.15), inset 0 0 20px rgba(0,255,156,0.03)' : 'none',
-        outline: 'none',
-      }}
+      className="role-card flex flex-col items-center text-left cursor-pointer"
+      style={{ width: '200px', padding: '24px 20px', outline: 'none' }}
     >
       {/* Icon */}
       <div
-        className="text-3xl mb-4"
-        style={{ color: hovered ? '#00FF9C' : 'rgba(200,230,201,0.3)' }}
+        className="role-card-icon text-3xl mb-4"
+        style={{ color: 'var(--text-muted)' }}
       >
         {card.icon}
       </div>
 
       {/* Role label */}
       <div
-        className="text-lg font-bold tracking-widest mb-1"
+        className="role-card-label text-lg font-bold tracking-widest mb-1"
         style={{
           fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: hovered ? '#00FF9C' : 'rgba(200,230,201,0.7)',
+          color: 'var(--text-dim)',
         }}
       >
         {card.label}
@@ -186,10 +175,10 @@ function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role
 
       {/* Subtitle */}
       <div
-        className="text-[11px] tracking-wider mb-4"
+        className="role-card-subtitle text-[11px] tracking-wider mb-4"
         style={{
           fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: hovered ? 'rgba(0,255,156,0.7)' : 'rgba(200,230,201,0.35)',
+          color: 'var(--text-muted)',
         }}
       >
         {card.subtitle}
@@ -197,8 +186,8 @@ function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role
 
       {/* Separator */}
       <div
-        className="w-full mb-4"
-        style={{ height: '1px', background: hovered ? 'rgba(0,255,156,0.3)' : 'rgba(0,255,156,0.1)' }}
+        className="role-card-divider w-full mb-4"
+        style={{ height: '1px', background: 'var(--accent-10)' }}
       />
 
       {/* Description */}
@@ -206,7 +195,7 @@ function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role
         className="text-[11px] leading-relaxed text-center"
         style={{
           fontFamily: 'var(--font-ibm-plex-mono), monospace',
-          color: 'rgba(200,230,201,0.45)',
+          color: 'var(--text-dim)',
         }}
       >
         {card.description}

@@ -313,6 +313,55 @@ a:focus-visible {
   animation: crt-band 8s linear infinite;
 }
 
+/* ── User dropdown menu items ────────────────────────────────────────────── */
+.menu-item {
+  color: var(--text-dim);
+  transition: background 120ms, color 120ms;
+}
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--accent-5);
+  color: var(--accent);
+}
+.menu-item-danger {
+  color: color-mix(in srgb, var(--critical) 60%, transparent);
+  transition: background 120ms, color 120ms;
+}
+.menu-item-danger:hover,
+.menu-item-danger:focus-visible {
+  background: color-mix(in srgb, var(--critical) 6%, transparent);
+  color: var(--critical);
+}
+
+/* ── Role picker cards ───────────────────────────────────────────────────── */
+.role-card {
+  background: var(--background-card);
+  border: 1px solid var(--border);
+  transition: background 150ms, border-color 150ms, box-shadow 150ms;
+}
+.role-card:hover,
+.role-card:focus-visible {
+  background: var(--accent-5);
+  border-color: var(--accent-50);
+  box-shadow: 0 0 20px var(--accent-15), inset 0 0 20px var(--accent-5);
+}
+.role-card:hover .role-card-icon,
+.role-card:focus-visible .role-card-icon {
+  color: var(--accent);
+}
+.role-card:hover .role-card-label,
+.role-card:focus-visible .role-card-label {
+  color: var(--accent);
+}
+.role-card:hover .role-card-subtitle,
+.role-card:focus-visible .role-card-subtitle {
+  color: var(--accent-50);
+}
+.role-card:hover .role-card-divider,
+.role-card:focus-visible .role-card-divider {
+  background: var(--accent-30) !important;
+}
+
 /* ── Pip-Boy: Amber/red alert pulse for critical severity ────────────────── */
 @keyframes severity-pulse {
   0%, 100% { text-shadow: 0 0 4px var(--critical); }
