@@ -29,7 +29,7 @@ const PROTOCOLS = [
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function StatusDot({ status }: { status: AdapterStatus['status'] }) {
-  const color = status === 'online' ? '#00FF9C' : status === 'error' ? '#FF3B3B' : 'rgba(200,230,201,0.3)';
+  const color = status === 'online' ? 'var(--accent)' : status === 'error' ? 'var(--critical)' : 'var(--text-muted)';
   return (
     <div
       style={{
@@ -50,8 +50,8 @@ function AdapterCard({ adapter }: { adapter: AdapterStatus }) {
     <div
       style={{
         padding: '10px 12px',
-        background: adapter.status === 'online' ? 'rgba(0,255,156,0.03)' : 'rgba(0,0,0,0.2)',
-        borderLeft: `2px solid ${adapter.status === 'online' ? 'rgba(0,255,156,0.4)' : 'rgba(200,230,201,0.1)'}`,
+        background: adapter.status === 'online' ? 'var(--accent-5)' : 'rgba(0,0,0,0.2)',
+        borderLeft: `2px solid ${adapter.status === 'online' ? 'var(--accent-30)' : 'var(--grid-line)'}`,
         marginBottom: 6,
       }}
     >
@@ -59,7 +59,7 @@ function AdapterCard({ adapter }: { adapter: AdapterStatus }) {
         <StatusDot status={adapter.status} />
         <span style={{
           fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: adapter.status === 'online' ? '#00FF9C' : 'rgba(200,230,201,0.4)',
+          color: adapter.status === 'online' ? 'var(--accent)' : 'var(--text-dim)',
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '0.1em',
@@ -69,7 +69,7 @@ function AdapterCard({ adapter }: { adapter: AdapterStatus }) {
         <span style={{
           marginLeft: 'auto',
           fontFamily: 'var(--font-ibm-plex-mono), monospace',
-          color: 'rgba(200,230,201,0.3)',
+          color: 'var(--text-muted)',
           fontSize: 9,
         }}>
           {adapter.status === 'online' ? `${adapter.entity_count} entities` : 'offline'}
@@ -185,13 +185,13 @@ export default function OpsHardware() {
         <div className="flex items-center gap-2">
           <span style={{
             fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-            color: '#00FF9C', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+            color: 'var(--accent)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
           }}>
             HARDWARE
           </span>
           <span style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            color: 'rgba(200,230,201,0.4)', fontSize: 9,
+            color: 'var(--text-dim)', fontSize: 9,
           }}>
             {onlineCount} online
           </span>
@@ -200,8 +200,8 @@ export default function OpsHardware() {
           onClick={() => { setShowForm(f => !f); setFeedback(null); }}
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            fontSize: 9, color: showForm ? '#FF3B3B' : '#00FF9C',
-            background: 'none', border: `1px solid ${showForm ? 'rgba(255,59,59,0.3)' : 'rgba(0,255,156,0.3)'}`,
+            fontSize: 9, color: showForm ? 'var(--critical)' : 'var(--accent)',
+            background: 'none', border: `1px solid ${showForm ? 'color-mix(in srgb, var(--critical) 30%, transparent)' : 'var(--accent-30)'}`,
             padding: '3px 8px', cursor: 'pointer', letterSpacing: '0.1em',
           }}
         >
@@ -216,15 +216,15 @@ export default function OpsHardware() {
             onSubmit={handleAdd}
             style={{
               padding: '12px',
-              borderBottom: '1px solid rgba(0,255,156,0.15)',
-              background: 'rgba(0,255,156,0.02)',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--accent-5)',
             }}
           >
             {/* Protocol selector */}
             <div style={{ marginBottom: 8 }}>
               <div style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: 'rgba(200,230,201,0.45)', fontSize: 9,
+                color: 'var(--text-dim)', fontSize: 9,
                 letterSpacing: '0.1em', marginBottom: 4,
               }}>
                 HARDWARE TYPE
@@ -237,9 +237,9 @@ export default function OpsHardware() {
                     onClick={() => { setProtocol(p.id); setConnection(''); }}
                     style={{
                       textAlign: 'left', padding: '5px 8px',
-                      background: protocol === p.id ? 'rgba(0,255,156,0.08)' : 'transparent',
-                      border: `1px solid ${protocol === p.id ? 'rgba(0,255,156,0.4)' : 'rgba(0,255,156,0.1)'}`,
-                      color: protocol === p.id ? '#00FF9C' : 'rgba(200,230,201,0.5)',
+                      background: protocol === p.id ? 'var(--accent-5)' : 'transparent',
+                      border: `1px solid ${protocol === p.id ? 'var(--accent-30)' : 'var(--accent-10)'}`,
+                      color: protocol === p.id ? 'var(--accent)' : 'var(--text-dim)',
                       fontFamily: 'var(--font-ibm-plex-mono), monospace',
                       fontSize: 10, cursor: 'pointer',
                     }}
@@ -254,7 +254,7 @@ export default function OpsHardware() {
             <div style={{ marginBottom: 8 }}>
               <div style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: 'rgba(200,230,201,0.45)', fontSize: 9,
+                color: 'var(--text-dim)', fontSize: 9,
                 letterSpacing: '0.1em', marginBottom: 4,
               }}>
                 NAME (optional)
@@ -266,8 +266,8 @@ export default function OpsHardware() {
                 placeholder={`e.g. Field Drone Alpha`}
                 style={{
                   width: '100%', background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(0,255,156,0.2)',
-                  color: '#00FF9C', padding: '5px 8px',
+                  border: '1px solid var(--accent-15)',
+                  color: 'var(--accent)', padding: '5px 8px',
                   fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 10,
                   outline: 'none',
                 }}
@@ -279,7 +279,7 @@ export default function OpsHardware() {
               <div style={{ marginBottom: 10 }}>
                 <div style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: 'rgba(200,230,201,0.45)', fontSize: 9,
+                  color: 'var(--text-dim)', fontSize: 9,
                   letterSpacing: '0.1em', marginBottom: 4,
                 }}>
                   CONNECTION
@@ -305,8 +305,8 @@ export default function OpsHardware() {
               disabled={adding}
               style={{
                 width: '100%', padding: '7px',
-                background: adding ? 'rgba(0,255,156,0.3)' : '#00FF9C',
-                color: '#080C0A', border: 'none', cursor: adding ? 'wait' : 'pointer',
+                background: adding ? 'var(--accent-30)' : 'var(--accent)',
+                color: 'var(--background)', border: 'none', cursor: adding ? 'wait' : 'pointer',
                 fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.2em',
               }}
@@ -318,8 +318,8 @@ export default function OpsHardware() {
               <div style={{
                 marginTop: 8, padding: '5px 8px',
                 fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 10,
-                color: feedback.ok ? '#00FF9C' : '#FF3B3B',
-                border: `1px solid ${feedback.ok ? 'rgba(0,255,156,0.2)' : 'rgba(255,59,59,0.2)'}`,
+                color: feedback.ok ? 'var(--accent)' : 'var(--critical)',
+                border: `1px solid ${feedback.ok ? 'var(--accent-15)' : 'color-mix(in srgb, var(--critical) 20%, transparent)'}`,
               }}>
                 {feedback.ok ? '✓ ' : '✗ '}{feedback.msg}
               </div>
@@ -332,7 +332,7 @@ export default function OpsHardware() {
           {adapters.length === 0 ? (
             <div style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: 'rgba(200,230,201,0.25)', fontSize: 10,
+              color: 'var(--text-muted)', fontSize: 10,
               textAlign: 'center', padding: '24px 0',
             }}>
               No hardware connected.<br />

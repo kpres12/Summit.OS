@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { connectWebSocket } from '@/lib/api';
+import { domainTag, entityTypeColor } from '@/lib/format';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -13,26 +14,6 @@ const EXAMPLE_COMMANDS = [
   'status drone-01',
   'deploy sensor array bravo',
 ];
-
-function domainTag(domain: string): string {
-  switch (domain) {
-    case 'aerial': return 'UAV';
-    case 'ground': return 'GND';
-    case 'maritime': return 'MAR';
-    case 'fixed': return 'FIX';
-    case 'sensor': return 'SEN';
-    default: return '???';
-  }
-}
-
-function entityTypeColor(type: string): string {
-  switch (type) {
-    case 'active': return '#00FF9C';
-    case 'alert': return '#FF3B3B';
-    case 'neutral': return 'rgba(200,230,201,0.45)';
-    default: return '#FFB300';
-  }
-}
 
 interface DetectionChip {
   id: string;
@@ -198,17 +179,19 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
 
   return (
     <div
+      role="contentinfo"
+      aria-label="Status bar"
       className="flex-none flex items-stretch"
       style={{
         height: '52px',
-        background: '#0D1210',
-        borderTop: '1px solid rgba(0,255,156,0.15)',
+        background: 'var(--background-panel)',
+        borderTop: '1px solid var(--border)',
       }}
     >
       {/* LEFT: Detection feed */}
       <div
         className="flex-none flex items-center overflow-hidden"
-        style={{ width: '35%', borderRight: '1px solid rgba(0,255,156,0.1)' }}
+        style={{ width: '35%', borderRight: '1px solid var(--accent-10)' }}
       >
         <div
           ref={feedRef}
@@ -218,7 +201,7 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
           {chips.length === 0 && (
             <span
               className="text-[10px] whitespace-nowrap"
-              style={{ color: 'rgba(200,230,201,0.25)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
             >
               DETECTION FEED OFFLINE
             </span>
@@ -252,18 +235,23 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
       </div>
 
       {/* CENTER: Command input */}
-      <div className="flex-1 flex items-center px-3" style={{ borderRight: '1px solid rgba(0,255,156,0.1)' }}>
+      <div className="flex-1 flex items-center px-3" style={{ borderRight: '1px solid var(--accent-10)' }}>
         <form onSubmit={handleSubmit} className="flex items-center gap-2 w-full">
           <span
             className="text-sm font-bold"
-            style={{ color: '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+            style={{ color: 'var(--accent)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
           >
             &gt;
           </span>
           {cmdFeedback ? (
             <span
               className="flex-1 text-xs"
-              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: cmdFeedback.startsWith('ERR') || cmdFeedback === 'SERVER UNREACHABLE' ? '#FF3B3B' : '#00FF9C' }}
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: (cmdFeedback.startsWith('ERR') || cmdFeedback === 'SERVER UNREACHABLE')
+                  ? 'var(--critical)'
+                  : 'var(--accent)',
+              }}
             >
               {cmdFeedback}
             </span>
@@ -274,13 +262,14 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
               onChange={(e) => setCommand(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={EXAMPLE_COMMANDS[placeholderIdx]}
+              aria-label="Mission command input"
               className="flex-1 text-xs outline-none"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: '#00FF9C',
+                color: 'var(--accent)',
                 background: 'transparent',
                 border: 'none',
-                caretColor: '#00FF9C',
+                caretColor: 'var(--accent)',
               }}
             />
           )}
@@ -295,19 +284,19 @@ export default function OpsBottomBar({ onInvestigateEntity }: OpsBottomBarProps)
         <div className="flex flex-col gap-0.5">
           <span
             className="text-[10px]"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
           >
             {activeEntities.length} ACTIVE
           </span>
           <span
             className="text-[10px]"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
           >
             {entityCount} ENTITIES
           </span>
           <span
             className="text-[10px]"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.35)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
           >
             UP {formatUptime(uptimeSecs)}
           </span>

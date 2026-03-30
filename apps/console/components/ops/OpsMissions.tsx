@@ -21,7 +21,7 @@ function MissionTimeline({ status }: { status: string }) {
         const done = !isFailed && i < activeIdx;
         const current = !isFailed && i === activeIdx;
         const failed = isFailed && i === (currentIdx >= 0 ? currentIdx : 2);
-        const color = failed ? '#FF3B3B' : done || current ? '#00FF9C' : 'rgba(200,230,201,0.15)';
+        const color = failed ? 'var(--critical)' : done || current ? 'var(--accent)' : 'var(--grid-line)';
         return (
           <React.Fragment key={phase}>
             <div
@@ -37,14 +37,14 @@ function MissionTimeline({ status }: { status: string }) {
               }}
             />
             {i < PHASE_ORDER.length - 1 && (
-              <div style={{ flex: 1, height: '1px', background: done ? '#00FF9C40' : 'rgba(200,230,201,0.1)', minWidth: '4px' }} />
+              <div style={{ flex: 1, height: '1px', background: done ? 'var(--accent-30)' : 'var(--accent-10)', minWidth: '4px' }} />
             )}
           </React.Fragment>
         );
       })}
       <span
         className="ml-2 text-[8px]"
-        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: isFailed ? '#FF3B3B' : 'rgba(200,230,201,0.35)', whiteSpace: 'nowrap' }}
+        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: isFailed ? 'var(--critical)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}
       >
         {isFailed ? 'FAILED' : PHASE_ORDER[activeIdx] || s}
       </span>
@@ -123,7 +123,7 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
               {/* ID */}
               <div
                 className="text-[9px] mb-1"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.35)' }}
+                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
               >
                 {mission.mission_id.slice(0, 8)}
               </div>
@@ -135,7 +135,7 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
                     <div
                       key={i}
                       className="text-[10px] leading-tight"
-                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)' }}
+                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
                     >
                       · {obj.slice(0, 50)}
                     </div>
@@ -150,7 +150,7 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
               <div className="flex items-center justify-between mt-1">
                 <div
                   className="text-[9px]"
-                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.3)' }}
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
                 >
                 {ageFromISO(mission.created_at)}
                 </div>
@@ -160,7 +160,7 @@ export default function OpsMissions({ onReplay }: OpsMissionsProps) {
                     style={{
                       fontFamily: 'var(--font-ibm-plex-mono), monospace',
                       fontSize: 9,
-                      color: '#FFB300',
+                      color: 'var(--warning)',
                       background: 'transparent',
                       border: '1px solid rgba(255,179,0,0.3)',
                       padding: '2px 6px',
