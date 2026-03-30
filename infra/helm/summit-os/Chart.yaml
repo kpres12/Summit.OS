@@ -1,14 +1,22 @@
 apiVersion: v2
 name: summit-os
-description: Summit.OS Distributed Intelligence Fabric
+description: Summit.OS — open source autonomous coordination platform for civilian emergency response, search & rescue, and commercial UAV fleets.
 type: application
 version: 0.1.0
-appVersion: "1.0.0"
+appVersion: "0.1.0"
+
 keywords:
-  - intelligence
-  - fusion
-  - mesh
-  - autonomy
-  - c2
+  - autonomous
+  - uav
+  - drone
+  - emergency-response
+  - sar
+  - coordination
+
+home: https://github.com/BigMT-Ai/Summit.OS
+sources:
+  - https://github.com/BigMT-Ai/Summit.OS
+
 maintainers:
-  - name: Summit.OS Team
+  - name: BigMT.ai
+    url: https://bigmt.ai

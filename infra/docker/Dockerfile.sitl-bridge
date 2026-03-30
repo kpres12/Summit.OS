@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# dronekit-sitl bundles the ArduPilot SITL binary for x86_64
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libffi-dev libssl-dev gcc git && \
+    pip install --no-cache-dir \
+        dronekit-sitl \
+        dronekit \
+        pymavlink \
+        httpx && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY scripts/sitl_bridge.py ./scripts/
+
+ENV PYTHONPATH=/app
+ENV SITL_DRONE_COUNT=3
+
+CMD ["python", "scripts/sitl_bridge.py", \
+     "--count", "3", \
+     "--name", "SITL"]

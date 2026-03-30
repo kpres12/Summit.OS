@@ -78,7 +78,7 @@ Summit.OS is the open-source alternative. Same architecture. Built for the civil
 
 **Multi-sensor fusion** — Kalman EKF track fusion across camera, ADS-B, AIS, MAVLink, CoT/ATAK, and any custom sensor. M-of-N track confirmation. Cross-camera re-identification.
 
-**Autonomous mission dispatch** — When a detection arrives, a trained ML model (GradientBoosting, ONNX, <1ms inference) decides the mission type and dispatches immediately. Trained on 108,000 real-world labeled events from NASA FIRMS, NOAA Storm Events, and GBIF. No LLM required. Rules-based fallback always active.
+**Autonomous mission dispatch** — When a detection arrives, a trained ML model (GradientBoosting, ONNX, <1ms inference) decides the mission type and dispatches immediately. Trained on 87,160 real-world labeled events (NASA FIRMS, NOAA Storm Events, GBIF) plus 20,936 synthetic examples covering edge-case mission types. No LLM required. Rules-based fallback always active.
 
 **Self-improving AI** — Retrain the mission planner on your own operator decisions with one command:
 ```bash
@@ -172,11 +172,11 @@ Summit.OS ships with two trained ML models in `packages/ml/models/`:
 | `mission_classifier.onnx` | Maps (class, confidence, location) → mission type | ~200 KB | <1ms |
 | `risk_scorer.onnx` | Scores observation severity (LOW → CRITICAL) | ~150 KB | <1ms |
 
-Both were trained on real-world data:
-- **35,928** NASA FIRMS active fire detections (global, 7-day)
-- **49,869** NOAA Storm Events (tornadoes, floods, storm surge, 2018–2023)
-- **1,363** GBIF wildlife observations
-- **20,936** synthetic examples covering SEARCH, INSPECT, DELIVER, ORBIT
+Training data breakdown:
+- **35,928** NASA FIRMS active fire detections (global, 7-day) — real-world
+- **49,869** NOAA Storm Events (tornadoes, floods, storm surge, 2018–2023) — real-world
+- **1,363** GBIF wildlife observations — real-world
+- **20,936** synthetic examples covering SEARCH, INSPECT, DELIVER, ORBIT — generated
 
 **Supported mission types:**
 
@@ -340,7 +340,13 @@ Migration files are in `apps/fabric/alembic/versions/`. Every schema change need
 docker compose -f infra/docker/docker-compose.yml up --build -d
 ```
 
-**Cloud:** Any Kubernetes cluster. Helm chart is on the roadmap — contributions welcome.
+**Cloud:** Any Kubernetes cluster. A Helm chart is available at `infra/helm/summit-os/`:
+```bash
+helm install summit ./infra/helm/summit-os \
+  --set secrets.postgresPassword=$(openssl rand -hex 32) \
+  --set secrets.fabricJwtSecret=$(openssl rand -hex 32) \
+  --set secrets.fieldEncryptionKey=$(openssl rand -base64 32)
+```
 
 **Air-gapped / edge:** All ML inference runs locally. No external API calls required. Designed to operate on field hardware with no internet connection.
 
@@ -428,7 +434,7 @@ Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the co
 | Observability stack | ✓ Self-host | ✓ Self-host or managed |
 | SLA | — | 99.9% + 4h response |
 | Auth (OIDC/RBAC) | ✓ Self-configure | ✓ SSO + MFA enforced |
-| Multi-org tenancy | — | ✓ Row-level isolation |
+| Multi-org tenancy | ✓ org_id namespacing | ✓ Row-level isolation + admin UI |
 | Custom model training | DIY | ✓ On your operator data |
 | Hardware integration support | Community | ✓ Dedicated |
 | Compliance (SOC 2 / ISO 27001) | Controls built-in, self-certify | ✓ Audit support |
@@ -438,12 +444,14 @@ Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the co
 
 ## Roadmap
 
-- [ ] Helm chart for Kubernetes deployment _(not yet available — Docker Compose is the supported deployment path for v0.1.0)_
+- [x] Helm chart for Kubernetes deployment — available at `infra/helm/summit-os/`
+- [x] SITL testing environment — `docker compose -f infra/docker/docker-compose.sitl.yml up`
+- [x] Pre-built adapters: Skydio, Autel, Parrot — see `adapters/skydio/`, `adapters/autel/`, `adapters/parrot/`
 - [ ] USCG SAR data integration (SEARCH model improvement)
 - [ ] Behavior tree editor in the console (visual mission programming)
-- [ ] Hardware-in-the-loop SITL testing environment
+- [ ] Hardware-in-the-loop (HITL) testing with real flight controllers
+- [ ] Reach RTK adapter (cm-precision GPS for precision landing)
 - [ ] Managed hosting via BigMT.ai (self-hosted is the supported path for v0.1.0)
-- [ ] Pre-built adapters: Skydio, Autel, Parrot, Reach RTK
 - [ ] Federated learning — improve shared base models without sharing raw data
 
 ---

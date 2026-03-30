@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY packages/simulation/ ./packages/simulation/
+COPY packages/entities/ ./packages/entities/
+COPY scripts/seed_demo.py ./scripts/
+COPY scripts/publish_smoke_detection.py ./scripts/
+COPY requirements_mock.txt .
+
+RUN pip install --no-cache-dir httpx asyncio
+
+ENV PYTHONPATH=/app
+
+CMD ["python", "-c", "\
+import asyncio, os, sys; \
+sys.path.insert(0, '/app'); \
+from packages.simulation.scenarios import border_patrol_scenario, airspace_monitoring_scenario, convoy_escort_scenario; \
+scenario_map = {'border_patrol': border_patrol_scenario, 'airspace': airspace_monitoring_scenario, 'convoy': convoy_escort_scenario}; \
+scenario_fn = scenario_map.get(os.getenv('SCENARIO', 'border_patrol'), border_patrol_scenario); \
+sim = scenario_fn(); \
+print(f'Injector: running scenario={os.getenv(\"SCENARIO\", \"border_patrol\")}'); \
+asyncio.run(sim.run()) \
+"]
