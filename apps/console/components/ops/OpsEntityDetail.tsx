@@ -75,33 +75,32 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
   return (
     <div
       className="h-full flex flex-col overflow-hidden"
-      style={{ background: '#0D1210' }}
+      style={{ background: 'var(--background-panel)' }}
     >
       {/* Header */}
       <div
         className="flex-none px-4 py-3 flex items-start justify-between"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid var(--border)' }}
       >
         <div>
           <div
             className="text-sm font-bold tracking-wide"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
           >
             {displayName}
           </div>
           <div
             className="text-[10px] mt-0.5"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.35)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
           >
             {entity.entity_id.slice(0, 16)}
           </div>
         </div>
         <button
           onClick={onClose}
-          className="text-base transition-colors"
-          style={{ color: 'rgba(200,230,201,0.4)', background: 'none', border: 'none', cursor: 'pointer' }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#FF3B3B')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,230,201,0.4)')}
+          aria-label="Close entity detail"
+          className="summit-btn text-base"
+          style={{ color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           ✕
         </button>
@@ -110,7 +109,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
       {/* ASSIGN — primary action */}
       <div
         className="flex-none px-4 py-3"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid var(--border)' }}
       >
         <button
           onClick={handleDispatch}
@@ -118,17 +117,11 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
           className="w-full py-3 text-sm font-bold tracking-widest transition-all"
           style={{
             fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-            color: dispatched ? '#080C0A' : '#080C0A',
-            background: dispatched ? '#00CC74' : '#00FF9C',
+            color: 'var(--background)',
+            background: dispatched ? 'var(--accent-dim)' : 'var(--accent)',
             border: 'none',
             cursor: dispatched ? 'default' : 'pointer',
             letterSpacing: '0.2em',
-          }}
-          onMouseEnter={(e) => {
-            if (!dispatched) (e.currentTarget as HTMLButtonElement).style.background = '#00CC74';
-          }}
-          onMouseLeave={(e) => {
-            if (!dispatched) (e.currentTarget as HTMLButtonElement).style.background = '#00FF9C';
           }}
         >
           {dispatched ? 'ASSIGNED' : 'ASSIGN TASK'}
@@ -162,7 +155,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
               <div className="flex items-center justify-between mb-1">
                 <span
                   className="text-[10px]"
-                  style={{ color: 'rgba(200,230,201,0.45)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+                  style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
                 >
                   CHARGE
                 </span>
@@ -173,10 +166,9 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
                   {Math.round(entity.battery_pct)}%
                 </span>
               </div>
-              {/* Battery bar */}
               <div
                 className="h-1.5 w-full rounded-full overflow-hidden"
-                style={{ background: 'rgba(0,255,156,0.1)' }}
+                style={{ background: 'var(--accent-10)' }}
               >
                 <div
                   className="h-full rounded-full transition-all duration-300"
@@ -196,24 +188,24 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
           <div className="flex items-center justify-between mb-1">
             <span
               className="text-[10px]"
-              style={{ color: 'rgba(200,230,201,0.45)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+              style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
             >
               SCORE
             </span>
             <span
               className="text-[11px] font-bold"
-              style={{ color: '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+              style={{ color: 'var(--accent)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
             >
               {Math.round(entity.confidence * 100)}%
             </span>
           </div>
           <div
             className="h-1.5 w-full rounded-full overflow-hidden"
-            style={{ background: 'rgba(0,255,156,0.1)' }}
+            style={{ background: 'var(--accent-10)' }}
           >
             <div
               className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${entity.confidence * 100}%`, background: '#00FF9C' }}
+              style={{ width: `${entity.confidence * 100}%`, background: 'var(--accent)' }}
             />
           </div>
         </div>
@@ -224,7 +216,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         <DataRow
           label="MISSION"
           value={entity.mission_id ? entity.mission_id.slice(0, 12) : 'UNASSIGNED'}
-          valueColor={entity.mission_id ? '#4FC3F7' : 'rgba(200,230,201,0.35)'}
+          valueColor={entity.mission_id ? 'var(--color-active)' : 'var(--text-muted)'}
         />
         {entity.source_sensors && entity.source_sensors.length > 0 && (
           <DataRow label="SENSORS" value={entity.source_sensors.join(', ')} />
@@ -235,31 +227,31 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         <div
           className="flex flex-col gap-1 mb-1"
           style={{
-            background: 'rgba(0,255,156,0.02)',
-            border: '1px solid rgba(0,255,156,0.08)',
+            background: 'var(--accent-5)',
+            border: '1px solid var(--accent-10)',
             padding: '8px',
           }}
         >
           {thoughts.length === 0 ? (
-            <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.25)', fontSize: 9 }}>
+            <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 9 }}>
               No reasoning available
             </span>
           ) : (
             thoughts.map((t, i) => (
               <div key={i} className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
-                  <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.3)', fontSize: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 8 }}>
                     {t.ts}
                   </span>
                   <span style={{
                     fontFamily: 'var(--font-ibm-plex-mono), monospace',
                     fontSize: 8,
-                    color: t.confidence > 0.9 ? '#00FF9C' : t.confidence > 0.8 ? '#FFB300' : '#FF3B3B',
+                    color: t.confidence > 0.9 ? 'var(--accent)' : t.confidence > 0.8 ? 'var(--warning)' : 'var(--critical)',
                   }}>
                     {Math.round(t.confidence * 100)}%
                   </span>
                 </div>
-                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.65)', fontSize: 9, lineHeight: 1.4 }}>
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)', fontSize: 9, lineHeight: 1.4 }}>
                   {t.msg}
                 </span>
               </div>
@@ -273,8 +265,8 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
           <div style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             fontSize: 9,
-            color: '#00FF9C',
-            border: '1px solid rgba(0,255,156,0.2)',
+            color: 'var(--accent)',
+            border: '1px solid var(--accent-15)',
             padding: '4px 8px',
             marginBottom: 8,
           }}>
@@ -283,11 +275,12 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         )}
         <div className="flex flex-col gap-2 mt-1">
           <button
-            className="w-full text-[10px] py-2 tracking-widest transition-colors"
+            className="summit-btn w-full text-[10px] py-2 tracking-widest"
+            aria-label={`Halt ${entity.callsign || entity.entity_id}`}
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: '#FF3B3B',
-              border: '1px solid rgba(255,59,59,0.4)',
+              color: 'var(--critical)',
+              border: '1px solid color-mix(in srgb, var(--critical) 40%, transparent)',
               background: 'transparent',
               cursor: 'pointer',
             }}
@@ -299,17 +292,16 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
                 setOverrideStatus(`HALT failed: ${(err as Error)?.message ?? 'network error'}`);
               }
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,59,59,0.08)')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
           >
             HALT
           </button>
           <button
-            className="w-full text-[10px] py-2 tracking-widest transition-colors"
+            className="summit-btn w-full text-[10px] py-2 tracking-widest"
+            aria-label={`Return ${entity.callsign || entity.entity_id} to base`}
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: '#FFB300',
-              border: '1px solid rgba(255,179,0,0.4)',
+              color: 'var(--warning)',
+              border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)',
               background: 'transparent',
               cursor: 'pointer',
             }}
@@ -321,17 +313,16 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
                 setOverrideStatus(`RTB failed: ${(err as Error)?.message ?? 'network error'}`);
               }
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,179,0,0.08)')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
           >
             RETURN TO BASE
           </button>
           <button
-            className="w-full text-[10px] py-2 tracking-widest transition-colors"
+            className="summit-btn w-full text-[10px] py-2 tracking-widest"
+            aria-label={`Activate camera on ${entity.callsign || entity.entity_id}`}
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: '#4FC3F7',
-              border: '1px solid rgba(79,195,247,0.4)',
+              color: 'var(--color-active)',
+              border: '1px solid color-mix(in srgb, var(--color-active) 40%, transparent)',
               background: 'transparent',
               cursor: 'pointer',
             }}
@@ -343,24 +334,21 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
                 setOverrideStatus(`Camera failed: ${(err as Error)?.message ?? 'network error'}`);
               }
             }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(79,195,247,0.08)')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
           >
             ACTIVATE CAMERA
           </button>
           {onLiveFeed && (
             <button
-              className="w-full text-[10px] py-2 tracking-widest transition-colors"
+              className="summit-btn w-full text-[10px] py-2 tracking-widest"
+              aria-label={`Open live feed for ${entity.callsign || entity.entity_id}`}
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: '#00FF9C',
-                border: '1px solid rgba(0,255,156,0.4)',
+                color: 'var(--accent)',
+                border: '1px solid var(--accent-30)',
                 background: 'transparent',
                 cursor: 'pointer',
               }}
               onClick={() => onLiveFeed(entity.entity_id)}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,156,0.08)')}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = 'transparent')}
             >
               LIVE FEED
             </button>
