@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "summit-os.fullname" . }}-fusion
+  labels:
+    {{- include "summit-os.labels" . | nindent 4 }}
+    app: fusion
+spec:
+  replicas: {{ .Values.fusion.replicas }}
+  selector:
+    matchLabels:
+      app: fusion
+  template:
+    metadata:
+      labels:
+        app: fusion
+    spec:
+      containers:
+        - name: fusion
+          image: {{ .Values.global.image.registry }}{{ .Values.fusion.image }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.fusion.port }}
+          resources:
+            {{- toYaml .Values.fusion.resources | nindent 12 }}
+          env:
+            - name: REDIS_URL
+              value: {{ .Values.global.env.REDIS_URL | quote }}
+            - name: OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "summit-os.configmapName" . }}
+                  key: OTLP_ENDPOINT
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "summit-os.secretName" . }}
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_URL
+              value: "postgresql+asyncpg://summit:$(POSTGRES_PASSWORD)@{{ include "summit-os.fullname" . }}-postgres:5432/summit_os"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.fusion.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.fusion.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "summit-os.fullname" . }}-fusion
+  labels:
+    {{- include "summit-os.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: fusion
+  ports:
+    - name: http
+      port: {{ .Values.fusion.port }}
+      targetPort: {{ .Values.fusion.port }}

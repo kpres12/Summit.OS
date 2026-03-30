@@ -37,3 +37,24 @@ Selector labels
 app.kubernetes.io/name: {{ include "summit-os.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Name of the ConfigMap.
+*/}}
+{{- define "summit-os.configmapName" -}}
+{{- include "summit-os.fullname" . }}-config
+{{- end }}
+
+{{/*
+Name of the Secret.
+*/}}
+{{- define "summit-os.secretName" -}}
+{{- include "summit-os.fullname" . }}-secrets
+{{- end }}
+
+{{/*
+Chart label helper.
+*/}}
+{{- define "summit-os.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}

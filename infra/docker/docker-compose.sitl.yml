@@ -1,0 +1,136 @@
+# Summit.OS — SITL (Software-in-the-Loop) Testing Environment
+#
+# Boots a full Summit.OS stack wired to software-simulated drones.
+# No physical hardware required. Three simulation layers available:
+#
+#   Layer 1 — Scenario injector (always on):
+#     Runs packages/simulation/scenarios.py to inject pre-built entity
+#     scenarios (border patrol, airspace monitoring, convoy escort).
+#     No MAVLink dependency. Works immediately.
+#
+#   Layer 2 — Multi-vehicle bridge (always on):
+#     Runs scripts/sitl_bridge.py to inject 3 simulated MAVLink vehicles
+#     using dronekit-sitl (ArduPilot binary). Publishes at 2 Hz.
+#
+#   Layer 3 — Real ArduPilot SITL (optional, profile: ardupilot):
+#     Runs a headless ArduCopter SITL instance.
+#     The bridge service above connects to it on UDP 14550.
+#     Requires: docker compose --profile ardupilot up
+#
+# Usage
+# -----
+#   # Full SITL stack (layers 1 + 2, no ArduPilot):
+#   docker compose -f infra/docker/docker-compose.yml \
+#                  -f infra/docker/docker-compose.sitl.yml up
+#
+#   # With real ArduPilot SITL:
+#   docker compose -f infra/docker/docker-compose.yml \
+#                  -f infra/docker/docker-compose.sitl.yml \
+#                  --profile ardupilot up
+#
+#   # Inject a manual smoke detection after stack is up:
+#   python scripts/publish_smoke_detection.py
+#
+#   # Seed full demo dataset:
+#   python scripts/seed_demo.py --live
+
+services:
+
+  # ── Layer 1: Scenario Injector ────────────────────────────────────────────
+  # Injects pre-built simulation scenarios (packages/simulation/scenarios.py)
+  # into the Summit.OS entity stream at 1 Hz.
+  sim-injector:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.simulator
+    restart: unless-stopped
+    environment:
+      SUMMIT_API_URL: http://api-gateway:8000
+      SUMMIT_WS_URL: ws://fabric:8001/ws/sim
+      SCENARIO: ${SITL_SCENARIO:-border_patrol}
+      INJECT_HZ: ${SITL_INJECT_HZ:-1}
+    depends_on:
+      - api-gateway
+      - fabric
+    networks:
+      - summit
+    profiles:
+      - ""  # always included
+
+  # ── Layer 2: MAVLink SITL Bridge ──────────────────────────────────────────
+  # Runs scripts/sitl_bridge.py — spawns 3 virtual ArduPilot drones using
+  # dronekit-sitl and publishes their telemetry to the fabric at 2 Hz.
+  # Set SITL_DRONE_COUNT (1-5) to adjust vehicle count.
+  sitl-bridge:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.sitl-bridge
+    restart: unless-stopped
+    environment:
+      SUMMIT_API_URL: http://api-gateway:8000
+      MAVLINK_CONNECTION: ${SITL_MAVLINK_CONNECTION:-udp:ardupilot-sitl:14550}
+      SITL_DRONE_COUNT: ${SITL_DRONE_COUNT:-3}
+      SITL_START_LAT: ${SITL_LAT:-34.0522}
+      SITL_START_LON: ${SITL_LON:--118.2437}
+    depends_on:
+      - api-gateway
+    networks:
+      - summit
+    profiles:
+      - ""
+
+  # ── Layer 3: ArduPilot SITL (optional) ───────────────────────────────────
+  # Headless ArduCopter SITL. Enable with --profile ardupilot.
+  # UDP 14550: MAVLink (bridge), 14551: GCS (QGC/Mission Planner)
+  # TCP 5762: MAVLink v2 (for pymavlink TCP connections)
+  ardupilot-sitl:
+    image: ardupilot/ardupilot-dev-base:latest
+    restart: unless-stopped
+    entrypoint: >
+      bash -c "
+        apt-get install -y --no-install-recommends python3-dev &&
+        pip install pymavlink dronekit &&
+        sim_vehicle.py
+          --vehicle ArduCopter
+          --frame quad
+          --no-rebuild
+          --console
+          --map
+          --out udp:0.0.0.0:14550
+          --out udp:0.0.0.0:14551
+          --custom-location=${SITL_LAT:-34.0522},${SITL_LON:--118.2437},${SITL_ALT:-0},0
+      "
+    ports:
+      - "14550:14550/udp"   # MAVLink (connects to sitl-bridge)
+      - "14551:14551/udp"   # GCS (QGroundControl / Mission Planner)
+      - "5762:5762/tcp"     # MAVLink TCP
+    networks:
+      - summit
+    profiles:
+      - ardupilot
+
+  # ── PX4 SITL (optional, alternative to ArduPilot) ────────────────────────
+  # Enable with --profile px4
+  px4-sitl:
+    image: px4io/px4-dev-ros2-foxy:latest
+    restart: unless-stopped
+    environment:
+      PX4_HOME_LAT: ${SITL_LAT:-34.0522}
+      PX4_HOME_LON: ${SITL_LON:--118.2437}
+      PX4_HOME_ALT: ${SITL_ALT:-0}
+    entrypoint: >
+      bash -c "
+        cd /px4 && make px4_sitl gazebo-classic_iris
+      "
+    ports:
+      - "14560:14560/udp"   # MAVLink
+      - "18570:18570/udp"   # ROS2 bridge
+    networks:
+      - summit
+    profiles:
+      - px4
+
+networks:
+  summit:
+    external: true
+    name: ${COMPOSE_PROJECT_NAME:-summit}_summit

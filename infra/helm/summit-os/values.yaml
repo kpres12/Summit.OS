@@ -11,8 +11,21 @@ global:
 secrets:
   postgresPassword: "CHANGE_ME"
   fabricJwtSecret: "CHANGE_ME"
+  fieldEncryptionKey: "CHANGE_ME"  # openssl rand -base64 32
   stripeWebhookSecret: ""
   grafanaAdminPassword: "CHANGE_ME"
+
+# ── Runtime config (rendered into ConfigMap) ────────────────
+config:
+  apiKeyEnforce: "false"
+  oidcEnforce: "false"
+  otlpEndpoint: "http://jaeger:4317"
+  # Production overrides:
+  # oidcIssuer: "https://your-keycloak/realms/summit"
+  # oidcAudience: "summit-api"
+  # corsOrigins: "https://console.yourdomain.com"
+  # ollamaUrl: "http://ollama:11434"
+  # ollamaModel: "llama3.1"
 
 # ── API Gateway ─────────────────────────────────────────────
 apiGateway:
@@ -65,6 +78,17 @@ tasking:
   resources:
     requests: { cpu: 200m, memory: 256Mi }
     limits: { cpu: 1000m, memory: 1Gi }
+
+# ── Inference Service ───────────────────────────────────────
+inference:
+  replicas: 1
+  image: summit-os/inference:latest
+  port: 8006
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { cpu: 2000m, memory: 4Gi }
+  env:
+    INFERENCE_BACKEND: "auto"
 
 # ── Console (Frontend) ─────────────────────────────────────
 console:
