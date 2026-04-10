@@ -114,6 +114,7 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             onSelectEntity={investigation.setSelectedEntity}
             flyToLocation={investigation.flyToLocation}
             alertEntityIds={investigation.alertEntityIds}
+            selectedEntityId={investigation.selectedEntity?.entity_id ?? null}
             missionDrawMode={missionDraw.missionDrawMode}
             onMissionArea={(coords) => {
               missionDraw.setMissionPolygon(coords);

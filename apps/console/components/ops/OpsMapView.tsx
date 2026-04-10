@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Map, { Marker, NavigationControl, ScaleControl, MapRef, Source, Layer, MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
-import { createGeofence } from '@/lib/api';
+import { apiFetch, createGeofence } from '@/lib/api';
 
 const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
@@ -12,6 +12,7 @@ interface OpsMapViewProps {
   onSelectEntity?: (entity: EntityData | null) => void;
   flyToLocation?: { lat: number; lon: number } | null;
   alertEntityIds?: Set<string>;
+  selectedEntityId?: string | null;
   // Mission builder integration
   missionDrawMode?: boolean;
   onMissionArea?: (coords: { lat: number; lon: number }[]) => void;
@@ -30,7 +31,7 @@ function markerColor(e: EntityData): string {
 type DrawVertex = { lat: number; lon: number };
 
 export default function OpsMapView({
-  onSelectEntity, flyToLocation, alertEntityIds,
+  onSelectEntity, flyToLocation, alertEntityIds, selectedEntityId,
   missionDrawMode, onMissionArea, missionWaypoints,
 }: OpsMapViewProps) {
   const { entityList } = useEntityStream();
@@ -41,6 +42,8 @@ export default function OpsMapView({
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
   // Mission area draw (controlled externally via missionDrawMode prop)
   const [missionVertices, setMissionVertices] = useState<DrawVertex[]>([]);
+  // Entity trail
+  const [trailCoords, setTrailCoords] = useState<[number, number][]>([]);
 
   // Fly to location when prop changes
   useEffect(() => {
@@ -56,6 +59,24 @@ export default function OpsMapView({
   useEffect(() => {
     if (!missionDrawMode) setMissionVertices([]);
   }, [missionDrawMode]);
+
+  // Fetch position trail when selected entity changes
+  useEffect(() => {
+    if (!selectedEntityId) {
+      setTrailCoords([]);
+      return;
+    }
+    let cancelled = false;
+    apiFetch(`/v1/entities/${selectedEntityId}/trail`)
+      .then((res) => res.json())
+      .then((data: { trail: { lat: number; lon: number }[] }) => {
+        if (!cancelled && data?.trail) {
+          setTrailCoords(data.trail.map((p) => [p.lon, p.lat]));
+        }
+      })
+      .catch(() => setTrailCoords([]));
+    return () => { cancelled = true; };
+  }, [selectedEntityId]);
 
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
     if (missionDrawMode) {
@@ -177,6 +198,21 @@ export default function OpsMapView({
             }} />
           </Marker>
         ))}
+
+        {/* Selected entity position trail */}
+        {trailCoords.length >= 2 && (
+          <Source
+            id="entity-trail"
+            type="geojson"
+            data={{ type: 'Feature', geometry: { type: 'LineString', coordinates: trailCoords }, properties: {} }}
+          >
+            <Layer
+              id="entity-trail-layer"
+              type="line"
+              paint={{ 'line-color': 'var(--accent)', 'line-width': 2, 'line-opacity': 0.7 }}
+            />
+          </Source>
+        )}
 
         {/* Entity markers */}
         {entityList.map((entity) =>

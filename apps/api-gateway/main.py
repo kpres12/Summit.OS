@@ -1417,6 +1417,25 @@ async def get_entity_proxy(
         raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
 
 
+@app.get("/api/v1/entities/{entity_id}/trail")
+async def get_entity_trail_proxy(
+    entity_id: str,
+    limit: int | None = None,
+    _claims: dict | None = Depends(verify_bearer),
+):
+    """Proxy entity position history trail from fabric."""
+    try:
+        params = {}
+        if limit is not None:
+            params["limit"] = str(limit)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f"{FABRIC_URL}/entities/{entity_id}/trail", params=params)
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Fabric upstream error: {e}")
+
+
 @app.post("/api/v1/entities")
 async def create_entity_proxy(
     payload: dict, _claims: dict | None = Depends(verify_bearer)

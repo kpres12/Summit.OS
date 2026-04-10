@@ -38,6 +38,7 @@ try:
     _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
     from packages.world.store import WorldStore
     from packages.world.api import create_world_router
+    from packages.world.history import HistoryStore, register_routes as register_history_routes
 
     WORLD_STORE_AVAILABLE = True
 except Exception:
@@ -127,6 +128,10 @@ websocket_manager: Optional[WebSocketManager] = None
 engine: Optional[AsyncEngine] = None
 SessionLocal: Optional[sessionmaker] = None
 world_store: Optional["WorldStore"] = None
+history_store: Optional["HistoryStore"] = None
+
+# WebSocket token auth — set WS_AUTH_REQUIRED=true in production
+WS_AUTH_REQUIRED = os.getenv("WS_AUTH_REQUIRED", "false").lower() == "true"
 mesh_peer = None
 entity_crdt = None
 
@@ -222,7 +227,7 @@ FABRIC_JWT_SECRET = os.getenv("FABRIC_JWT_SECRET", "dev_secret")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup/shutdown."""
-    global mqtt_client, redis_client, websocket_manager, engine, SessionLocal, mesh_peer, entity_crdt, world_store, FABRIC_JWT_SECRET
+    global mqtt_client, redis_client, websocket_manager, engine, SessionLocal, mesh_peer, entity_crdt, world_store, history_store, FABRIC_JWT_SECRET
 
     settings = Settings()
 
@@ -314,6 +319,8 @@ async def lifespan(app: FastAPI):
             ws_manager=websocket_manager,
         )
         logger.info("WorldStore initialized")
+        history_store = HistoryStore()
+        logger.info("HistoryStore initialized")
 
     if not FABRIC_TEST_MODE:
         # Redis connection
@@ -384,6 +391,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(telemetry_processor())
         asyncio.create_task(alert_processor())
         asyncio.create_task(heartbeat_watcher())
+        asyncio.create_task(_ttl_gc_task())
 
         # Alert escalation service (uses live shared dict, updated as alerts arrive)
         try:
@@ -436,6 +444,8 @@ def _mount_world_router():
     if WORLD_STORE_AVAILABLE and world_store and not _world_router_mounted:
         router = create_world_router(world_store)
         app.include_router(router, prefix="/api/v1", tags=["world"])
+        if history_store:
+            register_history_routes(app, history_store)
         _world_router_mounted = True
 
 
@@ -535,6 +545,9 @@ async def websocket_endpoint(websocket: WebSocket):
     global websocket_manager
     if websocket_manager is None:
         websocket_manager = WebSocketManager()
+    if not await _verify_ws_token(websocket):
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
     await websocket_manager.connect(websocket, org_id="default")
     try:
         while True:
@@ -1360,11 +1373,50 @@ async def _handle_entity_update(topic: str, data: Dict[str, Any]):
         data["id"] = entity_id
         entity = Entity.from_dict(data)
         world_store.upsert(entity, source="mqtt")
+        # Record position in history trail
+        if history_store:
+            history_store.record_from_entity(data)
         # Also feed into mesh CRDT for replication
         if entity_crdt:
             entity_crdt.update(entity_id, data)
     except Exception as e:
         logger.error(f"Failed to handle entity update: {e}")
+
+
+async def _ttl_gc_task():
+    """Periodically prune expired entities from the WorldStore (every 30 s)."""
+    while True:
+        await asyncio.sleep(30)
+        if world_store:
+            pruned = world_store.prune_expired()
+            if pruned:
+                logger.info(f"TTL GC pruned {pruned} expired entities")
+                if history_store:
+                    # Evict history for entities that no longer exist
+                    active_ids = set(world_store._entities.keys())
+                    for eid in list(history_store.entity_ids()):
+                        if eid not in active_ids:
+                            history_store.evict(eid)
+
+
+async def _verify_ws_token(websocket: WebSocket) -> bool:
+    """Return True if the WebSocket connection carries a valid Fabric JWT.
+
+    Checks Authorization header first, then ?token= query param.
+    When WS_AUTH_REQUIRED is False (default dev mode) always returns True.
+    """
+    if not WS_AUTH_REQUIRED:
+        return True
+    auth = websocket.headers.get("Authorization", "") or websocket.query_params.get("token", "")
+    if auth.startswith("Bearer "):
+        auth = auth[7:]
+    if not auth:
+        return False
+    try:
+        jwt.decode(auth, FABRIC_JWT_SECRET, algorithms=["HS256"])
+        return True
+    except Exception:
+        return False
 
 
 # Background processors
