@@ -56,7 +56,7 @@ export default function OpsMapView({
 }: OpsMapViewProps) {
   const { entityList } = useEntityStream();
   const mapRef = useRef<MapRef>(null);
-  const [drawMode, setDrawMode] = useState(false);
+  // geofenceDrawMode is owned by OpsLayout — no intermediate state, use prop directly
   const [vertices, setVertices] = useState<DrawVertex[]>([]);
   const [geoName, setGeoName] = useState('');
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
@@ -75,19 +75,32 @@ export default function OpsMapView({
     });
   }, [flyToLocation]);
 
-  // Clear mission vertices when missionDrawMode turns off externally
+  // Clear mission vertices when missionDrawMode turns off
   useEffect(() => {
     if (!missionDrawMode) setMissionVertices([]);
   }, [missionDrawMode]);
 
-  // Sync geofence draw mode from Layers panel
+  // Reset geofence draw state when mode turns off
   useEffect(() => {
-    if (geofenceDrawMode) {
-      setDrawMode(true);
+    if (!geofenceDrawMode) {
       setVertices([]);
       setGeoName('');
     }
   }, [geofenceDrawMode]);
+
+  // ESC to cancel geofence draw
+  useEffect(() => {
+    if (!geofenceDrawMode) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setVertices([]);
+        setGeoName('');
+        onGeofenceDrawEnd?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [geofenceDrawMode, onGeofenceDrawEnd]);
 
   // Fetch position trail when selected entity changes
   useEffect(() => {
@@ -112,9 +125,9 @@ export default function OpsMapView({
       setMissionVertices((prev) => [...prev, { lat: e.lngLat.lat, lon: e.lngLat.lng }]);
       return;
     }
-    if (!drawMode) return;
+    if (!geofenceDrawMode) return;
     setVertices((prev) => [...prev, { lat: e.lngLat.lat, lon: e.lngLat.lng }]);
-  }, [drawMode, missionDrawMode]);
+  }, [geofenceDrawMode, missionDrawMode]);
 
   const handleMapDblClick = useCallback((_evt: MapLayerMouseEvent) => {
     if (missionDrawMode && missionVertices.length >= 3) {
@@ -122,10 +135,10 @@ export default function OpsMapView({
       setMissionVertices([]);
       return;
     }
-    if (!drawMode || vertices.length < 3) return;
+    if (!geofenceDrawMode || vertices.length < 3) return;
     finishPolygon();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawMode, vertices, missionDrawMode, missionVertices]);
+  }, [geofenceDrawMode, vertices, missionDrawMode, missionVertices]);
 
   const finishPolygon = async () => {
     if (vertices.length < 3) return;
@@ -139,7 +152,6 @@ export default function OpsMapView({
       setSavedFeedback('SAVE FAILED');
     }
     setVertices([]);
-    setDrawMode(false);
     setGeoName('');
     onGeofenceDrawEnd?.();
     setTimeout(() => setSavedFeedback(null), 3000);
@@ -165,7 +177,8 @@ export default function OpsMapView({
         initialViewState={{ longitude: -98.5, latitude: 39.8, zoom: 4 }}
         style={{ width: '100%', height: '100%' }}
         mapStyle={DARK_STYLE}
-        cursor={drawMode || missionDrawMode ? 'crosshair' : 'grab'}
+        cursor={geofenceDrawMode || missionDrawMode ? 'crosshair' : 'grab'}
+        doubleClickZoom={!geofenceDrawMode && !missionDrawMode}
         onClick={handleMapClick}
         onDblClick={handleMapDblClick}
       >
@@ -219,12 +232,13 @@ export default function OpsMapView({
         )}
 
         {/* Draw vertices */}
-        {drawMode && vertices.map((v, i) => (
+        {geofenceDrawMode && vertices.map((v, i) => (
           <Marker key={`v-${i}`} longitude={v.lon} latitude={v.lat}>
             <div style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: i === 0 ? 'var(--warning)' : 'color-mix(in srgb, var(--warning) 50%, transparent)',
-              border: '1px solid var(--warning)',
+              width: '12px', height: '12px', borderRadius: '50%',
+              background: i === 0 ? 'var(--warning)' : 'rgba(255,179,0,0.6)',
+              border: '2px solid var(--warning)',
+              boxShadow: '0 0 6px rgba(255,179,0,0.6)',
             }} />
           </Marker>
         ))}
@@ -252,7 +266,7 @@ export default function OpsMapView({
               longitude={entity.position.lon}
               latitude={entity.position.lat}
               onClick={(e) => {
-                if (drawMode) return;
+                if (geofenceDrawMode) return;
                 e.originalEvent.stopPropagation();
                 onSelectEntity?.(entity);
               }}
@@ -264,12 +278,12 @@ export default function OpsMapView({
                   width: '10px', height: '10px', borderRadius: '50%',
                   background: markerColor(entity),
                   border: '2px solid rgba(8,12,10,0.8)',
-                  cursor: drawMode ? 'crosshair' : 'pointer',
+                  cursor: geofenceDrawMode ? 'crosshair' : 'pointer',
                   boxShadow: `0 0 6px ${markerColor(entity)}80`,
                   opacity: markerOpacity(entity.last_seen),
                   transition: 'transform 0.1s, opacity 0.3s',
                 }}
-                onMouseEnter={(e) => { if (!drawMode) (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.6)'; }}
+                onMouseEnter={(e) => { if (!geofenceDrawMode) (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.6)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)'; }}
               />
             </Marker>
@@ -277,72 +291,91 @@ export default function OpsMapView({
         )}
       </Map>
 
-      {/* Draw controls overlay */}
-      <div
-        className="absolute bottom-8 right-3 flex flex-col items-end gap-2"
-        style={{ zIndex: 10 }}
-      >
-        {savedFeedback && (
-          <div
-            className="text-[10px] px-2 py-1"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: savedFeedback.startsWith('SAVE FAILED') ? 'var(--critical)' : 'var(--accent)',
-              background: 'var(--background-panel)',
-              border: `1px solid ${savedFeedback.startsWith('SAVE FAILED') ? 'color-mix(in srgb, var(--critical) 40%, transparent)' : 'var(--accent-30)'}`,
-            }}
-          >
-            {savedFeedback}
+      {/* Geofence draw mode — top banner so it's impossible to miss */}
+      {geofenceDrawMode && (
+        <div
+          className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-2"
+          style={{
+            background: 'color-mix(in srgb, var(--warning) 12%, var(--background-panel))',
+            borderBottom: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)',
+            zIndex: 20,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="text-[11px] font-bold tracking-widest"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--warning)' }}
+            >
+              ⬡ DRAWING GEOFENCE
+            </span>
+            <span
+              className="text-[10px]"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'color-mix(in srgb, var(--warning) 70%, transparent)' }}
+            >
+              {vertices.length < 3
+                ? `Click to place points — ${vertices.length}/3 minimum`
+                : `${vertices.length} points — double-click to close`}
+            </span>
           </div>
-        )}
-
-        {drawMode && (
-          <>
+          <div className="flex items-center gap-2">
             <input
               type="text"
               value={geoName}
               onChange={(e) => setGeoName(e.target.value)}
-              placeholder="Geofence name..."
+              placeholder="Name (optional)"
               className="text-[10px] px-2 py-1 outline-none"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                background: 'var(--background-panel)',
-                border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)',
+                background: 'rgba(0,0,0,0.4)',
+                border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
                 color: 'var(--warning)',
                 width: '140px',
               }}
             />
-            <div className="text-[9px] px-2" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'color-mix(in srgb, var(--warning) 70%, transparent)' }}>
-              {vertices.length < 3 ? `CLICK TO ADD POINTS (${vertices.length}/3 min)` : 'DOUBLE-CLICK TO CLOSE'}
-            </div>
-            <div className="flex gap-1">
-              {vertices.length >= 3 && (
-                <button
-                  onClick={finishPolygon}
-                  className="text-[10px] px-2 py-1 tracking-wider"
-                  style={{
-                    fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                    color: 'var(--background)', background: 'var(--warning)', border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  SAVE
-                </button>
-              )}
+            {vertices.length >= 3 && (
               <button
-                onClick={() => { setDrawMode(false); setVertices([]); setGeoName(''); onGeofenceDrawEnd?.(); }}
-                className="text-[10px] px-2 py-1 tracking-wider"
+                onClick={finishPolygon}
+                className="text-[10px] px-3 py-1 tracking-wider"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: 'var(--critical)', background: 'transparent', border: '1px solid color-mix(in srgb, var(--critical) 40%, transparent)', cursor: 'pointer',
+                  color: 'var(--background)', background: 'var(--warning)', border: 'none', cursor: 'pointer',
                 }}
               >
-                CANCEL
+                SAVE
               </button>
-            </div>
-          </>
-        )}
+            )}
+            <button
+              onClick={() => { setVertices([]); setGeoName(''); onGeofenceDrawEnd?.(); }}
+              className="text-[10px] px-3 py-1 tracking-wider"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: 'var(--critical)',
+                background: 'transparent',
+                border: '1px solid color-mix(in srgb, var(--critical) 40%, transparent)',
+                cursor: 'pointer',
+              }}
+            >
+              CANCEL [ESC]
+            </button>
+          </div>
+        </div>
+      )}
 
-      </div>
+      {/* Save feedback */}
+      {savedFeedback && (
+        <div
+          className="absolute bottom-8 right-3 text-[10px] px-2 py-1"
+          style={{
+            zIndex: 10,
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: savedFeedback.startsWith('SAVE FAILED') ? 'var(--critical)' : 'var(--accent)',
+            background: 'var(--background-panel)',
+            border: `1px solid ${savedFeedback.startsWith('SAVE FAILED') ? 'color-mix(in srgb, var(--critical) 40%, transparent)' : 'var(--accent-30)'}`,
+          }}
+        >
+          {savedFeedback}
+        </div>
+      )}
     </div>
   );
 }

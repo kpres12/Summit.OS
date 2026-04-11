@@ -88,7 +88,7 @@ export function statusColor(status: string): string {
 export function domainTag(domain: string): string {
   switch (domain) {
     case 'aerial':
-      return 'UAV';
+      return 'AIR';
     case 'ground':
       return 'GND';
     case 'maritime':

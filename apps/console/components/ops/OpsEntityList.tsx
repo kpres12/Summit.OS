@@ -78,8 +78,6 @@ function AssetRow({ entity }: { entity: EntityData }) {
   const callsign = entity.callsign || entity.entity_id.slice(0, 8);
   const age = staleness(entity.last_seen);
 
-  // Visual degradation: stale data should look stale
-  const rowOpacity = age === 'stale' ? 0.35 : age === 'warn' ? 0.65 : 1;
   const dotColor = age === 'stale' ? 'var(--text-muted)' : age === 'warn' ? 'var(--warning)' : color;
 
   return (
@@ -87,8 +85,6 @@ function AssetRow({ entity }: { entity: EntityData }) {
       className="summit-btn px-4 py-3 flex flex-col gap-1.5"
       style={{
         borderBottom: '1px solid var(--accent-5)',
-        opacity: rowOpacity,
-        transition: 'opacity 0.3s',
       }}
     >
       {/* Primary row: dot + callsign + age */}
