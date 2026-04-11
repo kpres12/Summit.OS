@@ -52,7 +52,7 @@ function EntityExplorer() {
 
   function entityTypeColor(type: string): string {
     switch (type) {
-      case 'active': return '#00FF9C';
+      case 'active': return '#00E896';
       case 'alert': return '#FF3B3B';
       case 'neutral': return 'rgba(200,230,201,0.45)';
       default: return '#FFB300';
@@ -64,7 +64,7 @@ function EntityExplorer() {
       {/* Controls */}
       <div
         className="flex-none px-4 py-3 flex items-center gap-3"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
       >
         <input
           type="text"
@@ -75,8 +75,8 @@ function EntityExplorer() {
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             background: '#111916',
-            border: '1px solid rgba(0,255,156,0.2)',
-            color: '#00FF9C',
+            border: '1px solid rgba(0,232,150,0.2)',
+            color: '#00E896',
           }}
         />
         <select
@@ -86,7 +86,7 @@ function EntityExplorer() {
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             background: '#111916',
-            border: '1px solid rgba(0,255,156,0.2)',
+            border: '1px solid rgba(0,232,150,0.2)',
             color: 'rgba(200,230,201,0.7)',
           }}
         >
@@ -99,7 +99,7 @@ function EntityExplorer() {
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             background: '#111916',
-            border: '1px solid rgba(0,255,156,0.2)',
+            border: '1px solid rgba(0,232,150,0.2)',
             color: 'rgba(200,230,201,0.7)',
           }}
         >
@@ -128,9 +128,9 @@ function EntityExplorer() {
           className="flex items-center px-4 py-2 text-[9px] tracking-widest sticky top-0"
           style={{
             background: '#0D1210',
-            borderBottom: '1px solid rgba(0,255,156,0.15)',
-            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-            color: 'rgba(0,255,156,0.5)',
+            borderBottom: '1px solid rgba(0,232,150,0.15)',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'rgba(0,232,150,0.5)',
           }}
         >
           <span style={{ width: '180px' }}>ID</span>
@@ -169,11 +169,11 @@ function EntityExplorer() {
               <div
                 className="flex items-center px-4 py-2 cursor-pointer transition-colors"
                 style={{
-                  borderBottom: '1px solid rgba(0,255,156,0.05)',
-                  background: isExpanded ? 'rgba(0,255,156,0.04)' : 'transparent',
+                  borderBottom: '1px solid rgba(0,232,150,0.05)',
+                  background: isExpanded ? 'rgba(0,232,150,0.04)' : 'transparent',
                 }}
                 onClick={() => setExpandedId(isExpanded ? null : e.entity_id)}
-                onMouseEnter={(el) => { if (!isExpanded) (el.currentTarget as HTMLDivElement).style.background = 'rgba(0,255,156,0.03)'; }}
+                onMouseEnter={(el) => { if (!isExpanded) (el.currentTarget as HTMLDivElement).style.background = 'rgba(0,232,150,0.03)'; }}
                 onMouseLeave={(el) => { if (!isExpanded) (el.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
               >
                 <span
@@ -220,15 +220,15 @@ function EntityExplorer() {
                   className="px-6 py-4"
                   style={{
                     background: '#111916',
-                    borderBottom: '1px solid rgba(0,255,156,0.1)',
-                    borderLeft: '3px solid #00FF9C',
+                    borderBottom: '1px solid rgba(0,232,150,0.1)',
+                    borderLeft: '3px solid #00E896',
                   }}
                 >
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <div
                         className="text-[9px] tracking-widest mb-2"
-                        style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}
+                        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
                       >
                         ENTITY DATA
                       </div>
@@ -239,7 +239,7 @@ function EntityExplorer() {
                           color: 'rgba(200,230,201,0.7)',
                           background: '#0D1210',
                           padding: '8px',
-                          border: '1px solid rgba(0,255,156,0.1)',
+                          border: '1px solid rgba(0,232,150,0.1)',
                         }}
                       >
                         {JSON.stringify(e, null, 2)}
@@ -248,13 +248,13 @@ function EntityExplorer() {
                     <div>
                       <div
                         className="text-[9px] tracking-widest mb-2"
-                        style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}
+                        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
                       >
                         POSITION
                       </div>
                       <div
                         className="p-3"
-                        style={{ background: '#0D1210', border: '1px solid rgba(0,255,156,0.1)' }}
+                        style={{ background: '#0D1210', border: '1px solid rgba(0,232,150,0.1)' }}
                       >
                         {[
                           ['LAT', e.position.lat.toFixed(6)],
@@ -265,7 +265,7 @@ function EntityExplorer() {
                         ].map(([label, val]) => (
                           <div key={label} className="flex justify-between py-0.5">
                             <span className="text-[10px]" style={{ color: 'rgba(200,230,201,0.45)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{label}</span>
-                            <span className="text-[10px] font-bold" style={{ color: '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{val}</span>
+                            <span className="text-[10px] font-bold" style={{ color: '#00E896', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{val}</span>
                           </div>
                         ))}
                       </div>
@@ -299,7 +299,7 @@ function AdapterRegistry() {
             className="flex flex-col"
             style={{
               background: '#111916',
-              border: '1px solid rgba(0,255,156,0.15)',
+              border: '1px solid rgba(0,232,150,0.15)',
               padding: '16px',
             }}
           >
@@ -308,7 +308,7 @@ function AdapterRegistry() {
               <div>
                 <div
                   className="text-xs font-bold"
-                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00FF9C' }}
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
                 >
                   {adapter.name}
                 </div>
@@ -333,7 +333,7 @@ function AdapterRegistry() {
                 </span>
                 <div
                   className="w-2 h-2 rounded-full"
-                  style={{ background: adapter.status === 'online' ? '#00FF9C' : '#FF3B3B' }}
+                  style={{ background: adapter.status === 'online' ? '#00E896' : '#FF3B3B' }}
                 />
               </div>
             </div>
@@ -347,7 +347,7 @@ function AdapterRegistry() {
               ].map((s) => (
                 <div key={s.label} className="flex flex-col">
                   <span className="text-[9px]" style={{ color: 'rgba(200,230,201,0.4)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{s.label}</span>
-                  <span className="text-xs font-bold" style={{ color: '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{s.value}</span>
+                  <span className="text-xs font-bold" style={{ color: '#00E896', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{s.value}</span>
                 </div>
               ))}
             </div>
@@ -356,10 +356,10 @@ function AdapterRegistry() {
             <div className="mb-3">
               <div className="flex justify-between mb-1">
                 <span className="text-[9px]" style={{ color: 'rgba(200,230,201,0.4)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>CONFORMANCE</span>
-                <span className="text-[10px] font-bold" style={{ color: adapter.conformance >= 90 ? '#00FF9C' : '#FFB300', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{adapter.conformance}%</span>
+                <span className="text-[10px] font-bold" style={{ color: adapter.conformance >= 90 ? '#00E896' : '#FFB300', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}>{adapter.conformance}%</span>
               </div>
-              <div className="h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(0,255,156,0.1)' }}>
-                <div className="h-full" style={{ width: `${adapter.conformance}%`, background: adapter.conformance >= 90 ? '#00FF9C' : '#FFB300' }} />
+              <div className="h-1 w-full rounded-full overflow-hidden" style={{ background: 'rgba(0,232,150,0.1)' }}>
+                <div className="h-full" style={{ width: `${adapter.conformance}%`, background: adapter.conformance >= 90 ? '#00E896' : '#FFB300' }} />
               </div>
             </div>
 
@@ -374,7 +374,7 @@ function AdapterRegistry() {
                   style={{
                     flex: 1,
                     height: '2px',
-                    background: 'rgba(0,255,156,0.2)',
+                    background: 'rgba(0,232,150,0.2)',
                   }}
                 />
               ))}
@@ -388,7 +388,7 @@ function AdapterRegistry() {
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
                   color: 'rgba(200,230,201,0.6)',
-                  border: '1px solid rgba(0,255,156,0.2)',
+                  border: '1px solid rgba(0,232,150,0.2)',
                   background: 'transparent',
                   cursor: 'pointer',
                 }}
@@ -400,8 +400,8 @@ function AdapterRegistry() {
                 className="flex-1 text-[10px] py-1.5 tracking-wider transition-colors"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: '#00FF9C',
-                  border: '1px solid rgba(0,255,156,0.3)',
+                  color: '#00E896',
+                  border: '1px solid rgba(0,232,150,0.3)',
                   background: 'transparent',
                   cursor: 'pointer',
                 }}
@@ -473,15 +473,15 @@ function MessageInspector() {
       {/* Controls */}
       <div
         className="flex-none flex items-center gap-3 px-4 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
       >
         <button
           onClick={() => setPaused((p) => !p)}
           className="text-[10px] px-3 py-1.5 tracking-widest transition-colors"
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            color: paused ? '#FFB300' : '#00FF9C',
-            border: `1px solid ${paused ? 'rgba(255,179,0,0.4)' : 'rgba(0,255,156,0.3)'}`,
+            color: paused ? '#FFB300' : '#00E896',
+            border: `1px solid ${paused ? 'rgba(255,179,0,0.4)' : 'rgba(0,232,150,0.3)'}`,
             background: 'transparent',
             cursor: 'pointer',
           }}
@@ -497,8 +497,8 @@ function MessageInspector() {
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             background: '#111916',
-            border: '1px solid rgba(0,255,156,0.2)',
-            color: '#00FF9C',
+            border: '1px solid rgba(0,232,150,0.2)',
+            color: '#00E896',
             width: '200px',
           }}
         />
@@ -517,9 +517,9 @@ function MessageInspector() {
           className="flex items-center px-4 py-1.5 text-[9px] tracking-widest flex-none"
           style={{
             background: '#0D1210',
-            borderBottom: '1px solid rgba(0,255,156,0.15)',
-            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-            color: 'rgba(0,255,156,0.5)',
+            borderBottom: '1px solid rgba(0,232,150,0.15)',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'rgba(0,232,150,0.5)',
           }}
         >
           <span style={{ width: '90px' }}>TIMESTAMP</span>
@@ -548,17 +548,17 @@ function MessageInspector() {
                   onClick={() => setSelectedMsg(isSelected ? null : m)}
                   className="flex items-center px-4 py-1.5 cursor-pointer transition-colors"
                   style={{
-                    borderBottom: '1px solid rgba(0,255,156,0.04)',
-                    background: isSelected ? 'rgba(0,255,156,0.06)' : 'transparent',
+                    borderBottom: '1px solid rgba(0,232,150,0.04)',
+                    background: isSelected ? 'rgba(0,232,150,0.06)' : 'transparent',
                   }}
-                  onMouseEnter={(el) => { if (!isSelected) (el.currentTarget as HTMLDivElement).style.background = 'rgba(0,255,156,0.03)'; }}
+                  onMouseEnter={(el) => { if (!isSelected) (el.currentTarget as HTMLDivElement).style.background = 'rgba(0,232,150,0.03)'; }}
                   onMouseLeave={(el) => { if (!isSelected) (el.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
                 >
                   <span className="text-[10px]" style={{ width: '90px', fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.4)', flexShrink: 0 }}>{timeStr}</span>
-                  <span className="text-[10px] font-bold" style={{ width: '120px', fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00FF9C', flexShrink: 0 }}>{m.topic}</span>
+                  <span className="text-[10px] font-bold" style={{ width: '120px', fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896', flexShrink: 0 }}>{m.topic}</span>
                   <span className="text-[10px]" style={{ width: '60px', fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.4)', flexShrink: 0 }}>{m.direction}</span>
                   <span className="text-[10px]" style={{ width: '80px', fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.4)', flexShrink: 0 }}>{m.size}B</span>
-                  <span className="text-[10px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: m.valid ? '#00FF9C' : '#FF3B3B' }}>
+                  <span className="text-[10px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: m.valid ? '#00E896' : '#FF3B3B' }}>
                     {m.valid ? 'PASS' : 'FAIL'}
                   </span>
                 </div>
@@ -567,8 +567,8 @@ function MessageInspector() {
                     className="px-4 py-3"
                     style={{
                       background: '#111916',
-                      borderBottom: '1px solid rgba(0,255,156,0.1)',
-                      borderLeft: '3px solid #00FF9C',
+                      borderBottom: '1px solid rgba(0,232,150,0.1)',
+                      borderLeft: '3px solid #00E896',
                     }}
                   >
                     <pre
@@ -623,7 +623,7 @@ function SchemaValidator() {
         <div className="flex-1 flex flex-col">
           <div
             className="text-[9px] tracking-widest mb-2"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
           >
             JSON INPUT
           </div>
@@ -635,8 +635,8 @@ function SchemaValidator() {
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
               background: '#111916',
-              border: '1px solid rgba(0,255,156,0.2)',
-              color: '#00FF9C',
+              border: '1px solid rgba(0,232,150,0.2)',
+              color: '#00E896',
             }}
           />
           <div className="flex gap-2 mt-3">
@@ -645,8 +645,8 @@ function SchemaValidator() {
               className="flex-1 text-[10px] py-2 tracking-widest transition-colors"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: '#00FF9C',
-                border: '1px solid rgba(0,255,156,0.4)',
+                color: '#00E896',
+                border: '1px solid rgba(0,232,150,0.4)',
                 background: 'transparent',
                 cursor: 'pointer',
               }}
@@ -674,7 +674,7 @@ function SchemaValidator() {
         <div className="flex-1 flex flex-col">
           <div
             className="text-[9px] tracking-widest mb-2"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
           >
             VALIDATION RESULTS
           </div>
@@ -682,7 +682,7 @@ function SchemaValidator() {
             className="flex-1 p-3"
             style={{
               background: '#111916',
-              border: `1px solid ${result ? (result.valid ? 'rgba(0,255,156,0.3)' : 'rgba(255,59,59,0.3)') : 'rgba(0,255,156,0.1)'}`,
+              border: `1px solid ${result ? (result.valid ? 'rgba(0,232,150,0.3)' : 'rgba(255,59,59,0.3)') : 'rgba(0,232,150,0.1)'}`,
             }}
           >
             {!result && (
@@ -713,13 +713,13 @@ function SchemaValidator() {
               <div>
                 <div
                   className="text-xs font-bold mb-3"
-                  style={{ color: '#00FF9C', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+                  style={{ color: '#00E896', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
                 >
                   PASS — VALID JSON
                 </div>
                 <div
                   className="text-[9px] tracking-widest mb-2"
-                  style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
                 >
                   FIELDS ({result.fields?.length})
                 </div>
@@ -744,10 +744,10 @@ function SchemaValidator() {
           className="fixed bottom-6 right-6 px-4 py-2 text-xs tracking-widest"
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            color: '#00FF9C',
+            color: '#00E896',
             background: '#0D1210',
-            border: '1px solid rgba(0,255,156,0.5)',
-            boxShadow: '0 0 20px rgba(0,255,156,0.15)',
+            border: '1px solid rgba(0,232,150,0.5)',
+            boxShadow: '0 0 20px rgba(0,232,150,0.15)',
             zIndex: 100,
           }}
         >
@@ -824,7 +824,7 @@ function InferenceDashboard() {
         <div className="flex items-center gap-3 mb-3">
           <span
             className="text-xs font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
           >
             MODEL STATUS
           </span>
@@ -832,8 +832,8 @@ function InferenceDashboard() {
             className="text-[9px] px-1.5 py-0.5"
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: liveData ? '#00FF9C' : 'rgba(200,230,201,0.4)',
-              border: `1px solid ${liveData ? 'rgba(0,255,156,0.3)' : 'rgba(200,230,201,0.15)'}`,
+              color: liveData ? '#00E896' : 'rgba(200,230,201,0.4)',
+              border: `1px solid ${liveData ? 'rgba(0,232,150,0.3)' : 'rgba(200,230,201,0.15)'}`,
             }}
           >
             {liveData ? '[LIVE]' : '[SIMULATED]'}
@@ -844,14 +844,14 @@ function InferenceDashboard() {
             </span>
           )}
         </div>
-        <div style={{ border: '1px solid rgba(0,255,156,0.15)' }}>
+        <div style={{ border: '1px solid rgba(0,232,150,0.15)' }}>
           <div
             className="flex items-center px-4 py-2 text-[9px] tracking-widest"
             style={{
               background: '#0D1210',
-              borderBottom: '1px solid rgba(0,255,156,0.15)',
-              fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-              color: 'rgba(0,255,156,0.5)',
+              borderBottom: '1px solid rgba(0,232,150,0.15)',
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'rgba(0,232,150,0.5)',
             }}
           >
             <span style={{ flex: 2 }}>MODEL</span>
@@ -864,13 +864,13 @@ function InferenceDashboard() {
             <div
               key={m.name}
               className="flex items-center px-4 py-2.5"
-              style={{ borderBottom: '1px solid rgba(0,255,156,0.05)', background: '#111916' }}
+              style={{ borderBottom: '1px solid rgba(0,232,150,0.05)', background: '#111916' }}
             >
-              <span className="text-[11px] font-bold" style={{ flex: 2, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00FF9C' }}>{m.name}</span>
+              <span className="text-[11px] font-bold" style={{ flex: 2, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}>{m.name}</span>
               <span className="text-[10px]" style={{ flex: 1, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.5)' }}>{m.version}</span>
-              <span className="text-[10px]" style={{ flex: 1, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: m.status === 'online' ? '#00FF9C' : '#FF3B3B' }}>{m.status.toUpperCase()}</span>
+              <span className="text-[10px]" style={{ flex: 1, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: m.status === 'online' ? '#00E896' : '#FF3B3B' }}>{m.status.toUpperCase()}</span>
               <span className="text-[10px]" style={{ flex: 1, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.5)' }}>{m.latency}ms</span>
-              <span className="text-[10px]" style={{ flex: 1, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00FF9C' }}>{m.accuracy}%</span>
+              <span className="text-[10px]" style={{ flex: 1, fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}>{m.accuracy}%</span>
             </div>
           ))}
         </div>
@@ -881,7 +881,7 @@ function InferenceDashboard() {
         <div className="flex items-center gap-3 mb-3">
           <span
             className="text-xs font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
           >
             RECENT DETECTIONS
           </span>
@@ -899,12 +899,12 @@ function InferenceDashboard() {
               className="p-3"
               style={{
                 background: '#111916',
-                border: '1px solid rgba(0,255,156,0.15)',
+                border: '1px solid rgba(0,232,150,0.15)',
               }}
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] tracking-wider" style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}>DETECTION {i + 1}</span>
-                <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00FF9C' }}>
+                <span className="text-[9px] tracking-wider" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}>DETECTION {i + 1}</span>
+                <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}>
                   {(85 + Math.round(Math.random() * 14))}%
                 </span>
               </div>
@@ -924,7 +924,7 @@ function InferenceDashboard() {
         <div className="flex items-center gap-3 mb-3">
           <span
             className="text-xs font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
           >
             PERFORMANCE
           </span>
@@ -939,7 +939,7 @@ function InferenceDashboard() {
           className="p-4 text-[11px] text-center"
           style={{
             background: '#111916',
-            border: '1px solid rgba(0,255,156,0.1)',
+            border: '1px solid rgba(0,232,150,0.1)',
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: 'rgba(200,230,201,0.35)',
           }}
@@ -975,24 +975,24 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
         style={{
           width: '200px',
           background: '#0D1210',
-          borderRight: '1px solid rgba(0,255,156,0.15)',
+          borderRight: '1px solid rgba(0,232,150,0.15)',
         }}
       >
         {/* Top wordmark */}
         <div
           className="px-4 py-3"
-          style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+          style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
         >
           <div
             className="text-xs font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
           >
             SUMMIT.OS DEV
           </div>
         </div>
 
         {/* Separator */}
-        <div style={{ height: '1px', background: 'rgba(0,255,156,0.08)' }} />
+        <div style={{ height: '1px', background: 'rgba(0,232,150,0.08)' }} />
 
         {/* Nav items */}
         <div className="flex-1 py-2">
@@ -1005,12 +1005,12 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
                 className="w-full text-left px-4 py-2.5 text-xs transition-colors"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: isActive ? '#00FF9C' : 'rgba(200,230,201,0.5)',
-                  background: isActive ? 'rgba(0,255,156,0.05)' : 'transparent',
+                  color: isActive ? '#00E896' : 'rgba(200,230,201,0.5)',
+                  background: isActive ? 'rgba(0,232,150,0.05)' : 'transparent',
                   borderTop: 'none',
                   borderRight: 'none',
                   borderBottom: 'none',
-                  borderLeft: isActive ? '2px solid #00FF9C' : '2px solid transparent',
+                  borderLeft: isActive ? '2px solid #00E896' : '2px solid transparent',
                   cursor: 'pointer',
                   display: 'block',
                 }}
@@ -1024,7 +1024,7 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
         {/* Bottom: switch role */}
         <div
           className="flex-none p-3"
-          style={{ borderTop: '1px solid rgba(0,255,156,0.15)' }}
+          style={{ borderTop: '1px solid rgba(0,232,150,0.15)' }}
         >
           <button
             onClick={onSwitchRole}
@@ -1032,17 +1032,17 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
               color: 'rgba(200,230,201,0.45)',
-              border: '1px solid rgba(0,255,156,0.15)',
+              border: '1px solid rgba(0,232,150,0.15)',
               background: 'transparent',
               cursor: 'pointer',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = '#00FF9C';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,156,0.4)';
+              (e.currentTarget as HTMLButtonElement).style.color = '#00E896';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,232,150,0.4)';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,230,201,0.45)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,156,0.15)';
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,232,150,0.15)';
             }}
           >
             ← SWITCH ROLE
@@ -1055,11 +1055,11 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
         {/* Header strip */}
         <div
           className="flex-none flex items-center px-4"
-          style={{ height: '40px', background: '#0D1210', borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+          style={{ height: '40px', background: '#0D1210', borderBottom: '1px solid rgba(0,232,150,0.15)' }}
         >
           <span
             className="text-sm font-bold tracking-widest"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
           >
             {VIEW_LABELS[activeView]}
           </span>

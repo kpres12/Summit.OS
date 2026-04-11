@@ -29,7 +29,9 @@ interface OpsLayoutProps {
 
 export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   const { entityList } = useEntityStream();
-  const [activePanel, setActivePanel] = useState<PanelId | null>(null);
+  // Default to alert panel — the most urgent thing should be visible immediately.
+  // User can close it; after that their preference is respected.
+  const [activePanel, setActivePanel] = useState<PanelId | null>('alerts');
 
   // Investigation flow (alert → zoom → entity detail)
   const investigation = useInvestigation(entityList);
@@ -44,6 +46,9 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   // Mission builder draw state
   const missionDraw = useMissionDraw();
 
+  // Geofence draw (triggered from Layers panel)
+  const [geofenceDrawMode, setGeofenceDrawMode] = useState(false);
+
   const handleInvestigateAlert = (alert: Parameters<typeof investigation.investigateAlert>[0]) => {
     investigation.investigateAlert(alert);
     setActivePanel(null); // close the alert panel after investigating
@@ -54,7 +59,14 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       case 'alerts': return <OpsAlertQueue onInvestigate={handleInvestigateAlert} />;
       case 'entities': return <OpsEntityList />;
       case 'missions': return <OpsMissions onReplay={(id) => setReplayMissionId(id)} />;
-      case 'layers': return <OpsMapLayers />;
+      case 'layers': return (
+        <OpsMapLayers
+          onDrawGeofence={() => {
+            setGeofenceDrawMode(true);
+            setActivePanel(null); // close panel so the map is fully visible for drawing
+          }}
+        />
+      );
       case 'hardware': return <OpsHardware />;
       case 'system': return <OpsSystem />;
       case 'mission-builder': return (
@@ -121,6 +133,8 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
               missionDraw.setMissionDrawMode(false);
             }}
             missionWaypoints={missionDraw.missionWaypoints}
+            geofenceDrawMode={geofenceDrawMode}
+            onGeofenceDrawEnd={() => setGeofenceDrawMode(false)}
           />
           {/* Live video overlay */}
           {videoStreamId && (

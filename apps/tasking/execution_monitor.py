@@ -25,6 +25,21 @@ from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger("tasking.execution_monitor")
 
+# ── Optional replanning integration ───────────────────────────────────────────
+try:
+    from replanning.trigger_monitor import TriggerEvent
+    from replanning.replanning_state import ReplanStateStore
+    _REPLANNING_AVAILABLE = True
+except ImportError:
+    try:
+        from apps.tasking.replanning.trigger_monitor import TriggerEvent
+        from apps.tasking.replanning.replanning_state import ReplanStateStore
+        _REPLANNING_AVAILABLE = True
+    except ImportError:
+        _REPLANNING_AVAILABLE = False
+        TriggerEvent = None  # type: ignore
+        ReplanStateStore = None  # type: ignore
+
 FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
 ARRIVAL_RADIUS_M = float(os.getenv("EXEC_ARRIVAL_RADIUS_M", "20"))
 STALE_TELEMETRY_S = float(os.getenv("EXEC_STALE_TELEMETRY_S", "60"))
@@ -80,6 +95,13 @@ class ExecutionMonitor:
     def __init__(self, session_factory: sessionmaker, mqtt_client: Any):
         self._session_factory = session_factory
         self._mqtt_client = mqtt_client
+        self._trigger_queue: asyncio.Queue = asyncio.Queue()
+        self._replan_state_store = None  # set externally if replanning deps available
+
+    @property
+    def trigger_queue(self) -> asyncio.Queue:
+        """Expose the trigger queue so ReplanningEngine can consume events."""
+        return self._trigger_queue
 
     async def run(self):
         logger.info(f"ExecutionMonitor started (poll={POLL_INTERVAL_S}s)")
@@ -157,6 +179,24 @@ class ExecutionMonitor:
                     f"Mission {mission_id}: asset {row.asset_id} telemetry stale "
                     f"({age:.0f}s) — marking FAILED"
                 )
+                # Emit TriggerEvent for replanning engine if available
+                if _REPLANNING_AVAILABLE and TriggerEvent is not None:
+                    try:
+                        await self._trigger_queue.put(
+                            TriggerEvent(
+                                mission_id=mission_id,
+                                trigger_type="ASSET_FAILED",
+                                asset_id=row.asset_id,
+                                details={
+                                    "reason": "stale_telemetry",
+                                    "age_s": age,
+                                    "source": "execution_monitor",
+                                },
+                                ts=time.time(),
+                            )
+                        )
+                    except Exception as _te:
+                        logger.debug(f"Could not enqueue TriggerEvent: {_te}")
                 await self._fail_mission(session, mission_id)
                 return
 

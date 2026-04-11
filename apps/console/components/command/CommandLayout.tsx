@@ -40,7 +40,7 @@ function ageString(isoOrEpoch: string | number): string {
 
 function markerColor(e: EntityData): string {
   switch (e.entity_type) {
-    case 'active': return '#00FF9C';
+    case 'active': return '#00E896';
     case 'alert': return '#FF3B3B';
     case 'neutral': return 'rgba(200,230,201,0.6)';
     default: return '#FFB300';
@@ -48,7 +48,7 @@ function markerColor(e: EntityData): string {
 }
 
 function batteryColor(pct: number): string {
-  if (pct > 40) return '#00FF9C';
+  if (pct > 40) return '#00E896';
   if (pct > 20) return '#FFB300';
   return '#FF3B3B';
 }
@@ -65,7 +65,7 @@ interface SituationEvent {
 }
 
 const EVENT_TYPE_COLOR: Record<Exclude<EventType, 'ALL'>, string> = {
-  DETECTIONS: '#00FF9C',
+  DETECTIONS: '#00E896',
   MISSIONS: '#4FC3F7',
   ASSETS: '#FFB300',
   ALERTS: '#FF3B3B',
@@ -92,20 +92,20 @@ function CommandTopBar({
   return (
     <div
       className="flex-none flex items-center px-4 relative"
-      style={{ height: '40px', background: '#0D1210', borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+      style={{ height: '40px', background: '#0D1210', borderBottom: '1px solid rgba(0,232,150,0.15)' }}
     >
       {/* Left */}
       <div className="flex items-center gap-3 z-10">
         <span
           className="text-sm font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
         >
           SUMMIT.OS
         </span>
-        <span style={{ color: 'rgba(0,255,156,0.3)' }}>|</span>
+        <span style={{ color: 'rgba(0,232,150,0.3)' }}>|</span>
         <span
           className="text-xs tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(200,230,201,0.45)', fontSize: '10px' }}
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)', fontSize: '10px' }}
         >
           COMMAND
         </span>
@@ -137,8 +137,8 @@ function CommandTopBar({
       {/* Right */}
       <div className="ml-auto flex items-center gap-3 z-10">
         <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: connected ? '#00FF9C' : '#FF3B3B' }} />
-          <span className="text-[10px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: connected ? '#00FF9C' : '#FF3B3B' }}>
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: connected ? '#00E896' : '#FF3B3B' }} />
+          <span className="text-[10px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: connected ? '#00E896' : '#FF3B3B' }}>
             {connected ? 'WS LIVE' : 'WS DOWN'}
           </span>
         </div>
@@ -148,7 +148,7 @@ function CommandTopBar({
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: 'rgba(200,230,201,0.45)',
-            border: '1px solid rgba(0,255,156,0.15)',
+            border: '1px solid rgba(0,232,150,0.15)',
             background: 'transparent',
             cursor: 'pointer',
           }}
@@ -239,16 +239,16 @@ function SituationFeed() {
   return (
     <div
       className="flex flex-col h-full"
-      style={{ background: '#0D1210', borderRight: '1px solid rgba(0,255,156,0.15)' }}
+      style={{ background: '#0D1210', borderRight: '1px solid rgba(0,232,150,0.15)' }}
     >
       {/* Header */}
       <div
         className="flex-none px-3 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
       >
         <span
           className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
         >
           SITUATION FEED
         </span>
@@ -257,11 +257,11 @@ function SituationFeed() {
       {/* Filter bar */}
       <div
         className="flex-none flex flex-wrap gap-1 px-2 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.1)' }}
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.1)' }}
       >
         {FILTERS.map((f) => {
           const active = activeFilters.has(f);
-          const color = f === 'ALL' ? '#00FF9C' : EVENT_TYPE_COLOR[f as Exclude<EventType, 'ALL'>];
+          const color = f === 'ALL' ? '#00E896' : EVENT_TYPE_COLOR[f as Exclude<EventType, 'ALL'>];
           return (
             <button
               key={f}
@@ -270,7 +270,7 @@ function SituationFeed() {
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
                 color: active ? color : 'rgba(200,230,201,0.35)',
-                border: `1px solid ${active ? color + '60' : 'rgba(0,255,156,0.1)'}`,
+                border: `1px solid ${active ? color + '60' : 'rgba(0,232,150,0.1)'}`,
                 background: active ? `${color}10` : 'transparent',
                 cursor: 'pointer',
               }}
@@ -301,7 +301,7 @@ function SituationFeed() {
               className="px-3 py-2 cursor-pointer transition-colors"
               style={{
                 borderLeft: `3px solid ${color}`,
-                borderBottom: '1px solid rgba(0,255,156,0.05)',
+                borderBottom: '1px solid rgba(0,232,150,0.05)',
                 background: isSelected ? `${color}0A` : 'transparent',
               }}
             >
@@ -390,16 +390,16 @@ Generated by Summit.OS Command Console`;
   return (
     <div
       className="flex flex-col h-full"
-      style={{ background: '#0D1210', borderLeft: '1px solid rgba(0,255,156,0.15)' }}
+      style={{ background: '#0D1210', borderLeft: '1px solid rgba(0,232,150,0.15)' }}
     >
       {/* Header */}
       <div
         className="flex-none px-3 py-2"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
       >
         <span
           className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
         >
           RESOURCES
         </span>
@@ -415,7 +415,7 @@ Generated by Summit.OS Command Console`;
       {/* Summary row */}
       <div
         className="flex-none px-3 py-2 text-[10px]"
-        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)', borderBottom: '1px solid rgba(0,255,156,0.1)' }}
+        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)', borderBottom: '1px solid rgba(0,232,150,0.1)' }}
       >
         {entityList.length} ASSETS // {activeEntities.length} ACTIVE // {idleEntities.length} IDLE // 0 OFFLINE
       </div>
@@ -429,10 +429,10 @@ Generated by Summit.OS Command Console`;
               <div
                 className="px-3 py-1 text-[9px] tracking-widest"
                 style={{
-                  fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-                  color: 'rgba(0,255,156,0.4)',
-                  background: 'rgba(0,255,156,0.03)',
-                  borderBottom: '1px solid rgba(0,255,156,0.08)',
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  color: 'rgba(0,232,150,0.4)',
+                  background: 'rgba(0,232,150,0.03)',
+                  borderBottom: '1px solid rgba(0,232,150,0.08)',
                 }}
               >
                 {domain.toUpperCase()} ({entities.length})
@@ -443,11 +443,11 @@ Generated by Summit.OS Command Console`;
                   <div
                     key={e.entity_id}
                     className="px-3 py-1.5 flex items-center gap-2"
-                    style={{ borderBottom: '1px solid rgba(0,255,156,0.05)' }}
+                    style={{ borderBottom: '1px solid rgba(0,232,150,0.05)' }}
                   >
                     <div
                       className="w-1.5 h-1.5 rounded-full flex-none"
-                      style={{ background: isActive ? '#00FF9C' : 'rgba(200,230,201,0.3)' }}
+                      style={{ background: isActive ? '#00E896' : 'rgba(200,230,201,0.3)' }}
                     />
                     <span
                       className="flex-1 text-[10px] truncate"
@@ -459,7 +459,7 @@ Generated by Summit.OS Command Console`;
                       <div className="flex items-center gap-1 flex-none">
                         <div
                           className="h-1 rounded-full overflow-hidden"
-                          style={{ width: '24px', background: 'rgba(0,255,156,0.1)' }}
+                          style={{ width: '24px', background: 'rgba(0,232,150,0.1)' }}
                         >
                           <div
                             className="h-full"
@@ -472,8 +472,8 @@ Generated by Summit.OS Command Console`;
                       className="text-[9px] px-1 flex-none"
                       style={{
                         fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                        color: isActive ? '#00FF9C' : 'rgba(200,230,201,0.35)',
-                        border: `1px solid ${isActive ? 'rgba(0,255,156,0.3)' : 'rgba(200,230,201,0.1)'}`,
+                        color: isActive ? '#00E896' : 'rgba(200,230,201,0.35)',
+                        border: `1px solid ${isActive ? 'rgba(0,232,150,0.3)' : 'rgba(200,230,201,0.1)'}`,
                       }}
                     >
                       {isActive ? 'ACT' : 'IDL'}
@@ -497,11 +497,11 @@ Generated by Summit.OS Command Console`;
         <div
           className="px-3 py-1 text-[9px] tracking-widest mt-1"
           style={{
-            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-            color: 'rgba(0,255,156,0.4)',
-            background: 'rgba(0,255,156,0.03)',
-            borderTop: '1px solid rgba(0,255,156,0.08)',
-            borderBottom: '1px solid rgba(0,255,156,0.08)',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'rgba(0,232,150,0.4)',
+            background: 'rgba(0,232,150,0.03)',
+            borderTop: '1px solid rgba(0,232,150,0.08)',
+            borderBottom: '1px solid rgba(0,232,150,0.08)',
           }}
         >
           MISSION STATUS
@@ -515,7 +515,7 @@ Generated by Summit.OS Command Console`;
           </div>
         )}
         {missions.slice(0, 10).map((m) => {
-          const statusColor = m.status.toUpperCase() === 'ACTIVE' ? '#00FF9C'
+          const statusColor = m.status.toUpperCase() === 'ACTIVE' ? '#00E896'
             : m.status.toUpperCase() === 'FAILED' ? '#FF3B3B'
             : m.status.toUpperCase() === 'COMPLETED' ? '#4FC3F7'
             : 'rgba(200,230,201,0.45)';
@@ -523,7 +523,7 @@ Generated by Summit.OS Command Console`;
             <div
               key={m.mission_id}
               className="px-3 py-2 flex items-center justify-between"
-              style={{ borderBottom: '1px solid rgba(0,255,156,0.05)' }}
+              style={{ borderBottom: '1px solid rgba(0,232,150,0.05)' }}
             >
               <span
                 className="text-[10px] truncate flex-1"
@@ -549,7 +549,7 @@ Generated by Summit.OS Command Console`;
       {/* Handoff Brief button */}
       <div
         className="flex-none p-3"
-        style={{ borderTop: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderTop: '1px solid rgba(0,232,150,0.15)' }}
       >
         <button
           onClick={generateBrief}
@@ -557,12 +557,12 @@ Generated by Summit.OS Command Console`;
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: '#080C0A',
-            background: '#00FF9C',
+            background: '#00E896',
             border: 'none',
             cursor: 'pointer',
           }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = '#00CC74')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = '#00FF9C')}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = '#00E896')}
         >
           HANDOFF BRIEF
         </button>
@@ -581,18 +581,18 @@ Generated by Summit.OS Command Console`;
               width: '540px',
               maxHeight: '80vh',
               background: '#0D1210',
-              border: '1px solid rgba(0,255,156,0.3)',
-              boxShadow: '0 0 40px rgba(0,255,156,0.1)',
+              border: '1px solid rgba(0,232,150,0.3)',
+              boxShadow: '0 0 40px rgba(0,232,150,0.1)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
               className="flex items-center justify-between px-4 py-3"
-              style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+              style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
             >
               <span
                 className="text-sm font-bold tracking-widest"
-                style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}
+                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}
               >
                 HANDOFF BRIEF
               </span>
@@ -613,15 +613,15 @@ Generated by Summit.OS Command Console`;
             </div>
             <div
               className="flex-none p-3"
-              style={{ borderTop: '1px solid rgba(0,255,156,0.15)' }}
+              style={{ borderTop: '1px solid rgba(0,232,150,0.15)' }}
             >
               <button
                 onClick={copyBrief}
                 className="w-full py-2 text-xs tracking-widest transition-colors"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  color: copied ? '#00FF9C' : 'rgba(200,230,201,0.7)',
-                  border: `1px solid ${copied ? 'rgba(0,255,156,0.5)' : 'rgba(0,255,156,0.2)'}`,
+                  color: copied ? '#00E896' : 'rgba(200,230,201,0.7)',
+                  border: `1px solid ${copied ? 'rgba(0,232,150,0.5)' : 'rgba(0,232,150,0.2)'}`,
                   background: 'transparent',
                   cursor: 'pointer',
                 }}
@@ -702,7 +702,7 @@ export default function CommandLayout({ onSwitchRole }: CommandLayoutProps) {
           }}
         >
           <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,59,59,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#FF3B3B', fontSize: '10px', letterSpacing: '0.15em' }}>
+            <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#FF3B3B', fontSize: '10px', letterSpacing: '0.15em' }}>
               PENDING APPROVALS
             </span>
             <button onClick={() => setShowApprovals(false)} style={{ color: 'rgba(200,230,201,0.45)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px' }}>✕</button>
@@ -731,8 +731,8 @@ export default function CommandLayout({ onSwitchRole }: CommandLayoutProps) {
                   marginTop: '4px',
                   padding: '4px 12px',
                   background: 'transparent',
-                  border: '1px solid rgba(0,255,156,0.4)',
-                  color: '#00FF9C',
+                  border: '1px solid rgba(0,232,150,0.4)',
+                  color: '#00E896',
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
                   fontSize: '9px',
                   letterSpacing: '0.1em',

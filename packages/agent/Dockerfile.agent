@@ -1,0 +1,8 @@
+FROM python:3.11-slim
+WORKDIR /app
+COPY packages/agent/ ./agent/
+COPY packages/ ./packages/
+RUN pip install --no-cache-dir httpx aiohttp asyncio-mqtt
+ENV ASSET_ID=edge-asset-001
+ENV FABRIC_URL=http://fabric:8001
+CMD ["python", "agent/agent.py"]

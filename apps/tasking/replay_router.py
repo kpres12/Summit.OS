@@ -31,6 +31,15 @@ from typing import Any, Dict, List, Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 
+try:
+    from apps.tasking.analysis.replay_persistence import ReplayPersistence
+    from apps.tasking.analysis.mission_summary import MissionSummaryGenerator
+    _persistence = ReplayPersistence()
+    _summary_gen = MissionSummaryGenerator()
+except Exception:
+    _persistence = None  # type: ignore[assignment]
+    _summary_gen = None  # type: ignore[assignment]
+
 logger = logging.getLogger("tasking.replay")
 
 FABRIC_URL = os.getenv("FABRIC_URL", "http://fabric:8001")
@@ -159,3 +168,61 @@ async def clear_replay(mission_id: str):
     if mission_id in _replay_store:
         del _replay_store[mission_id]
     return {"status": "cleared", "mission_id": mission_id}
+
+
+@router.get("/{mission_id}/replay/summary")
+async def get_replay_summary(mission_id: str):
+    """
+    Return a structured after-action summary for a mission.
+
+    Loads snapshots from the in-memory store (or SQLite persistence if
+    available) and runs MissionSummaryGenerator.generate().
+
+    Response keys: mission_id, duration_s, assets_deployed, waypoints_total,
+    waypoints_completed, completion_rate, alerts_triggered, replan_count,
+    asset_utilization, timeline.
+    """
+    if _summary_gen is None:
+        raise HTTPException(
+            status_code=503,
+            detail="MissionSummaryGenerator not available (import error at startup)",
+        )
+
+    # Prefer in-memory store; fall back to SQLite persistence
+    snapshots = _replay_store.get(mission_id)
+    if snapshots is None and _persistence is not None:
+        snapshots = _persistence.load_timeline(mission_id)
+
+    if not snapshots:
+        raise HTTPException(
+            status_code=404, detail=f"No replay data for mission {mission_id}"
+        )
+
+    # Collect inline events from all snapshots
+    events = []
+    for snap in snapshots:
+        events.extend(snap.get("events", []))
+
+    summary = _summary_gen.generate(mission_id, list(snapshots), events)
+    return summary
+
+
+@router.get("/replay/list")
+async def list_replay_missions():
+    """
+    Return all missions with stored replay data.
+
+    Merges in-memory replay_store keys with SQLite persistence records.
+
+    Response: { "missions": ["mission-id-1", ...] }
+    """
+    mission_set: set[str] = set(_replay_store.keys())
+
+    if _persistence is not None:
+        try:
+            for mid in _persistence.list_missions():
+                mission_set.add(mid)
+        except Exception as exc:
+            logger.warning("Failed to query ReplayPersistence: %s", exc)
+
+    return {"missions": sorted(mission_set)}

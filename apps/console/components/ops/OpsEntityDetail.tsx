@@ -84,8 +84,8 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
       >
         <div>
           <div
-            className="text-sm font-bold tracking-wide"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
+            className="text-sm font-bold tracking-[0.1em]"
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)' }}
           >
             {displayName}
           </div>
@@ -114,9 +114,9 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         <button
           onClick={handleDispatch}
           disabled={dispatched}
-          className="w-full py-3 text-sm font-bold tracking-widest transition-all"
+          className="w-full py-3 text-sm font-bold tracking-[0.2em] transition-all"
           style={{
-            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: 'var(--background)',
             background: dispatched ? 'var(--accent-dim)' : 'var(--accent)',
             border: 'none',

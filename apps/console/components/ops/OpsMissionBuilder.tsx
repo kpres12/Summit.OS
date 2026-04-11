@@ -35,7 +35,7 @@ interface OpsMissionBuilderProps {
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="text-[9px] tracking-widest mb-1"
-      style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.45)' }}>
+      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.45)' }}>
       {children}
     </div>
   );
@@ -57,8 +57,8 @@ function SelectField({
       style={{
         fontFamily: 'var(--font-ibm-plex-mono), monospace',
         background: '#0A0F0C',
-        border: '1px solid rgba(0,255,156,0.2)',
-        color: '#00FF9C',
+        border: '1px solid rgba(0,232,150,0.2)',
+        color: '#00E896',
         cursor: 'pointer',
       }}
     >
@@ -177,20 +177,20 @@ export default function OpsMissionBuilder({
     <div className="flex flex-col h-full overflow-hidden" style={{ background: '#0D1210' }}>
       {/* Header */}
       <div className="flex-none px-3 py-2 flex items-center justify-between"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}>
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}>
         <span className="text-xs font-bold tracking-widest"
-          style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: '#00FF9C' }}>
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: '#00E896' }}>
           MISSION BUILDER
         </span>
         <span className="text-[9px] tracking-wider"
-          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,255,156,0.35)' }}>
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.35)' }}>
           PLAN // LAUNCH
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {/* NLP Input */}
-        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,255,156,0.08)' }}>
+        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,232,150,0.08)' }}>
           <FieldLabel>NATURAL LANGUAGE COMMAND</FieldLabel>
           <div className="flex gap-1.5">
             <textarea
@@ -203,7 +203,7 @@ export default function OpsMissionBuilder({
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
                 background: '#0A0F0C',
-                border: '1px solid rgba(0,255,156,0.2)',
+                border: '1px solid rgba(0,232,150,0.2)',
                 color: 'rgba(200,230,201,0.85)',
                 lineHeight: 1.5,
               }}
@@ -214,13 +214,13 @@ export default function OpsMissionBuilder({
               className="flex-none px-2 text-[10px] tracking-widest transition-all"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: parsing ? 'rgba(0,255,156,0.4)' : '#00FF9C',
-                border: '1px solid rgba(0,255,156,0.3)',
+                color: parsing ? 'rgba(0,232,150,0.4)' : '#00E896',
+                border: '1px solid rgba(0,232,150,0.3)',
                 background: 'transparent',
                 cursor: parsing ? 'wait' : 'pointer',
                 alignSelf: 'stretch',
               }}
-              onMouseEnter={(e) => { if (!parsing) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,156,0.06)'; }}
+              onMouseEnter={(e) => { if (!parsing) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,232,150,0.06)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
             >
               {parsing ? '...' : 'PARSE'}
@@ -229,7 +229,7 @@ export default function OpsMissionBuilder({
 
           {parsed && (
             <div className="mt-2 px-2 py-1.5"
-              style={{ background: 'rgba(0,255,156,0.03)', border: '1px solid rgba(0,255,156,0.1)' }}>
+              style={{ background: 'rgba(0,232,150,0.03)', border: '1px solid rgba(0,232,150,0.1)' }}>
               <div className="flex items-start justify-between gap-2">
                 <span className="text-[9px] leading-relaxed"
                   style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.6)' }}>
@@ -238,7 +238,7 @@ export default function OpsMissionBuilder({
                 <span className="flex-none text-[9px] font-bold"
                   style={{
                     fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                    color: parsed.confidence >= 0.8 ? '#00FF9C' : parsed.confidence >= 0.65 ? '#FFB300' : '#FF3B3B',
+                    color: parsed.confidence >= 0.8 ? '#00E896' : parsed.confidence >= 0.65 ? '#FFB300' : '#FF3B3B',
                   }}>
                   {Math.round(parsed.confidence * 100)}%
                 </span>
@@ -248,9 +248,9 @@ export default function OpsMissionBuilder({
         </div>
 
         {/* Mission Parameters */}
-        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,255,156,0.08)' }}>
+        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,232,150,0.08)' }}>
           <div className="text-[9px] font-bold tracking-widest mb-2"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}>
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}>
             PARAMETERS
           </div>
 
@@ -279,8 +279,8 @@ export default function OpsMissionBuilder({
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
                   background: '#0A0F0C',
-                  border: '1px solid rgba(0,255,156,0.2)',
-                  color: '#00FF9C',
+                  border: '1px solid rgba(0,232,150,0.2)',
+                  color: '#00E896',
                 }}
               />
             </div>
@@ -292,14 +292,14 @@ export default function OpsMissionBuilder({
         </div>
 
         {/* Asset Selection */}
-        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,255,156,0.08)' }}>
+        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,232,150,0.08)' }}>
           <div className="text-[9px] font-bold tracking-widest mb-2"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}>
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}>
             ASSET
           </div>
 
           {assetsLoading ? (
-            <div className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,255,156,0.3)' }}>
+            <div className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.3)' }}>
               LOADING...
             </div>
           ) : (
@@ -309,15 +309,15 @@ export default function OpsMissionBuilder({
                 onClick={() => setSelectedAssetId('auto')}
                 className="flex items-center gap-2 px-2 py-1.5 text-left transition-colors"
                 style={{
-                  background: selectedAssetId === 'auto' ? 'rgba(0,255,156,0.06)' : 'transparent',
-                  border: `1px solid ${selectedAssetId === 'auto' ? 'rgba(0,255,156,0.3)' : 'rgba(0,255,156,0.08)'}`,
+                  background: selectedAssetId === 'auto' ? 'rgba(0,232,150,0.06)' : 'transparent',
+                  border: `1px solid ${selectedAssetId === 'auto' ? 'rgba(0,232,150,0.3)' : 'rgba(0,232,150,0.08)'}`,
                   cursor: 'pointer',
                 }}
               >
                 <div className="w-2 h-2 rounded-full flex-none"
-                  style={{ background: selectedAssetId === 'auto' ? '#00FF9C' : 'transparent', border: '1px solid #00FF9C' }} />
+                  style={{ background: selectedAssetId === 'auto' ? '#00E896' : 'transparent', border: '1px solid #00E896' }} />
                 <span className="text-[10px]"
-                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: selectedAssetId === 'auto' ? '#00FF9C' : 'rgba(200,230,201,0.55)' }}>
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: selectedAssetId === 'auto' ? '#00E896' : 'rgba(200,230,201,0.55)' }}>
                   AUTO-SELECT (nearest available)
                 </span>
               </button>
@@ -331,15 +331,15 @@ export default function OpsMissionBuilder({
                     onClick={() => setSelectedAssetId(asset.asset_id)}
                     className="flex items-center gap-2 px-2 py-1.5 text-left transition-colors"
                     style={{
-                      background: isSelected ? 'rgba(0,255,156,0.06)' : 'transparent',
-                      border: `1px solid ${isSelected ? 'rgba(0,255,156,0.3)' : 'rgba(0,255,156,0.08)'}`,
+                      background: isSelected ? 'rgba(0,232,150,0.06)' : 'transparent',
+                      border: `1px solid ${isSelected ? 'rgba(0,232,150,0.3)' : 'rgba(0,232,150,0.08)'}`,
                       cursor: 'pointer',
                     }}
                   >
                     <div className="w-2 h-2 rounded-full flex-none"
-                      style={{ background: isSelected ? '#00FF9C' : 'transparent', border: '1px solid #00FF9C' }} />
+                      style={{ background: isSelected ? '#00E896' : 'transparent', border: '1px solid #00E896' }} />
                     <span className="flex-1 text-[10px]"
-                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: isSelected ? '#00FF9C' : 'rgba(200,230,201,0.55)' }}>
+                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: isSelected ? '#00E896' : 'rgba(200,230,201,0.55)' }}>
                       {asset.asset_id}
                     </span>
                     <span className="text-[9px]"
@@ -350,7 +350,7 @@ export default function OpsMissionBuilder({
                       <span className="text-[9px]"
                         style={{
                           fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                          color: bat > 40 ? '#00FF9C' : bat > 20 ? '#FFB300' : '#FF3B3B',
+                          color: bat > 40 ? '#00E896' : bat > 20 ? '#FFB300' : '#FF3B3B',
                         }}>
                         {Math.round(bat)}%
                       </span>
@@ -370,9 +370,9 @@ export default function OpsMissionBuilder({
         </div>
 
         {/* Mission Area */}
-        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,255,156,0.08)' }}>
+        <div className="px-3 py-3" style={{ borderBottom: '1px solid rgba(0,232,150,0.08)' }}>
           <div className="text-[9px] font-bold tracking-widest mb-2"
-            style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'rgba(0,255,156,0.5)' }}>
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}>
             MISSION AREA
           </div>
 
@@ -413,7 +413,7 @@ export default function OpsMissionBuilder({
       </div>
 
       {/* Launch */}
-      <div className="flex-none px-3 py-3" style={{ borderTop: '1px solid rgba(0,255,156,0.15)' }}>
+      <div className="flex-none px-3 py-3" style={{ borderTop: '1px solid rgba(0,232,150,0.15)' }}>
         {launchError && (
           <div className="text-[9px] mb-2 px-2 py-1"
             style={{
@@ -436,15 +436,15 @@ export default function OpsMissionBuilder({
           disabled={!canLaunch || launching}
           className="w-full py-3 text-sm font-bold tracking-widest transition-all"
           style={{
-            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: '#080C0A',
-            background: !canLaunch || launching ? 'rgba(0,255,156,0.3)' : '#00FF9C',
+            background: !canLaunch || launching ? 'rgba(0,232,150,0.3)' : '#00E896',
             border: 'none',
             cursor: !canLaunch || launching ? 'not-allowed' : 'pointer',
             letterSpacing: '0.2em',
           }}
           onMouseEnter={(e) => { if (canLaunch && !launching) (e.currentTarget as HTMLButtonElement).style.background = '#00CC74'; }}
-          onMouseLeave={(e) => { if (canLaunch && !launching) (e.currentTarget as HTMLButtonElement).style.background = '#00FF9C'; }}
+          onMouseLeave={(e) => { if (canLaunch && !launching) (e.currentTarget as HTMLButtonElement).style.background = '#00E896'; }}
         >
           {launching ? 'LAUNCHING...' : 'LAUNCH MISSION'}
         </button>

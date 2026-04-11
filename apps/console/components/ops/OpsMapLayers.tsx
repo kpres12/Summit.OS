@@ -9,9 +9,13 @@ interface Layer {
   enabled: boolean;
 }
 
-export default function OpsMapLayers() {
+interface OpsMapLayersProps {
+  onDrawGeofence?: () => void;
+}
+
+export default function OpsMapLayers({ onDrawGeofence }: OpsMapLayersProps) {
   const [layers, setLayers] = useState<Layer[]>([
-    { id: 'entities', label: 'ENTITIES', enabled: true },
+    { id: 'entities', label: 'ASSETS', enabled: true },
     { id: 'tracks', label: 'TRACKS', enabled: true },
     { id: 'geofences', label: 'GEOFENCES', enabled: false },
     { id: 'grid', label: 'GRID OVERLAY', enabled: false },
@@ -59,6 +63,29 @@ export default function OpsMapLayers() {
             </span>
           </button>
         ))}
+
+        {/* Geofence draw — action, not a layer toggle */}
+        <div style={{ marginTop: '8px', borderTop: '1px solid var(--accent-5)', paddingTop: '12px' }}>
+          <button
+            onClick={onDrawGeofence}
+            aria-label="Draw geofence on map"
+            className="summit-btn w-full text-left flex items-center gap-3"
+            style={{
+              padding: '8px 12px',
+              background: 'transparent',
+              border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
+              borderLeft: '2px solid var(--warning)',
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: '12px', color: 'var(--warning)' }}>⬡</span>
+            <span
+              className="text-xs tracking-wider"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--warning)' }}
+            >
+              DRAW GEOFENCE
+            </span>
+          </button>
+        </div>
       </div>
     </div>
   );

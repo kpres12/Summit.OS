@@ -112,15 +112,19 @@ async def create_mission(req: MissionCreateRequest, request: Request):
             # Mobile assets — build a per-role MissionCreateRequest copy
             import copy
             role_req = copy.copy(req)
-            # Merge role planning params into request
+            # Merge role planning params into request.
+            # Explicit user params take priority: only fill in role defaults
+            # for keys the user didn't set (so pattern="grid" is preserved).
             merged_params = dict(req.planning_params or {})
-            merged_params.update({
+            role_defaults = {
                 "pattern": role.pattern,
                 "altitude": role.altitude_m,
                 "speed": role.speed_mps,
                 "intent": intent,
                 "sensors_active": role.sensors_active,
-            })
+            }
+            for k, v in role_defaults.items():
+                merged_params.setdefault(k, v)
             role_req.planning_params = merged_params
 
             role_assignments = await _plan_assignments(role_req, role.assets)

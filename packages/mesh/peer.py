@@ -402,3 +402,44 @@ class MeshPeer:
                 + list(self.crdt_store.sets.keys())
             ),
         }
+
+    # ── Swarm State Messaging ───────────────────────────────
+
+    async def broadcast_swarm_state(self, payload: dict) -> None:
+        """
+        Serialise payload and broadcast a SWARM_STATE message to all alive peers.
+
+        Uses MessageType.BROADCAST as the wire type (SWARM_STATE is identified
+        by the "type": "swarm_state" field inside the payload, keeping the
+        transport layer agnostic to swarm protocol details).
+        """
+        if not self._transport_mgr:
+            logger.warning("broadcast_swarm_state: transport not started")
+            return
+
+        for peer in self.alive_peers():
+            self._transport_mgr.send(MessageType.BROADCAST, payload, peer.address)
+
+        logger.debug(
+            "Broadcast swarm_state to %d peers from %s", len(self.alive_peers()), self.node_id
+        )
+
+    async def on_swarm_state(self, handler: Callable) -> None:
+        """
+        Register a handler that is called whenever a SWARM_STATE message arrives.
+
+        The handler receives (payload: dict) where payload["type"] == "swarm_state".
+        Internally this wraps the BROADCAST message handler and filters by payload type.
+        """
+        if not self._transport_mgr:
+            logger.warning("on_swarm_state: transport not started — handler will not fire")
+            return
+
+        def _dispatch(data: dict, addr: tuple) -> None:
+            if data.get("type") == "swarm_state":
+                try:
+                    handler(data)
+                except Exception as exc:
+                    logger.error("swarm_state handler raised: %s", exc, exc_info=True)
+
+        self._transport_mgr.register_handler(MessageType.BROADCAST, _dispatch)

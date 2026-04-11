@@ -10,6 +10,14 @@ import SecuritySettings from '@/components/auth/SecuritySettings';
 
 interface OpsTopBarProps {
   onSwitchRole: () => void;
+  /** Optional mission name displayed in the header */
+  missionName?: string;
+  /** Number of active assets */
+  assetCount?: number;
+  /** Number of active alerts */
+  alertCount?: number;
+  /** Link quality 0–1; shown as colored bar (red <0.3, amber 0.3–0.7, green >0.7) */
+  linkQuality?: number;
 }
 
 function utcString(d: Date): string {
@@ -22,7 +30,7 @@ function utcString(d: Date): string {
   return `${y}-${mo}-${day} // ${h}:${m}:${s}Z`;
 }
 
-export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
+export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alertCount, linkQuality }: OpsTopBarProps) {
   const { connected }             = useEntityStream();
   const { user, logout }          = useAuth();
   const { config, setDomain, domains } = useDomain();
@@ -89,6 +97,78 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
           >
             {config.name.toUpperCase()}
           </button>
+
+          {/* Optional mission context pills */}
+          {missionName && (
+            <>
+              <span style={{ color: 'var(--accent-30)' }}>|</span>
+              <span
+                className="text-[10px] tracking-widest"
+                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
+              >
+                {missionName.toUpperCase()}
+              </span>
+            </>
+          )}
+          {assetCount !== undefined && (
+            <span
+              className="text-[10px] tracking-widest"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)' }}
+              title="Active assets"
+            >
+              {assetCount} ASSETS
+            </span>
+          )}
+          {alertCount !== undefined && (
+            <span
+              className="text-[10px] tracking-widest"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: alertCount > 0 ? 'var(--critical)' : 'var(--text-dim)',
+              }}
+              title="Active alerts"
+            >
+              {alertCount} ALERTS
+            </span>
+          )}
+          {linkQuality !== undefined && (
+            <div
+              className="flex items-center gap-1"
+              title={`Link quality: ${Math.round(linkQuality * 100)}%`}
+            >
+              <span
+                className="text-[9px] tracking-widest"
+                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
+              >
+                LINK
+              </span>
+              <div
+                style={{
+                  width: '32px',
+                  height: '6px',
+                  background: 'var(--border)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: `${Math.round(Math.max(0, Math.min(1, linkQuality)) * 100)}%`,
+                    background: linkQuality < 0.3
+                      ? 'var(--critical)'
+                      : linkQuality < 0.7
+                        ? 'var(--warning)'
+                        : 'var(--accent)',
+                    transition: 'width 500ms ease',
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Center — absolute */}
@@ -172,7 +252,7 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                 justifyContent: 'center',
                 fontSize:     '8px',
                 color:        'var(--accent)',
-                fontFamily:   'var(--font-orbitron), Orbitron, sans-serif',
+                fontFamily:   'var(--font-ibm-plex-mono), monospace',
                 flexShrink:   0,
               }}>
                 {user?.name?.[0]?.toUpperCase() ?? '?'}
@@ -264,8 +344,8 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
             maxWidth: '90vw',
           }}>
             <div
-              className="text-xs font-bold tracking-widest mb-4"
-              style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
+              className="text-[10px] font-bold tracking-[0.2em] mb-4"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
             >
               SELECT DOMAIN
             </div>
@@ -281,7 +361,7 @@ export default function OpsTopBar({ onSwitchRole }: OpsTopBarProps) {
                     color: config.id === d.id ? 'var(--accent)' : 'var(--text-dim)',
                   }}
                 >
-                  <div style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>
+                  <div style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em' }}>
                     {d.name.toUpperCase()}
                   </div>
                   <div style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 9, marginTop: 2, color: 'var(--text-muted)' }}>

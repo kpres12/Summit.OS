@@ -12,7 +12,7 @@ const TIER_LABELS: Record<Tier, string> = {
 
 const TIER_COLOR: Record<Tier, string> = {
   free: '#4FC3F7',
-  pro: '#00FF9C',
+  pro: '#00E896',
   org: '#FFB300',
   enterprise: '#FF3B3B',
 };
@@ -71,7 +71,7 @@ export default function UpgradePrompt({ feature, requiredTier, description, fill
         borderRadius: 4,
         padding: '3px 10px',
         fontSize: 9,
-        fontFamily: 'var(--font-orbitron), sans-serif',
+        fontFamily: 'var(--font-ibm-plex-mono), monospace',
         fontWeight: 700,
         letterSpacing: 2,
         color,
@@ -97,7 +97,7 @@ export default function UpgradePrompt({ feature, requiredTier, description, fill
         borderRadius: 4,
         padding: '8px 20px',
         fontSize: 11,
-        fontFamily: 'var(--font-orbitron), sans-serif',
+        fontFamily: 'var(--font-ibm-plex-mono), monospace',
         fontWeight: 700,
         letterSpacing: 1,
         cursor: 'pointer',

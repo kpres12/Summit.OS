@@ -15,7 +15,7 @@ export default function OpsReplayControls({ replay, onClose }: OpsReplayControls
     fontFamily: 'var(--font-ibm-plex-mono), monospace',
   };
   const orbitron: React.CSSProperties = {
-    fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+    fontFamily: 'var(--font-ibm-plex-mono), monospace',
   };
 
   if (isLoading) {
@@ -50,7 +50,7 @@ export default function OpsReplayControls({ replay, onClose }: OpsReplayControls
     <div
       style={{
         background: '#0D1610',
-        border: '1px solid rgba(0,255,156,0.2)',
+        border: '1px solid rgba(0,232,150,0.2)',
         padding: '8px 12px',
         display: 'flex',
         flexDirection: 'column',
@@ -110,9 +110,9 @@ export default function OpsReplayControls({ replay, onClose }: OpsReplayControls
               ...mono,
               fontSize: 12,
               padding: '3px 10px',
-              background: active ? 'rgba(255,179,0,0.15)' : 'rgba(0,255,156,0.05)',
-              border: `1px solid ${active ? 'rgba(255,179,0,0.4)' : 'rgba(0,255,156,0.15)'}`,
-              color: active ? '#FFB300' : '#00FF9C',
+              background: active ? 'rgba(255,179,0,0.15)' : 'rgba(0,232,150,0.05)',
+              border: `1px solid ${active ? 'rgba(255,179,0,0.4)' : 'rgba(0,232,150,0.15)'}`,
+              color: active ? '#FFB300' : '#00E896',
               cursor: 'pointer',
             }}
           >
@@ -128,7 +128,7 @@ export default function OpsReplayControls({ replay, onClose }: OpsReplayControls
 
       {/* Events in current snapshot */}
       {snapshot?.events && snapshot.events.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(0,255,156,0.1)', paddingTop: 4 }}>
+        <div style={{ borderTop: '1px solid rgba(0,232,150,0.1)', paddingTop: 4 }}>
           {snapshot.events.slice(0, 3).map((ev, i) => (
             <div key={i} style={{ ...mono, fontSize: 9, color: '#FFB300', marginBottom: 2 }}>
               {ev.type}: {ev.description}

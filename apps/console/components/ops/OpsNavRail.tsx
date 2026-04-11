@@ -6,13 +6,14 @@ import { useTier } from '@/hooks/useTier';
 
 type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
 
+// "entities" panel id kept for compatibility — label shown as "Assets"
 const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
-  { id: 'alerts', icon: '⚠', label: 'Alerts' },
-  { id: 'entities', icon: '◉', label: 'Entities' },
-  { id: 'missions', icon: '⬡', label: 'Missions' },
-  { id: 'layers', icon: '◫', label: 'Layers' },
-  { id: 'hardware', icon: '⊕', label: 'Hardware' },
-  { id: 'system', icon: '⚙', label: 'System' },
+  { id: 'alerts',   icon: '⚠',  label: 'Alerts' },
+  { id: 'entities', icon: '◉',  label: 'Assets' },
+  { id: 'missions', icon: '⬡',  label: 'Missions' },
+  { id: 'layers',   icon: '◫',  label: 'Layers' },
+  { id: 'hardware', icon: '⊕',  label: 'Hardware' },
+  { id: 'system',   icon: '⚙',  label: 'System' },
 ];
 
 const PLAN_MISSION_ITEM = { id: 'mission-builder' as PanelId, icon: '✛', label: 'Plan Mission' };
@@ -28,7 +29,6 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const { tier } = useTier();
 
-  // Arrow-key navigation within the nav rail
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('button[data-nav]');
     if (!buttons?.length) return;
@@ -53,34 +53,52 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
         borderRight: '1px solid var(--border)',
       }}
     >
-      {/* Nav buttons */}
       <div ref={listRef} className="flex flex-col pt-2 flex-1" onKeyDown={handleKeyDown}>
         {NAV_ITEMS.map((item) => {
           const isActive = activePanel === item.id;
           return (
-            <button
-              key={item.id}
-              data-nav
-              onClick={() => onSelect(isActive ? null : item.id)}
-              aria-label={item.label}
-              aria-pressed={isActive}
-              className="summit-btn relative flex items-center justify-center"
-              style={{
-                width: '48px',
-                height: '40px',
-                background: isActive ? 'var(--accent-5)' : 'transparent',
-                color: isActive ? 'var(--accent)' : 'var(--text-dim)',
-                borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
-              }}
-            >
-              <span className="text-base leading-none" aria-hidden="true">{item.icon}</span>
-            </button>
+            /* Tooltip wrapper — label appears to the right on hover */
+            <div key={item.id} className="relative group">
+              <button
+                data-nav
+                onClick={() => onSelect(isActive ? null : item.id)}
+                aria-label={item.label}
+                aria-pressed={isActive}
+                className="summit-btn flex items-center justify-center"
+                style={{
+                  width: '48px',
+                  height: '40px',
+                  background: isActive ? 'var(--accent-5)' : 'transparent',
+                  color: isActive ? 'var(--accent)' : 'var(--text-dim)',
+                  borderLeft: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                }}
+              >
+                <span className="text-base leading-none" aria-hidden="true">{item.icon}</span>
+              </button>
+              {/* Tooltip — visible on hover, positioned to the right of the rail */}
+              <div
+                className="pointer-events-none absolute left-full top-1/2 ml-2 px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap"
+                style={{
+                  transform: 'translateY(-50%)',
+                  background: 'var(--background-panel)',
+                  border: '1px solid var(--border)',
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  fontSize: '10px',
+                  letterSpacing: '0.1em',
+                  color: 'var(--accent)',
+                  pointerEvents: 'none',
+                }}
+                aria-hidden="true"
+              >
+                {item.label.toUpperCase()}
+              </div>
+            </div>
           );
         })}
       </div>
 
-      {/* Plan Mission — primary action button, pinned above OPS label */}
-      <div className="flex-none px-1.5 pb-2">
+      {/* Plan Mission — primary action, pinned above tier badge */}
+      <div className="flex-none px-1.5 pb-2 relative group">
         <button
           data-nav
           onClick={() => onSelect(activePanel === PLAN_MISSION_ITEM.id ? null : PLAN_MISSION_ITEM.id)}
@@ -96,6 +114,21 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
         >
           <span className="text-base leading-none" aria-hidden="true">{PLAN_MISSION_ITEM.icon}</span>
         </button>
+        <div
+          className="pointer-events-none absolute left-full top-1/2 ml-2 px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap"
+          style={{
+            transform: 'translateY(-50%)',
+            background: 'var(--background-panel)',
+            border: '1px solid var(--accent-30)',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            fontSize: '10px',
+            letterSpacing: '0.1em',
+            color: 'var(--accent)',
+          }}
+          aria-hidden="true"
+        >
+          PLAN MISSION
+        </div>
       </div>
 
       {/* Billing / plan link */}
@@ -113,8 +146,8 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
           border: tier === 'free' ? '1px solid var(--accent-15)' : '1px solid transparent',
           color: tier === 'free' ? 'var(--accent-50)' : 'var(--text-dim)',
           fontSize: '8px',
-          fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          letterSpacing: '0.08em',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
+          letterSpacing: '0.12em',
           textDecoration: 'none',
           transition: 'color 0.15s',
         }}
@@ -122,15 +155,14 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
         {TIER_BADGE[tier] ?? 'FREE'}
       </Link>
 
-      {/* Bottom label */}
       <div
         className="flex items-center justify-center pb-3"
         aria-hidden="true"
         style={{
-          fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: 'var(--accent-30)',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
+          color: 'var(--text-muted)',
           fontSize: '8px',
-          letterSpacing: '0.1em',
+          letterSpacing: '0.15em',
           writingMode: 'vertical-rl',
           transform: 'rotate(180deg)',
         }}

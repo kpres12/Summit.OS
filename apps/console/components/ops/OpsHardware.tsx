@@ -58,7 +58,7 @@ function AdapterCard({ adapter }: { adapter: AdapterStatus }) {
       <div className="flex items-center gap-2 mb-1">
         <StatusDot status={adapter.status} />
         <span style={{
-          fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
           color: adapter.status === 'online' ? 'var(--accent)' : 'var(--text-dim)',
           fontSize: 10,
           fontWeight: 700,
@@ -180,11 +180,11 @@ export default function OpsHardware() {
       {/* Header */}
       <div
         className="flex-none px-3 py-2 flex items-center justify-between"
-        style={{ borderBottom: '1px solid rgba(0,255,156,0.15)' }}
+        style={{ borderBottom: '1px solid rgba(0,232,150,0.15)' }}
       >
         <div className="flex items-center gap-2">
           <span style={{
-            fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: 'var(--accent)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
           }}>
             HARDWARE
@@ -291,8 +291,8 @@ export default function OpsHardware() {
                   placeholder={selectedProtocol.placeholder}
                   style={{
                     width: '100%', background: 'rgba(0,0,0,0.3)',
-                    border: '1px solid rgba(0,255,156,0.2)',
-                    color: '#00FF9C', padding: '5px 8px',
+                    border: '1px solid rgba(0,232,150,0.2)',
+                    color: '#00E896', padding: '5px 8px',
                     fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 10,
                     outline: 'none',
                   }}
@@ -307,7 +307,7 @@ export default function OpsHardware() {
                 width: '100%', padding: '7px',
                 background: adding ? 'var(--accent-30)' : 'var(--accent)',
                 color: 'var(--background)', border: 'none', cursor: adding ? 'wait' : 'pointer',
-                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
                 fontSize: 10, fontWeight: 700, letterSpacing: '0.2em',
               }}
             >

@@ -17,8 +17,8 @@ export default function PanelHeader({ title, count, badgeVariant = 'accent' }: P
       style={{ borderBottom: '1px solid var(--border)' }}
     >
       <span
-        className="text-xs font-bold tracking-widest"
-        style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
+        className="text-[10px] font-bold tracking-[0.2em] uppercase"
+        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
       >
         {title}
       </span>

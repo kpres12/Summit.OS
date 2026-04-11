@@ -124,8 +124,8 @@ function TOTPEnrollment({ onComplete, onCancel }: Props) {
             display:       'block',
             padding:       '8px 10px',
             background:    '#080C0A',
-            border:        '1px solid rgba(0,255,156,0.15)',
-            color:         '#00FF9C',
+            border:        '1px solid rgba(0,232,150,0.15)',
+            color:         '#00E896',
             fontFamily:    'var(--font-ibm-plex-mono), monospace',
             fontSize:      '11px',
             letterSpacing: '0.1em',
@@ -171,8 +171,8 @@ function TOTPEnrollment({ onComplete, onCancel }: Props) {
           width:         '100%',
           padding:       '14px',
           background:    '#080C0A',
-          border:        '1px solid rgba(0,255,156,0.25)',
-          color:         '#00FF9C',
+          border:        '1px solid rgba(0,232,150,0.25)',
+          color:         '#00E896',
           fontFamily:    'var(--font-ibm-plex-mono), monospace',
           fontSize:      '24px',
           letterSpacing: '0.5em',
@@ -214,9 +214,9 @@ function TOTPEnrollment({ onComplete, onCancel }: Props) {
             onClick={() => copyBackup(b, i)}
             style={{
               padding:    '8px 10px',
-              background: copiedIdx === i ? 'rgba(0,255,156,0.08)' : '#080C0A',
-              border:     `1px solid ${copiedIdx === i ? 'rgba(0,255,156,0.4)' : 'rgba(0,255,156,0.12)'}`,
-              color:      copiedIdx === i ? '#00FF9C' : 'rgba(200,230,201,0.6)',
+              background: copiedIdx === i ? 'rgba(0,232,150,0.08)' : '#080C0A',
+              border:     `1px solid ${copiedIdx === i ? 'rgba(0,232,150,0.4)' : 'rgba(0,232,150,0.12)'}`,
+              color:      copiedIdx === i ? '#00E896' : 'rgba(200,230,201,0.6)',
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
               fontSize:   '11px',
               cursor:     'pointer',
@@ -325,8 +325,8 @@ function WebAuthnEnrollment({ onComplete, onCancel }: Props) {
       <SectionLabel>HARDWARE KEY REGISTERED</SectionLabel>
       <div style={{
         padding:    '20px',
-        background: 'rgba(0,255,156,0.04)',
-        border:     '1px solid rgba(0,255,156,0.15)',
+        background: 'rgba(0,232,150,0.04)',
+        border:     '1px solid rgba(0,232,150,0.15)',
         textAlign:  'center',
         margin:     '12px 0',
       }}>
@@ -334,7 +334,7 @@ function WebAuthnEnrollment({ onComplete, onCancel }: Props) {
         <div style={{
           fontFamily: 'var(--font-ibm-plex-mono), monospace',
           fontSize:   '10px',
-          color:      '#00FF9C',
+          color:      '#00E896',
         }}>
           {keyName || 'SECURITY KEY'} REGISTERED SUCCESSFULLY
         </div>
@@ -365,7 +365,7 @@ function WebAuthnEnrollment({ onComplete, onCancel }: Props) {
             width:      '100%',
             padding:    '10px 12px',
             background: '#080C0A',
-            border:     '1px solid rgba(0,255,156,0.2)',
+            border:     '1px solid rgba(0,232,150,0.2)',
             color:      'rgba(200,230,201,0.8)',
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             fontSize:   '12px',
@@ -410,7 +410,7 @@ export default function MFASetup({ onComplete, onCancel }: Props) {
           title="HARDWARE SECURITY KEY"
           description="YubiKey, FIDO2 key, Touch ID, Face ID, Windows Hello"
           badge="STRONGEST"
-          badgeColor="#00FF9C"
+          badgeColor="#00E896"
         />
         <MethodCard
           onClick={() => setType('totp')}
@@ -449,8 +449,8 @@ function MethodCard({ onClick, icon, title, description, badge, badgeColor }: {
         alignItems: 'center',
         gap:        '16px',
         padding:    '14px 16px',
-        background: hovered ? 'rgba(0,255,156,0.05)' : '#080C0A',
-        border:     `1px solid ${hovered ? 'rgba(0,255,156,0.3)' : 'rgba(0,255,156,0.12)'}`,
+        background: hovered ? 'rgba(0,232,150,0.05)' : '#080C0A',
+        border:     `1px solid ${hovered ? 'rgba(0,232,150,0.3)' : 'rgba(0,232,150,0.12)'}`,
         cursor:     'pointer',
         textAlign:  'left',
         transition: 'all 150ms',
@@ -459,7 +459,7 @@ function MethodCard({ onClick, icon, title, description, badge, badgeColor }: {
       <span style={{ fontSize: '20px' }}>{icon}</span>
       <div style={{ flex: 1 }}>
         <div style={{
-          fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
           fontSize:      '10px',
           color:         'rgba(200,230,201,0.9)',
           letterSpacing: '0.15em',
@@ -494,9 +494,9 @@ function MethodCard({ onClick, icon, title, description, badge, badgeColor }: {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
+      fontFamily: 'var(--font-ibm-plex-mono), monospace',
       fontSize:      '10px',
-      color:         'rgba(0,255,156,0.6)',
+      color:         'rgba(0,232,150,0.6)',
       letterSpacing: '0.25em',
       marginBottom:  '8px',
     }}>
@@ -535,10 +535,10 @@ function PrimaryButton({ children, onClick, type = 'button', disabled = false }:
       style={{
         flex:          1,
         padding:       '11px 16px',
-        background:    disabled ? 'rgba(0,255,156,0.1)' : '#00FF9C',
+        background:    disabled ? 'rgba(0,232,150,0.1)' : '#00E896',
         border:        'none',
-        color:         disabled ? 'rgba(0,255,156,0.35)' : '#080C0A',
-        fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
+        color:         disabled ? 'rgba(0,232,150,0.35)' : '#080C0A',
+        fontFamily: 'var(--font-ibm-plex-mono), monospace',
         fontSize:      '10px',
         fontWeight:    700,
         letterSpacing: '0.2em',
@@ -564,7 +564,7 @@ function GhostButton({ children, onClick, disabled = false }: {
       style={{
         padding:       '11px 16px',
         background:    'transparent',
-        border:        '1px solid rgba(0,255,156,0.2)',
+        border:        '1px solid rgba(0,232,150,0.2)',
         color:         'rgba(200,230,201,0.4)',
         fontFamily:    'var(--font-ibm-plex-mono), monospace',
         fontSize:      '10px',

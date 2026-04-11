@@ -23,6 +23,9 @@ interface OpsMapViewProps {
   missionDrawMode?: boolean;
   onMissionArea?: (coords: { lat: number; lon: number }[]) => void;
   missionWaypoints?: { lat: number; lon: number; alt: number }[];
+  // Geofence draw (triggered from Layers panel)
+  geofenceDrawMode?: boolean;
+  onGeofenceDrawEnd?: () => void;
 }
 
 function markerColor(e: EntityData): string {
@@ -34,11 +37,22 @@ function markerColor(e: EntityData): string {
   }
 }
 
+const STALE_WARN_S = 60;
+const STALE_DEAD_S = 300;
+
+function markerOpacity(lastSeen: number): number {
+  const age = (Date.now() / 1000) - lastSeen;
+  if (age > STALE_DEAD_S) return 0.3;
+  if (age > STALE_WARN_S) return 0.55;
+  return 1;
+}
+
 type DrawVertex = { lat: number; lon: number };
 
 export default function OpsMapView({
   onSelectEntity, flyToLocation, alertEntityIds, selectedEntityId,
   missionDrawMode, onMissionArea, missionWaypoints,
+  geofenceDrawMode, onGeofenceDrawEnd,
 }: OpsMapViewProps) {
   const { entityList } = useEntityStream();
   const mapRef = useRef<MapRef>(null);
@@ -65,6 +79,15 @@ export default function OpsMapView({
   useEffect(() => {
     if (!missionDrawMode) setMissionVertices([]);
   }, [missionDrawMode]);
+
+  // Sync geofence draw mode from Layers panel
+  useEffect(() => {
+    if (geofenceDrawMode) {
+      setDrawMode(true);
+      setVertices([]);
+      setGeoName('');
+    }
+  }, [geofenceDrawMode]);
 
   // Fetch position trail when selected entity changes
   useEffect(() => {
@@ -118,6 +141,7 @@ export default function OpsMapView({
     setVertices([]);
     setDrawMode(false);
     setGeoName('');
+    onGeofenceDrawEnd?.();
     setTimeout(() => setSavedFeedback(null), 3000);
   };
 
@@ -242,7 +266,8 @@ export default function OpsMapView({
                   border: '2px solid rgba(8,12,10,0.8)',
                   cursor: drawMode ? 'crosshair' : 'pointer',
                   boxShadow: `0 0 6px ${markerColor(entity)}80`,
-                  transition: 'transform 0.1s',
+                  opacity: markerOpacity(entity.last_seen),
+                  transition: 'transform 0.1s, opacity 0.3s',
                 }}
                 onMouseEnter={(e) => { if (!drawMode) (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.6)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)'; }}
@@ -304,7 +329,7 @@ export default function OpsMapView({
                 </button>
               )}
               <button
-                onClick={() => { setDrawMode(false); setVertices([]); setGeoName(''); }}
+                onClick={() => { setDrawMode(false); setVertices([]); setGeoName(''); onGeofenceDrawEnd?.(); }}
                 className="text-[10px] px-2 py-1 tracking-wider"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -317,22 +342,6 @@ export default function OpsMapView({
           </>
         )}
 
-        {!drawMode && (
-          <button
-            onClick={() => setDrawMode(true)}
-            className="text-[10px] px-2 py-1 tracking-wider"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: 'var(--warning)',
-              background: 'var(--background-panel)',
-              border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
-              cursor: 'pointer',
-            }}
-            title="Draw geofence polygon"
-          >
-            ⬡ DRAW GEOFENCE
-          </button>
-        )}
       </div>
     </div>
   );

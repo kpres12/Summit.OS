@@ -1,0 +1,187 @@
+# Summit.OS Simulation Environment
+# Run with: docker compose -f docker-compose.sim.yml up
+# Starts all services + a synthetic data injector for testing without hardware.
+#
+# Differences from docker-compose.coolify.yml:
+#   - Auth and billing enforcement disabled (ENTERPRISE_MULTI_TENANT=false, etc.)
+#   - sim-injector service replays synthetic mission data into MQTT
+#   - sitl service provides ArduPilot SITL drone simulation
+
+services:
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-summitredis}
+    volumes:
+      - sim_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-summitredis}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - summit-sim
+
+  postgres:
+    image: postgis/postgis:15-3.3
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: summit_os
+      POSTGRES_USER: summit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-summitsim}
+    volumes:
+      - sim_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U summit -d summit_os"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - summit-sim
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - sim_mosquitto_data:/mosquitto/data
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -W 3 2>/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - summit-sim
+
+  # ── Core Application Services ────────────────────────────────────────────────
+
+  fabric:
+    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/summit-os/fabric:latest}
+    restart: unless-stopped
+    environment:
+      FABRIC_REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
+      FABRIC_MQTT_BROKER: mqtt
+      FABRIC_MQTT_PORT: "1883"
+      FABRIC_JWT_SECRET: ${FABRIC_JWT_SECRET:-sim-dev-secret-not-for-prod}
+      ENTERPRISE_MULTI_TENANT: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+    depends_on:
+      redis:
+        condition: service_healthy
+      mqtt:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - summit-sim
+
+  api-gateway:
+    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/summit-os/api-gateway:latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD:-summitsim}@postgres:5432/summit_os
+      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
+      FABRIC_WS_URL: ws://fabric:8001/ws
+      FABRIC_HTTP_URL: http://fabric:8001
+      SECRET_KEY: ${SECRET_KEY:-sim-dev-secret-not-for-prod}
+      # Simulation overrides — disable auth/billing enforcement
+      ENTERPRISE_MULTI_TENANT: "false"
+      API_KEY_ENFORCE: "false"
+      RBAC_ENFORCE: "false"
+      OIDC_ENFORCE: "false"
+      OTEL_EXPORTER_OTLP_ENDPOINT: ""
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fabric:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - summit-sim
+
+  console:
+    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/summit-os/console:latest}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8001/ws
+      NEXT_PUBLIC_OIDC_ISSUER: ""
+      NEXT_PUBLIC_OIDC_CLIENT_ID: ""
+      NEXT_PUBLIC_TIER: "false"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - summit-sim
+
+  # ── Simulation Services ──────────────────────────────────────────────────────
+
+  # Synthetic data injector — replays mission scenarios into MQTT without hardware
+  sim-injector:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.simulator
+    restart: unless-stopped
+    environment:
+      MQTT_BROKER: mqtt
+      MQTT_PORT: "1883"
+      REPLAY_SPEED: ${REPLAY_SPEED:-1.0}
+      # Disable sensor auth so injector can publish freely
+      SENSOR_AUTH_ENFORCE: "false"
+      ENTERPRISE_MULTI_TENANT: "false"
+      API_KEY_ENFORCE: "false"
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      mqtt:
+        condition: service_healthy
+    networks:
+      - summit-sim
+
+  # ArduPilot SITL — simulated drone for end-to-end mavlink adapter testing
+  sitl:
+    image: ardupilot/ardupilot-sitl:latest
+    restart: unless-stopped
+    environment:
+      # Copter SITL; communicates with fabric via mavlink adapter
+      ARDUPILOT_VEHICLE: copter
+      ARDUPILOT_HOME: "37.4419,-122.1430,0,0"
+    # Expose MAVLink UDP and TCP ports
+    ports:
+      - "5760:5760/tcp"   # MAVLink primary
+      - "14550:14550/udp" # GCS link
+      - "14551:14551/udp" # Companion link
+    networks:
+      - summit-sim
+    command: >
+      bash -c "
+        sim_vehicle.py
+          --vehicle=ArduCopter
+          --no-rebuild
+          --add-param-file=/ardupilot/Tools/autotest/default_params/copter.parm
+          --out=udp:0.0.0.0:14550
+          --out=tcpin:0.0.0.0:5760
+      "
+
+# ── Volumes & Networks ──────────────────────────────────────────────────────────
+
+volumes:
+  sim_redis_data:
+  sim_postgres_data:
+  sim_mosquitto_data:
+
+networks:
+  summit-sim:
+    driver: bridge

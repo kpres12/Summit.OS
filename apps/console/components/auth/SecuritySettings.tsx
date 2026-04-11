@@ -160,7 +160,7 @@ export default function SecuritySettings() {
                 ))
           }
           {sessions.filter((s) => !s.is_current).length > 1 && (
-            <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(0,255,156,0.08)' }}>
+            <div style={{ padding: '12px 24px', borderTop: '1px solid rgba(0,232,150,0.08)' }}>
               <DangerButton
                 onClick={revokeAll}
                 disabled={revoking === '__all__'}
@@ -180,7 +180,7 @@ export default function SecuritySettings() {
       <CardHeader>ACCOUNT SECURITY</CardHeader>
 
       {/* User info */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,255,156,0.08)' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,232,150,0.08)' }}>
         <div style={labelStyle}>AUTHENTICATED AS</div>
         <div style={{
           fontFamily:    'var(--font-ibm-plex-mono), monospace',
@@ -195,9 +195,9 @@ export default function SecuritySettings() {
             {user.roles.map((r) => (
               <span key={r} style={{
                 padding:       '2px 8px',
-                background:    'rgba(0,255,156,0.06)',
-                border:        '1px solid rgba(0,255,156,0.2)',
-                color:         '#00FF9C',
+                background:    'rgba(0,232,150,0.06)',
+                border:        '1px solid rgba(0,232,150,0.2)',
+                color:         '#00E896',
                 fontFamily:    'var(--font-ibm-plex-mono), monospace',
                 fontSize:      '8px',
                 letterSpacing: '0.1em',
@@ -216,16 +216,16 @@ export default function SecuritySettings() {
       )}
 
       {/* MFA section */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,255,156,0.08)' }}>
+      <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,232,150,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div style={labelStyle}>SECOND FACTOR (MFA)</div>
           <button
             onClick={() => setPanel('add-mfa')}
             style={{
               padding:       '5px 10px',
-              background:    'rgba(0,255,156,0.08)',
-              border:        '1px solid rgba(0,255,156,0.25)',
-              color:         '#00FF9C',
+              background:    'rgba(0,232,150,0.08)',
+              border:        '1px solid rgba(0,232,150,0.25)',
+              color:         '#00E896',
               fontFamily:    'var(--font-ibm-plex-mono), monospace',
               fontSize:      '8px',
               letterSpacing: '0.15em',
@@ -312,8 +312,8 @@ function Card({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       background: '#0D1210',
-      border:     '1px solid rgba(0,255,156,0.2)',
-      boxShadow:  '0 0 40px rgba(0,255,156,0.05)',
+      border:     '1px solid rgba(0,232,150,0.2)',
+      boxShadow:  '0 0 40px rgba(0,232,150,0.05)',
       width:      '420px',
       maxWidth:   '100%',
     }}>
@@ -326,7 +326,7 @@ function CardHeader({ children, onBack }: { children: React.ReactNode; onBack?: 
   return (
     <div style={{
       padding:      '16px 24px',
-      borderBottom: '1px solid rgba(0,255,156,0.12)',
+      borderBottom: '1px solid rgba(0,232,150,0.12)',
       display:      'flex',
       alignItems:   'center',
       gap:          '12px',
@@ -345,9 +345,9 @@ function CardHeader({ children, onBack }: { children: React.ReactNode; onBack?: 
         </button>
       )}
       <div style={{
-        fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
+        fontFamily: 'var(--font-ibm-plex-mono), monospace',
         fontSize:      '10px',
-        color:         'rgba(0,255,156,0.5)',
+        color:         'rgba(0,232,150,0.5)',
         letterSpacing: '0.3em',
       }}>
         {children}
@@ -373,7 +373,7 @@ function MFARow({ icon, label, status, ok, sub, onRemove, removing }: {
       marginBottom:  '8px',
       padding:       '10px 12px',
       background:    '#080C0A',
-      border:        '1px solid rgba(0,255,156,0.08)',
+      border:        '1px solid rgba(0,232,150,0.08)',
     }}>
       <span style={{ fontSize: '14px' }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -399,7 +399,7 @@ function MFARow({ icon, label, status, ok, sub, onRemove, removing }: {
       <span style={{
         fontFamily:    'var(--font-ibm-plex-mono), monospace',
         fontSize:      '8px',
-        color:         ok ? '#00FF9C' : 'rgba(200,230,201,0.25)',
+        color:         ok ? '#00E896' : 'rgba(200,230,201,0.25)',
         letterSpacing: '0.1em',
         whiteSpace:    'nowrap',
       }}>
@@ -444,8 +444,8 @@ function SessionRow({ session, onRevoke, revoking }: {
       alignItems:    'center',
       gap:           '12px',
       padding:       '12px 24px',
-      borderBottom:  '1px solid rgba(0,255,156,0.05)',
-      background:    session.is_current ? 'rgba(0,255,156,0.02)' : 'transparent',
+      borderBottom:  '1px solid rgba(0,232,150,0.05)',
+      background:    session.is_current ? 'rgba(0,232,150,0.02)' : 'transparent',
     }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
@@ -464,9 +464,9 @@ function SessionRow({ session, onRevoke, revoking }: {
           {session.is_current && (
             <span style={{
               padding:       '1px 5px',
-              background:    'rgba(0,255,156,0.1)',
-              border:        '1px solid rgba(0,255,156,0.25)',
-              color:         '#00FF9C',
+              background:    'rgba(0,232,150,0.1)',
+              border:        '1px solid rgba(0,232,150,0.25)',
+              color:         '#00E896',
               fontFamily:    'var(--font-ibm-plex-mono), monospace',
               fontSize:      '7px',
               letterSpacing: '0.1em',
@@ -573,8 +573,8 @@ function DangerButton({ children, onClick, disabled }: {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
+  fontFamily: 'var(--font-ibm-plex-mono), monospace',
   fontSize:      '9px',
-  color:         'rgba(0,255,156,0.4)',
+  color:         'rgba(0,232,150,0.4)',
   letterSpacing: '0.25em',
 };

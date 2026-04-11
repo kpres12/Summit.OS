@@ -41,7 +41,7 @@ export default function ActionButton({
       aria-label={rest['aria-label'] || label}
       className={`summit-btn text-[10px] tracking-widest ${className}`}
       style={{
-        fontFamily: isPrimary ? 'var(--font-orbitron), Orbitron, sans-serif' : 'var(--font-ibm-plex-mono), monospace',
+        fontFamily: 'var(--font-ibm-plex-mono), monospace',
         fontWeight: isPrimary ? 700 : 400,
         letterSpacing: isPrimary ? '0.2em' : '0.15em',
         color: isPrimary ? 'var(--background)' : v.color,

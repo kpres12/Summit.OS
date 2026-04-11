@@ -72,7 +72,7 @@ export default function OpsVideoPane({ streamId, onClose }: OpsVideoPaneProps) {
     fontFamily: 'var(--font-ibm-plex-mono), monospace',
   };
   const orbitron: React.CSSProperties = {
-    fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+    fontFamily: 'var(--font-ibm-plex-mono), monospace',
   };
 
   return (
@@ -83,7 +83,7 @@ export default function OpsVideoPane({ streamId, onClose }: OpsVideoPaneProps) {
         right: 16,
         width: 420,
         background: '#080C0A',
-        border: '1px solid rgba(0,255,156,0.25)',
+        border: '1px solid rgba(0,232,150,0.25)',
         boxShadow: '0 4px 32px rgba(0,0,0,0.7)',
         zIndex: 200,
       }}
@@ -95,8 +95,8 @@ export default function OpsVideoPane({ streamId, onClose }: OpsVideoPaneProps) {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '4px 8px',
-          borderBottom: '1px solid rgba(0,255,156,0.15)',
-          background: 'rgba(0,255,156,0.04)',
+          borderBottom: '1px solid rgba(0,232,150,0.15)',
+          background: 'rgba(0,232,150,0.04)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -111,7 +111,7 @@ export default function OpsVideoPane({ streamId, onClose }: OpsVideoPaneProps) {
               animation: ready ? 'pulse 1.5s infinite' : 'none',
             }}
           />
-          <span style={{ ...orbitron, color: '#00FF9C', fontSize: 9, letterSpacing: '0.15em' }}>
+          <span style={{ ...orbitron, color: '#00E896', fontSize: 9, letterSpacing: '0.15em' }}>
             LIVE FEED — {streamId.toUpperCase()}
           </span>
         </div>
@@ -171,7 +171,7 @@ export default function OpsVideoPane({ streamId, onClose }: OpsVideoPaneProps) {
           ...mono, fontSize: 9,
           color: 'rgba(200,230,201,0.35)',
           padding: '3px 8px',
-          borderTop: '1px solid rgba(0,255,156,0.08)',
+          borderTop: '1px solid rgba(0,232,150,0.08)',
         }}
       >
         {playlistUrl}

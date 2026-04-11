@@ -324,3 +324,109 @@ def build_rtb_tree() -> BehaviorTree:
     tree = BehaviorTree(root, name="ReturnToBase")
     tree.setup()
     return tree
+
+
+# ═══════════════════════════════════════════════════════════
+# Edge-Agent Leaf Nodes (Wave 2a)
+# ═══════════════════════════════════════════════════════════
+
+
+class CheckBattery(BTNode):
+    """
+    Succeeds if the asset's battery level is at or above threshold_pct.
+
+    Reads battery_percent from the blackboard (same key used by
+    _check_battery). Falls back to querying an optional world_model
+    instance when the blackboard value is absent.
+    """
+
+    def __init__(
+        self,
+        asset_id: str,
+        threshold_pct: float = 20.0,
+        world_model: Optional[Any] = None,
+    ) -> None:
+        super().__init__(name="CheckBattery")
+        self.asset_id = asset_id
+        self.threshold_pct = threshold_pct
+        self._world_model = world_model
+
+    def tick(self) -> NodeStatus:
+        battery: Optional[float] = None
+
+        # Prefer blackboard value (set by telemetry updater)
+        if self.blackboard is not None:
+            battery = self.blackboard.get("battery_percent")
+
+        # Fall back to world model if blackboard has no value
+        if battery is None and self._world_model is not None:
+            state = self._world_model.get(self.asset_id) or {}
+            battery = state.get("battery_pct")
+
+        if battery is None:
+            # No data — assume healthy to avoid blocking execution
+            self.status = NodeStatus.SUCCESS
+            return NodeStatus.SUCCESS
+
+        if battery >= self.threshold_pct:
+            self.status = NodeStatus.SUCCESS
+            return NodeStatus.SUCCESS
+
+        self.status = NodeStatus.FAILURE
+        return NodeStatus.FAILURE
+
+
+class EmergencyRTB(BTNode):
+    """
+    Triggers return-to-base on any failure condition.
+
+    Always returns SUCCESS (best-effort): the RTB command is dispatched
+    regardless of whether a comms link is confirmed. The blackboard key
+    "rtb_triggered" is set to True so upstream nodes can branch on it.
+    """
+
+    def __init__(self, name: str = "EmergencyRTB") -> None:
+        super().__init__(name=name)
+
+    def tick(self) -> NodeStatus:
+        if self.blackboard is not None:
+            home = self.blackboard.get("home_position")
+            self.blackboard.set("waypoints", [home] if home else [])
+            self.blackboard.set("current_waypoint_idx", 0)
+            self.blackboard.set("rtb_triggered", True)
+            self.blackboard.set("nav_target", home)
+
+        self.status = NodeStatus.SUCCESS
+        return NodeStatus.SUCCESS
+
+
+class SwarmReportIn(BTNode):
+    """
+    Reports the asset's current status to the swarm coordinator.
+
+    Writes a heartbeat snapshot to the blackboard key "swarm_heartbeat"
+    so that an external mesh publisher can pick it up and broadcast it.
+    Returns SUCCESS always — the report is best-effort.
+    """
+
+    def __init__(self, asset_id: str, name: str = "SwarmReportIn") -> None:
+        super().__init__(name=name)
+        self.asset_id = asset_id
+
+    def tick(self) -> NodeStatus:
+        if self.blackboard is not None:
+            import time as _time
+
+            heartbeat = {
+                "asset_id": self.asset_id,
+                "ts": _time.time(),
+                "lat": self.blackboard.get("vehicle_lat"),
+                "lon": self.blackboard.get("vehicle_lon"),
+                "alt": self.blackboard.get("vehicle_alt"),
+                "battery_pct": self.blackboard.get("battery_percent"),
+                "comms_status": self.blackboard.get("comms_status", "unknown"),
+            }
+            self.blackboard.set("swarm_heartbeat", heartbeat)
+
+        self.status = NodeStatus.SUCCESS
+        return NodeStatus.SUCCESS

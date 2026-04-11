@@ -3,8 +3,18 @@
 import React from 'react';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import PanelHeader from '@/components/ui/PanelHeader';
-import EmptyState from '@/components/ui/EmptyState';
 import { ageTerse, entityTypeColor, batteryColor, domainTag } from '@/lib/format';
+
+// How long before we consider data stale
+const STALE_WARN_S = 60;   // amber
+const STALE_DEAD_S = 300;  // grey out, stop showing on map
+
+function staleness(lastSeen: number): 'live' | 'warn' | 'stale' {
+  const age = (Date.now() / 1000) - lastSeen;
+  if (age > STALE_DEAD_S) return 'stale';
+  if (age > STALE_WARN_S) return 'warn';
+  return 'live';
+}
 
 export default function OpsEntityList() {
   const { entityList, entityCount } = useEntityStream();
@@ -19,31 +29,42 @@ export default function OpsEntityList() {
 
   return (
     <div className="flex flex-col h-full panel-scanline">
-      <PanelHeader title="ENTITY LIST" count={entityCount} />
+      <PanelHeader title="ASSETS" count={entityCount} />
 
-      {/* Entity list */}
       <div className="flex-1 overflow-y-auto">
         {entityList.length === 0 && (
-          <EmptyState message="AWAITING CONNECTIONS" hint="pip install summit-os-sdk" />
+          <div className="flex flex-col items-center justify-center h-full gap-3 px-6">
+            <div style={{ fontSize: '24px', opacity: 0.15 }} aria-hidden="true">◉</div>
+            <span
+              className="text-[10px] tracking-widest"
+              style={{ color: 'var(--accent-30)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+            >
+              NO ASSETS ONLINE
+            </span>
+            <span
+              className="text-[9px] text-center leading-relaxed"
+              style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+            >
+              Connect adapters in Hardware ›
+            </span>
+          </div>
         )}
 
         {Object.entries(grouped).map(([domain, entities]) => (
           <div key={domain}>
-            {/* Domain header */}
             <div
               className="px-3 py-1 text-[9px] tracking-widest uppercase"
               style={{
-                fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-                color: 'var(--accent-30)',
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: 'var(--text-muted)',
                 background: 'var(--accent-5)',
                 borderBottom: '1px solid var(--accent-5)',
               }}
             >
               {domain} ({entities.length})
             </div>
-
             {entities.map((e) => (
-              <EntityRow key={e.entity_id} entity={e} />
+              <AssetRow key={e.entity_id} entity={e} />
             ))}
           </div>
         ))}
@@ -52,55 +73,93 @@ export default function OpsEntityList() {
   );
 }
 
-function EntityRow({ entity }: { entity: EntityData }) {
+function AssetRow({ entity }: { entity: EntityData }) {
   const color = entityTypeColor(entity.entity_type);
   const callsign = entity.callsign || entity.entity_id.slice(0, 8);
+  const age = staleness(entity.last_seen);
+
+  // Visual degradation: stale data should look stale
+  const rowOpacity = age === 'stale' ? 0.35 : age === 'warn' ? 0.65 : 1;
+  const dotColor = age === 'stale' ? 'var(--text-muted)' : age === 'warn' ? 'var(--warning)' : color;
 
   return (
     <div
       className="summit-btn px-3 py-2 flex flex-col gap-1"
-      style={{ borderBottom: '1px solid var(--accent-5)' }}
+      style={{
+        borderBottom: '1px solid var(--accent-5)',
+        opacity: rowOpacity,
+        transition: 'opacity 0.3s',
+      }}
     >
-      {/* Row 1: dot + callsign + domain + age */}
       <div className="flex items-center gap-2">
         <div
           className="w-1.5 h-1.5 rounded-full flex-none"
-          style={{ background: color }}
+          style={{ background: dotColor }}
         />
         <span
           className="flex-1 text-[11px] font-bold truncate"
-          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color }}
+          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: age === 'stale' ? 'var(--text-muted)' : color }}
         >
           {callsign}
         </span>
-          <span
-            className="text-[9px] px-1"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: 'var(--text-dim)',
-              border: '1px solid var(--accent-10)',
-            }}
-          >
-            {domainTag(entity.domain)}
-          </span>
-          <span
-            className="text-[9px]"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
-          >
-            {ageTerse(entity.last_seen)}
-          </span>
+        <span
+          className="text-[9px] px-1"
+          style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'var(--text-dim)',
+            border: '1px solid var(--accent-10)',
+          }}
+        >
+          {domainTag(entity.domain)}
+        </span>
+        <span
+          className="text-[9px]"
+          style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: age === 'warn' ? 'var(--warning)' : age === 'stale' ? 'var(--critical)' : 'var(--text-muted)',
+          }}
+        >
+          {ageTerse(entity.last_seen)}
+        </span>
       </div>
 
-      {/* Row 2: battery + speed */}
-      {(entity.battery_pct !== undefined || (entity.speed_mps && entity.speed_mps > 0.5)) && (
+      {/* Stale badge */}
+      {age === 'warn' && (
+        <div className="pl-4">
+          <span
+            className="text-[8px] tracking-widest px-1"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'var(--warning)',
+              border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
+            }}
+          >
+            STALE
+          </span>
+        </div>
+      )}
+      {age === 'stale' && (
+        <div className="pl-4">
+          <span
+            className="text-[8px] tracking-widest px-1"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'var(--critical)',
+              border: '1px solid color-mix(in srgb, var(--critical) 30%, transparent)',
+            }}
+          >
+            NO SIGNAL
+          </span>
+        </div>
+      )}
+
+      {/* Battery + speed — only if live data */}
+      {age !== 'stale' && (entity.battery_pct !== undefined || (entity.speed_mps && entity.speed_mps > 0.5)) && (
         <div className="flex items-center gap-3 pl-4">
           {entity.battery_pct !== undefined && (
             <span
               className="text-[10px]"
-              style={{
-                fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: batteryColor(entity.battery_pct),
-              }}
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: batteryColor(entity.battery_pct) }}
             >
               BAT {Math.round(entity.battery_pct)}%
             </span>
@@ -108,7 +167,7 @@ function EntityRow({ entity }: { entity: EntityData }) {
           {entity.speed_mps !== undefined && entity.speed_mps > 0.5 && (
             <span
               className="text-[10px]"
-              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.45)' }}
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
             >
               {entity.speed_mps.toFixed(1)} m/s
             </span>

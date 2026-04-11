@@ -45,7 +45,7 @@ export default class ErrorBoundary extends Component<Props, State> {
         >
           <span
             style={{
-              fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
               color: '#FF3B3B',
               fontSize: '10px',
               letterSpacing: '0.2em',

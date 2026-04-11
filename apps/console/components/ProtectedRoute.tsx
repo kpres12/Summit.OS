@@ -32,22 +32,22 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       >
         <div
           style={{
-            fontFamily:    'var(--font-orbitron), Orbitron, sans-serif',
-            color:         '#00FF9C',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color:         '#00E896',
             fontSize:      '11px',
             letterSpacing: '0.4em',
-            textShadow:    '0 0 8px rgba(0,255,156,0.5)',
+            textShadow:    '0 0 8px rgba(0,232,150,0.5)',
           }}
         >
           AUTHENTICATING
         </div>
         {/* Animated progress bar */}
-        <div style={{ width: '120px', height: '1px', background: 'rgba(0,255,156,0.15)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: '120px', height: '1px', background: 'rgba(0,232,150,0.15)', position: 'relative', overflow: 'hidden' }}>
           <div
             style={{
               position:        'absolute',
               inset:           0,
-              background:      'linear-gradient(90deg, transparent 0%, #00FF9C 50%, transparent 100%)',
+              background:      'linear-gradient(90deg, transparent 0%, #00E896 50%, transparent 100%)',
               animation:       'auth-scan 1.4s ease-in-out infinite',
               backgroundSize:  '200% 100%',
             }}
