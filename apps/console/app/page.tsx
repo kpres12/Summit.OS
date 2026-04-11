@@ -2,7 +2,8 @@
 import ProtectedRoute from '@/components/ProtectedRoute';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import dynamic from 'next/dynamic';
-import { useRole } from '@/hooks/useRole';
+import { useState } from 'react';
+import { useRole, Role } from '@/hooks/useRole';
 import { useAuth } from '@/components/AuthProvider';
 import { useTier } from '@/hooks/useTier';
 import { allowedViews } from '@/lib/rbac';
@@ -20,20 +21,44 @@ export default function Home() {
 }
 
 function RoleRouter() {
-  const { role, setRole, clearRole } = useRole();
+  const { role, setRole, clearRole, loaded } = useRole();
   const { user } = useAuth();
   const { can, requiredTier, loading: tierLoading } = useTier();
   const allowed = allowedViews(user?.roles ?? []);
 
-  // If the stored role is no longer permitted (role was downgraded), clear it
+  // Track the role active before opening the picker, so user can cancel back to it
+  const [previousRole, setPreviousRole] = useState<Role | null>(null);
+
+  // Don't render until localStorage is read — prevents flash of role picker
+  if (!loaded) return null;
+
+  // If stored role is no longer permitted (role downgraded), fall back to ops
   if (role && !allowed.includes(role)) {
-    clearRole();
+    setRole('ops');
     return null;
   }
 
-  if (!role) return <RolePicker onSelect={setRole} />;
+  const handleSwitchRole = () => {
+    setPreviousRole(role);
+    clearRole();
+  };
 
-  // Tier gates — role access (RBAC) is already satisfied above; check billing tier
+  const handleBack = previousRole ? () => {
+    setRole(previousRole);
+    setPreviousRole(null);
+  } : undefined;
+
+  if (!role) {
+    return (
+      <RolePicker
+        onSelect={(r) => { setPreviousRole(null); setRole(r); }}
+        currentRole={previousRole}
+        onBack={handleBack}
+      />
+    );
+  }
+
+  // Tier gates
   if (role === 'command' && !tierLoading && !can('command_view')) {
     return (
       <div style={{ width: '100vw', height: '100vh', background: '#080C0A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -58,8 +83,8 @@ function RoleRouter() {
     );
   }
 
-  if (role === 'ops')     return <OpsLayout     onSwitchRole={clearRole} />;
-  if (role === 'command') return <CommandLayout  onSwitchRole={clearRole} />;
-  if (role === 'dev')     return <DevLayout      onSwitchRole={clearRole} />;
+  if (role === 'ops')     return <OpsLayout     onSwitchRole={handleSwitchRole} />;
+  if (role === 'command') return <CommandLayout  onSwitchRole={handleSwitchRole} />;
+  if (role === 'dev')     return <DevLayout      onSwitchRole={handleSwitchRole} />;
   return null;
 }

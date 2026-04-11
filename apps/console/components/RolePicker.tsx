@@ -39,27 +39,49 @@ const ALL_ROLES: RoleCard[] = [
 
 interface RolePickerProps {
   onSelect: (role: Role) => void;
+  /** The role that was active before opening the picker. Used to show current marker + enable back. */
+  currentRole?: Role | null;
+  /** If provided, shows a back button that returns to the previous view without switching. */
+  onBack?: () => void;
 }
 
-export default function RolePicker({ onSelect }: RolePickerProps) {
+export default function RolePicker({ onSelect, currentRole, onBack }: RolePickerProps) {
   const { user } = useAuth();
   const roles     = user?.roles ?? [];
   const allowed   = allowedViews(roles);
   const topRole   = highestRole(roles);
 
-  // Filter cards to only those the user has access to
   const visibleCards = ALL_ROLES.filter((r) => allowed.includes(r.role));
 
-  // If only one view is allowed, auto-select it
   React.useEffect(() => {
     if (visibleCards.length === 1) onSelect(visibleCards[0].role);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isSwitching = !!onBack;
 
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center"
       style={{ background: 'var(--background)' }}
     >
+      {/* Back button — only shown when switching from an active view */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="summit-btn absolute text-[10px] tracking-widest px-3 py-1.5"
+          style={{
+            top: '16px',
+            left: '16px',
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'var(--text-dim)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+          }}
+        >
+          ← BACK
+        </button>
+      )}
+
       {/* Wordmark */}
       <div className="mb-2 text-center">
         <h1
@@ -76,7 +98,7 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
           className="mt-1 text-xs tracking-[0.3em]"
           style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
         >
-          SELECT OPERATOR MODE
+          {isSwitching ? 'SWITCH VIEW' : 'SELECT OPERATOR MODE'}
         </div>
       </div>
 
@@ -86,11 +108,16 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
         style={{ height: '1px', background: 'var(--accent-15)' }}
       />
 
-      {/* Role cards — only what this user can access */}
+      {/* Role cards */}
       {visibleCards.length > 0 ? (
         <div className="flex gap-6">
           {visibleCards.map((r) => (
-            <RoleCardButton key={r.role} card={r} onSelect={onSelect} />
+            <RoleCardButton
+              key={r.role}
+              card={r}
+              isCurrent={r.role === currentRole}
+              onSelect={onSelect}
+            />
           ))}
         </div>
       ) : (
@@ -110,7 +137,7 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
         </div>
       )}
 
-      {/* User identity + role badge */}
+      {/* User identity */}
       {user && (
         <div style={{
           marginTop:  '32px',
@@ -147,17 +174,46 @@ export default function RolePicker({ onSelect }: RolePickerProps) {
   );
 }
 
-function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role) => void }) {
+function RoleCardButton({
+  card,
+  isCurrent,
+  onSelect,
+}: {
+  card: RoleCard;
+  isCurrent: boolean;
+  onSelect: (r: Role) => void;
+}) {
   return (
     <button
       onClick={() => onSelect(card.role)}
-      className="role-card flex flex-col items-center text-left cursor-pointer"
-      style={{ width: '200px', padding: '24px 20px', outline: 'none' }}
+      className="role-card flex flex-col items-center text-left cursor-pointer relative"
+      style={{
+        width: '200px',
+        padding: '24px 20px',
+        outline: 'none',
+        borderColor: isCurrent ? 'var(--accent-50)' : undefined,
+        background: isCurrent ? 'var(--accent-5)' : undefined,
+      }}
     >
+      {/* Current view indicator */}
+      {isCurrent && (
+        <div
+          className="absolute top-2 right-2 text-[8px] tracking-widest px-1.5 py-0.5"
+          style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'var(--accent)',
+            border: '1px solid var(--accent-30)',
+            background: 'var(--accent-5)',
+          }}
+        >
+          ACTIVE
+        </div>
+      )}
+
       {/* Icon */}
       <div
         className="role-card-icon text-3xl mb-4"
-        style={{ color: 'var(--text-muted)' }}
+        style={{ color: isCurrent ? 'var(--accent)' : 'var(--text-muted)' }}
       >
         {card.icon}
       </div>
@@ -167,7 +223,7 @@ function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role
         className="role-card-label text-lg font-bold tracking-widest mb-1"
         style={{
           fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: 'var(--text-dim)',
+          color: isCurrent ? 'var(--accent)' : 'var(--text-dim)',
         }}
       >
         {card.label}
@@ -178,7 +234,7 @@ function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role
         className="role-card-subtitle text-[11px] tracking-wider mb-4"
         style={{
           fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
-          color: 'var(--text-muted)',
+          color: isCurrent ? 'var(--accent-50)' : 'var(--text-muted)',
         }}
       >
         {card.subtitle}
@@ -187,7 +243,7 @@ function RoleCardButton({ card, onSelect }: { card: RoleCard; onSelect: (r: Role
       {/* Separator */}
       <div
         className="role-card-divider w-full mb-4"
-        style={{ height: '1px', background: 'var(--accent-10)' }}
+        style={{ height: '1px', background: isCurrent ? 'var(--accent-30)' : 'var(--accent-10)' }}
       />
 
       {/* Description */}

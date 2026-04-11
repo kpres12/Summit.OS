@@ -214,7 +214,7 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
           {/* Role switch button */}
           <button
             onClick={onSwitchRole}
-            aria-label="Switch role"
+            aria-label="Switch view"
             className="summit-btn text-[10px] tracking-widest px-2 py-0.5"
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -223,7 +223,7 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
               background: 'transparent',
             }}
           >
-            ⊕ ROLE
+            SWITCH VIEW
           </button>
 
           {/* User menu */}
