@@ -61,24 +61,54 @@ function RoleRouter() {
   // Tier gates
   if (role === 'command' && !tierLoading && !can('command_view')) {
     return (
-      <div style={{ width: '100vw', height: '100vh', background: '#080C0A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100vw', height: '100vh', background: '#080C0A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
         <UpgradePrompt
           feature="Command View"
           requiredTier={requiredTier('command_view')!}
           description="Situation feed, 3-column layout, and handoff brief generator for mission commanders."
         />
+        <button
+          onClick={() => setRole('ops')}
+          style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            fontSize: '10px',
+            letterSpacing: '0.15em',
+            color: 'var(--text-dim)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            padding: '6px 16px',
+            cursor: 'pointer',
+          }}
+        >
+          ← BACK TO OPS
+        </button>
       </div>
     );
   }
 
   if (role === 'dev' && !tierLoading && !can('dev_view')) {
     return (
-      <div style={{ width: '100vw', height: '100vh', background: '#080C0A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100vw', height: '100vh', background: '#080C0A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
         <UpgradePrompt
           feature="Developer View"
           requiredTier={requiredTier('dev_view')!}
           description="Entity explorer, adapter registry, message inspector, and inference dashboard."
         />
+        <button
+          onClick={() => setRole('ops')}
+          style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            fontSize: '10px',
+            letterSpacing: '0.15em',
+            color: 'var(--text-dim)',
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            padding: '6px 16px',
+            cursor: 'pointer',
+          }}
+        >
+          ← BACK TO OPS
+        </button>
       </div>
     );
   }
