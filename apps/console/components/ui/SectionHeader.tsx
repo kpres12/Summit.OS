@@ -9,12 +9,14 @@ interface SectionHeaderProps {
 export default function SectionHeader({ title }: SectionHeaderProps) {
   return (
     <div
-      className="text-[9px] font-bold tracking-[0.18em] uppercase pt-3 pb-1"
+      className="text-[10px] font-bold tracking-[0.18em] uppercase"
       style={{
         fontFamily: 'var(--font-ibm-plex-mono), monospace',
-        color: 'var(--text-muted)',
+        color: 'var(--text-dim)',
         borderBottom: '1px solid var(--accent-10)',
-        marginBottom: '4px',
+        paddingTop: '16px',
+        paddingBottom: '6px',
+        marginBottom: '2px',
       }}
     >
       {title}

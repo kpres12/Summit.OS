@@ -53,15 +53,15 @@ export default function OpsEntityList() {
         {Object.entries(grouped).map(([domain, entities]) => (
           <div key={domain}>
             <div
-              className="px-3 py-1 text-[9px] tracking-widest uppercase"
+              className="px-4 py-2 text-[10px] tracking-[0.15em] uppercase"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: 'var(--text-muted)',
+                color: 'var(--text-dim)',
                 background: 'var(--accent-5)',
-                borderBottom: '1px solid var(--accent-5)',
+                borderBottom: '1px solid var(--accent-10)',
               }}
             >
-              {domain} ({entities.length})
+              {domain} <span style={{ color: 'var(--text-muted)' }}>({entities.length})</span>
             </div>
             {entities.map((e) => (
               <AssetRow key={e.entity_id} entity={e} />
@@ -84,36 +84,27 @@ function AssetRow({ entity }: { entity: EntityData }) {
 
   return (
     <div
-      className="summit-btn px-3 py-2 flex flex-col gap-1"
+      className="summit-btn px-4 py-3 flex flex-col gap-1.5"
       style={{
         borderBottom: '1px solid var(--accent-5)',
         opacity: rowOpacity,
         transition: 'opacity 0.3s',
       }}
     >
+      {/* Primary row: dot + callsign + age */}
       <div className="flex items-center gap-2">
         <div
-          className="w-1.5 h-1.5 rounded-full flex-none"
-          style={{ background: dotColor }}
+          className="w-2 h-2 rounded-full flex-none"
+          style={{ background: dotColor, boxShadow: age === 'live' ? `0 0 4px ${dotColor}` : 'none' }}
         />
         <span
-          className="flex-1 text-[11px] font-bold truncate"
+          className="flex-1 text-[13px] font-bold truncate"
           style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: age === 'stale' ? 'var(--text-muted)' : color }}
         >
           {callsign}
         </span>
         <span
-          className="text-[9px] px-1"
-          style={{
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            color: 'var(--text-dim)',
-            border: '1px solid var(--accent-10)',
-          }}
-        >
-          {domainTag(entity.domain)}
-        </span>
-        <span
-          className="text-[9px]"
+          className="text-[10px]"
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
             color: age === 'warn' ? 'var(--warning)' : age === 'stale' ? 'var(--critical)' : 'var(--text-muted)',
@@ -123,57 +114,39 @@ function AssetRow({ entity }: { entity: EntityData }) {
         </span>
       </div>
 
-      {/* Stale badge */}
-      {age === 'warn' && (
-        <div className="pl-4">
-          <span
-            className="text-[8px] tracking-widest px-1"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: 'var(--warning)',
-              border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
-            }}
-          >
+      {/* Secondary row: domain tag + battery + speed */}
+      <div className="flex items-center gap-2 pl-4">
+        <span
+          className="text-[10px] px-1.5 py-0.5"
+          style={{
+            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+            color: 'var(--text-dim)',
+            border: '1px solid var(--accent-10)',
+          }}
+        >
+          {domainTag(entity.domain)}
+        </span>
+        {age === 'warn' && (
+          <span className="text-[9px] tracking-widest px-1" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--warning)', border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)' }}>
             STALE
           </span>
-        </div>
-      )}
-      {age === 'stale' && (
-        <div className="pl-4">
-          <span
-            className="text-[8px] tracking-widest px-1"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: 'var(--critical)',
-              border: '1px solid color-mix(in srgb, var(--critical) 30%, transparent)',
-            }}
-          >
+        )}
+        {age === 'stale' && (
+          <span className="text-[9px] tracking-widest px-1" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--critical)', border: '1px solid color-mix(in srgb, var(--critical) 30%, transparent)' }}>
             NO SIGNAL
           </span>
-        </div>
-      )}
-
-      {/* Battery + speed — only if live data */}
-      {age !== 'stale' && (entity.battery_pct !== undefined || (entity.speed_mps && entity.speed_mps > 0.5)) && (
-        <div className="flex items-center gap-3 pl-4">
-          {entity.battery_pct !== undefined && (
-            <span
-              className="text-[10px]"
-              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: batteryColor(entity.battery_pct) }}
-            >
-              BAT {Math.round(entity.battery_pct)}%
-            </span>
-          )}
-          {entity.speed_mps !== undefined && entity.speed_mps > 0.5 && (
-            <span
-              className="text-[10px]"
-              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
-            >
-              {entity.speed_mps.toFixed(1)} m/s
-            </span>
-          )}
-        </div>
-      )}
+        )}
+        {age !== 'stale' && entity.battery_pct != null && (
+          <span className="text-[10px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: batteryColor(entity.battery_pct) }}>
+            BAT {Math.round(entity.battery_pct)}%
+          </span>
+        )}
+        {age !== 'stale' && entity.speed_mps != null && entity.speed_mps > 0.5 && (
+          <span className="text-[10px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}>
+            {entity.speed_mps.toFixed(1)} m/s
+          </span>
+        )}
+      </div>
     </div>
   );
 }

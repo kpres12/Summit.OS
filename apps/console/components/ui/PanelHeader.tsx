@@ -5,7 +5,6 @@ import React from 'react';
 interface PanelHeaderProps {
   title: string;
   count?: number;
-  /** Override badge color (defaults to accent for normal, critical for alerts). */
   badgeVariant?: 'accent' | 'critical';
 }
 
@@ -13,12 +12,12 @@ export default function PanelHeader({ title, count, badgeVariant = 'accent' }: P
   const isAlert = badgeVariant === 'critical';
   return (
     <div
-      className="flex-none flex items-center justify-between px-3 py-2"
+      className="flex-none flex items-center justify-between px-4 py-3"
       style={{ borderBottom: '1px solid var(--border)' }}
     >
       <span
-        className="text-[10px] font-bold tracking-[0.2em] uppercase"
-        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
+        className="text-[11px] font-bold tracking-[0.18em] uppercase"
+        style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent-50)' }}
       >
         {title}
       </span>

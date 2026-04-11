@@ -10,16 +10,20 @@ interface DataRowProps {
 
 export default function DataRow({ label, value, valueColor }: DataRowProps) {
   return (
-    <div className="flex items-baseline justify-between py-0.5">
+    <div className="flex items-center justify-between py-1.5" style={{ borderBottom: '1px solid var(--accent-5)' }}>
       <span
-        className="text-[10px]"
-        style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+        className="text-[11px]"
+        style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace', flexShrink: 0 }}
       >
         {label}
       </span>
       <span
-        className="text-[11px] font-bold"
-        style={{ color: valueColor || 'var(--accent)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+        className="text-[12px] font-medium text-right"
+        style={{
+          color: valueColor || 'rgba(200,230,201,0.85)',
+          fontFamily: 'var(--font-ibm-plex-mono), monospace',
+          marginLeft: '12px',
+        }}
       >
         {value}
       </span>

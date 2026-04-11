@@ -64,9 +64,9 @@ html, body {
   letter-spacing: 0.025em;
 }
 
-/* Phosphor bloom — subtle; too strong makes it look like a game, not a tool */
+/* Phosphor bloom — readable glow without neon excess */
 body {
-  text-shadow: 0 0 8px rgba(0,232,150,0.10);
+  text-shadow: 0 0 8px rgba(0,232,150,0.14);
 }
 
 body {

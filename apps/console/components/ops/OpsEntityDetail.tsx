@@ -20,15 +20,18 @@ function buildThoughts(entity: EntityData): { ts: string; msg: string; confidenc
   const now = Date.now();
 
   if (entity.entity_type === 'alert') {
-    thoughts.push({ ts: `${new Date(now - 8000).toISOString().slice(11,19)}Z`, msg: `Anomalous velocity detected: ${entity.speed_mps.toFixed(1)} m/s exceeds baseline`, confidence: 0.91 });
+    const spd = entity.speed_mps != null ? `${entity.speed_mps.toFixed(1)} m/s` : 'unknown speed';
+    thoughts.push({ ts: `${new Date(now - 8000).toISOString().slice(11,19)}Z`, msg: `Anomalous velocity detected: ${spd} exceeds baseline`, confidence: 0.91 });
     thoughts.push({ ts: `${new Date(now - 5000).toISOString().slice(11,19)}Z`, msg: 'Cross-referencing against known flight corridors — no match found', confidence: 0.87 });
     thoughts.push({ ts: `${new Date(now - 2000).toISOString().slice(11,19)}Z`, msg: 'Flagging for operator review. Recommend visual verification.', confidence: 0.84 });
-  } else if (entity.battery_pct !== undefined && entity.battery_pct < 25) {
+  } else if (entity.battery_pct != null && entity.battery_pct < 25) {
     thoughts.push({ ts: `${new Date(now - 6000).toISOString().slice(11,19)}Z`, msg: `Battery critical at ${entity.battery_pct.toFixed(0)}% — estimating 4 min flight time remaining`, confidence: 0.96 });
     thoughts.push({ ts: `${new Date(now - 3000).toISOString().slice(11,19)}Z`, msg: 'Initiating RTB evaluation. Current position within return range.', confidence: 0.94 });
   } else {
     thoughts.push({ ts: `${new Date(now - 10000).toISOString().slice(11,19)}Z`, msg: `Tracking ${entity.classification || 'entity'} on nominal trajectory`, confidence: 0.97 });
-    thoughts.push({ ts: `${new Date(now - 4000).toISOString().slice(11,19)}Z`, msg: `Speed ${entity.speed_mps.toFixed(1)} m/s, heading ${entity.position.heading_deg.toFixed(0)}° — consistent with mission profile`, confidence: 0.95 });
+    const spdStr = entity.speed_mps != null ? `${entity.speed_mps.toFixed(1)} m/s` : 'speed unknown';
+    const hdgStr = entity.position?.heading_deg != null ? `, heading ${entity.position.heading_deg.toFixed(0)}°` : '';
+    thoughts.push({ ts: `${new Date(now - 4000).toISOString().slice(11,19)}Z`, msg: `${spdStr}${hdgStr} — consistent with mission profile`, confidence: 0.95 });
   }
   return thoughts;
 }
@@ -79,27 +82,40 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
     >
       {/* Header */}
       <div
-        className="flex-none px-4 py-3 flex items-start justify-between"
+        className="flex-none px-4 pt-4 pb-3 flex items-start justify-between"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
         <div>
           <div
-            className="text-sm font-bold tracking-[0.1em]"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)' }}
+            className="text-[18px] font-bold tracking-[0.06em] leading-tight"
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(200,230,201,0.92)' }}
           >
-            {displayName}
+            {displayName.toUpperCase()}
           </div>
-          <div
-            className="text-[10px] mt-0.5"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
-          >
-            {entity.entity_id.slice(0, 16)}
+          <div className="flex items-center gap-2 mt-1.5">
+            <span
+              className="text-[10px] px-1.5 py-0.5"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: typeColor,
+                border: `1px solid ${typeColor}40`,
+                background: `${typeColor}10`,
+              }}
+            >
+              {entity.entity_type.toUpperCase()}
+            </span>
+            <span
+              className="text-[10px]"
+              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}
+            >
+              {entity.entity_id.slice(0, 12)}
+            </span>
           </div>
         </div>
         <button
           onClick={onClose}
           aria-label="Close entity detail"
-          className="summit-btn text-base"
+          className="summit-btn text-lg leading-none mt-0.5"
           style={{ color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           ✕
@@ -140,15 +156,19 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         )}
 
         {/* Position section */}
-        <SectionHeader title="POSITION" />
-        <DataRow label="LAT" value={entity.position.lat.toFixed(6)} />
-        <DataRow label="LON" value={entity.position.lon.toFixed(6)} />
-        <DataRow label="ALT" value={`${entity.position.alt.toFixed(0)} m`} />
-        <DataRow label="HDG" value={`${entity.position.heading_deg.toFixed(1)}°`} />
-        <DataRow label="SPD" value={`${entity.speed_mps.toFixed(1)} m/s`} />
+        {entity.position && (
+          <>
+            <SectionHeader title="POSITION" />
+            <DataRow label="LAT" value={entity.position.lat.toFixed(6)} />
+            <DataRow label="LON" value={entity.position.lon.toFixed(6)} />
+            {entity.position.alt != null && <DataRow label="ALT" value={`${entity.position.alt.toFixed(0)} m`} />}
+            {entity.position.heading_deg != null && <DataRow label="HDG" value={`${entity.position.heading_deg.toFixed(1)}°`} />}
+            {entity.speed_mps != null && <DataRow label="SPD" value={`${entity.speed_mps.toFixed(1)} m/s`} />}
+          </>
+        )}
 
         {/* Battery section */}
-        {entity.battery_pct !== undefined && (
+        {entity.battery_pct != null && (
           <>
             <SectionHeader title="BATTERY" />
             <div className="mb-1">
@@ -275,7 +295,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         )}
         <div className="flex flex-col gap-2 mt-1">
           <button
-            className="summit-btn w-full text-[10px] py-2 tracking-widest"
+            className="summit-btn w-full text-[11px] py-2.5 tracking-widest"
             aria-label={`Halt ${entity.callsign || entity.entity_id}`}
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -296,7 +316,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
             HALT
           </button>
           <button
-            className="summit-btn w-full text-[10px] py-2 tracking-widest"
+            className="summit-btn w-full text-[11px] py-2.5 tracking-widest"
             aria-label={`Return ${entity.callsign || entity.entity_id} to base`}
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -317,7 +337,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
             RETURN TO BASE
           </button>
           <button
-            className="summit-btn w-full text-[10px] py-2 tracking-widest"
+            className="summit-btn w-full text-[11px] py-2.5 tracking-widest"
             aria-label={`Activate camera on ${entity.callsign || entity.entity_id}`}
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -339,7 +359,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
           </button>
           {onLiveFeed && (
             <button
-              className="summit-btn w-full text-[10px] py-2 tracking-widest"
+              className="summit-btn w-full text-[11px] py-2.5 tracking-widest"
               aria-label={`Open live feed for ${entity.callsign || entity.entity_id}`}
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
