@@ -71,31 +71,91 @@ async def create_mission(req: MissionCreateRequest, request: Request):
             status_code=409, detail="No available assets to plan mission"
         )
 
-    # ── Intent-based assignment (if available) ──
-    if state.ASSIGNMENT_ENGINE_AVAILABLE and req.area and req.area.get("center"):
-        from apps.tasking.assignment_engine import AssignmentEngine
-        intent = (req.planning_params or {}).get("intent", "survey")
-        center = req.area.get("center", {})
-        ae = AssignmentEngine()
-        assignment_result = ae.assign(
-            intent=intent,
-            target_lat=float(center.get("lat", 0)),
-            target_lon=float(center.get("lon", 0)),
-            num_assets=req.num_drones or 1,
-            available_assets=available_assets,
-            org_id=org_id,
+    # ── Role decomposition: assign each hardware domain its own behavior ──
+    # Cameras get surveillance, drones get search, subs get underwater grid, etc.
+    # Falls back to flat assignment if decomposer unavailable.
+    role_brief = []
+    try:
+        from role_decomposer import RoleDecomposer
+        intent = (req.planning_params or {}).get("intent") or (
+            req.objectives[0] if req.objectives else "survey"
         )
-        # Use scored assignments if we got results, otherwise fall back
-        if assignment_result.selected_assets:
-            # Rebuild available_assets in scored order
-            scored_ids = [s.asset_id for s in assignment_result.selected_assets]
-            scored_map = {a["asset_id"]: a for a in available_assets}
-            available_assets = [
-                scored_map[aid] for aid in scored_ids if aid in scored_map
-            ]
+        decomposer = RoleDecomposer()
+        manifest = decomposer.decompose(
+            intent=intent,
+            available_assets=available_assets,
+            area=req.area,
+            planning_params=req.planning_params,
+        )
+        role_brief = manifest.to_console_brief()
+        logger.info("Mission %s role manifest: %s", mission_id, manifest.summary())
 
-    # Plan (uses existing _plan_assignments with all its patterns)
-    assignments_map = await _plan_assignments(req, available_assets)
+        # Build assignments_map by running planner per role group
+        assignments_map: Dict[str, Any] = {}
+        for role in manifest.roles:
+            if not role.assets:
+                continue
+            # Fixed assets (cameras, mesh) get a minimal "activate" plan
+            if role.planning_params.get("fixed"):
+                for asset in role.assets:
+                    assignments_map[asset["asset_id"]] = {
+                        "role": role.role_name,
+                        "domain": role.domain,
+                        "behavior": role.behavior,
+                        "sensors_active": role.sensors_active,
+                        "pattern": role.pattern,
+                        "description": role.description,
+                        "waypoints": [],  # fixed — no movement
+                    }
+                continue
+
+            # Mobile assets — build a per-role MissionCreateRequest copy
+            import copy
+            role_req = copy.copy(req)
+            # Merge role planning params into request
+            merged_params = dict(req.planning_params or {})
+            merged_params.update({
+                "pattern": role.pattern,
+                "altitude": role.altitude_m,
+                "speed": role.speed_mps,
+                "intent": intent,
+                "sensors_active": role.sensors_active,
+            })
+            role_req.planning_params = merged_params
+
+            role_assignments = await _plan_assignments(role_req, role.assets)
+            for asset_id, plan in role_assignments.items():
+                plan["role"] = role.role_name
+                plan["domain"] = role.domain
+                plan["description"] = role.description
+                plan["sensors_active"] = role.sensors_active
+                assignments_map[asset_id] = plan
+
+    except ImportError:
+        # Role decomposer not available — fall back to flat assignment
+        if state.ASSIGNMENT_ENGINE_AVAILABLE and req.area and req.area.get("center"):
+            from apps.tasking.assignment_engine import AssignmentEngine
+            intent = (req.planning_params or {}).get("intent", "survey")
+            center = req.area.get("center", {})
+            ae = AssignmentEngine()
+            assignment_result = ae.assign(
+                intent=intent,
+                target_lat=float(center.get("lat", 0)),
+                target_lon=float(center.get("lon", 0)),
+                num_assets=req.num_drones or 1,
+                available_assets=available_assets,
+                org_id=org_id,
+            )
+            if assignment_result.selected_assets:
+                scored_ids = [s.asset_id for s in assignment_result.selected_assets]
+                scored_map = {a["asset_id"]: a for a in available_assets}
+                available_assets = [
+                    scored_map[aid] for aid in scored_ids if aid in scored_map
+                ]
+        assignments_map = await _plan_assignments(req, available_assets)
+    except Exception as _re:
+        logger.warning("Role decomposer error (%s) — falling back to flat plan", _re)
+        assignments_map = await _plan_assignments(req, available_assets)
 
     # ── State machine: DISPATCHED ──
     if sm:
@@ -194,6 +254,7 @@ async def create_mission(req: MissionCreateRequest, request: Request):
         status="ACTIVE",
         policy_ok=policy_ok,
         assignments=assignments,
+        role_brief=role_brief,
         created_at=created_at,
         started_at=created_at,
     )

@@ -161,6 +161,26 @@ BUILT_IN_ADAPTERS: list[dict] = [
         "name": "Starlink Terminal",
         "description": "Starlink dish telemetry via local gRPC API — GPS position, signal quality, connectivity state",
     },
+    # ── Local RF receivers ───────────────────────────────────────────────────
+    {
+        "type": "dump1090",
+        "name": "ADS-B Receiver (dump1090)",
+        "description": (
+            "Local ADS-B air traffic from an RTL-SDR dongle via dump1090/readsb. "
+            "Zero internet — aircraft broadcast positions directly on 1090MHz. "
+            "~$25 hardware, ~200nm range."
+        ),
+    },
+    # ── Mesh radio ───────────────────────────────────────────────────────────
+    {
+        "type": "meshtastic",
+        "name": "Meshtastic LoRa Mesh",
+        "description": (
+            "Off-grid LoRa mesh radio — field teams, sensors, and vehicles "
+            "tracked without cellular or internet. Bidirectional: Summit.OS "
+            "can send waypoints and alerts back through the mesh."
+        ),
+    },
     # ── Generic connectivity ─────────────────────────────────────────────────
     {
         "type": "serial",
@@ -423,6 +443,10 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("adapters.zigbee_adapter",   "ZigbeeAdapter"),
         # Satellite connectivity
         ("adapters.starlink_adapter", "StarlinkAdapter"),
+        # Local RF receivers
+        ("adapters.dump1090_adapter",   "Dump1090Adapter"),
+        # Mesh radio
+        ("adapters.meshtastic_adapter", "MeshtasticAdapter"),
         # Generic connectivity
         ("adapters.serial_adapter",   "SerialAdapter"),
         ("adapters.websocket_adapter", "WebSocketAdapter"),

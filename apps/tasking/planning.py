@@ -120,13 +120,30 @@ async def _validate_policies(
 ) -> List[str]:
     """Validate mission against policy engine (OPA) and return violation reasons.
 
-    Fails open (no violations) if OPA is unreachable to avoid blocking local dev.
+    Runs two checks in order:
+      1. Real-time airspace gate (NOTAM + Facility Map + LAANC via FAA APIs)
+      2. OPA missions/allow policy (objectives, area, org rules)
+
+    Fails open (no violations) if OPA or airspace APIs are unreachable,
+    to avoid blocking local dev. Enable strict mode with AIRSPACE_ENFORCE=true.
     """
+    violations: List[str] = []
+
+    # ── 1. Airspace gate ─────────────────────────────────────────────────────
+    try:
+        from airspace_gate import check_mission_airspace
+        airspace_violations = await check_mission_airspace(req, org_id=org_id)
+        violations.extend(airspace_violations)
+    except ImportError:
+        pass  # airspace_gate not available in test environments
+    except Exception as _ae:
+        logger.warning("Airspace gate error (fail-open): %s", _ae)
+
+    # ── 2. OPA mission policy ─────────────────────────────────────────────────
     try:
         from apps.tasking.opa import OPAClient
     except Exception:
-        # If client not available, allow
-        return []
+        return violations  # If OPA client not available, return what we have
 
     opa = OPAClient()
     # Build minimal input; extend as schemas mature
@@ -140,16 +157,20 @@ async def _validate_policies(
     try:
         result = await opa.evaluate("missions/allow", input_data)
         allow = bool(result.get("allow", True))
-        if allow:
-            return []
-        # Collect reasons if provided
-        reasons = result.get("deny_reasons") or result.get("reasons") or []
-        if isinstance(reasons, list):
-            return [str(r) for r in reasons]
-        return [str(reasons)] if reasons else ["Policy denied"]
+        if not allow:
+            # Collect reasons if provided
+            reasons = result.get("deny_reasons") or result.get("reasons") or []
+            if isinstance(reasons, list):
+                violations.extend([str(r) for r in reasons])
+            elif reasons:
+                violations.append(str(reasons))
+            elif not violations:
+                violations.append("Policy denied")
     except Exception:
-        # Fail open
-        return []
+        # Fail open on OPA error
+        pass
+
+    return violations
 
 
 async def _assess_threat(

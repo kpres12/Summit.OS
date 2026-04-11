@@ -68,6 +68,7 @@ class MissionResponse(BaseModel):
     status: str
     policy_ok: bool
     assignments: List[MissionAssignment]
+    role_brief: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: datetime
     started_at: Optional[datetime] = None
 

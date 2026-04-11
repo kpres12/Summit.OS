@@ -9,6 +9,8 @@ import paho.mqtt.client as mqtt
 import httpx
 from datetime import datetime, timezone
 
+pytestmark = pytest.mark.integration
+
 
 def test_observation_end_to_end():
     """

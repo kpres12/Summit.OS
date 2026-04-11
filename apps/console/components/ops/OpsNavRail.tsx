@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useRef, useCallback } from 'react';
+import Link from 'next/link';
+import { useTier } from '@/hooks/useTier';
 
 type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
 
@@ -20,8 +22,11 @@ interface OpsNavRailProps {
   onSelect: (panel: string | null) => void;
 }
 
+const TIER_BADGE: Record<string, string> = { free: 'FREE', pro: 'PRO', org: 'ORG', enterprise: 'ENT' };
+
 export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
   const listRef = useRef<HTMLDivElement>(null);
+  const { tier } = useTier();
 
   // Arrow-key navigation within the nav rail
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -92,6 +97,30 @@ export default function OpsNavRail({ activePanel, onSelect }: OpsNavRailProps) {
           <span className="text-base leading-none" aria-hidden="true">{PLAN_MISSION_ITEM.icon}</span>
         </button>
       </div>
+
+      {/* Billing / plan link */}
+      <Link
+        href="/billing"
+        aria-label={`Plan: ${TIER_BADGE[tier] ?? 'FREE'} — upgrade`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '32px',
+          margin: '0 4px 4px',
+          borderRadius: '3px',
+          background: tier === 'free' ? 'var(--accent-5)' : 'transparent',
+          border: tier === 'free' ? '1px solid var(--accent-15)' : '1px solid transparent',
+          color: tier === 'free' ? 'var(--accent-50)' : 'var(--text-dim)',
+          fontSize: '8px',
+          fontFamily: 'var(--font-orbitron), Orbitron, sans-serif',
+          letterSpacing: '0.08em',
+          textDecoration: 'none',
+          transition: 'color 0.15s',
+        }}
+      >
+        {TIER_BADGE[tier] ?? 'FREE'}
+      </Link>
 
       {/* Bottom label */}
       <div

@@ -10,9 +10,12 @@ import json
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Any
-import requests
-import paho.mqtt.client as mqtt
-import websocket
+
+pytestmark = pytest.mark.integration
+
+requests = pytest.importorskip("requests")
+mqtt = pytest.importorskip("paho.mqtt.client")
+websocket = pytest.importorskip("websocket")
 import numpy as np
 
 # Import Summit.OS SDK

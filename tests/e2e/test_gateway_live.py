@@ -124,15 +124,15 @@ class TestTaskFlow:
 class TestOpenAPI:
     @pytest.mark.anyio
     async def test_openapi_schema(self, client):
-        r = await client.get("/openapi.json")
+        r = await client.get("/api/openapi.json")
         assert r.status_code == 200
         schema = r.json()
-        assert schema["info"]["title"] == "Summit API Gateway"
+        assert schema["info"]["title"] == "Summit.OS API Gateway"
         assert "/health" in schema["paths"]
 
     @pytest.mark.anyio
     async def test_docs_page(self, client):
-        r = await client.get("/docs")
+        r = await client.get("/api/docs")
         assert r.status_code == 200
 
 

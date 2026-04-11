@@ -2,6 +2,7 @@ import os
 import sys
 
 os.environ["TASKING_TEST_MODE"] = "true"
+os.environ["OPA_FAIL_MODE"] = "open"  # fail-open in unit tests (no OPA server running)
 os.environ["PYTHONPATH"] = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "..", "..")
 )

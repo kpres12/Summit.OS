@@ -502,7 +502,7 @@ class WorldModelUpdater:
             # Simple distance calculation (not accurate for large distances)
             distance = np.sqrt((lat - center_lat) ** 2 + (lon - center_lon) ** 2)
             return distance <= radius
-        except:
+        except (ValueError, AttributeError):
             return False
 
 

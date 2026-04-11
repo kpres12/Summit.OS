@@ -40,6 +40,24 @@ allowed_objective(obj) {
   obj == "mapping"
 } else {
   obj == "containment"
+} else {
+  obj == "search_and_rescue"
+} else {
+  obj == "inspection"
+} else {
+  obj == "delivery"
+} else {
+  obj == "relay"
+} else {
+  obj == "monitoring"
+} else {
+  obj == "survey"
+} else {
+  obj == "photography"
+} else {
+  obj == "disaster_response"
+} else {
+  obj == "wildfire_ops"
 }
 
 # Allow if no denies

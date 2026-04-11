@@ -4,8 +4,10 @@ routers/billing.py — Billing and API key management router for Summit.OS api-g
 Endpoints (all under /v1/billing):
   POST /v1/billing/keys               — generate a new API key for an org
   GET  /v1/billing/subscription       — return org tier, limits, entity count
-  POST /v1/billing/checkout           — create a Stripe Checkout session
+  POST /v1/billing/checkout           — create a Stripe Checkout session (legacy / optional)
+  POST /v1/billing/checkout/polar     — create a Polar.sh Checkout session (primary)
   POST /v1/billing/webhooks/stripe    — Stripe webhook handler (no SDK — stdlib hmac)
+  POST /v1/billing/webhooks/polar     — Polar.sh webhook handler
 """
 
 from __future__ import annotations
@@ -72,9 +74,10 @@ class SubscriptionResponse(BaseModel):
 
 class CheckoutRequest(BaseModel):
     org_id: str
-    tier: str  # "pro" | "enterprise"
+    tier: str  # "pro" | "org" | "enterprise"
     success_url: str
     cancel_url: str
+    customer_email: Optional[str] = None
 
 
 class CheckoutResponse(BaseModel):
@@ -466,13 +469,117 @@ async def stripe_webhook(
 # using POLAR_WEBHOOK_SECRET. Skip verification if secret not set (dev only).
 # ---------------------------------------------------------------------------
 
-# Polar product name → internal tier.  Adjust if you rename products in Polar.
+# Polar product name → internal tier.
+# Keys are lowercased product names exactly as they appear in your Polar dashboard.
 _POLAR_PRODUCT_TIER: dict[str, str] = {
+    # Pro
+    "pro": "pro",
+    "summit.os pro": "pro",
+    # Organization
+    "org": "org",
+    "organization": "org",
+    "summit.os organization": "org",
+    # Enterprise
     "enterprise": "enterprise",
     "enterprise+": "enterprise",
     "summit.os enterprise": "enterprise",
     "summit.os enterprise+": "enterprise",
 }
+
+# Polar product ID env var names (set after creating products in the Polar dashboard)
+_POLAR_PRODUCT_ENV: dict[str, str] = {
+    "pro": "POLAR_PRODUCT_ID_PRO",
+    "org": "POLAR_PRODUCT_ID_ORG",
+    "enterprise": "POLAR_PRODUCT_ID_ENTERPRISE",
+}
+
+
+# ---------------------------------------------------------------------------
+# POST /v1/billing/checkout/polar
+# Creates a Polar.sh Checkout session.
+# Requires POLAR_ACCESS_TOKEN and POLAR_PRODUCT_ID_{TIER} env vars.
+# No SDK — uses stdlib urllib, same pattern as the Stripe endpoint.
+# ---------------------------------------------------------------------------
+
+@billing_router.post("/checkout/polar", response_model=CheckoutResponse, status_code=201)
+async def create_polar_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
+    """
+    Create a Polar.sh Checkout session for the requested tier.
+
+    Resolves POLAR_ACCESS_TOKEN and the product ID from env vars (or Vault).
+    Returns a checkout_url to redirect the user to polar.sh.
+    """
+    try:
+        import sys as _sys_pc
+        from pathlib import Path as _Path_pc
+        _pc_root = str(_Path_pc(__file__).resolve().parents[3])
+        if _pc_root not in _sys_pc.path:
+            _sys_pc.path.insert(0, _pc_root)
+        from packages.secrets.client import get_secret as _get_pc
+        polar_token = (await _get_pc("POLAR_ACCESS_TOKEN", default="")) or ""
+    except Exception:
+        polar_token = os.getenv("POLAR_ACCESS_TOKEN", "")
+
+    if not polar_token:
+        raise HTTPException(status_code=503, detail="Polar not configured (POLAR_ACCESS_TOKEN missing)")
+
+    tier = body.tier.lower()
+    if tier not in _POLAR_PRODUCT_ENV:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown tier '{tier}'. Valid tiers: {list(_POLAR_PRODUCT_ENV)}",
+        )
+
+    product_env_key = _POLAR_PRODUCT_ENV[tier]
+    try:
+        from packages.secrets.client import get_secret as _get_pid  # type: ignore[import]
+        product_id = (await _get_pid(product_env_key, default="")) or ""
+    except Exception:
+        product_id = os.getenv(product_env_key, "")
+
+    if not product_id:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Product ID for tier '{tier}' not configured ({product_env_key})",
+        )
+
+    payload = _json_mod.dumps({
+        "product_id": product_id,
+        "success_url": body.success_url,
+        "cancel_url": body.cancel_url,
+        "metadata": {"org_id": body.org_id, "tier": tier},
+        **({"customer_email": body.customer_email} if body.customer_email else {}),
+    }).encode()
+
+    req = urllib.request.Request(
+        "https://api.polar.sh/v1/checkouts",
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {polar_token}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            session_data: dict = _json_mod.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        body_text = exc.read().decode("utf-8", errors="replace")
+        logger.error("Polar checkout error %s: %s", exc.code, body_text)
+        raise HTTPException(status_code=502, detail=f"Polar returned {exc.code}: {body_text[:200]}")
+    except urllib.error.URLError as exc:
+        logger.error("Polar unreachable: %s", exc.reason)
+        raise HTTPException(status_code=502, detail="Polar service unreachable")
+
+    checkout_url: str = session_data.get("url", "")
+    session_id: str = session_data.get("id", "")
+
+    if not checkout_url or not session_id:
+        raise HTTPException(status_code=502, detail="Polar response missing url or id")
+
+    logger.info("Created Polar checkout session=%s org=%s tier=%s", session_id, body.org_id, tier)
+    return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
 
 
 def _verify_polar_signature(

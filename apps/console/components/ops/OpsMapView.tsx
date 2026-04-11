@@ -6,7 +6,13 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { apiFetch, createGeofence } from '@/lib/api';
 
-const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+// Tile source priority:
+// 1. NEXT_PUBLIC_TILE_URL — operator-configured (local tile server, PMTiles, etc.)
+// 2. Carto dark matter — default online basemap
+// See infra/tiles/ for offline tile server setup instructions
+const DARK_STYLE =
+  process.env.NEXT_PUBLIC_TILE_URL ||
+  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
 interface OpsMapViewProps {
   onSelectEntity?: (entity: EntityData | null) => void;

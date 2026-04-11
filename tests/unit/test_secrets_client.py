@@ -1,13 +1,19 @@
 """Unit tests for the Summit.OS Secret Client."""
+import importlib.util
 import os
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages"))
-
-from secrets.client import SecretClient
+# Load packages/secrets/client.py directly to avoid collision with stdlib `secrets`.
+_client_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "packages", "secrets", "client.py")
+)
+_spec = importlib.util.spec_from_file_location("summit_secrets_client", _client_path)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+SecretClient = _mod.SecretClient
 
 
 class TestSecretClientBackendSelection:

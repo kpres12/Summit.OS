@@ -7,7 +7,9 @@ import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { fetchMissions, fetchAlerts, connectWebSocket, fetchPendingApprovals, approveTask, MissionAPI, AlertAPI } from '@/lib/api';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const DARK_STYLE =
+  process.env.NEXT_PUBLIC_TILE_URL ||
+  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
 interface CommandLayoutProps {
   onSwitchRole: () => void;
