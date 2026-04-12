@@ -1006,6 +1006,92 @@
       text-align: right;
     }
 
+    /* ── Role cards ── */
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--amber-dim);
+      border: 1px solid var(--amber-dim);
+      margin-top: 40px;
+    }
+
+    .role-card {
+      background: var(--bg2);
+      padding: 32px 28px;
+      transition: background 0.15s;
+    }
+
+    .role-card:hover { background: var(--bg3); }
+
+    .role-card-badge {
+      display: inline-block;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--bg);
+      background: var(--amber-dim);
+      padding: 2px 8px;
+      margin-bottom: 14px;
+    }
+
+    .role-card-name {
+      font-family: 'VT323', monospace;
+      font-size: 32px;
+      color: var(--amber-bright);
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 8px rgba(212,160,23,0.3);
+    }
+
+    .role-card-desc {
+      font-size: 12px;
+      color: var(--amber-dim);
+      line-height: 1.8;
+      margin-bottom: 18px;
+    }
+
+    .role-card-specs {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .role-card-specs li {
+      font-size: 11px;
+      color: var(--amber-dim);
+      letter-spacing: 0.04em;
+    }
+
+    .role-card-specs li::before { content: '— '; color: var(--amber); }
+
+    /* ── Mission statement ── */
+    .mission-statement {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 80px 24px;
+      border-top: 1px solid var(--amber-dim);
+      text-align: center;
+    }
+
+    .mission-statement-text {
+      font-family: 'VT323', monospace;
+      font-size: clamp(22px, 3.5vw, 36px);
+      color: var(--amber);
+      line-height: 1.5;
+      letter-spacing: 0.04em;
+      max-width: 760px;
+      margin: 0 auto 24px;
+      text-shadow: 0 0 20px rgba(212,160,23,0.2);
+    }
+
+    .mission-statement-sub {
+      font-size: 12px;
+      color: var(--amber-dim);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
     /* ── Hover sound target ── */
     [data-sound] { transition: all 0.15s; }
 
@@ -1038,15 +1124,13 @@
 
     <!-- Nav -->
     <nav>
-      <a href="#" class="nav-logo" data-sound="click">BIGMT.AI</a>
+      <a href="#" class="nav-logo" data-sound="click">SUMMIT.OS</a>
       <ul class="nav-links">
+        <li><a href="#platform" data-sound="click">Platform</a></li>
+        <li><a href="#use-cases" data-sound="click">Use Cases</a></li>
         <li><a href="#capabilities" data-sound="click">Systems</a></li>
-        <li><a href="#how-it-works" data-sound="click">How It Works</a></li>
         <li><a href="#connect" data-sound="click">Hardware</a></li>
         <li><a href="#missions" data-sound="click">Missions</a></li>
-        <li><a href="#auth" data-sound="click">Auth</a></li>
-        <li><a href="#security" data-sound="click">Security</a></li>
-        <li><a href="ml.html" data-sound="click">AI Models</a></li>
         <li><a href="#editions" data-sound="click">Access Tiers</a></li>
         <li><a href="https://github.com/BigMT-Ai/Summit.OS" target="_blank" data-sound="click">GitHub</a></li>
         <li><a href="mailto:prestkyle@gmail.com" class="nav-cta" data-sound="click">ENTERPRISE</a></li>
@@ -1075,6 +1159,98 @@
         <div class="status-item"><span class="status-dot"></span>APACHE 2.0</div>
       </div>
     </div>
+
+    <!-- Mission Statement -->
+    <div class="mission-statement">
+      <div class="mission-statement-text">
+        "Ideals Are Strengthened By The Challenges They Endure."
+      </div>
+      <div class="mission-statement-sub">BIGMT.AI // SUMMIT.OS</div>
+    </div>
+
+    <!-- Platform Roles -->
+    <section class="section" id="platform" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">THE PLATFORM</div>
+        <div class="section-title">THREE ROLES.<br />ONE UNIFIED PICTURE.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:0;">
+        Summit.OS ships three purpose-built operator views. Each scoped precisely to its role —
+        no feature sprawl, no context switching. One shared world model underneath all of them.
+      </p>
+      <div class="role-grid">
+        <div class="role-card" data-sound="hover">
+          <div class="role-card-badge">ROLE-01</div>
+          <div class="role-card-name">OPS</div>
+          <p class="role-card-desc">Full-screen situational awareness for the field operator. Real-time entity stream, alert queue, geofencing, mission launch, and live feeds — all from a single map view.</p>
+          <ul class="role-card-specs">
+            <li>Real-time map with &lt;1s entity updates</li>
+            <li>Alert → investigate → dispatch in &lt;3s</li>
+            <li>Geofence draw and active enforcement</li>
+            <li>Mission builder with NLP command input</li>
+            <li>HALT / RTB / camera override controls</li>
+          </ul>
+        </div>
+        <div class="role-card" data-sound="hover">
+          <div class="role-card-badge">ROLE-02</div>
+          <div class="role-card-name">COMMAND</div>
+          <p class="role-card-desc">Three-column command and control for coordinators and incident commanders. Situation feed, sector map, and resource status in a single glance. One-click handoff brief generation.</p>
+          <ul class="role-card-specs">
+            <li>Live situation feed with severity tiers</li>
+            <li>Sector map with full entity overlay</li>
+            <li>Resource availability across all assets</li>
+            <li>Handoff brief generator</li>
+            <li>Multi-agency coordination support</li>
+          </ul>
+        </div>
+        <div class="role-card" data-sound="hover">
+          <div class="role-card-badge">ROLE-03</div>
+          <div class="role-card-name">DEV</div>
+          <p class="role-card-desc">Integration and diagnostics tooling for engineers connecting hardware or debugging live data flows. Adapter registry, message inspector, schema validator, and inference dashboard.</p>
+          <ul class="role-card-specs">
+            <li>Adapter registry with live health status</li>
+            <li>Real-time message inspector</li>
+            <li>Schema validation against entity spec</li>
+            <li>Inference dashboard and model metrics</li>
+            <li>Entity explorer with full field view</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Use Cases -->
+    <section class="section" id="use-cases" style="border-top:1px solid var(--amber-dim)">
+      <div class="section-header">
+        <div class="section-tag">USE CASES</div>
+        <div class="section-title">BUILT FOR THE<br />MISSIONS THAT MATTER.</div>
+      </div>
+      <p style="font-size:13px;color:var(--amber-dim);max-width:580px;line-height:1.8;margin-bottom:40px;">
+        Designed for environments where autonomous systems need coordination and humans need to stay in control.
+        Civilian-first. Mission-proven architecture.
+      </p>
+      <div class="cap-grid">
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">CASE-01 // WILDFIRE OPS</div>
+          <div class="cap-card-title">WILDFIRE RESPONSE</div>
+          <p class="cap-card-desc">Track air tankers, ground crews, and recon UAVs in a unified picture. AI-scored risk zones update as fire behavior evolves. Auto-dispatch retardant runs against confirmed spread vectors. Every asset on one screen.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">CASE-02 // SAR</div>
+          <div class="cap-card-title">SEARCH &amp; RESCUE</div>
+          <p class="cap-card-desc">Multi-domain entity fusion across aerial and ground assets. Sector coverage tracking with gap detection. Survivor detection events queued for immediate dispatch. No part of the search grid goes unaccounted for.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">CASE-03 // COMMERCIAL</div>
+          <div class="cap-card-title">UAV FLEET OPS</div>
+          <p class="cap-card-desc">Fleet-wide telemetry for commercial drone operations at scale. Battery, link quality, and mission status across every asset simultaneously. Deconfliction alerts before proximity violations occur.</p>
+        </div>
+        <div class="cap-card" data-sound="hover">
+          <div class="cap-card-id">CASE-04 // DISASTER</div>
+          <div class="cap-card-title">DISASTER RESPONSE</div>
+          <p class="cap-card-desc">Multi-agency coordination when the stakes are highest. Real-time resource status across organizations. Handoff brief generation for shift changes. A common operating picture for everyone in the room.</p>
+        </div>
+      </div>
+    </section>
 
     <!-- Capabilities -->
     <section class="section" id="capabilities">
