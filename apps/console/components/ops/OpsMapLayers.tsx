@@ -11,58 +11,73 @@ interface Layer {
 
 interface OpsMapLayersProps {
   onDrawGeofence?: () => void;
+  activeLayers?: Set<string>;
+  onToggleLayer?: (id: string) => void;
 }
 
-export default function OpsMapLayers({ onDrawGeofence }: OpsMapLayersProps) {
+export default function OpsMapLayers({ onDrawGeofence, activeLayers, onToggleLayer }: OpsMapLayersProps) {
   const [layers, setLayers] = useState<Layer[]>([
-    { id: 'entities', label: 'ASSETS', enabled: true },
-    { id: 'tracks', label: 'TRACKS', enabled: true },
-    { id: 'geofences', label: 'GEOFENCES', enabled: false },
-    { id: 'grid', label: 'GRID OVERLAY', enabled: false },
-    { id: 'threat', label: 'ALERT ZONES', enabled: false },
+    { id: 'entities',   label: 'ASSETS',           enabled: true  },
+    { id: 'tracks',     label: 'TRACKS',            enabled: true  },
+    { id: 'geofences',  label: 'GEOFENCES',         enabled: false },
+    { id: 'satellites', label: 'SATELLITES',        enabled: false },
+    { id: 'gpsjam',     label: 'GPS JAMMING',       enabled: false },
+    { id: 'maritime',   label: 'MARITIME (AIS)',    enabled: false },
+    { id: 'noflyzones', label: 'AIRSPACE CLOSURES', enabled: false },
+    { id: 'grid',       label: 'GRID OVERLAY',      enabled: false },
   ]);
 
   const toggle = (id: string) => {
-    setLayers((prev) => prev.map((l) => l.id === id ? { ...l, enabled: !l.enabled } : l));
+    if (onToggleLayer) {
+      onToggleLayer(id);
+    } else {
+      setLayers((prev) => prev.map((l) => l.id === id ? { ...l, enabled: !l.enabled } : l));
+    }
   };
+
+  // Use external state if provided, otherwise fall back to internal
+  const isEnabled = (id: string) => activeLayers ? activeLayers.has(id) : layers.find(l => l.id === id)?.enabled ?? false;
 
   return (
     <div className="flex flex-col h-full panel-scanline">
       <PanelHeader title="MAP LAYERS" />
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
-        {layers.map((l) => (
-          <button
-            key={l.id}
-            onClick={() => toggle(l.id)}
-            aria-pressed={l.enabled}
-            aria-label={`Toggle ${l.label} layer`}
-            className="summit-btn flex items-center gap-3 text-left"
-            style={{
-              background: l.enabled ? 'var(--accent-5)' : 'transparent',
-              border: 'none',
-              padding: '8px 12px',
-              borderLeft: `2px solid ${l.enabled ? 'var(--accent)' : 'var(--accent-15)'}`,
-            }}
-          >
-            <div
-              className="w-3 h-3 border flex-none"
-              aria-hidden="true"
+        {layers.map((l) => {
+          const on = isEnabled(l.id);
+          return (
+            <button
+              key={l.id}
+              onClick={() => toggle(l.id)}
+              aria-pressed={on}
+              aria-label={`Toggle ${l.label} layer`}
+              className="summit-btn flex items-center gap-3 text-left"
               style={{
-                border: `1px solid ${l.enabled ? 'var(--accent)' : 'var(--accent-30)'}`,
-                background: l.enabled ? 'var(--accent)' : 'transparent',
-              }}
-            />
-            <span
-              className="text-xs tracking-wider"
-              style={{
-                fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: l.enabled ? 'var(--accent)' : 'var(--text-dim)',
+                background: on ? 'var(--accent-5)' : 'transparent',
+                border: 'none',
+                padding: '8px 12px',
+                borderLeft: `2px solid ${on ? 'var(--accent)' : 'var(--accent-15)'}`,
               }}
             >
-              {l.label}
-            </span>
-          </button>
-        ))}
+              <div
+                className="w-3 h-3 border flex-none"
+                aria-hidden="true"
+                style={{
+                  border: `1px solid ${on ? 'var(--accent)' : 'var(--accent-30)'}`,
+                  background: on ? 'var(--accent)' : 'transparent',
+                }}
+              />
+              <span
+                className="text-xs tracking-wider"
+                style={{
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  color: on ? 'var(--accent)' : 'var(--text-dim)',
+                }}
+              >
+                {l.label}
+              </span>
+            </button>
+          );
+        })}
 
         {/* Geofence draw — action, not a layer toggle */}
         <div style={{ marginTop: '8px', borderTop: '1px solid var(--accent-5)', paddingTop: '12px' }}>

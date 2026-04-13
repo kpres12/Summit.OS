@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import { useInvestigation } from '@/hooks/useInvestigation';
 import { useMissionDraw } from '@/hooks/useMissionDraw';
@@ -20,8 +20,9 @@ import OpsReplayControls from './OpsReplayControls';
 import OpsMissionBuilder from './OpsMissionBuilder';
 import OpsMapLayers from './OpsMapLayers';
 import OpsSystem from './OpsSystem';
+import OpsIntel from './OpsIntel';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel';
 
 interface OpsLayoutProps {
   onSwitchRole: () => void;
@@ -49,6 +50,21 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
   // Geofence draw (triggered from Layers panel)
   const [geofenceDrawMode, setGeofenceDrawMode] = useState(false);
 
+  // Map layer visibility
+  const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set(['entities', 'tracks']));
+  const toggleLayer = (id: string) => setActiveLayers(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  // Auto-reopen mission builder when user finishes drawing the area on the map
+  useEffect(() => {
+    if (missionDraw.missionPolygon && missionDraw.missionPolygon.length >= 3) {
+      setActivePanel('mission-builder');
+    }
+  }, [missionDraw.missionPolygon]);
+
   const handleInvestigateAlert = (alert: Parameters<typeof investigation.investigateAlert>[0]) => {
     investigation.investigateAlert(alert);
     setActivePanel(null); // close the alert panel after investigating
@@ -61,6 +77,8 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       case 'missions': return <OpsMissions onReplay={(id) => setReplayMissionId(id)} />;
       case 'layers': return (
         <OpsMapLayers
+          activeLayers={activeLayers}
+          onToggleLayer={toggleLayer}
           onDrawGeofence={() => {
             setGeofenceDrawMode(true);
             setActivePanel(null); // close panel so the map is fully visible for drawing
@@ -78,11 +96,13 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
           onRequestDrawArea={() => {
             missionDraw.setMissionPolygon(null);
             missionDraw.setMissionDrawMode(true);
+            setActivePanel(null); // collapse panel so map is fully visible
           }}
           missionPolygon={missionDraw.missionPolygon}
           onWaypointsChanged={missionDraw.setMissionWaypoints}
         />
       );
+      case 'intel': return <OpsIntel />;
       default: return null;
     }
   };
@@ -135,6 +155,10 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             missionWaypoints={missionDraw.missionWaypoints}
             geofenceDrawMode={geofenceDrawMode}
             onGeofenceDrawEnd={() => setGeofenceDrawMode(false)}
+            showSatellites={activeLayers.has('satellites')}
+            showGpsJam={activeLayers.has('gpsjam')}
+            showMaritime={activeLayers.has('maritime')}
+            showNoFlyZones={activeLayers.has('noflyzones')}
           />
           {/* Live video overlay */}
           {videoStreamId && (

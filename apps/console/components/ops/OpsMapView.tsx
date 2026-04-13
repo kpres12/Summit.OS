@@ -6,6 +6,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { apiFetch, createGeofence } from '@/lib/api';
 
+interface SatellitePos { entity_id: string; name: string; sat_type: string; position: { lat: number; lon: number; alt: number }; }
+interface JamZone { id: string; name: string; lat: number; lon: number; radius_km: number; intensity: number; }
+interface Vessel { id: string; name: string; type: string; lat: number; lon: number; heading: number; speed_kts: number; status?: string; }
+interface NoFlyZone { id: string; name: string; severity: string; active: boolean; coordinates: { lat: number; lon: number }[]; }
+
 // Tile source priority:
 // 1. NEXT_PUBLIC_TILE_URL — operator-configured (local tile server, PMTiles, etc.)
 // 2. Carto dark matter — default online basemap
@@ -26,6 +31,11 @@ interface OpsMapViewProps {
   // Geofence draw (triggered from Layers panel)
   geofenceDrawMode?: boolean;
   onGeofenceDrawEnd?: () => void;
+  // OSINT / WorldView layers
+  showSatellites?: boolean;
+  showGpsJam?: boolean;
+  showMaritime?: boolean;
+  showNoFlyZones?: boolean;
 }
 
 function markerColor(e: EntityData): string {
@@ -49,10 +59,31 @@ function markerOpacity(lastSeen: number): number {
 
 type DrawVertex = { lat: number; lon: number };
 
+// Generate a GeoJSON circle polygon for a geographic radius
+function circlePolygon(lat: number, lon: number, radiusKm: number, steps = 32): [number, number][] {
+  const coords: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const angle = (i / steps) * 2 * Math.PI;
+    const dLat = (radiusKm / 111) * Math.cos(angle);
+    const dLon = (radiusKm / (111 * Math.cos((lat * Math.PI) / 180))) * Math.sin(angle);
+    coords.push([lon + dLon, lat + dLat]);
+  }
+  return coords;
+}
+
+const SAT_COLOR: Record<string, string> = {
+  station: '#00FF9C',
+  sar: '#4FC3F7',
+  reconnaissance: '#FFB300',
+  optical: '#B39DDB',
+  comms: '#8A8A8A',
+};
+
 export default function OpsMapView({
   onSelectEntity, flyToLocation, alertEntityIds, selectedEntityId,
   missionDrawMode, onMissionArea, missionWaypoints,
   geofenceDrawMode, onGeofenceDrawEnd,
+  showSatellites, showGpsJam, showMaritime, showNoFlyZones,
 }: OpsMapViewProps) {
   const { entityList } = useEntityStream();
   const mapRef = useRef<MapRef>(null);
@@ -64,6 +95,11 @@ export default function OpsMapView({
   const [missionVertices, setMissionVertices] = useState<DrawVertex[]>([]);
   // Entity trail
   const [trailCoords, setTrailCoords] = useState<[number, number][]>([]);
+  // OSINT layer data
+  const [satellites, setSatellites] = useState<SatellitePos[]>([]);
+  const [jamZones, setJamZones] = useState<JamZone[]>([]);
+  const [vessels, setVessels] = useState<Vessel[]>([]);
+  const [noFlyZones, setNoFlyZones] = useState<NoFlyZone[]>([]);
 
   // Fly to location when prop changes
   useEffect(() => {
@@ -101,6 +137,39 @@ export default function OpsMapView({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [geofenceDrawMode, onGeofenceDrawEnd]);
+
+  // OSINT layer fetchers — only poll when layer is visible
+  useEffect(() => {
+    if (!showSatellites) { setSatellites([]); return; }
+    const doFetch = () => apiFetch('/v1/satellites').then(r => r.json()).then(d => setSatellites(d.satellites || [])).catch(() => {});
+    doFetch();
+    const t = setInterval(doFetch, 30000);
+    return () => clearInterval(t);
+  }, [showSatellites]);
+
+  useEffect(() => {
+    if (!showGpsJam) { setJamZones([]); return; }
+    const doFetch = () => apiFetch('/v1/gpsjam').then(r => r.json()).then(d => setJamZones(d.zones || [])).catch(() => {});
+    doFetch();
+    const t = setInterval(doFetch, 30000);
+    return () => clearInterval(t);
+  }, [showGpsJam]);
+
+  useEffect(() => {
+    if (!showMaritime) { setVessels([]); return; }
+    const doFetch = () => apiFetch('/v1/maritime').then(r => r.json()).then(d => setVessels(d.vessels || [])).catch(() => {});
+    doFetch();
+    const t = setInterval(doFetch, 30000);
+    return () => clearInterval(t);
+  }, [showMaritime]);
+
+  useEffect(() => {
+    if (!showNoFlyZones) { setNoFlyZones([]); return; }
+    const doFetch = () => apiFetch('/v1/noflyzones').then(r => r.json()).then(d => setNoFlyZones(d.zones || [])).catch(() => {});
+    doFetch();
+    const t = setInterval(doFetch, 30000);
+    return () => clearInterval(t);
+  }, [showNoFlyZones]);
 
   // Fetch position trail when selected entity changes
   useEffect(() => {
@@ -257,6 +326,92 @@ export default function OpsMapView({
             />
           </Source>
         )}
+
+        {/* === OSINT LAYERS === */}
+
+        {/* GPS Jamming — filled circles graded by intensity */}
+        {showGpsJam && jamZones.length > 0 && (() => {
+          const geojson = {
+            type: 'FeatureCollection' as const,
+            features: jamZones.map(z => ({
+              type: 'Feature' as const,
+              geometry: { type: 'Polygon' as const, coordinates: [circlePolygon(z.lat, z.lon, z.radius_km)] },
+              properties: { intensity: z.intensity },
+            })),
+          };
+          return (
+            <Source id="gpsjam-zones" type="geojson" data={geojson}>
+              <Layer id="gpsjam-fill" type="fill"
+                paint={{ 'fill-color': '#FF3B3B', 'fill-opacity': ['interpolate', ['linear'], ['get', 'intensity'], 0.3, 0.08, 1, 0.35] as unknown as number }} />
+              <Layer id="gpsjam-outline" type="line"
+                paint={{ 'line-color': '#FF3B3B', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [3, 2] }} />
+            </Source>
+          );
+        })()}
+
+        {/* No-fly zones — polygon fills */}
+        {showNoFlyZones && noFlyZones.length > 0 && (() => {
+          const activeZones = noFlyZones.filter(z => z.active && z.coordinates && z.coordinates.length >= 3);
+          if (!activeZones.length) return null;
+          const geojson = {
+            type: 'FeatureCollection' as const,
+            features: activeZones.map(z => ({
+              type: 'Feature' as const,
+              geometry: {
+                type: 'Polygon' as const,
+                coordinates: [[
+                  ...z.coordinates.map((c): [number, number] => [c.lon, c.lat]),
+                  [z.coordinates[0].lon, z.coordinates[0].lat] as [number, number],
+                ]],
+              },
+              properties: { severity: z.severity },
+            })),
+          };
+          return (
+            <Source id="noflyzones" type="geojson" data={geojson}>
+              <Layer id="noflyzones-fill" type="fill"
+                paint={{ 'fill-color': '#FF3B3B', 'fill-opacity': 0.12 }} />
+              <Layer id="noflyzones-outline" type="line"
+                paint={{ 'line-color': '#FF3B3B', 'line-width': 1.5, 'line-dasharray': [6, 3] }} />
+            </Source>
+          );
+        })()}
+
+        {/* Satellite positions — small dim dots */}
+        {showSatellites && satellites.map(sat => (
+          <Marker key={sat.entity_id} longitude={sat.position.lon} latitude={sat.position.lat}>
+            <div
+              title={`${sat.name} · ${sat.sat_type.toUpperCase()}`}
+              style={{
+                width: '6px', height: '6px', borderRadius: '50%',
+                background: SAT_COLOR[sat.sat_type] || '#4FC3F7',
+                border: `1px solid ${SAT_COLOR[sat.sat_type] || '#4FC3F7'}`,
+                boxShadow: `0 0 5px ${SAT_COLOR[sat.sat_type] || '#4FC3F7'}50`,
+                opacity: 0.75,
+                cursor: 'default',
+              }}
+            />
+          </Marker>
+        ))}
+
+        {/* Maritime vessels — heading triangles */}
+        {showMaritime && vessels.map(v => (
+          <Marker key={v.id} longitude={v.lon} latitude={v.lat}>
+            <div
+              title={`${v.name} · ${v.type.toUpperCase()} · ${v.speed_kts.toFixed(1)} kts`}
+              style={{
+                width: 0, height: 0,
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderBottom: `9px solid ${v.status === 'anchored' ? '#8A8A8A' : '#4FC3F7'}`,
+                transform: `rotate(${v.heading}deg)`,
+                opacity: 0.85,
+                cursor: 'default',
+                filter: `drop-shadow(0 0 3px ${v.status === 'anchored' ? '#8A8A8A60' : '#4FC3F760'})`,
+              }}
+            />
+          </Marker>
+        ))}
 
         {/* Entity markers */}
         {entityList.map((entity) =>
