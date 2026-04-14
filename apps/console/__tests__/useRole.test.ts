@@ -8,10 +8,10 @@ describe('useRole', () => {
     vi.clearAllMocks();
   });
 
-  it('defaults to null when no stored role', () => {
+  it('defaults to ops when no stored role', () => {
     const { result } = renderHook(() => useRole());
-    // Initial state before useEffect fires
-    expect(result.current.role).toBeNull();
+    act(() => {});
+    expect(result.current.role).toBe('ops');
   });
 
   it('loads stored role from localStorage', () => {
@@ -40,10 +40,10 @@ describe('useRole', () => {
     expect(localStorage.getItem('summit_role')).toBeNull();
   });
 
-  it('ignores invalid stored role values', () => {
+  it('falls back to ops for invalid stored role values', () => {
     localStorage.setItem('summit_role', 'invalid_role');
     const { result } = renderHook(() => useRole());
     act(() => {});
-    expect(result.current.role).toBeNull();
+    expect(result.current.role).toBe('ops');
   });
 });
