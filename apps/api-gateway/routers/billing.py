@@ -215,7 +215,7 @@ async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
         _ck_root = str(_Path_ck(__file__).resolve().parents[3])
         if _ck_root not in _sys_ck.path:
             _sys_ck.path.insert(0, _ck_root)
-        from packages.secrets.client import get_secret as _get_ck
+        from packages.secret_store.client import get_secret as _get_ck
 
         stripe_key = (await _get_ck("STRIPE_SECRET_KEY", default="")) or ""
     except Exception:
@@ -233,7 +233,7 @@ async def create_checkout_session(body: CheckoutRequest) -> CheckoutResponse:
 
     price_env_key = _TIER_PRICE_ENV[tier]
     try:
-        from packages.secrets.client import get_secret as _get_price  # type: ignore[import]
+        from packages.secret_store.client import get_secret as _get_price  # type: ignore[import]
 
         price_id = (await _get_price(price_env_key, default="")) or ""
     except Exception:
@@ -357,7 +357,7 @@ async def stripe_webhook(
         _sec_root = str(_Path_sec(__file__).resolve().parents[3])
         if _sec_root not in _sys_sec.path:
             _sys_sec.path.insert(0, _sec_root)
-        from packages.secrets.client import get_secret as _get_sec
+        from packages.secret_store.client import get_secret as _get_sec
 
         webhook_secret = await _get_sec("STRIPE_WEBHOOK_SECRET", default="") or ""
     except Exception:
@@ -515,7 +515,7 @@ async def create_polar_checkout_session(body: CheckoutRequest) -> CheckoutRespon
         _pc_root = str(_Path_pc(__file__).resolve().parents[3])
         if _pc_root not in _sys_pc.path:
             _sys_pc.path.insert(0, _pc_root)
-        from packages.secrets.client import get_secret as _get_pc
+        from packages.secret_store.client import get_secret as _get_pc
         polar_token = (await _get_pc("POLAR_ACCESS_TOKEN", default="")) or ""
     except Exception:
         polar_token = os.getenv("POLAR_ACCESS_TOKEN", "")
@@ -532,7 +532,7 @@ async def create_polar_checkout_session(body: CheckoutRequest) -> CheckoutRespon
 
     product_env_key = _POLAR_PRODUCT_ENV[tier]
     try:
-        from packages.secrets.client import get_secret as _get_pid  # type: ignore[import]
+        from packages.secret_store.client import get_secret as _get_pid  # type: ignore[import]
         product_id = (await _get_pid(product_env_key, default="")) or ""
     except Exception:
         product_id = os.getenv(product_env_key, "")

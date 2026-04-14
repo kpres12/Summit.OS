@@ -239,7 +239,7 @@ async def lifespan(app: FastAPI):
         _root = str(Path(__file__).resolve().parents[2])
         if _root not in sys.path:
             sys.path.insert(0, _root)
-        from packages.secrets.client import get_secret as _get_secret_fabric
+        from packages.secret_store.client import get_secret as _get_secret_fabric
 
         _resolved_jwt = await _get_secret_fabric(
             "FABRIC_JWT_SECRET", default=FABRIC_JWT_SECRET

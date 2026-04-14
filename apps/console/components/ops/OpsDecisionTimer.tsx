@@ -27,7 +27,7 @@ function formatMmSs(totalSeconds: number): string {
   return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
-export default function OpsDecisionTimer({ startIso }: OpsDecisionTimerProps): JSX.Element {
+export default function OpsDecisionTimer({ startIso }: OpsDecisionTimerProps): React.JSX.Element {
   const [elapsed, setElapsed] = useState(() => elapsedSeconds(startIso));
 
   useEffect(() => {

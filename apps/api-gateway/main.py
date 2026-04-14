@@ -66,7 +66,7 @@ try:
     _secrets_root = str(Path(__file__).resolve().parents[2])
     if _secrets_root not in sys.path:
         sys.path.insert(0, _secrets_root)
-    from packages.secrets.client import get_secret as _get_secret
+    from packages.secret_store.client import get_secret as _get_secret
 except Exception:
 
     async def _get_secret(key: str, default=None):  # type: ignore[misc]

@@ -120,7 +120,7 @@ jobs:
             --cov=packages/sdk \
             --cov=apps/fabric \
             --cov=packages/policy \
-            --cov=packages/secrets \
+            --cov=packages/secret_store \
             --cov=packages/identity \
             --cov-report=term-missing \
             -p no:warnings

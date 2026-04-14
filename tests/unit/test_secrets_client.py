@@ -8,7 +8,7 @@ import pytest
 
 # Load packages/secrets/client.py directly to avoid collision with stdlib `secrets`.
 _client_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "packages", "secrets", "client.py")
+    os.path.join(os.path.dirname(__file__), "..", "..", "packages", "secret_store", "client.py")
 )
 _spec = importlib.util.spec_from_file_location("summit_secrets_client", _client_path)
 _mod = importlib.util.module_from_spec(_spec)

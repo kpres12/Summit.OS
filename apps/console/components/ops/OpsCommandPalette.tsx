@@ -88,7 +88,7 @@ export default function OpsCommandPalette({
   isOpen,
   onClose,
   onCommand,
-}: OpsCommandPaletteProps): JSX.Element | null {
+}: OpsCommandPaletteProps): React.JSX.Element | null {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

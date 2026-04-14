@@ -436,7 +436,7 @@ async def detect_and_track(payload: dict):
 async def get_tracks(status: Optional[str] = None, limit: int = 100):
     """Return confirmed multi-sensor fused tracks."""
     if _track_manager is None:
-        return {"tracks": [], "note": "TrackManager not available"}
+        return {"tracks": [], "count": 0, "note": "TrackManager not available"}
     tracks_out = []
     for tid, track in list(_track_manager.tracks.items()):
         if status and track.state != status.upper():

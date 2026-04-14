@@ -30,7 +30,7 @@ Environment variables:
     SECRET_BACKEND      - "infisical" | "vault" | "env" (default: auto-detect)
 
 Usage:
-    from packages.secrets import get_secret
+    from packages.secret_store import get_secret
 
     db_password = await get_secret("POSTGRES_PASSWORD")
     jwt_secret  = await get_secret("FABRIC_JWT_SECRET", default="dev_secret_only")
@@ -296,7 +296,7 @@ async def get_secret(key: str, default: Optional[str] = None) -> Optional[str]:
     """
     Module-level convenience function.
 
-    from packages.secrets import get_secret
+    from packages.secret_store import get_secret
     password = await get_secret("POSTGRES_PASSWORD")
     """
     return await _get_default_client().get(key, default=default)
