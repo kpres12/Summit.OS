@@ -1,9 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import PanelHeader from '@/components/ui/PanelHeader';
 import SectionHeader from '@/components/ui/SectionHeader';
 import { apiFetch } from '@/lib/api';
+import { publishOsint } from '@/lib/osintBus';
+
+// ─── OSINT / Web Search types ─────────────────────────────────────────────────
+
+interface OsintResult {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+  content?: string;
+  crawledAt: string;
+}
+
+interface WebSearchResponse {
+  query: string;
+  results: OsintResult[];
+  cachedAt: string;
+  fromCache: boolean;
+}
 
 interface SatelliteData {
   entity_id: string;
@@ -65,7 +84,15 @@ export default function OpsIntel() {
   const [jamZones, setJamZones] = useState<JamZone[]>([]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [noFlyZones, setNoFlyZones] = useState<NoFlyZone[]>([]);
-  const [activeTab, setActiveTab] = useState<'sat' | 'jam' | 'mar' | 'nfz'>('sat');
+  const [activeTab, setActiveTab] = useState<'sat' | 'jam' | 'mar' | 'nfz' | 'web'>('sat');
+
+  // ── Web / OSINT state ──────────────────────────────────────────────────────
+  const [webQuery, setWebQuery] = useState('');
+  const [webResults, setWebResults] = useState<WebSearchResponse | null>(null);
+  const [webLoading, setWebLoading] = useState(false);
+  const [webError, setWebError] = useState<string | null>(null);
+  const [expandedResult, setExpandedResult] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
@@ -93,11 +120,45 @@ export default function OpsIntel() {
     return () => clearInterval(interval);
   }, [fetchAll]);
 
+  const runWebSearch = useCallback(async (q: string) => {
+    const query = q.trim();
+    if (!query) return;
+    setWebLoading(true);
+    setWebError(null);
+    setExpandedResult(null);
+    try {
+      const res = await fetch('/api/intel/web-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, scrapeTop: 2 }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        throw new Error(err.error ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json() as WebSearchResponse;
+      setWebResults(data);
+      if (data.results.length > 0) {
+        publishOsint({
+          query,
+          topSnippet: data.results[0].snippet,
+          source: data.results[0].source,
+          resultCount: data.results.length,
+        });
+      }
+    } catch (err) {
+      setWebError(err instanceof Error ? err.message : 'Search failed');
+    } finally {
+      setWebLoading(false);
+    }
+  }, []);
+
   const tabs = [
     { id: 'sat' as const, label: 'SAT', count: satellites.length },
     { id: 'jam' as const, label: 'GPS', count: jamZones.filter(z => z.intensity > 0.5).length },
     { id: 'mar' as const, label: 'MAR', count: vessels.length },
     { id: 'nfz' as const, label: 'NFZ', count: noFlyZones.filter(z => z.active).length },
+    { id: 'web' as const, label: 'WEB', count: webResults?.results.length ?? 0 },
   ];
 
   return (
@@ -269,6 +330,170 @@ export default function OpsIntel() {
                 </div>
               </div>
             ))}
+          </>
+        )}
+        {/* Web / OSINT */}
+        {activeTab === 'web' && (
+          <>
+            <SectionHeader title="WEB INTELLIGENCE" />
+            <div className="px-3 pb-2 text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              Open-source web search via Serper + Firecrawl. Results tagged [OSINT]. Cache TTL: 10 min.
+            </div>
+
+            {/* Search input */}
+            <div
+              className="flex gap-1 px-3 pb-3"
+              style={{ borderBottom: '1px solid var(--accent-5)' }}
+            >
+              <input
+                ref={inputRef}
+                value={webQuery}
+                onChange={(e) => setWebQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') runWebSearch(webQuery); }}
+                placeholder="wildfire perimeter CA-2024..."
+                className="flex-1 px-2 py-1 text-[10px] outline-none"
+                style={{
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  background: 'var(--accent-5)',
+                  border: '1px solid var(--accent-10)',
+                  color: 'var(--text-dim)',
+                  caretColor: 'var(--accent)',
+                }}
+              />
+              <button
+                onClick={() => runWebSearch(webQuery)}
+                disabled={webLoading || !webQuery.trim()}
+                className="px-3 py-1 text-[10px] font-bold tracking-widest transition-colors"
+                style={{
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  background: webLoading ? 'transparent' : 'var(--accent)',
+                  color: webLoading ? 'var(--text-muted)' : '#080C0A',
+                  border: webLoading ? '1px solid var(--accent-10)' : 'none',
+                  cursor: webLoading || !webQuery.trim() ? 'not-allowed' : 'pointer',
+                  opacity: !webQuery.trim() ? 0.4 : 1,
+                }}
+              >
+                {webLoading ? '...' : 'GO'}
+              </button>
+            </div>
+
+            {/* Error */}
+            {webError && (
+              <div className="mx-3 my-2 px-2 py-1 text-[9px]" style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: 'var(--critical)',
+                border: '1px solid color-mix(in srgb, var(--critical) 25%, transparent)',
+                background: 'color-mix(in srgb, var(--critical) 5%, transparent)',
+              }}>
+                ERR: {webError}
+              </div>
+            )}
+
+            {/* Loading state */}
+            {webLoading && (
+              <div className="flex items-center justify-center h-20">
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
+                  QUERYING SERPER + FIRECRAWL...
+                </span>
+              </div>
+            )}
+
+            {/* Results */}
+            {!webLoading && webResults && (
+              <>
+                <div className="px-3 pt-2 pb-1 flex items-center justify-between">
+                  <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                    {webResults.results.length} RESULTS
+                  </span>
+                  <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                    {webResults.fromCache ? '[CACHED]' : '[LIVE]'}
+                  </span>
+                </div>
+                {webResults.results.map((r) => {
+                  const isExpanded = expandedResult === r.url;
+                  return (
+                    <div
+                      key={r.url}
+                      className="px-3 py-2 flex flex-col gap-1 cursor-pointer"
+                      style={{ borderBottom: '1px solid var(--accent-5)', borderLeft: '3px solid var(--accent-10)' }}
+                      onClick={() => setExpandedResult(isExpanded ? null : r.url)}
+                    >
+                      {/* Source badge + title */}
+                      <div className="flex items-start gap-2">
+                        <span
+                          className="flex-none text-[8px] px-1 py-0.5 mt-0.5"
+                          style={{
+                            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                            color: 'var(--accent)',
+                            border: '1px solid var(--accent-20)',
+                            background: 'var(--accent-5)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          OSINT
+                        </span>
+                        <span
+                          className="text-[10px] leading-tight font-bold"
+                          style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
+                        >
+                          {r.title}
+                        </span>
+                      </div>
+
+                      {/* Source domain */}
+                      <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)', opacity: 0.6 }}>
+                        {r.source}
+                      </span>
+
+                      {/* Snippet */}
+                      <span className="text-[9px] leading-relaxed" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                        {r.snippet}
+                      </span>
+
+                      {/* Expanded scraped content */}
+                      {isExpanded && r.content && (
+                        <div
+                          className="mt-1 px-2 py-2 text-[9px] leading-relaxed whitespace-pre-wrap"
+                          style={{
+                            fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                            color: 'var(--text-muted)',
+                            background: 'var(--accent-5)',
+                            border: '1px solid var(--accent-10)',
+                            maxHeight: '200px',
+                            overflowY: 'auto',
+                          }}
+                        >
+                          {r.content}
+                        </div>
+                      )}
+                      {isExpanded && !r.content && (
+                        <div className="mt-1 text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                          No scraped content for this result.
+                        </div>
+                      )}
+
+                      {/* Toggle indicator */}
+                      <span className="text-[8px] self-end" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                        {isExpanded ? '[ COLLAPSE ]' : r.content ? '[ EXPAND ]' : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Empty state */}
+            {!webLoading && !webResults && !webError && (
+              <div className="flex flex-col items-center justify-center gap-2 py-8 px-4">
+                <span className="text-[9px] text-center" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                  EXAMPLE QUERIES{'\n'}
+                  wildfire perimeter CA-LNU-2024{'\n'}
+                  FAA TFR Sacramento County{'\n'}
+                  hurricane track NHC advisory{'\n'}
+                  missing persons Sierra Nevada
+                </span>
+              </div>
+            )}
           </>
         )}
       </div>

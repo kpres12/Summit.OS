@@ -5,6 +5,7 @@ import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { fetchMissions, fetchAlerts, connectWebSocket, fetchPendingApprovals, approveTask, MissionAPI, AlertAPI } from '@/lib/api';
+import { subscribeOsint } from '@/lib/osintBus';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const DARK_STYLE =
@@ -55,13 +56,14 @@ function batteryColor(pct: number): string {
 
 // ─── Event types ──────────────────────────────────────────────
 
-type EventType = 'ALL' | 'DETECTIONS' | 'MISSIONS' | 'ASSETS' | 'ALERTS';
+type EventType = 'ALL' | 'DETECTIONS' | 'MISSIONS' | 'ASSETS' | 'ALERTS' | 'OSINT';
 
 interface SituationEvent {
   id: string;
   type: Exclude<EventType, 'ALL'>;
   timestamp: number;
   description: string;
+  detail?: string;          // optional expanded content (e.g. OSINT snippet)
 }
 
 const EVENT_TYPE_COLOR: Record<Exclude<EventType, 'ALL'>, string> = {
@@ -69,6 +71,7 @@ const EVENT_TYPE_COLOR: Record<Exclude<EventType, 'ALL'>, string> = {
   MISSIONS: '#4FC3F7',
   ASSETS: '#FFB300',
   ALERTS: '#FF3B3B',
+  OSINT: '#B39DDB',
 };
 
 // ─── Top Bar ─────────────────────────────────────────────────
@@ -213,6 +216,18 @@ function SituationFeed() {
     return () => { ws?.close(); };
   }, [handleMsg]);
 
+  useEffect(() => {
+    return subscribeOsint((ev) => {
+      pushEvent({
+        id: `osint-${Date.now()}-${Math.random()}`,
+        type: 'OSINT',
+        timestamp: Date.now(),
+        description: `OSINT [${ev.source}]: ${ev.query} — ${ev.resultCount} results`,
+        detail: ev.topSnippet,
+      });
+    });
+  }, [pushEvent]);
+
   const toggleFilter = (f: EventType) => {
     if (f === 'ALL') {
       setActiveFilters(new Set(['ALL']));
@@ -234,7 +249,7 @@ function SituationFeed() {
   const isAll = activeFilters.has('ALL');
   const filtered = events.filter((e) => isAll || activeFilters.has(e.type));
 
-  const FILTERS: EventType[] = ['ALL', 'DETECTIONS', 'MISSIONS', 'ASSETS', 'ALERTS'];
+  const FILTERS: EventType[] = ['ALL', 'DETECTIONS', 'MISSIONS', 'ASSETS', 'ALERTS', 'OSINT'];
 
   return (
     <div
