@@ -35,11 +35,10 @@ function utcString(d: Date): string {
 export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChange, assetCount, alertCount, linkQuality }: OpsTopBarProps) {
   const { connected, lastUpdate, meshStatus } = useEntityStream();
   const { user, logout }          = useAuth();
-  const { config, setDomain, domains } = useDomain();
+  const { config } = useDomain();
   const [now, setNow]             = useState<Date>(new Date());
   const [menuOpen, setMenuOpen]   = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
-  const [showDomainPicker, setShowDomainPicker] = useState(false);
   const menuRef                   = useRef<HTMLDivElement>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(missionName ?? '');
@@ -98,19 +97,12 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
             SUMMIT.OS
           </span>
           <span style={{ color: 'var(--accent-30)' }}>|</span>
-          <button
-            onClick={() => setShowDomainPicker(true)}
-            className="summit-btn text-xs italic"
-            aria-label="Change domain"
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              color: 'var(--text-dim)',
-              background: 'none',
-              border: 'none',
-            }}
+          <span
+            className="text-xs"
+            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
           >
-            {config.name.toUpperCase()}
-          </button>
+            {config.description.toUpperCase()}
+          </span>
 
           {/* Incident name — click to edit */}
           <span style={{ color: 'var(--accent-30)' }}>|</span>
@@ -393,58 +385,6 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
           </div>
         </div>
       </header>
-
-      {/* Domain picker modal */}
-      {showDomainPicker && (
-        <div
-          className="fixed inset-0 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.7)', zIndex: 200 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowDomainPicker(false); }}
-        >
-          <div style={{
-            background: 'var(--background-panel)',
-            border: '1px solid var(--border)',
-            padding: '24px',
-            width: '400px',
-            maxWidth: '90vw',
-          }}>
-            <div
-              className="text-[10px] font-bold tracking-[0.2em] mb-4"
-              style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
-            >
-              SELECT DOMAIN
-            </div>
-            <div className="flex flex-col gap-2">
-              {domains.map((d) => (
-                <button
-                  key={d.id}
-                  onClick={() => { setDomain(d.id); setShowDomainPicker(false); }}
-                  className="summit-btn text-left px-3 py-3"
-                  style={{
-                    background: config.id === d.id ? 'var(--accent-5)' : 'transparent',
-                    border: `1px solid ${config.id === d.id ? 'var(--accent-50)' : 'var(--border)'}`,
-                    color: config.id === d.id ? 'var(--accent)' : 'var(--text-dim)',
-                  }}
-                >
-                  <div style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em' }}>
-                    {d.name.toUpperCase()}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 9, marginTop: 2, color: 'var(--text-muted)' }}>
-                    {d.description}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowDomainPicker(false)}
-              className="summit-btn w-full mt-4 text-[10px] tracking-widest py-2"
-              style={{ color: 'var(--text-dim)', border: '1px solid var(--border)', background: 'transparent' }}
-            >
-              CANCEL
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Security settings modal */}
       {showSecurity && (

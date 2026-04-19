@@ -1,31 +1,23 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { DomainConfig } from '@/lib/domains/types';
-
 /**
- * DomainProvider — runtime domain theming for Summit.OS.
+ * DomainProvider — locked to Summit.OS baseline config.
  *
- * Loads domain configs from /domains/*.json at runtime.
- * To add a new domain:
- *   1. Create a JSON file in public/domains/ matching the DomainConfig schema
- *   2. Add an entry to public/domains/index.json
- *   3. That's it — no source code changes needed
- *
- * This is what makes Summit.OS a platform, not a product.
+ * Domain packs (fire, pipeline, SAR, etc.) are available in lib/domains/
+ * for Forward Deployed Engineers to configure per customer deployment.
+ * The picker has been removed from the UI — one codebase, one brand.
  */
 
-const STORAGE_KEY = 'summit_domain';
+import React, { createContext, useContext, useEffect } from 'react';
+import type { DomainConfig } from '@/lib/domains/types';
 
-// ── Minimal fallback (used before JSON loads) ───────────────────────────────
-
-const FALLBACK: DomainConfig = {
+const DEFAULT_CONFIG: DomainConfig = {
   id: 'default',
   name: 'Summit.OS',
-  description: 'General-purpose operations platform',
+  description: 'Autonomous systems coordination platform',
   palette: {
-    accent: '#00E896',
-    accentDim: '#00C07A',
+    accent: '#00FF9C',
+    accentDim: '#00CC74',
     accentDark: '#009862',
     warning: '#FFB300',
     critical: '#FF3B3B',
@@ -33,156 +25,102 @@ const FALLBACK: DomainConfig = {
     active: '#4FC3F7',
     backgroundTint: '#080C0A',
     panelBg: '#0D1210',
-    border: 'rgba(0,232,150,0.15)',
-    scanline: 'rgba(0,232,150,0.05)',
+    border: 'rgba(0,255,156,0.15)',
+    scanline: 'rgba(0,255,156,0.03)',
   },
-  entityLabels: {},
-  assetTypes: [],
-  mapLayers: [],
-  commandExamples: [],
-  alertTypes: [],
-  missionTemplates: [],
+  entityLabels: {
+    friendly: { displayName: 'Asset',   icon: '●', color: '#4AEDC4' },
+    alert:    { displayName: 'Alert',   icon: '▲', color: '#FF3B3B' },
+    neutral:  { displayName: 'Tracked', icon: '◆', color: '#a1a1aa' },
+    unknown:  { displayName: 'Unknown', icon: '?', color: '#FFB300' },
+  },
+  assetTypes: [
+    { type: 'DRONE',  label: 'DRONE',  icon: '○' },
+    { type: 'UGV',    label: 'UGV',    icon: '○' },
+    { type: 'TOWER',  label: 'TOWER',  icon: '○' },
+    { type: 'SENSOR', label: 'SENSOR', icon: '○' },
+  ],
+  mapLayers: [
+    { id: 'entities',  name: 'Entities',  enabled: true,  color: '#4AEDC4', icon: '●' },
+    { id: 'geofences', name: 'Geofences', enabled: true,  color: '#FFB300', icon: '⬢' },
+    { id: 'tracks',    name: 'Tracks',    enabled: false, color: '#60a5fa', icon: '〰' },
+    { id: 'orbits',    name: 'Coverage',  enabled: true,  color: '#818cf8', icon: '◌' },
+  ],
+  commandExamples: [
+    'patrol sector 4',
+    'return all assets',
+    'survey grid alpha',
+    'status drone-01',
+    'deploy sensor array bravo',
+  ],
+  alertTypes: [
+    { id: 'detection', label: 'Detection',    icon: '◉', color: '#FFB300' },
+    { id: 'anomaly',   label: 'Anomaly',      icon: '▲', color: '#FF3B3B' },
+    { id: 'status',    label: 'Status Change', icon: '●', color: '#4AEDC4' },
+  ],
+  missionTemplates: [
+    { id: 'survey',  label: 'Survey Area',       intent: 'survey',  description: 'Grid coverage of a target area' },
+    { id: 'patrol',  label: 'Patrol Perimeter',  intent: 'monitor', description: 'Continuous perimeter patrol' },
+    { id: 'observe', label: 'Observe Point',     intent: 'observe', description: 'Loiter and observe a location' },
+  ],
   terminology: {
-    mission: 'Mission',
-    asset: 'Asset',
-    alert: 'Alert',
-    entity: 'Entity',
-    operatorView: 'Operator',
+    mission:       'Mission',
+    asset:         'Asset',
+    alert:         'Alert',
+    entity:        'Entity',
+    operatorView:  'Operator',
     supervisorView: 'Supervisor',
   },
 };
 
-// ── Context ─────────────────────────────────────────────────────────────────
-
-interface DomainIndexEntry {
-  id: string;
-  name: string;
-  file: string;
-}
-
 interface DomainContextValue {
-  /** The active DomainConfig. */
   config: DomainConfig;
-  /** Switch domain at runtime. Persists to localStorage. */
   setDomain: (id: string) => void;
-  /** All registered domains (for the picker — id + name only until loaded). */
   domains: DomainConfig[];
-  /** True while the domain index is loading. */
   loading: boolean;
 }
 
 const DomainContext = createContext<DomainContextValue>({
-  config: FALLBACK,
+  config:    DEFAULT_CONFIG,
   setDomain: () => {},
-  domains: [FALLBACK],
-  loading: true,
+  domains:   [DEFAULT_CONFIG],
+  loading:   false,
 });
 
 export function useDomain() {
   return useContext(DomainContext);
 }
 
-// ── CSS variable injection ──────────────────────────────────────────────────
-
 function applyPalette(palette: DomainConfig['palette']) {
   const root = document.documentElement;
-  root.style.setProperty('--accent', palette.accent);
-  root.style.setProperty('--accent-dim', palette.accentDim);
-  root.style.setProperty('--accent-dark', palette.accentDark);
-  root.style.setProperty('--warning', palette.warning);
-  root.style.setProperty('--critical', palette.critical);
-  root.style.setProperty('--nominal', palette.nominal);
-  root.style.setProperty('--color-active', palette.active);
-  root.style.setProperty('--background', palette.backgroundTint);
+  root.style.setProperty('--accent',           palette.accent);
+  root.style.setProperty('--accent-dim',       palette.accentDim);
+  root.style.setProperty('--accent-dark',      palette.accentDark);
+  root.style.setProperty('--warning',          palette.warning);
+  root.style.setProperty('--critical',         palette.critical);
+  root.style.setProperty('--nominal',          palette.nominal);
+  root.style.setProperty('--color-active',     palette.active);
+  root.style.setProperty('--background',       palette.backgroundTint);
   root.style.setProperty('--background-panel', palette.panelBg);
-  root.style.setProperty('--border', palette.border);
-  root.style.setProperty('--scanline', palette.scanline);
-
-  // Derived opacity variants
-  root.style.setProperty('--accent-5', `${palette.accent}0D`);
+  root.style.setProperty('--border',           palette.border);
+  root.style.setProperty('--scanline',         palette.scanline);
+  root.style.setProperty('--accent-5',  `${palette.accent}0D`);
   root.style.setProperty('--accent-10', `${palette.accent}1A`);
   root.style.setProperty('--accent-15', `${palette.accent}26`);
   root.style.setProperty('--accent-30', `${palette.accent}4D`);
   root.style.setProperty('--accent-50', `${palette.accent}80`);
 }
 
-// ── Fetchers ────────────────────────────────────────────────────────────────
-
-async function fetchIndex(): Promise<DomainIndexEntry[]> {
-  try {
-    const r = await fetch('/domains/index.json');
-    if (!r.ok) return [];
-    return await r.json();
-  } catch {
-    return [];
-  }
-}
-
-async function fetchDomain(file: string): Promise<DomainConfig | null> {
-  try {
-    const r = await fetch(`/domains/${file}`);
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
-  }
-}
-
-// ── Provider ────────────────────────────────────────────────────────────────
-
 export default function DomainProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<DomainConfig>(FALLBACK);
-  const [domains, setDomains] = useState<DomainConfig[]>([FALLBACK]);
-  const [cache, setCache] = useState<Record<string, DomainConfig>>({ default: FALLBACK });
-  const [loading, setLoading] = useState(true);
-
-  // 1. Load the domain index + the user's stored domain on mount
-  useEffect(() => {
-    (async () => {
-      const entries = await fetchIndex();
-
-      // Load all domains in parallel (they're tiny JSON files)
-      const loaded: DomainConfig[] = [];
-      const newCache: Record<string, DomainConfig> = {};
-      await Promise.all(
-        entries.map(async (entry) => {
-          const d = await fetchDomain(entry.file);
-          if (d) {
-            loaded.push(d);
-            newCache[d.id] = d;
-          }
-        }),
-      );
-
-      // Sort to match index order
-      const ordered = entries
-        .map((e) => newCache[e.id])
-        .filter(Boolean) as DomainConfig[];
-
-      setDomains(ordered.length > 0 ? ordered : [FALLBACK]);
-      setCache(newCache);
-
-      // Resolve the user's stored preference
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const resolved = (stored && newCache[stored]) || ordered[0] || FALLBACK;
-      setConfig(resolved);
-      applyPalette(resolved.palette);
-      setLoading(false);
-    })();
-  }, []);
-
-  const setDomain = useCallback(
-    (id: string) => {
-      const next = cache[id] || FALLBACK;
-      setConfig(next);
-      localStorage.setItem(STORAGE_KEY, next.id);
-      applyPalette(next.palette);
-    },
-    [cache],
-  );
+  useEffect(() => { applyPalette(DEFAULT_CONFIG.palette); }, []);
 
   return (
-    <DomainContext.Provider value={{ config, setDomain, domains, loading }}>
+    <DomainContext.Provider value={{
+      config:    DEFAULT_CONFIG,
+      setDomain: () => {},
+      domains:   [DEFAULT_CONFIG],
+      loading:   false,
+    }}>
       {children}
     </DomainContext.Provider>
   );
