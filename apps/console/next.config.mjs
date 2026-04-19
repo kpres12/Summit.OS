@@ -6,9 +6,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const cesiumSource = path.join(__dirname, 'node_modules', 'cesium', 'Build', 'Cesium');
 
 const nextConfig = {
-  output: 'standalone',
   devIndicators: false,
-  outputFileTracingRoot: path.join(__dirname, '../../'),
   env: {
     CESIUM_BASE_URL: '/cesium',
   },
