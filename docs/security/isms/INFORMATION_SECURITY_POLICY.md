@@ -91,7 +91,7 @@ All Confidential and Restricted data must be encrypted at rest using AES-256-GCM
 - Medium CVEs: patch within 30 days
 - Low CVEs: next scheduled release
 - Penetration testing: annually minimum; after major architectural changes
-- Vulnerability disclosures: report to `prestkyle@gmail.com`; acknowledged within 48 hours
+- Vulnerability disclosures: report to `kyle@branca.ai`; acknowledged within 48 hours
 
 ---
 

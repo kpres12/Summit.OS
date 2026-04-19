@@ -97,4 +97,4 @@ We're offering free pilot deployments to fire departments willing to give us fee
 Would a 30-minute call make sense?
 
 [Name]
-prestkyle@gmail.com
+kyle@branca.ai

@@ -94,7 +94,7 @@ maritime SAR organization, or NGO — reach out before assuming you can't afford
 
 ## Contact
 
-**prestkyle@gmail.com**
+**kyle@branca.ai**
 
 Include your organization name, use case, and approximate team size.
 We'll respond within 2 business days.

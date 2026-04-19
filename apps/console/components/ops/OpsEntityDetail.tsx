@@ -5,7 +5,10 @@ import { EntityData } from '@/hooks/useEntityStream';
 import { dispatchTask, sendAgentCommand } from '@/lib/api';
 import SectionHeader from '@/components/ui/SectionHeader';
 import DataRow from '@/components/ui/DataRow';
-import { ageFromEpoch, entityTypeColor, batteryColor } from '@/lib/format';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { ageFromEpoch, toUTCShort, entityTypeColor, batteryColor } from '@/lib/format';
+import { useActionLog } from '@/contexts/ActionLogContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface OpsEntityDetailProps {
   entity: EntityData | null;
@@ -37,9 +40,18 @@ function buildThoughts(entity: EntityData): { ts: string; msg: string; confidenc
 }
 
 export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFeed }: OpsEntityDetailProps) {
+  const { logAction, updateAction } = useActionLog();
+  const { addToast } = useToast();
   const [dispatched, setDispatched] = useState(false);
   const [overrideStatus, setOverrideStatus] = useState<string | null>(null);
   const [thoughts, setThoughts] = useState<{ ts: string; msg: string; confidence: number }[]>([]);
+  const [pendingAction, setPendingAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    danger: boolean;
+    execute: () => Promise<void>;
+  } | null>(null);
 
   useEffect(() => {
     if (!entity) return;
@@ -64,18 +76,44 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
   const shortId = entity.entity_id.slice(0, 12);
   const displayName = entity.callsign || shortId;
 
-  const handleDispatch = async () => {
-    setDispatched(true);
-    try {
-      await dispatchTask({ asset_id: entity.entity_id, action: 'DISPATCH', risk_level: 'LOW' });
-    } catch {
-      // fire-and-forget — panel closes regardless
-    }
-    onDispatch?.(entity);
-    setTimeout(() => onClose(), 600);
+  const handleDispatch = () => {
+    setPendingAction({
+      title: 'ASSIGN TASK',
+      message: `Assign task to ${displayName}? Asset will be dispatched immediately.`,
+      confirmLabel: 'ASSIGN',
+      danger: false,
+      execute: async () => {
+        setDispatched(true);
+        const logId = logAction({ action: 'DISPATCH', target: displayName, status: 'pending' });
+        try {
+          await dispatchTask({ asset_id: entity.entity_id, action: 'DISPATCH', risk_level: 'LOW' });
+          updateAction(logId, 'success');
+          addToast({ message: `DISPATCH confirmed — ${displayName}`, severity: 'success' });
+        } catch {
+          updateAction(logId, 'failed');
+          addToast({ message: `DISPATCH failed — ${displayName}`, severity: 'critical' });
+        }
+        onDispatch?.(entity);
+        setTimeout(() => onClose(), 600);
+      },
+    });
   };
 
   return (
+    <>
+    {pendingAction && (
+      <ConfirmDialog
+        title={pendingAction.title}
+        message={pendingAction.message}
+        confirmLabel={pendingAction.confirmLabel}
+        danger={pendingAction.danger}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={async () => {
+          setPendingAction(null);
+          await pendingAction.execute();
+        }}
+      />
+    )}
     <div
       className="h-full flex flex-col overflow-hidden"
       style={{ background: 'var(--background-panel)' }}
@@ -130,6 +168,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         <button
           onClick={handleDispatch}
           disabled={dispatched}
+          aria-label={dispatched ? `Task assigned to ${displayName}` : `Assign task to ${displayName}`}
           className="w-full py-3 text-sm font-bold tracking-[0.2em] transition-all"
           style={{
             fontFamily: 'var(--font-ibm-plex-mono), monospace',
@@ -187,6 +226,11 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
                 </span>
               </div>
               <div
+                role="progressbar"
+                aria-label="Battery charge"
+                aria-valuenow={Math.round(entity.battery_pct)}
+                aria-valuemin={0}
+                aria-valuemax={100}
                 className="h-1.5 w-full rounded-full overflow-hidden"
                 style={{ background: 'var(--accent-10)' }}
               >
@@ -220,6 +264,11 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
             </span>
           </div>
           <div
+            role="progressbar"
+            aria-label="Confidence score"
+            aria-valuenow={Math.round(entity.confidence * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
             className="h-1.5 w-full rounded-full overflow-hidden"
             style={{ background: 'var(--accent-10)' }}
           >
@@ -232,7 +281,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
 
         {/* Meta section */}
         <SectionHeader title="META" />
-        <DataRow label="LAST SEEN" value={ageFromEpoch(entity.last_seen)} />
+        <DataRow label="LAST SEEN" value={`${toUTCShort(entity.last_seen)}  (${ageFromEpoch(entity.last_seen)})`} />
         <DataRow
           label="MISSION"
           value={entity.mission_id ? entity.mission_id.slice(0, 12) : 'UNASSIGNED'}
@@ -281,18 +330,24 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
 
         {/* Manual Overrides */}
         <SectionHeader title="MANUAL OVERRIDES" />
-        {overrideStatus && (
-          <div style={{
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            fontSize: 9,
-            color: 'var(--accent)',
-            border: '1px solid var(--accent-15)',
-            padding: '4px 8px',
-            marginBottom: 8,
-          }}>
-            ✓ {overrideStatus}
-          </div>
-        )}
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          style={{ minHeight: 0 }}
+        >
+          {overrideStatus && (
+            <div style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              fontSize: 9,
+              color: 'var(--accent)',
+              border: '1px solid var(--accent-15)',
+              padding: '4px 8px',
+              marginBottom: 8,
+            }}>
+              ✓ {overrideStatus}
+            </div>
+          )}
+        </div>
         <div className="flex flex-col gap-2 mt-1">
           <button
             className="summit-btn w-full text-[11px] py-2.5 tracking-widest"
@@ -304,14 +359,25 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
               background: 'transparent',
               cursor: 'pointer',
             }}
-            onClick={async () => {
-              try {
-                await sendAgentCommand({ entity_id: entity.entity_id, command: 'halt', mission_objective: `HALT ${entity.entity_id}` });
-                setOverrideStatus(`HALT sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
-              } catch (err) {
-                setOverrideStatus(`HALT failed: ${(err as Error)?.message ?? 'network error'}`);
-              }
-            }}
+            onClick={() => setPendingAction({
+              title: 'CONFIRM HALT',
+              message: `Send HALT to ${displayName}? This will immediately stop all movement.`,
+              confirmLabel: 'HALT',
+              danger: true,
+              execute: async () => {
+                const logId = logAction({ action: 'HALT', target: displayName, status: 'pending' });
+                try {
+                  await sendAgentCommand({ entity_id: entity.entity_id, command: 'halt', mission_objective: `HALT ${entity.entity_id}` });
+                  setOverrideStatus(`HALT sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+                  updateAction(logId, 'success');
+                  addToast({ message: `HALT sent — ${displayName}`, severity: 'warning' });
+                } catch (err) {
+                  setOverrideStatus(`HALT failed: ${(err as Error)?.message ?? 'network error'}`);
+                  updateAction(logId, 'failed');
+                  addToast({ message: `HALT failed — ${displayName}`, severity: 'critical' });
+                }
+              },
+            })}
           >
             HALT
           </button>
@@ -325,14 +391,25 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
               background: 'transparent',
               cursor: 'pointer',
             }}
-            onClick={async () => {
-              try {
-                await sendAgentCommand({ entity_id: entity.entity_id, command: 'rtb', mission_objective: `Return ${entity.entity_id} to base` });
-                setOverrideStatus(`RTB sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
-              } catch (err) {
-                setOverrideStatus(`RTB failed: ${(err as Error)?.message ?? 'network error'}`);
-              }
-            }}
+            onClick={() => setPendingAction({
+              title: 'CONFIRM RETURN TO BASE',
+              message: `Return ${displayName} to base? Asset will begin RTB procedure immediately.`,
+              confirmLabel: 'RETURN',
+              danger: false,
+              execute: async () => {
+                const logId = logAction({ action: 'RTB', target: displayName, status: 'pending' });
+                try {
+                  await sendAgentCommand({ entity_id: entity.entity_id, command: 'rtb', mission_objective: `Return ${entity.entity_id} to base` });
+                  setOverrideStatus(`RTB sent to ${entity.callsign || entity.entity_id.slice(0,8)}`);
+                  updateAction(logId, 'success');
+                  addToast({ message: `RTB sent — ${displayName}`, severity: 'info' });
+                } catch (err) {
+                  setOverrideStatus(`RTB failed: ${(err as Error)?.message ?? 'network error'}`);
+                  updateAction(logId, 'failed');
+                  addToast({ message: `RTB failed — ${displayName}`, severity: 'critical' });
+                }
+              },
+            })}
           >
             RETURN TO BASE
           </button>
@@ -347,11 +424,16 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
               cursor: 'pointer',
             }}
             onClick={async () => {
+              const logId = logAction({ action: 'CAMERA', target: displayName, status: 'pending' });
               try {
                 await sendAgentCommand({ entity_id: entity.entity_id, command: 'activate_camera', mission_objective: `Activate camera on ${entity.entity_id}` });
                 setOverrideStatus(`Camera activated on ${entity.callsign || entity.entity_id.slice(0,8)}`);
+                updateAction(logId, 'success');
+                addToast({ message: `Camera activated — ${displayName}`, severity: 'info' });
               } catch (err) {
                 setOverrideStatus(`Camera failed: ${(err as Error)?.message ?? 'network error'}`);
+                updateAction(logId, 'failed');
+                addToast({ message: `Camera failed — ${displayName}`, severity: 'critical' });
               }
             }}
           >
@@ -376,5 +458,6 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         </div>
       </div>
     </div>
+    </>
   );
 }

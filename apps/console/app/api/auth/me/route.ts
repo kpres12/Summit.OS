@@ -14,6 +14,7 @@ import {
   COOKIE_NAMES,
   SESSION_COOKIE_OPTS,
   extractUser,
+  extractExp,
   isTokenExpired,
   refreshAccessToken,
 } from '@/lib/auth-server';
@@ -24,12 +25,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({
       user: {
         id:     'dev-user',
-        email:  'dev@summit.local',
+        email:  'kyle@branca.ai',
         name:   'Dev Operator',
         org_id: 'dev',
         roles:  ['ADMIN'],
       },
-      mfaPending: false,
+      mfaPending:  false,
+      sessionExp:  Math.floor(Date.now() / 1000) + 3600,
     });
   }
 
@@ -86,5 +88,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ user: null }, { status: 401 });
   }
 
-  return NextResponse.json({ user, mfaPending });
+  const sessionExp = extractExp(accessToken ?? idToken) ?? null;
+  return NextResponse.json({ user, mfaPending, sessionExp });
 }

@@ -466,7 +466,7 @@ If you're a fire department, SAR team, or drone operator running Summit.OS in th
 
 ## Who built this
 
-Summit.OS is a [BigMT.ai](https://bigmt.ai) project. Built for civilian operators, not defense contractors.
+Summit.OS is a [Branca.ai](https://branca.ai) project. Built for civilian operators, not defense contractors.
 
 ---
 

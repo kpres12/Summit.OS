@@ -13,7 +13,7 @@
 
 Report security issues via:
 1. **GitHub Security Advisories (preferred):** [Security → Advisories → New draft](https://github.com/BigMT-Ai/Summit.OS/security/advisories/new)
-2. **Email:** prestkyle@gmail.com *(will migrate to security@summit-os.dev once domain is active)*
+2. **Email:** kyle@branca.ai
 
 Please include:
 - A description of the vulnerability and its potential impact

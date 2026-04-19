@@ -186,11 +186,12 @@ function RoleCardButton({
   return (
     <button
       onClick={() => onSelect(card.role)}
+      aria-label={`${card.label} — ${card.subtitle}: ${card.description}${isCurrent ? ' (active)' : ''}`}
+      aria-pressed={isCurrent}
       className="role-card flex flex-col items-center text-left cursor-pointer relative"
       style={{
         width: '200px',
         padding: '24px 20px',
-        outline: 'none',
         borderColor: isCurrent ? 'var(--accent-50)' : undefined,
         background: isCurrent ? 'var(--accent-5)' : undefined,
       }}

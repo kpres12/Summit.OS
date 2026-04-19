@@ -58,7 +58,7 @@ we have a separate program for mission-critical civilian use.
 
 To request a commercial license or discuss terms:
 
-**Email:** prestkyle@gmail.com
+**Email:** kyle@branca.ai
 
 Include:
 - Your company name and use case

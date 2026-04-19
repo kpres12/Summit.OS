@@ -4,7 +4,7 @@ import React, { useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useTier } from '@/hooks/useTier';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log';
 
 // "entities" panel id kept for compatibility — label shown as "Assets"
 const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
@@ -14,6 +14,7 @@ const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
   { id: 'intel',    icon: '⊛',  label: 'Intel' },
   { id: 'layers',   icon: '◫',  label: 'Layers' },
   { id: 'hardware', icon: '⊕',  label: 'Hardware' },
+  { id: 'log',      icon: '◎',  label: 'Action Log' },
   { id: 'system',   icon: '⚙',  label: 'System' },
 ];
 

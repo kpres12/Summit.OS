@@ -36,7 +36,7 @@ class EscalationConfig:
     smtp_user: Optional[str] = os.getenv("ESCALATION_SMTP_USER")
     smtp_password: Optional[str] = os.getenv("ESCALATION_SMTP_PASSWORD")
     escalation_email: Optional[str] = os.getenv("ESCALATION_EMAIL_TO")
-    escalation_from: str = os.getenv("ESCALATION_EMAIL_FROM", "alerts@summit.local")
+    escalation_from: str = os.getenv("ESCALATION_EMAIL_FROM", "alerts@branca.ai")
 
 
 class AlertEscalationService:

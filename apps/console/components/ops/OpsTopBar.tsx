@@ -12,6 +12,8 @@ interface OpsTopBarProps {
   onSwitchRole: () => void;
   /** Optional mission name displayed in the header */
   missionName?: string;
+  /** Called when the user edits the incident name inline */
+  onMissionNameChange?: (name: string) => void;
   /** Number of active assets */
   assetCount?: number;
   /** Number of active alerts */
@@ -30,8 +32,8 @@ function utcString(d: Date): string {
   return `${y}-${mo}-${day} // ${h}:${m}:${s}Z`;
 }
 
-export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alertCount, linkQuality }: OpsTopBarProps) {
-  const { connected }             = useEntityStream();
+export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChange, assetCount, alertCount, linkQuality }: OpsTopBarProps) {
+  const { connected, lastUpdate, meshStatus } = useEntityStream();
   const { user, logout }          = useAuth();
   const { config, setDomain, domains } = useDomain();
   const [now, setNow]             = useState<Date>(new Date());
@@ -39,11 +41,22 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
   const [showSecurity, setShowSecurity] = useState(false);
   const [showDomainPicker, setShowDomainPicker] = useState(false);
   const menuRef                   = useRef<HTMLDivElement>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(missionName ?? '');
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  const dataStaleSecs = lastUpdate ? Math.floor((now.getTime() - lastUpdate) / 1000) : null;
+  const dataFreshLabel = dataStaleSecs === null
+    ? 'NO DATA'
+    : dataStaleSecs < 5 ? 'LIVE'
+    : dataStaleSecs < 30 ? `${dataStaleSecs}s`
+    : dataStaleSecs < 120 ? `${Math.floor(dataStaleSecs / 10) * 10}s`
+    : `${Math.floor(dataStaleSecs / 60)}m STALE`;
+  const dataFreshOk = dataStaleSecs !== null && dataStaleSecs < 30;
 
   // Close menu on outside click
   useEffect(() => {
@@ -58,10 +71,11 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
 
   const topRole = highestRole(user?.roles ?? []);
 
+  const meshOk = !meshStatus?.partitioned && (meshStatus?.peers_dead ?? 0) === 0;
   const statusPills = [
-    { label: 'FABRIC',    ok: true },
-    { label: 'INFERENCE', ok: true },
-    { label: 'MESH',      ok: true },
+    { label: 'FABRIC',    ok: connected,  title: connected ? 'Fabric service connected' : 'Fabric service unreachable' },
+    { label: 'INFERENCE', ok: connected,  title: connected ? 'Inference pipeline active' : 'Inference pipeline unreachable' },
+    { label: 'MESH',      ok: meshStatus ? meshOk : connected, title: meshStatus ? `${meshStatus.peers_alive} peers alive, ${meshStatus.peers_dead} dead` : 'No mesh status' },
   ];
 
   return (
@@ -98,17 +112,51 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
             {config.name.toUpperCase()}
           </button>
 
-          {/* Optional mission context pills */}
-          {missionName && (
-            <>
-              <span style={{ color: 'var(--accent-30)' }}>|</span>
-              <span
-                className="text-[10px] tracking-widest"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
-              >
-                {missionName.toUpperCase()}
-              </span>
-            </>
+          {/* Incident name — click to edit */}
+          <span style={{ color: 'var(--accent-30)' }}>|</span>
+          {editingName ? (
+            <input
+              autoFocus
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onBlur={() => {
+                setEditingName(false);
+                onMissionNameChange?.(nameInput.trim());
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.currentTarget.blur(); }
+                if (e.key === 'Escape') { setNameInput(missionName ?? ''); setEditingName(false); }
+              }}
+              placeholder="INCIDENT NAME"
+              aria-label="Edit incident name"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                fontSize: '10px',
+                letterSpacing: '0.1em',
+                color: 'var(--accent)',
+                background: 'var(--accent-5)',
+                border: '1px solid var(--accent-30)',
+                outline: 'none',
+                padding: '1px 6px',
+                width: '160px',
+              }}
+            />
+          ) : (
+            <button
+              onClick={() => { setNameInput(missionName ?? ''); setEditingName(true); }}
+              aria-label="Edit incident name"
+              title="Click to edit incident name"
+              className="summit-btn text-[10px] tracking-widest"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: missionName ? 'var(--text-dim)' : 'var(--text-muted)',
+                background: 'none',
+                border: 'none',
+                cursor: 'text',
+              }}
+            >
+              {missionName ? missionName.toUpperCase() : 'SET INCIDENT NAME'}
+            </button>
           )}
           {assetCount !== undefined && (
             <span
@@ -183,7 +231,7 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
         <div className="ml-auto flex items-center gap-3 z-10">
           {/* Status pills */}
           {statusPills.map((p) => (
-            <div key={p.label} className="flex items-center gap-1.5">
+            <div key={p.label} className="flex items-center gap-1.5" title={p.title}>
               <StatusDot variant={p.ok ? 'accent' : 'critical'} glow={p.ok} />
               <span
                 className="text-[10px] tracking-widest"
@@ -193,6 +241,23 @@ export default function OpsTopBar({ onSwitchRole, missionName, assetCount, alert
               </span>
             </div>
           ))}
+
+          {/* Data freshness */}
+          <div
+            className="flex items-center gap-1.5"
+            title={dataStaleSecs === null ? 'No entity data received' : `Last entity update ${dataStaleSecs}s ago`}
+          >
+            <StatusDot variant={dataFreshOk ? 'accent' : 'critical'} glow={dataFreshOk} />
+            <span
+              className="text-[10px] tracking-widest"
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: dataFreshOk ? 'var(--accent)' : 'var(--critical)',
+              }}
+            >
+              DATA {dataFreshLabel}
+            </span>
+          </div>
 
           {/* WS indicator */}
           <div className="flex items-center gap-1.5">

@@ -4,14 +4,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { fetchAlerts, connectWebSocket, acknowledgeAlert, AlertAPI } from '@/lib/api';
 import PanelHeader from '@/components/ui/PanelHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { ageFromISO, severityColor } from '@/lib/format';
+import { ageFromISO, isoToUTCShort, severityColor } from '@/lib/format';
 import OpsDecisionTimer from '@/components/ops/OpsDecisionTimer';
+import { useActionLog } from '@/contexts/ActionLogContext';
 
 interface OpsAlertQueueProps {
   onInvestigate?: (alert: AlertAPI) => void;
 }
 
 export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
+  const { logAction, updateAction } = useActionLog();
   const [alerts, setAlerts] = useState<AlertAPI[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,13 +36,16 @@ export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
     return () => { ws?.close(); };
   }, [handleWsMessage]);
 
-  const dismiss = (alertId: string) => {
+  const dismiss = (alertId: string, description?: string) => {
+    logAction({ action: 'ALERT_DISMISS', target: alertId.slice(0, 12), detail: description?.slice(0, 60), status: 'success' });
     setAlerts((prev) => prev.filter((a) => a.alert_id !== alertId));
   };
 
-  const ack = async (alertId: string) => {
+  const ack = async (alertId: string, description?: string) => {
+    const logId = logAction({ action: 'ALERT_ACK', target: alertId.slice(0, 12), detail: description?.slice(0, 60), status: 'pending' });
     try {
       await acknowledgeAlert(alertId);
+      updateAction(logId, 'success');
     } catch { /* best-effort */ }
     setAlerts((prev) =>
       prev.map((a) => a.alert_id === alertId ? { ...a, acknowledged: true } : a)
@@ -106,8 +111,9 @@ export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
                   <span
                     className="text-[10px]"
                     style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
+                    title={alert.ts_iso ?? undefined}
                   >
-                    {ageFromISO(alert.ts_iso)}
+                    {isoToUTCShort(alert.ts_iso)}
                   </span>
                 </div>
                 {/* Description */}
@@ -156,7 +162,7 @@ export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
                       border: 'none',
                       borderRight: '1px solid var(--accent-5)',
                     }}
-                    onClick={() => ack(alert.alert_id)}
+                    onClick={() => ack(alert.alert_id, alert.description)}
                   >
                     {isAcked ? 'ACK\'D' : 'ACK'}
                     {!isAcked && (
@@ -172,7 +178,7 @@ export default function OpsAlertQueue({ onInvestigate }: OpsAlertQueueProps) {
                       background: 'transparent',
                       border: 'none',
                     }}
-                    onClick={() => dismiss(alert.alert_id)}
+                    onClick={() => dismiss(alert.alert_id, alert.description)}
                   >
                     DISMISS
                   </button>

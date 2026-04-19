@@ -628,6 +628,7 @@ async def register_device(
     request: Request,
     req: _DeviceRegisterRequest,
     org_id: Optional[str] = Depends(get_org_id),
+    _role: object = Depends(_require_role("ADMIN")),
 ):
     """
     Register a new device and issue it a certificate.
@@ -692,7 +693,10 @@ async def register_device(
 
 
 @app.get("/v1/devices")
-async def list_devices(org_id: Optional[str] = Depends(get_org_id)):
+async def list_devices(
+    org_id: Optional[str] = Depends(get_org_id),
+    _role: object = Depends(_require_role("ADMIN")),
+):
     """List all registered devices for this org."""
     registry, _ = await _get_device_registry()
     if registry is None:
@@ -714,6 +718,7 @@ async def revoke_device(
     device_id: str,
     reason: str = "operator-revoked",
     org_id: Optional[str] = Depends(get_org_id),
+    _role: object = Depends(_require_role("ADMIN")),
 ):
     """Revoke a device's authorization. The device cannot reconnect after revocation."""
     registry, _ = await _get_device_registry()
@@ -960,20 +965,13 @@ async def submit_task(
 
 @app.post("/v1/tasks/{task_id}/approve")
 async def approve_task(
-    task_id: str, req: TaskApproveRequest, _claims: dict | None = Depends(verify_bearer)
+    task_id: str,
+    req: TaskApproveRequest,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
 ):
     """Approve a pending task and dispatch it."""
     assert SessionLocal is not None
-
-    # Basic RBAC: require supervisor/admin if OIDC enforced
-    if OIDC_ENFORCE:
-        roles = set(
-            (_claims or {}).get("roles")
-            or (_claims or {}).get("realm_access", {}).get("roles", [])
-            or []
-        )
-        if not ("supervisor" in roles or "admin" in roles):
-            raise HTTPException(status_code=403, detail="Insufficient role")
 
     # Fetch approval record
     async with SessionLocal() as session:
@@ -1066,7 +1064,10 @@ async def approve_task(
 
 
 @app.get("/v1/tasks/pending")
-async def list_pending_tasks(_claims: dict | None = Depends(verify_bearer)):
+async def list_pending_tasks(
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
+):
     """List all tasks pending approval."""
     assert SessionLocal is not None
 
@@ -1097,7 +1098,10 @@ async def list_pending_tasks(_claims: dict | None = Depends(verify_bearer)):
 
 
 @app.get("/v1/alerts")
-async def list_alerts(limit: int = 100):
+async def list_alerts(
+    limit: int = 100,
+    _role: object = Depends(_require_role("VIEWER")),
+):
     """Return recent alerts from Fabric's worldstate."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1112,7 +1116,9 @@ async def list_alerts(limit: int = 100):
 
 @app.get("/v1/mission/{asset_id}/status")
 async def get_mission_status(
-    asset_id: str, _claims: dict | None = Depends(verify_bearer)
+    asset_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     return {
         "asset_id": asset_id,
@@ -1137,7 +1143,9 @@ _AGENT_COMMAND_MAP = {
 
 @app.post("/agents")
 async def agent_command(
-    req: AgentCommandRequest, _claims: dict | None = Depends(verify_bearer)
+    req: AgentCommandRequest,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
 ):
     """Direct override commands — HALT, RTB, ACTIVATE_CAMERA — sent to the tasking service."""
     action = _AGENT_COMMAND_MAP.get(req.command.lower(), req.command.upper())
@@ -1193,6 +1201,7 @@ async def proxy_register_node(
     req: NodeRegisterRequest,
     _claims: dict | None = Depends(verify_bearer),
     org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("ADMIN")),
 ):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1213,6 +1222,7 @@ async def proxy_retire_node(
     node_id: str,
     _claims: dict | None = Depends(verify_bearer),
     org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("ADMIN")),
 ):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1228,7 +1238,10 @@ async def proxy_retire_node(
 
 @app.get("/v1/observations")
 async def get_observations(
-    cls: str | None = None, limit: int = 50, org_id: str | None = Depends(get_org_id)
+    cls: str | None = None,
+    limit: int = 50,
+    org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     params = {"limit": str(limit)}
     if cls:
@@ -1249,6 +1262,7 @@ async def get_advisories(
     risk_level: str | None = None,
     limit: int = 50,
     org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     params = {"limit": str(limit)}
     if risk_level:
@@ -1270,6 +1284,7 @@ async def proxy_reasoning(
     _claims: dict | None = Depends(verify_bearer),
     org_id: str | None = Depends(get_org_id),
     _org: object = Depends(_require_api_key),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Proxy /reasoning/{entity_id} to the Intelligence service."""
     try:
@@ -1338,7 +1353,9 @@ async def create_mission_proxy(
 
 @app.get("/v1/missions/{mission_id}")
 async def get_mission_proxy(
-    mission_id: str, _claims: dict | None = Depends(verify_bearer)
+    mission_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1354,6 +1371,7 @@ async def list_missions_proxy(
     limit: int = 50,
     _claims: dict | None = Depends(verify_bearer),
     org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """List missions from tasking service."""
     try:
@@ -1383,6 +1401,7 @@ async def list_entities_proxy(
     limit: int = 500,
     _claims: dict | None = Depends(verify_bearer),
     org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Proxy entity list from fabric WorldStore."""
     try:
@@ -1405,7 +1424,9 @@ async def list_entities_proxy(
 
 @app.get("/api/v1/entities/{entity_id}")
 async def get_entity_proxy(
-    entity_id: str, _claims: dict | None = Depends(verify_bearer)
+    entity_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Get a single entity from fabric WorldStore."""
     try:
@@ -1422,6 +1443,7 @@ async def get_entity_trail_proxy(
     entity_id: str,
     limit: int | None = None,
     _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Proxy entity position history trail from fabric."""
     try:
@@ -1438,7 +1460,9 @@ async def get_entity_trail_proxy(
 
 @app.post("/api/v1/entities")
 async def create_entity_proxy(
-    payload: dict, _claims: dict | None = Depends(verify_bearer)
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
 ):
     """Create an entity in fabric WorldStore."""
     try:
@@ -1454,6 +1478,7 @@ async def create_entity_proxy(
 async def cop_proxy(
     _claims: dict | None = Depends(verify_bearer),
     org_id: str | None = Depends(get_org_id),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Get the Common Operating Picture from fabric WorldStore."""
     try:
@@ -1472,7 +1497,10 @@ async def cop_proxy(
 
 
 @app.get("/v1/geofences")
-async def list_geofences_proxy(_claims: dict | None = Depends(verify_bearer)):
+async def list_geofences_proxy(
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
+):
     """Proxy geofence list from fabric."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1485,7 +1513,9 @@ async def list_geofences_proxy(_claims: dict | None = Depends(verify_bearer)):
 
 @app.post("/v1/geofences")
 async def create_geofence_proxy(
-    payload: dict, _claims: dict | None = Depends(verify_bearer)
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
 ):
     """Create a geofence via fabric."""
     try:
@@ -1499,7 +1529,9 @@ async def create_geofence_proxy(
 
 @app.delete("/v1/geofences/{geofence_id}")
 async def delete_geofence_proxy(
-    geofence_id: int, _claims: dict | None = Depends(verify_bearer)
+    geofence_id: int,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
 ):
     """Delete a geofence via fabric."""
     try:
@@ -1518,7 +1550,10 @@ async def delete_geofence_proxy(
 
 @app.post("/v1/video/hls/{stream_id}/start")
 async def start_hls_stream_proxy(
-    stream_id: str, request: Request, _claims: dict | None = Depends(verify_bearer)
+    stream_id: str,
+    request: Request,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
 ):
     """Start an HLS stream via the fusion service."""
     try:
@@ -1538,7 +1573,9 @@ async def start_hls_stream_proxy(
 
 @app.delete("/v1/video/hls/{stream_id}")
 async def stop_hls_stream_proxy(
-    stream_id: str, _claims: dict | None = Depends(verify_bearer)
+    stream_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
 ):
     """Stop an HLS stream via the fusion service."""
     try:
@@ -1557,7 +1594,9 @@ async def stop_hls_stream_proxy(
 
 @app.get("/v1/missions/{mission_id}/replay/timeline")
 async def replay_timeline_proxy(
-    mission_id: str, _claims: dict | None = Depends(verify_bearer)
+    mission_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Fetch replay timeline for a mission."""
     try:
@@ -1573,8 +1612,11 @@ async def replay_timeline_proxy(
 
 @app.get("/v1/missions/{mission_id}/replay/snapshot")
 async def replay_snapshot_proxy(
-    mission_id: str, t: float | None = None, idx: int | None = None,
-    _claims: dict | None = Depends(verify_bearer)
+    mission_id: str,
+    t: float | None = None,
+    idx: int | None = None,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
 ):
     """Fetch a replay snapshot for a mission at a given time or index."""
     params = {}
@@ -1600,7 +1642,10 @@ async def replay_snapshot_proxy(
 
 
 @app.get("/v1/assets")
-async def list_assets_proxy(_claims: dict | None = Depends(verify_bearer)):
+async def list_assets_proxy(
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("VIEWER")),
+):
     """List registered assets from the tasking service."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -1618,7 +1663,9 @@ async def list_assets_proxy(_claims: dict | None = Depends(verify_bearer)):
 
 @app.post("/v1/missions/parse")
 async def parse_mission_nlp_proxy(
-    request: Request, _claims: dict | None = Depends(verify_bearer)
+    request: Request,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
 ):
     """Parse a natural-language mission description via the tasking service."""
     try:
@@ -1635,7 +1682,9 @@ async def parse_mission_nlp_proxy(
 
 @app.post("/v1/missions/preview")
 async def preview_mission_waypoints_proxy(
-    request: Request, _claims: dict | None = Depends(verify_bearer)
+    request: Request,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("MISSION_COMMANDER")),
 ):
     """Generate a waypoint preview for a mission area via the tasking service."""
     try:
@@ -1657,7 +1706,9 @@ async def preview_mission_waypoints_proxy(
 
 @app.post("/v1/alerts/{alert_id}/acknowledge")
 async def acknowledge_alert_proxy(
-    alert_id: str, _claims: dict | None = Depends(verify_bearer)
+    alert_id: str,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
 ):
     """Acknowledge an alert via the fabric service."""
     try:

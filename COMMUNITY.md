@@ -52,7 +52,7 @@ Examples of things people build on Summit.OS:
   or data sources
 
 If you build something on Summit.OS, we'd love to know about it. Open a GitHub
-Discussion or reach out at prestkyle@gmail.com.
+Discussion or reach out at kyle@branca.ai.
 
 ---
 
@@ -96,7 +96,7 @@ See [README.md](./README.md) for full setup instructions.
 
 ## Enterprise Inquiries
 
-Email **prestkyle@gmail.com** to discuss enterprise
+Email **kyle@branca.ai** to discuss enterprise
 licensing, managed hosting, or custom deployment support.
 
 ---

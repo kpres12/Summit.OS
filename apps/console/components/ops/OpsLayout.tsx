@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import { useInvestigation } from '@/hooks/useInvestigation';
 import { useMissionDraw } from '@/hooks/useMissionDraw';
 import { useReplay } from '@/hooks/useReplay';
+import { useToast } from '@/contexts/ToastContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import OpsTopBar from './OpsTopBar';
 import OpsNavRail from './OpsNavRail';
@@ -21,15 +22,50 @@ import OpsMissionBuilder from './OpsMissionBuilder';
 import OpsMapLayers from './OpsMapLayers';
 import OpsSystem from './OpsSystem';
 import OpsIntel from './OpsIntel';
+import OpsActionLog from './OpsActionLog';
+import ToastContainer from '@/components/ui/ToastContainer';
+import SessionExpiryBanner from '@/components/auth/SessionExpiryBanner';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log';
 
 interface OpsLayoutProps {
   onSwitchRole: () => void;
 }
 
 export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
-  const { entityList } = useEntityStream();
+  const { entityList, connected } = useEntityStream();
+  const { addToast } = useToast();
+  const prevConnected = useRef<boolean | null>(null);
+
+  // Incident name — read from env var or localStorage, editable at runtime
+  const [incidentName, setIncidentName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('summit_incident_name')
+        ?? process.env.NEXT_PUBLIC_INCIDENT_NAME
+        ?? '';
+    }
+    return process.env.NEXT_PUBLIC_INCIDENT_NAME ?? '';
+  });
+
+  const handleIncidentNameChange = (name: string) => {
+    setIncidentName(name);
+    if (typeof window !== 'undefined') localStorage.setItem('summit_incident_name', name);
+  };
+
+  // Toast on WS connect/disconnect
+  useEffect(() => {
+    if (prevConnected.current === null) {
+      prevConnected.current = connected;
+      return;
+    }
+    if (connected && !prevConnected.current) {
+      addToast({ message: 'DATA FEED RESTORED — stream reconnected', severity: 'success' });
+    } else if (!connected && prevConnected.current) {
+      addToast({ message: 'DATA FEED LOST — attempting reconnect', severity: 'critical', persistent: true });
+    }
+    prevConnected.current = connected;
+  }, [connected, addToast]);
+
   // Default to alert panel — the most urgent thing should be visible immediately.
   // User can close it; after that their preference is respected.
   const [activePanel, setActivePanel] = useState<PanelId | null>('alerts');
@@ -103,6 +139,7 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
         />
       );
       case 'intel': return <OpsIntel />;
+      case 'log':   return <OpsActionLog />;
       default: return null;
     }
   };
@@ -114,7 +151,11 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       style={{ background: 'var(--background)' }}
     >
       {/* Top bar — ARIA banner */}
-      <OpsTopBar onSwitchRole={onSwitchRole} />
+      <OpsTopBar
+        onSwitchRole={onSwitchRole}
+        missionName={incidentName}
+        onMissionNameChange={handleIncidentNameChange}
+      />
 
       {/* Middle row */}
       <div className="flex flex-row flex-1 overflow-hidden">
@@ -203,6 +244,8 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       {/* Bottom bar — ARIA contentinfo */}
       <OpsBottomBar onInvestigateEntity={investigation.investigateEntity} />
     </div>
+      <ToastContainer />
+      <SessionExpiryBanner />
     </ErrorBoundary>
   );
 }

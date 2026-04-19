@@ -315,6 +315,26 @@ def _classify_event(method: str, path: str, status: int) -> str:
     if status >= 500:
         return "API_ERROR"
 
+    # Geofence operations
+    if "/geofences" in p:
+        if m == "DELETE":
+            return "GEOFENCE_DELETE"
+        if m == "POST":
+            return "GEOFENCE_CREATE"
+        if m == "GET":
+            return "GEOFENCE_ACCESS"
+
+    # Alert acknowledge
+    if m == "POST" and "/acknowledge" in p:
+        return "ALERT_ACKNOWLEDGE"
+
+    # Task mutations
+    if "/tasks/" in p or "/v1/tasks/" in p:
+        if m == "DELETE":
+            return "TASK_DELETE"
+        if m in ("PUT", "PATCH"):
+            return "TASK_UPDATE"
+
     # Mission operations (2xx only)
     if status >= 200 and status < 300:
         if m == "POST" and (
@@ -325,6 +345,9 @@ def _classify_event(method: str, path: str, status: int) -> str:
 
         if m in ("PUT", "PATCH") and ("/missions/" in p or "/v1/missions/" in p):
             return "MISSION_UPDATE"
+
+        if m == "DELETE" and ("/missions/" in p or "/v1/missions/" in p):
+            return "MISSION_DELETE"
 
         if m == "POST" and "/dispatch" in p:
             return "MISSION_DISPATCH"
@@ -409,7 +432,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
         duration_ms: int,
     ) -> None:
         if _audit_pool is None:
-            logger.debug("Audit pool not initialised — skipping audit write")
+            logger.warning("Audit pool not initialised — audit record dropped (configure AUDIT_DB_URL)")
             return
 
         method = request.method

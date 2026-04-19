@@ -168,6 +168,11 @@ export interface SessionUser {
   roles:  string[];
 }
 
+export function extractExp(token: string): number | null {
+  const p = decodeJwtPayload(token);
+  return typeof p?.exp === 'number' ? p.exp : null;
+}
+
 export function extractUser(idToken: string): SessionUser | null {
   const p = decodeJwtPayload(idToken);
   if (!p?.sub) return null;

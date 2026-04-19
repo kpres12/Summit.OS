@@ -30,6 +30,25 @@ export function ageFromISO(isoString: string | null): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+/** UTC time string from a unix-epoch *seconds* timestamp: "14:32:07Z" */
+export function toUTCShort(epochSecs: number): string {
+  const d = new Date(epochSecs * 1000);
+  const h = String(d.getUTCHours()).padStart(2, '0');
+  const m = String(d.getUTCMinutes()).padStart(2, '0');
+  const s = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}Z`;
+}
+
+/** UTC time string from an ISO-8601 string: "14:32:07Z" */
+export function isoToUTCShort(isoString: string | null): string {
+  if (!isoString) return '—';
+  const d = new Date(isoString);
+  const h = String(d.getUTCHours()).padStart(2, '0');
+  const m = String(d.getUTCMinutes()).padStart(2, '0');
+  const s = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${h}:${m}:${s}Z`;
+}
+
 /** Terse relative-time (no "ago" suffix) for tight layouts. */
 export function ageTerse(epochSecs: number): string {
   const diff = Math.floor(Date.now() / 1000 - epochSecs);

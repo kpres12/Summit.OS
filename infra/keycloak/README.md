@@ -54,7 +54,7 @@ OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 | Field    | Value                   |
 |----------|-------------------------|
-| Email    | operator@summit.local   |
+| Email    | kyle@branca.ai   |
 | Password | REDACTED         |
 | Role     | OPERATOR                |
 

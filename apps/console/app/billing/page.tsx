@@ -134,7 +134,7 @@ export default function BillingPage() {
 
   async function handleUpgrade(tier: Tier) {
     if (tier === 'enterprise') {
-      window.location.href = 'mailto:sales@bigmt.ai?subject=Summit.OS%20Enterprise';
+      window.location.href = 'mailto:sales@branca.ai?subject=Summit.OS%20Enterprise';
       return;
     }
     if (!sub) return;

@@ -28,6 +28,7 @@ interface AuthContextType {
   isLoading:       boolean;
   isAuthenticated: boolean;
   mfaPending:      boolean;
+  sessionExp:      number | null;
   login:           () => void;
   logout:          () => Promise<void>;
   refreshAuth:     () => Promise<void>;
@@ -38,24 +39,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,      setUser]      = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user,       setUser]       = useState<User | null>(null);
+  const [isLoading,  setIsLoading]  = useState(true);
   const [mfaPending, setMfaPending] = useState(false);
+  const [sessionExp, setSessionExp] = useState<number | null>(null);
 
   const refreshAuth = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
       if (res.ok) {
-        const data = await res.json() as { user: User | null; mfaPending?: boolean };
+        const data = await res.json() as { user: User | null; mfaPending?: boolean; sessionExp?: number | null };
         setUser(data.user);
         setMfaPending(!!data.mfaPending);
+        setSessionExp(data.sessionExp ?? null);
       } else {
         setUser(null);
         setMfaPending(false);
+        setSessionExp(null);
       }
     } catch {
       setUser(null);
       setMfaPending(false);
+      setSessionExp(null);
     } finally {
       setIsLoading(false);
     }
@@ -87,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isAuthenticated: !!user && !mfaPending,
       mfaPending,
+      sessionExp,
       login,
       logout,
       refreshAuth,

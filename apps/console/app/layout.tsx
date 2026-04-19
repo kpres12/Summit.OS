@@ -5,6 +5,8 @@ import { AuthProvider } from "../components/AuthProvider";
 import DomainProvider from "../components/DomainProvider";
 import PolicyNotifications from "../components/notifications/PolicyNotifications";
 import ErrorBoundary from "../components/ErrorBoundary";
+import { ToastProvider } from "../contexts/ToastContext";
+import { ActionLogProvider } from "../contexts/ActionLogContext";
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
@@ -35,11 +37,14 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <AuthProvider>
-            <DomainProvider>
-              {children}
-              {/* Global policy notifications */}
-              <PolicyNotifications />
-            </DomainProvider>
+            <ToastProvider>
+              <ActionLogProvider>
+                <DomainProvider>
+                  {children}
+                  <PolicyNotifications />
+                </DomainProvider>
+              </ActionLogProvider>
+            </ToastProvider>
           </AuthProvider>
         </ErrorBoundary>
       </body>
