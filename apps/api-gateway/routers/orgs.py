@@ -10,7 +10,7 @@ Endpoints:
 
 All endpoints require:
     - ENTERPRISE_MULTI_TENANT=true
-    - Role: SUPER_ADMIN  (enforced via X-Summit-Role header or JWT roles claim)
+    - Role: SUPER_ADMIN  (enforced via X-Heli-Role header or JWT roles claim)
 
 These endpoints are intentionally NOT proxied to downstream services — the API
 Gateway owns the organizations table directly.
@@ -55,7 +55,7 @@ def _require_super_admin(request: Request) -> None:
     """Verify the caller has SUPER_ADMIN role. Raises 403 otherwise."""
     # Accept role from explicit header (internal/service calls) or JWT claims
     role_header = (
-        request.headers.get("X-Summit-Role", "")
+        request.headers.get("X-Heli-Role", "")
         or request.headers.get("x-summit-role", "")
     )
     if role_header.upper() == "SUPER_ADMIN":

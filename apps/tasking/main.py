@@ -164,7 +164,7 @@ async def lifespan(app: FastAPI):
 
 
 # ── App init ──────────────────────────────────────────────────────────────────
-app = FastAPI(title="Summit Tasking", version="0.2.1", lifespan=lifespan)
+app = FastAPI(title="Heli Tasking", version="0.2.1", lifespan=lifespan)
 
 # Mission replay API
 try:

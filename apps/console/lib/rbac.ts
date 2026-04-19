@@ -13,7 +13,7 @@
  * Checks are fail-closed — if roles are missing/empty, no access.
  */
 
-export type SummitRole =
+export type HeliRole =
   | 'VIEWER'
   | 'OPERATOR'
   | 'MISSION_COMMANDER'
@@ -23,7 +23,7 @@ export type SummitRole =
 export type AppView = 'ops' | 'command' | 'dev';
 
 // Ordered by privilege level — higher index = more privileged
-const ROLE_RANK: Record<SummitRole, number> = {
+const ROLE_RANK: Record<HeliRole, number> = {
   VIEWER:            0,
   OPERATOR:          1,
   MISSION_COMMANDER: 2,
@@ -31,14 +31,14 @@ const ROLE_RANK: Record<SummitRole, number> = {
   SUPER_ADMIN:       4,
 };
 
-/** Returns the highest-ranked SummitRole from a user's roles array. */
-export function highestRole(roles: string[]): SummitRole | null {
-  let best: SummitRole | null = null;
+/** Returns the highest-ranked HeliRole from a user's roles array. */
+export function highestRole(roles: string[]): HeliRole | null {
+  let best: HeliRole | null = null;
   let bestRank = -1;
   for (const r of roles) {
-    const rank = ROLE_RANK[r as SummitRole];
+    const rank = ROLE_RANK[r as HeliRole];
     if (rank !== undefined && rank > bestRank) {
-      best    = r as SummitRole;
+      best    = r as HeliRole;
       bestRank = rank;
     }
   }
@@ -80,8 +80,8 @@ export function canAdmin(roles: string[]): boolean {
 }
 
 /** Display label for a role. */
-export function roleLabel(role: SummitRole): string {
-  const labels: Record<SummitRole, string> = {
+export function roleLabel(role: HeliRole): string {
+  const labels: Record<HeliRole, string> = {
     VIEWER:            'Viewer',
     OPERATOR:          'Operator',
     MISSION_COMMANDER: 'Operations Lead',

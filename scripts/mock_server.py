@@ -587,8 +587,8 @@ class MockHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("X-Summit-API-Version", "1")
-        self.send_header("X-Summit-OS-Version", "0.3.0-dev")
+        self.send_header("X-Heli-API-Version", "1")
+        self.send_header("X-Heli-OS-Version", "0.3.0-dev")
         self.end_headers()
         self.wfile.write(body)
 

@@ -5,7 +5,7 @@ Issues per-device X.509 certificates so every physical device connecting
 to Heli.OS has a cryptographic identity — not just a network address.
 
 When a Modbus PLC or MAVLink drone registers with Heli.OS, it receives
-a unique certificate signed by the Summit CA. All subsequent connections
+a unique certificate signed by the Heli CA. All subsequent connections
 carry that certificate. If a device is compromised, its cert is revoked
 without touching anything else.
 
@@ -114,16 +114,16 @@ class DeviceCA:
             self._ca_cert = x509.load_pem_x509_certificate(f.read())
         with open(self.ca_key_path, "rb") as f:
             self._ca_key = serialization.load_pem_private_key(f.read(), password=None)
-        logger.info("Loaded existing Summit CA certificate")
+        logger.info("Loaded existing Heli CA certificate")
 
     async def _create_ca(self):
-        """Create a new Summit CA certificate and key."""
+        """Create a new Heli CA certificate and key."""
         from cryptography import x509
         from cryptography.hazmat.primitives import hashes, serialization
         from cryptography.hazmat.primitives.asymmetric import ec
         from cryptography.x509.oid import NameOID
 
-        logger.info("Creating new Summit CA certificate")
+        logger.info("Creating new Heli CA certificate")
         key = ec.generate_private_key(ec.SECP256R1())
 
         subject = issuer = x509.Name(
@@ -176,7 +176,7 @@ class DeviceCA:
                     serialization.NoEncryption(),
                 )
             )
-        logger.info(f"Summit CA certificate created at {self.ca_cert_path}")
+        logger.info(f"Heli CA certificate created at {self.ca_cert_path}")
 
     async def issue_device_cert(
         self,

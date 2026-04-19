@@ -284,7 +284,7 @@ function EntityExplorer() {
 // ─── Adapter Registry ─────────────────────────────────────────
 
 const MOCK_ADAPTERS = [
-  { name: 'Summit SDK (Python)', version: '1.2.0', status: 'online', entityCount: 0, msgRate: 0, errorRate: 0, conformance: 100 },
+  { name: 'Heli SDK (Python)', version: '1.2.0', status: 'online', entityCount: 0, msgRate: 0, errorRate: 0, conformance: 100 },
   { name: 'MAVLINK Bridge', version: '0.8.3', status: 'offline', entityCount: 0, msgRate: 0, errorRate: 0, conformance: 87 },
   { name: 'ADS-B Receiver', version: '2.1.0', status: 'online', entityCount: 0, msgRate: 0, errorRate: 0, conformance: 95 },
 ];

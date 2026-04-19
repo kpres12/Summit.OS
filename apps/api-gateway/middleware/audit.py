@@ -1,5 +1,5 @@
 """
-Audit logging middleware for the Summit API Gateway.
+Audit logging middleware for the Heli API Gateway.
 
 Captures security-relevant events and writes them to an append-only
 audit_log table in Postgres via asyncpg. Non-blocking: a failure to

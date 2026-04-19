@@ -6,7 +6,7 @@
 - WorldStore: unified entity store with CRDT-based mesh replication
 - Entity protocol: typed entities (Asset, Track, Alert, Mission, Sensor) with provenance and relationships
 - Data Fabric: MQTT ingestion, Redis streams, WebSocket broadcast to console
-- API Gateway: versioned REST (`X-Summit-API-Version`), OPA policy enforcement, OIDC-ready auth
+- API Gateway: versioned REST (`X-Heli-API-Version`), OPA policy enforcement, OIDC-ready auth
 - Operator Console: MapLibre live map, real-time entity stream, alert queue, entity detail panel, layer controls, geofence editor
 
 **Adapter SDK**

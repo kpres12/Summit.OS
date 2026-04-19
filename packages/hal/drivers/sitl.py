@@ -49,7 +49,7 @@ class SITLDriver(VehicleDriver):
         info = HardwareInfo(
             hardware_id=vehicle_id,
             hardware_type="vehicle",
-            make="Summit",
+            make="Heli",
             model="SITL-Quad",
             firmware_version="1.0.0-sim",
             capabilities=["fly", "hover", "land", "rtl", "guided", "auto"],

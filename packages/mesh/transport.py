@@ -55,7 +55,7 @@ class FramedMessage:
     [4B magic] [1B version] [1B msg_type] [4B payload_len] [16B nonce] [payload] [32B hmac]
     """
 
-    MAGIC = b"SMSH"  # Summit Mesh
+    MAGIC = b"SMSH"  # Heli Mesh
     VERSION = 1
 
     msg_type: MessageType

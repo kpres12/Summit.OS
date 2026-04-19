@@ -28,24 +28,24 @@ def test_api_version_response_structure(api_base: str):
 
 
 def test_api_version_header_present(api_base: str):
-    """All responses should carry X-Summit-API-Version header."""
+    """All responses should carry X-Heli-API-Version header."""
     client = ApiClient(api_base)
     try:
         r = client.get("/health")
         assert "x-summit-api-version" in {k.lower() for k in r.headers}, (
-            "X-Summit-API-Version header missing from response"
+            "X-Heli-API-Version header missing from response"
         )
     finally:
         client.close()
 
 
 def test_os_version_header_present(api_base: str):
-    """All responses should carry X-Summit-OS-Version header."""
+    """All responses should carry X-Heli-OS-Version header."""
     client = ApiClient(api_base)
     try:
         r = client.get("/health")
         assert "x-heli-os-version" in {k.lower() for k in r.headers}, (
-            "X-Summit-OS-Version header missing from response"
+            "X-Heli-OS-Version header missing from response"
         )
     finally:
         client.close()

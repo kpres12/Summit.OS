@@ -362,7 +362,7 @@ async def lifespan(app: FastAPI):
         await engine.dispose()
 
 
-SUMMIT_API_VERSION = "1"
+HELI_API_VERSION = "1"
 HELI_OS_VERSION = "1.0.0"
 
 app = FastAPI(
@@ -385,7 +385,7 @@ except Exception as _otel_err:
     logger.warning("OTel middleware not wired: %s", _otel_err)
 
 # ── API Version header middleware ─────────────────────────────────────────────
-# Every response carries X-Summit-API-Version and X-Summit-OS-Version headers
+# Every response carries X-Heli-API-Version and X-Heli-OS-Version headers
 # so clients can detect breaking changes.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as _StarletteRequest
@@ -395,8 +395,8 @@ from starlette.responses import Response as _StarletteResponse
 class _VersionHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: _StarletteRequest, call_next):
         response = await call_next(request)
-        response.headers["X-Summit-API-Version"] = SUMMIT_API_VERSION
-        response.headers["X-Summit-OS-Version"] = HELI_OS_VERSION
+        response.headers["X-Heli-API-Version"] = HELI_API_VERSION
+        response.headers["X-Heli-OS-Version"] = HELI_OS_VERSION
         return response
 
 
@@ -536,10 +536,10 @@ try:
             "Content-Type",
             "X-Org-ID",
             "X-Request-ID",
-            "X-Summit-API-Version",
+            "X-Heli-API-Version",
             "stripe-signature",
         ],
-        expose_headers=["X-Trace-ID", "X-Summit-API-Version", "X-Summit-OS-Version"],
+        expose_headers=["X-Trace-ID", "X-Heli-API-Version", "X-Heli-OS-Version"],
     )
 except Exception:
     pass
@@ -589,10 +589,10 @@ except Exception:
 async def api_version():
     """Returns current API and platform version. Use this to check compatibility."""
     return {
-        "api_version": SUMMIT_API_VERSION,
+        "api_version": HELI_API_VERSION,
         "heli_os_version": HELI_OS_VERSION,
         "min_sdk_version": "1.0.0",
-        "supported_api_versions": [SUMMIT_API_VERSION],
+        "supported_api_versions": [HELI_API_VERSION],
         "deprecations": [],
     }
 
