@@ -164,9 +164,9 @@ async def lifespan(app: FastAPI):
     _db_log_handler = None
     if not GATEWAY_TEST_MODE:
         try:
-            _packages_root = str(Path(__file__).resolve().parents[2] / "packages")
-            if _packages_root not in sys.path:
-                sys.path.insert(0, _packages_root)
+            _repo_root = str(Path(__file__).resolve().parents[2])
+            if _repo_root not in sys.path:
+                sys.path.insert(0, _repo_root)
             from packages.observability.db_logger import init_db_logging, attach_slow_query_logging
             _raw_pg = db_url.replace("+asyncpg", "")
             _db_log_handler = await init_db_logging(

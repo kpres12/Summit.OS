@@ -120,6 +120,9 @@ services:
           property: connectionString
       - key: TASKING_TEST_MODE
         value: "false"
+      # Set this in the Render dashboard for Claude-powered NLP mission parsing:
+      - key: ANTHROPIC_API_KEY
+        sync: false
 
   - type: web
     name: inference

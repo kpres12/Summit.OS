@@ -128,6 +128,56 @@ def _parse_rules(text: str) -> NlpParseResponse:
     )
 
 
+async def _parse_claude(text: str, api_key: str) -> Optional[NlpParseResponse]:
+    """Use Claude API for NLP mission parsing. Returns None on any failure."""
+    try:
+        import httpx, json as _json
+        system_prompt = (
+            "You are a mission planning assistant for Summit.OS, an autonomous systems coordination platform.\n"
+            "Parse the operator's natural-language mission description and return structured JSON.\n\n"
+            "Return ONLY a JSON object — no prose, no markdown:\n"
+            '{\n'
+            '  "mission_type": one of [SURVEY, MONITOR, SEARCH, PERIMETER, ORBIT, DELIVER, INSPECT],\n'
+            '  "pattern": one of [grid, spiral, expanding_square, orbit, perimeter],\n'
+            '  "altitude_m": integer 20-500,\n'
+            '  "asset_hint": callsign string if mentioned or null,\n'
+            '  "objectives": [short objective strings],\n'
+            '  "confidence": float 0.0-1.0 (how clearly the command specified the mission),\n'
+            '  "interpretation": one-line summary of what was understood\n'
+            '}\n\n'
+            "Pattern guidance: SEARCH→expanding_square, MONITOR→orbit, PERIMETER/PATROL→perimeter, "
+            "SURVEY/MAP→grid. Default altitude 120m unless specified."
+        )
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 300,
+                    "system": system_prompt,
+                    "messages": [{"role": "user", "content": text}],
+                },
+            )
+        if not resp.is_success:
+            logger.debug("Claude NLP parse HTTP error: %s", resp.status_code)
+            return None
+        content = resp.json().get("content", [])
+        raw = content[0].get("text", "") if content else ""
+        m = re.search(r'\{[\s\S]+\}', raw)
+        if not m:
+            return None
+        data = _json.loads(m.group())
+        return NlpParseResponse(**data)
+    except Exception as exc:
+        logger.debug("Claude NLP parse failed: %s", exc)
+        return None
+
+
 async def _parse_ollama(text: str, base_url: str) -> Optional[NlpParseResponse]:
     """Attempt Ollama-backed NLP parsing. Returns None on any failure."""
     try:
@@ -177,6 +227,14 @@ async def parse_mission_nlp(req: NlpParseRequest):
             confidence=0.5, interpretation="Default survey mission (no input)",
         )
 
+    # Claude (primary LLM) — requires ANTHROPIC_API_KEY
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_key:
+        result = await _parse_claude(text, anthropic_key)
+        if result:
+            return result
+
+    # Ollama (self-hosted fallback) — requires OLLAMA_URL
     ollama_url = os.getenv("OLLAMA_URL")
     if ollama_url:
         result = await _parse_ollama(text, ollama_url)
