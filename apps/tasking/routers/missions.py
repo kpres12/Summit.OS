@@ -209,42 +209,68 @@ async def create_mission(req: MissionCreateRequest, request: Request):
     if state.METRIC_MISSIONS_ACTIVE:
         state.METRIC_MISSIONS_ACTIVE.inc()
 
-    # Dispatch plans to per-asset task topics (with pre-dispatch OPA check)
+    # Dispatch plans via DAG executor — respects role priority ordering
     if state.mqtt_client:
-        for asset_id, plan in assignments_map.items():
-            # Pre-dispatch policy gate
-            try:
-                from apps.tasking.opa import OPAClient
+        try:
+            from dag_executor import build_mission_dag, DAGExecutor
+            import json as _json
 
-                opa = OPAClient()
-                dispatch_result = await opa.evaluate_pre_dispatch(
-                    mission_id=mission_id,
-                    asset_id=asset_id,
-                    plan=plan,
-                    org_id=org_id,
-                )
-                if not dispatch_result.get("allow", True):
-                    logger.warning(
-                        f"Pre-dispatch denied for {asset_id}: {dispatch_result.get('deny_reasons')}"
+            async def _mqtt_publish(asset_id: str, plan: dict) -> None:
+                # Pre-dispatch OPA gate
+                try:
+                    from apps.tasking.opa import OPAClient
+                    opa = OPAClient()
+                    dispatch_result = await opa.evaluate_pre_dispatch(
+                        mission_id=mission_id, asset_id=asset_id,
+                        plan=plan, org_id=org_id,
                     )
-                    continue
-            except Exception:
-                pass  # If OPA check fails, proceed (fail-open for dispatch)
+                    if not dispatch_result.get("allow", True):
+                        logger.warning(
+                            "Pre-dispatch denied for %s: %s",
+                            asset_id, dispatch_result.get("deny_reasons"),
+                        )
+                        return
+                except Exception:
+                    pass  # fail-open
 
-            topic = f"tasks/{asset_id}/dispatch"
-            message = {
-                "task_id": f"mission:{mission_id}",
-                "action": "MISSION_EXECUTE",
-                "waypoints": plan.get("waypoints", []),
-                "plan": plan,
-                "ts_iso": datetime.now(timezone.utc).isoformat(),
-            }
-            state.mqtt_client.publish(topic, json.dumps(message), qos=1)
-            # Emit assignment update
-            await _publish_mission_update(
-                mission_id,
-                {"event": "ASSIGNED", "asset_id": asset_id, "plan": plan},
-            )
+                topic = f"tasks/{asset_id}/dispatch"
+                message = {
+                    "task_id":   f"mission:{mission_id}",
+                    "action":    "MISSION_EXECUTE",
+                    "waypoints": plan.get("waypoints", []),
+                    "plan":      plan,
+                    "ts_iso":    datetime.now(timezone.utc).isoformat(),
+                }
+                state.mqtt_client.publish(topic, _json.dumps(message), qos=1)
+                await _publish_mission_update(
+                    mission_id,
+                    {"event": "ASSIGNED", "asset_id": asset_id, "plan": plan},
+                )
+
+            dag = build_mission_dag(mission_id, assignments_map, _mqtt_publish)
+            dag_result = await DAGExecutor().run(dag)
+            if not dag_result.success:
+                logger.warning(
+                    "Mission %s DAG had failures: %s",
+                    mission_id, dag_result.failed_tasks,
+                )
+        except Exception as dag_exc:
+            # DAG unavailable — fall back to flat dispatch
+            logger.warning("DAG executor error (%s) — flat dispatch", dag_exc)
+            for asset_id, plan in assignments_map.items():
+                topic = f"tasks/{asset_id}/dispatch"
+                message = {
+                    "task_id":   f"mission:{mission_id}",
+                    "action":    "MISSION_EXECUTE",
+                    "waypoints": plan.get("waypoints", []),
+                    "plan":      plan,
+                    "ts_iso":    datetime.now(timezone.utc).isoformat(),
+                }
+                state.mqtt_client.publish(topic, json.dumps(message), qos=1)
+                await _publish_mission_update(
+                    mission_id,
+                    {"event": "ASSIGNED", "asset_id": asset_id, "plan": plan},
+                )
 
     # Build response
     assignments = [
