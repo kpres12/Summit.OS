@@ -1,12 +1,7 @@
 databases:
-  - name: summit-db
+  - name: summitos_postgress
     plan: free
     region: ohio
-
-  - name: summit-redis
-    plan: free
-    region: ohio
-    type: redis
 
 services:
   - type: web
@@ -20,19 +15,23 @@ services:
     envVars:
       - key: POSTGRES_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
       - key: DATABASE_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: summit-redis
-          type: redis
-          property: connectionString
-      # Set these in the Render dashboard after first deploy using your service URLs:
-      # https://<service-name>.onrender.com
+      - key: CORS_ORIGINS
+        value: "https://summit-os-6uo0.onrender.com,http://localhost:3000"
+      - key: GATEWAY_TEST_MODE
+        value: "false"
+      - key: OIDC_ENFORCE
+        value: "false"
+      - key: RBAC_ENFORCE
+        value: "false"
+      - key: API_KEY_ENFORCE
+        value: "false"
+      # Set these in the Render dashboard once each service is deployed:
       - key: FABRIC_URL
         sync: false
       - key: FUSION_URL
@@ -47,8 +46,6 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: API_KEY_ENFORCE
-        value: "true"
 
   - type: web
     name: fabric
@@ -61,16 +58,11 @@ services:
     envVars:
       - key: POSTGRES_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
       - key: DATABASE_URL
         fromDatabase:
-          name: summit-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: summit-redis
-          type: redis
+          name: summitos_postgress
           property: connectionString
 
   - type: web
@@ -84,11 +76,11 @@ services:
     envVars:
       - key: POSTGRES_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
       - key: DATABASE_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
 
   - type: web
@@ -102,11 +94,11 @@ services:
     envVars:
       - key: POSTGRES_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
       - key: DATABASE_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
 
   - type: web
@@ -120,12 +112,14 @@ services:
     envVars:
       - key: POSTGRES_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
       - key: DATABASE_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
+      - key: TASKING_TEST_MODE
+        value: "false"
 
   - type: web
     name: inference
@@ -138,11 +132,11 @@ services:
     envVars:
       - key: POSTGRES_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
       - key: DATABASE_URL
         fromDatabase:
-          name: summit-db
+          name: summitos_postgress
           property: connectionString
 
   - type: web
@@ -154,9 +148,10 @@ services:
     buildCommand: npm ci && npm run build
     startCommand: npm start
     envVars:
-      # Set these after first deploy: https://<api-gateway-name>.onrender.com
+      - key: NEXT_PUBLIC_DEV_BYPASS_AUTH
+        value: "true"
+      # Set these after api-gateway deploys:
       - key: NEXT_PUBLIC_API_URL
         sync: false
-      # wss://<api-gateway-name>.onrender.com/ws
       - key: NEXT_PUBLIC_WS_URL
         sync: false

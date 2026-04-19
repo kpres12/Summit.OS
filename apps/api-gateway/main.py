@@ -160,6 +160,25 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning("Audit log init failed (non-fatal): %s", exc)
 
+    # ── DB logging (service_logs table) + slow-query tracing ──────────────
+    _db_log_handler = None
+    if not GATEWAY_TEST_MODE:
+        try:
+            _packages_root = str(Path(__file__).resolve().parents[2] / "packages")
+            if _packages_root not in sys.path:
+                sys.path.insert(0, _packages_root)
+            from packages.observability.db_logger import init_db_logging, attach_slow_query_logging
+            _raw_pg = db_url.replace("+asyncpg", "")
+            _db_log_handler = await init_db_logging(
+                database_url=_raw_pg,
+                service="api-gateway",
+                loggers=["api-gateway"],
+            )
+            if engine:
+                attach_slow_query_logging(engine, "api-gateway")
+        except Exception as _dl_err:
+            logger.warning("DB logging init failed (non-fatal): %s", _dl_err)
+
     # Initialise MFA user store (creates tables if not present)
     try:
         from security.user_store import (
@@ -332,6 +351,12 @@ async def lifespan(app: FastAPI):
         await close_audit_log()
     except Exception as exc:
         logger.warning("Audit log close failed (non-fatal): %s", exc)
+
+    try:
+        from packages.observability.db_logger import close_db_logging
+        await close_db_logging(_db_log_handler)
+    except Exception:
+        pass
 
     if engine:
         await engine.dispose()

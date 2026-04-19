@@ -104,6 +104,25 @@ async def lifespan(app: FastAPI):
     async with state.engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
 
+    # ── DB logging + slow-query tracing ───────────────────────────────────
+    _db_log_handler = None
+    if not state.TASKING_TEST_MODE:
+        try:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _repo_root = str(_Path(__file__).resolve().parents[2])
+            if _repo_root not in _sys.path:
+                _sys.path.insert(0, _repo_root)
+            from packages.observability.db_logger import init_db_logging, attach_slow_query_logging
+            _db_log_handler = await init_db_logging(
+                database_url=pg_url.replace("+asyncpg", ""),
+                service="tasking",
+                loggers=["tasking"],
+            )
+            attach_slow_query_logging(state.engine, "tasking")
+        except Exception as _dl_err:
+            logger.warning("DB logging init failed (non-fatal): %s", _dl_err)
+
     if not state.TASKING_TEST_MODE:
         # MQTT setup
         broker = os.getenv("MQTT_BROKER", "localhost")
@@ -135,6 +154,11 @@ async def lifespan(app: FastAPI):
         if state.mqtt_client:
             state.mqtt_client.loop_stop()
             state.mqtt_client.disconnect()
+        try:
+            from packages.observability.db_logger import close_db_logging
+            await close_db_logging(_db_log_handler)
+        except Exception:
+            pass
         if state.engine:
             await state.engine.dispose()
 

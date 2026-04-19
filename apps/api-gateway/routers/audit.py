@@ -2,9 +2,11 @@
 routers/audit.py — Audit log query router for Summit.OS API Gateway.
 
 Endpoints (all under /v1/audit, all require ADMIN role):
-  GET /v1/audit/logs              — paginated log query
-  GET /v1/audit/logs/{event_id}   — single event by UUID
+  GET /v1/audit/logs              — paginated HTTP audit log query
+  GET /v1/audit/logs/{event_id}   — single audit event by UUID
   GET /v1/audit/stats             — event-type summary for a time window
+  GET /v1/audit/service-logs      — paginated service/app log query
+  GET /v1/audit/service-logs/stats — level counts + slow-query summary
 """
 
 from __future__ import annotations
@@ -58,6 +60,33 @@ class AuditStats(BaseModel):
     access_denied_count: int
     api_error_count: int
     event_type_counts: dict[str, int]
+
+
+class ServiceLogEntry(BaseModel):
+    id: int
+    log_id: str
+    timestamp: datetime
+    service: str
+    level: str
+    logger_name: Optional[str] = None
+    message: Optional[str] = None
+    exc_text: Optional[str] = None
+    extra: dict = {}
+
+
+class ServiceLogPage(BaseModel):
+    entries: list[ServiceLogEntry]
+    total: int
+    page: int
+    page_size: int
+
+
+class ServiceLogStats(BaseModel):
+    window_hours: int
+    total: int
+    by_level: dict[str, int]
+    by_service: dict[str, int]
+    slow_queries: int
 
 
 # ---------------------------------------------------------------------------
@@ -253,4 +282,170 @@ async def audit_stats(
         access_denied_count=counts.get("ACCESS_DENIED", 0),
         api_error_count=counts.get("API_ERROR", 0),
         event_type_counts=counts,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Service log helpers
+# ---------------------------------------------------------------------------
+
+async def _get_svc_pool():
+    """Reuse the audit pool — both tables live in the same DB."""
+    from middleware.audit import _audit_pool
+    return _audit_pool
+
+
+def _row_to_svc_entry(row: Any) -> ServiceLogEntry:
+    return ServiceLogEntry(
+        id=row["id"],
+        log_id=str(row["log_id"]),
+        timestamp=row["timestamp"],
+        service=row["service"],
+        level=row["level"],
+        logger_name=row.get("logger_name"),
+        message=row.get("message"),
+        exc_text=row.get("exc_text"),
+        extra=_parse_extra(row.get("extra")),
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/audit/service-logs
+# ---------------------------------------------------------------------------
+
+
+@audit_router.get("/service-logs", response_model=ServiceLogPage)
+async def query_service_logs(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+    service: Optional[str] = Query(None, description="Filter by service name (e.g. 'tasking')"),
+    level: Optional[str] = Query(None, description="Filter by level (ERROR, WARNING, INFO, ...)"),
+    from_ts: Optional[datetime] = Query(None, description="Start of time range (ISO 8601)"),
+    to_ts: Optional[datetime] = Query(None, description="End of time range (ISO 8601)"),
+    q: Optional[str] = Query(None, description="Full-text search in message (case-insensitive)"),
+    _role: Any = Depends(require_role("ADMIN")),
+) -> ServiceLogPage:
+    """
+    Query structured service logs from all Summit.OS backend services.
+
+    Rows include stack traces (exc_text) for ERROR/CRITICAL entries and
+    any extra fields the caller attached (e.g. query_duration_ms for slow queries).
+    """
+    pool = await _get_svc_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Service log DB unavailable")
+
+    conditions: list[str] = []
+    args: list[Any] = []
+    idx = 1
+
+    if service:
+        conditions.append(f"service = ${idx}")
+        args.append(service)
+        idx += 1
+    if level:
+        conditions.append(f"level = ${idx}")
+        args.append(level.upper())
+        idx += 1
+    if from_ts:
+        conditions.append(f"timestamp >= ${idx}")
+        args.append(from_ts)
+        idx += 1
+    if to_ts:
+        conditions.append(f"timestamp <= ${idx}")
+        args.append(to_ts)
+        idx += 1
+    if q:
+        conditions.append(f"message ILIKE ${idx}")
+        args.append(f"%{q}%")
+        idx += 1
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    safe_limit = int(page_size)
+    safe_offset = int((page - 1) * page_size)
+
+    count_sql = f"SELECT COUNT(*) FROM service_logs {where}"
+    data_sql = f"""
+        SELECT id, log_id, timestamp, service, level, logger_name, message, exc_text, extra
+        FROM service_logs {where}
+        ORDER BY timestamp DESC
+        LIMIT {safe_limit} OFFSET {safe_offset}
+    """
+
+    try:
+        async with pool.acquire() as conn:
+            total_row = await conn.fetchrow(count_sql, *args)
+            total = int(total_row[0]) if total_row else 0
+            rows = await conn.fetch(data_sql, *args)
+    except Exception as exc:
+        logger.error("Service log query failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Service log query failed")
+
+    return ServiceLogPage(
+        entries=[_row_to_svc_entry(r) for r in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /v1/audit/service-logs/stats
+# ---------------------------------------------------------------------------
+
+
+@audit_router.get("/service-logs/stats", response_model=ServiceLogStats)
+async def service_log_stats(
+    hours: int = Query(24, ge=1, le=720, description="Lookback window in hours"),
+    _role: Any = Depends(require_role("ADMIN")),
+) -> ServiceLogStats:
+    """
+    Summary counts for service logs: by level, by service, and slow-query count.
+
+    Slow queries are WARNING rows where extra->>'query_duration_ms' is present.
+    """
+    pool = await _get_svc_pool()
+    if pool is None:
+        raise HTTPException(status_code=503, detail="Service log DB unavailable")
+
+    try:
+        async with pool.acquire() as conn:
+            level_rows = await conn.fetch(
+                """
+                SELECT level, COUNT(*) AS cnt FROM service_logs
+                WHERE timestamp >= NOW() - ($1 * INTERVAL '1 hour')
+                GROUP BY level ORDER BY cnt DESC
+                """,
+                hours,
+            )
+            svc_rows = await conn.fetch(
+                """
+                SELECT service, COUNT(*) AS cnt FROM service_logs
+                WHERE timestamp >= NOW() - ($1 * INTERVAL '1 hour')
+                GROUP BY service ORDER BY cnt DESC
+                """,
+                hours,
+            )
+            slow_row = await conn.fetchrow(
+                """
+                SELECT COUNT(*) AS cnt FROM service_logs
+                WHERE timestamp >= NOW() - ($1 * INTERVAL '1 hour')
+                  AND extra ? 'query_duration_ms'
+                """,
+                hours,
+            )
+    except Exception as exc:
+        logger.error("Service log stats query failed: %s", exc)
+        raise HTTPException(status_code=500, detail="Service log stats query failed")
+
+    by_level = {r["level"]: int(r["cnt"]) for r in level_rows}
+    by_service = {r["service"]: int(r["cnt"]) for r in svc_rows}
+    slow_queries = int(slow_row["cnt"]) if slow_row else 0
+
+    return ServiceLogStats(
+        window_hours=hours,
+        total=sum(by_level.values()),
+        by_level=by_level,
+        by_service=by_service,
+        slow_queries=slow_queries,
     )
