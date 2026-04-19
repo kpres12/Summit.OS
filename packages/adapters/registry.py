@@ -450,6 +450,12 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         # Generic connectivity
         ("adapters.serial_adapter",   "SerialAdapter"),
         ("adapters.websocket_adapter", "WebSocketAdapter"),
+        # ADS-B via OpenSky Network (internet, free tier)
+        ("adapters.opensky_adapter",  "OpenSkyAdapter"),
+        # AIS maritime via aisstream.io WebSocket
+        ("adapters.aisstream_adapter", "AISStreamAdapter"),
+        # Kraken Robotics underwater systems
+        ("adapters.kraken_adapter",   "KrakenAdapter"),
     ]
 
     for module_path, class_name in _builtins:
