@@ -146,7 +146,7 @@ services:
     plan: starter
     rootDir: apps/console
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    startCommand: node apps/console/.next/standalone/server.js
     envVars:
       - key: NEXT_PUBLIC_DEV_BYPASS_AUTH
         value: "true"
