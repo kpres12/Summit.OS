@@ -1,5 +1,5 @@
 """
-Pre-built Behavior Tree Library for Summit.OS
+Pre-built Behavior Tree Library for Heli.OS
 
 Ready-to-use mission behavior trees for common operational patterns.
 Each factory function returns a configured BehaviorTree.

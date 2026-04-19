@@ -1,5 +1,5 @@
 """
-Authentication for Summit.OS
+Authentication for Heli.OS
 
 JWT and API Key authentication:
 - JWTAuth: issue/verify JWT tokens with configurable claims
@@ -67,7 +67,7 @@ class JWTAuth:
     """
 
     def __init__(
-        self, secret: str = "", issuer: str = "summit-os", default_ttl: int = 3600
+        self, secret: str = "", issuer: str = "heli-os", default_ttl: int = 3600
     ):
         self.secret = secret or secrets.token_hex(32)
         self.issuer = issuer

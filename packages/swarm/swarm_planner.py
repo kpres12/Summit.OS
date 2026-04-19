@@ -1,5 +1,5 @@
 """
-Swarm Planner — Summit.OS
+Swarm Planner — Heli.OS
 
 Allocates tasks to assets using the Hungarian algorithm (scipy.optimize.linear_sum_assignment).
 Cost matrix: distance from asset to task location (haversine).

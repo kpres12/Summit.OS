@@ -1,8 +1,8 @@
 """
-Summit.OS Modbus/TCP Adapter
+Heli.OS Modbus/TCP Adapter
 
 Polls industrial hardware via Modbus/TCP and publishes each register
-as a Summit.OS ASSET Entity into the data fabric.
+as a Heli.OS ASSET Entity into the data fabric.
 
 Modbus is the lingua franca of industrial automation — PLCs, pumps,
 pressure sensors, flow meters, HVAC, and power meters.

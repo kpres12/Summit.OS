@@ -4,7 +4,7 @@ global:
     pullPolicy: IfNotPresent
   env:
     REDIS_URL: redis://redis:6379
-    POSTGRES_URL: postgresql://summit:summit@postgres:5432/summit
+    POSTGRES_URL: postgresql://heli:summit@postgres:5432/summit
     MQTT_BROKER: mqtt://mqtt:1883
 
 # ── Secrets (CHANGE_ME before deploying) ────────────────────
@@ -21,7 +21,7 @@ config:
   oidcEnforce: "false"
   otlpEndpoint: "http://jaeger:4317"
   # Production overrides:
-  # oidcIssuer: "https://your-keycloak/realms/summit"
+  # oidcIssuer: "https://your-keycloak/realms/heli"
   # oidcAudience: "summit-api"
   # corsOrigins: "https://console.yourdomain.com"
   # ollamaUrl: "http://ollama:11434"
@@ -30,7 +30,7 @@ config:
 # ── API Gateway ─────────────────────────────────────────────
 apiGateway:
   replicas: 2
-  image: summit-os/api-gateway:latest
+  image: heli-os/api-gateway:latest
   port: 8000
   resources:
     requests: { cpu: 100m, memory: 128Mi }
@@ -44,7 +44,7 @@ apiGateway:
 # ── Fabric Service ──────────────────────────────────────────
 fabric:
   replicas: 2
-  image: summit-os/fabric:latest
+  image: heli-os/fabric:latest
   port: 8001
   resources:
     requests: { cpu: 200m, memory: 256Mi }
@@ -53,7 +53,7 @@ fabric:
 # ── Fusion Service ──────────────────────────────────────────
 fusion:
   replicas: 2
-  image: summit-os/fusion:latest
+  image: heli-os/fusion:latest
   port: 8002
   resources:
     requests: { cpu: 500m, memory: 512Mi }
@@ -62,7 +62,7 @@ fusion:
 # ── Intelligence Service ────────────────────────────────────
 intelligence:
   replicas: 2
-  image: summit-os/intelligence:latest
+  image: heli-os/intelligence:latest
   port: 8003
   resources:
     requests: { cpu: 500m, memory: 512Mi }
@@ -73,7 +73,7 @@ intelligence:
 # ── Tasking Service ─────────────────────────────────────────
 tasking:
   replicas: 2
-  image: summit-os/tasking:latest
+  image: heli-os/tasking:latest
   port: 8004
   resources:
     requests: { cpu: 200m, memory: 256Mi }
@@ -82,7 +82,7 @@ tasking:
 # ── Inference Service ───────────────────────────────────────
 inference:
   replicas: 1
-  image: summit-os/inference:latest
+  image: heli-os/inference:latest
   port: 8006
   resources:
     requests: { cpu: 500m, memory: 1Gi }
@@ -93,7 +93,7 @@ inference:
 # ── Console (Frontend) ─────────────────────────────────────
 console:
   replicas: 2
-  image: summit-os/console:latest
+  image: heli-os/console:latest
   port: 3000
   resources:
     requests: { cpu: 100m, memory: 128Mi }
@@ -149,7 +149,7 @@ security:
     enabled: true
     certValidityDays: 365
   jwt:
-    issuer: summit-os
+    issuer: heli-os
     tokenTTL: 3600
 
 # ── Ingress ─────────────────────────────────────────────────

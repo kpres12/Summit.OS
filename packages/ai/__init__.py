@@ -1,5 +1,5 @@
 """
-Summit.OS AI/ML Pipeline
+Heli.OS AI/ML Pipeline
 
 Provides detection, classification, anomaly detection, and intent prediction.
 All modules gracefully degrade when ML dependencies are absent.

@@ -1,5 +1,5 @@
 """
-Summit.OS — AIS Maritime Vessel Tracking Adapter
+Heli.OS — AIS Maritime Vessel Tracking Adapter
 =================================================
 
 Connects to an AIS feed from either:
@@ -38,7 +38,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.ais")
+logger = logging.getLogger("heli.adapters.ais")
 
 # AIS navigational status codes
 _NAV_STATUS = {

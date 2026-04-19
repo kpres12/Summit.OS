@@ -1,5 +1,5 @@
 # Asset Inventory
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 
@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-This inventory catalogues all significant information assets — software systems, data stores, infrastructure, and third-party services — that are in scope for Summit.OS security management. Each asset has a designated owner, classification, and applicable controls.
+This inventory catalogues all significant information assets — software systems, data stores, infrastructure, and third-party services — that are in scope for Heli.OS security management. Each asset has a designated owner, classification, and applicable controls.
 
 ---
 

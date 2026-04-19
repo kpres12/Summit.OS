@@ -1,7 +1,7 @@
 """
-Summit.OS Ontology — Object Type Definitions
+Heli.OS Ontology — Object Type Definitions
 
-These are the canonical real-world entities in Summit.OS.
+These are the canonical real-world entities in Heli.OS.
 Every row of data from every source eventually maps to one of these.
 
 Object types and their key properties:

@@ -1,5 +1,5 @@
 """
-Entity CRDT for Summit.OS Mesh
+Entity CRDT for Heli.OS Mesh
 
 Bridges the canonical Entity model (packages/entities/core.py) with the
 mesh CRDT system (packages/mesh/crdt.py) for distributed state sync.

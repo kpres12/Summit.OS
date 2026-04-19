@@ -1,5 +1,5 @@
 """
-Auto Annotator — Summit.OS
+Auto Annotator — Heli.OS
 
 Uses an existing YOLO model to pre-label new footage for human review.
 Generates YOLO-format label files with confidence scores embedded in comments.

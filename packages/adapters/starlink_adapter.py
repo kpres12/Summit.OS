@@ -1,12 +1,12 @@
 """
-Summit.OS — Starlink Adapter
+Heli.OS — Starlink Adapter
 ==============================
 
-Integrates Starlink satellite internet terminals into Summit.OS via the
+Integrates Starlink satellite internet terminals into Heli.OS via the
 local gRPC API exposed by every Starlink dish on the local network.
 
 This adapter does NOT control Starlink — it reads telemetry from the dish
-and surfaces it as a COMMS_NODE entity in Summit.OS. Use cases:
+and surfaces it as a COMMS_NODE entity in Heli.OS. Use cases:
 
 - Track the physical location of mobile command posts and field assets
   equipped with Starlink (the dish reports its own GPS coordinates)
@@ -52,7 +52,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.starlink")
+logger = logging.getLogger("heli.adapters.starlink")
 
 # ── gRPC imports (optional) ────────────────────────────────────────────────────
 try:

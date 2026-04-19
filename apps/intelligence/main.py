@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
         pg_url = _to_asyncpg_url(
             os.getenv(
                 "POSTGRES_URL",
-                "postgresql://summit:summit_password@localhost:5432/summit_os",
+                "postgresql://heli:summit_password@localhost:5432/heli_os",
             )
         )
     engine = create_async_engine(pg_url, echo=False, future=True)
@@ -191,7 +191,7 @@ async def _agent_prune_loop():
                 logger.info(f"Pruned {n} finished agents")
 
 
-ENGINE_NAME = "KOFA"  # Summit.OS autonomous dispatch engine
+ENGINE_NAME = "KOFA"  # Heli.OS autonomous dispatch engine
 
 app = FastAPI(
     title=f"Summit Intelligence — {ENGINE_NAME}", version="0.2.0", lifespan=lifespan

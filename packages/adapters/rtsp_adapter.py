@@ -1,5 +1,5 @@
 """
-Summit.OS — RTSP Camera Adapter
+Heli.OS — RTSP Camera Adapter
 =================================
 
 Represents an RTSP camera as a fixed entity in the world model. Does NOT
@@ -30,7 +30,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.rtsp")
+logger = logging.getLogger("heli.adapters.rtsp")
 
 
 def _redact_credentials(url: str) -> str:

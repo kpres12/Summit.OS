@@ -153,7 +153,7 @@ function EntityExplorer() {
               className="text-[9px] text-center leading-relaxed"
               style={{ color: 'rgba(200,230,201,0.2)', fontFamily: 'var(--font-ibm-plex-mono), monospace' }}
             >
-              Connect an adapter using the Summit.OS SDK<br />pip install summit-os-sdk
+              Connect an adapter using the Heli.OS SDK<br />pip install heli-os-sdk
             </div>
           </div>
         )}
@@ -987,7 +987,7 @@ export default function DevLayout({ onSwitchRole }: DevLayoutProps) {
             className="text-xs font-bold tracking-widest"
             style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(0,232,150,0.5)' }}
           >
-            SUMMIT.OS DEV
+            HELI.OS DEV
           </div>
         </div>
 

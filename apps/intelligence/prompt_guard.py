@@ -1,5 +1,5 @@
 """
-prompt_guard.py — Shared prompt injection defences for Summit.OS Intelligence.
+prompt_guard.py — Shared prompt injection defences for Heli.OS Intelligence.
 
 Imported by both brain.py and context_builder.py to avoid duplication.
 
@@ -19,7 +19,7 @@ import logging
 import re
 from typing import Any
 
-logger = logging.getLogger("summit.intelligence.prompt_guard")
+logger = logging.getLogger("heli.intelligence.prompt_guard")
 
 # ---------------------------------------------------------------------------
 # Control-character stripper (shared)

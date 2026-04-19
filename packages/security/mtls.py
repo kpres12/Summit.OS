@@ -1,12 +1,12 @@
 """
-Mutual TLS (mTLS) for Summit.OS
+Mutual TLS (mTLS) for Heli.OS
 
 Provides:
 - CertificateAuthority: generates self-signed CA + service certs
 - TLSContextFactory: creates SSL contexts for server/client with mTLS
 - Certificate rotation and revocation support
 
-Implements zero-trust mTLS mesh networking for Summit.OS services.
+Implements zero-trust mTLS mesh networking for Heli.OS services.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class CertInfo:
 
 class CertificateAuthority:
     """
-    Self-contained Certificate Authority for Summit.OS mesh.
+    Self-contained Certificate Authority for Heli.OS mesh.
 
     Uses Python's ssl module and optionally cryptography library
     for full X.509 cert generation. Falls back to openssl CLI.
@@ -69,7 +69,7 @@ class CertificateAuthority:
     def __init__(
         self,
         ca_dir: Optional[str] = None,
-        org: str = "Summit.OS",
+        org: str = "Heli.OS",
         validity_days: int = 365,
     ):
         self.ca_dir = (

@@ -1,5 +1,5 @@
 """
-HLS Video Streaming Router for Summit.OS Fusion Service (Gap 4)
+HLS Video Streaming Router for Heli.OS Fusion Service (Gap 4)
 
 Wraps RTSP streams in HLS using ffmpeg so the operator UI can play them
 with hls.js in a standard <video> element.

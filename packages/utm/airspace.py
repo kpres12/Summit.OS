@@ -1,5 +1,5 @@
 """
-packages/utm/airspace.py — Combined airspace checker for Summit.OS.
+packages/utm/airspace.py — Combined airspace checker for Heli.OS.
 
 This is the single entry point used by the tasking service before any
 mission is submitted to OPA. It:
@@ -102,7 +102,7 @@ class AirspaceResult:
 
 class AirspaceChecker:
     """
-    Summit.OS airspace awareness layer.
+    Heli.OS airspace awareness layer.
 
     Aggregates FAA NOTAM data, facility map data, and LAANC authorization
     into a single `AirspaceResult` ready for OPA injection.

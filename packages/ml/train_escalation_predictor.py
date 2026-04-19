@@ -1,5 +1,5 @@
 """
-Train the Summit.OS escalation predictor.
+Train the Heli.OS escalation predictor.
 
 Predicts whether an alert will escalate — i.e., the operator will NOT
 acknowledge it within the configured timeout window.  KOFA uses the output
@@ -463,7 +463,7 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train the Summit.OS escalation predictor model."
+        description="Train the Heli.OS escalation predictor model."
     )
     parser.add_argument(
         "--samples",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.summit-os.local/telemetry.pose.schema.json",
+  "$id": "https://schemas.heli-os.local/telemetry.pose.schema.json",
   "title": "PoseTelemetry",
   "type": "object",
   "properties": {

@@ -1,5 +1,5 @@
 """
-World Model HMAC — Summit.OS Security
+World Model HMAC — Heli.OS Security
 
 Signs world-model state snapshots with HMAC-SHA256 before forwarding to
 downstream services (intelligence, tasking). Recipients verify the HMAC before

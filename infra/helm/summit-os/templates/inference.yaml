@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "summit-os.fullname" . }}-inference
+  name: {{ include "heli-os.fullname" . }}-inference
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
     app: inference
 spec:
   replicas: {{ .Values.inference.replicas }}
@@ -33,7 +33,7 @@ spec:
             - name: OTLP_ENDPOINT
               valueFrom:
                 configMapKeyRef:
-                  name: {{ include "summit-os.configmapName" . }}
+                  name: {{ include "heli-os.configmapName" . }}
                   key: OTLP_ENDPOINT
           livenessProbe:
             httpGet:
@@ -51,9 +51,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "summit-os.fullname" . }}-inference
+  name: {{ include "heli-os.fullname" . }}-inference
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
 spec:
   selector:
     app: inference

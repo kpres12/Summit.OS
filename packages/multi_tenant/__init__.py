@@ -1,5 +1,5 @@
 """
-packages/multi_tenant — Enterprise multi-tenancy for Summit.OS.
+packages/multi_tenant — Enterprise multi-tenancy for Heli.OS.
 
 Active only when ENTERPRISE_MULTI_TENANT=true. When false (Community mode),
 all data implicitly belongs to the single "default" organization and no

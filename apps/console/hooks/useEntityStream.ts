@@ -28,6 +28,7 @@ export interface EntityData {
   callsign?: string;
   battery_pct?: number;
   mission_id?: string;
+  properties?: Record<string, unknown>;
 }
 
 export interface TrackData {

@@ -1,8 +1,8 @@
 """
-Summit.OS Adapter Base Framework
+Heli.OS Adapter Base Framework
 =================================
 
-Defines the abstract base class that all Summit.OS signal adapters must
+Defines the abstract base class that all Heli.OS signal adapters must
 implement.  The framework handles:
 
   - Lifecycle management (start / stop with clean task cancellation)
@@ -55,7 +55,7 @@ from typing import AsyncIterator, Optional
 
 from pydantic import BaseModel
 
-logger = logging.getLogger("summit.adapters")
+logger = logging.getLogger("heli.adapters")
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +203,7 @@ class AdapterHealth:
 
 class BaseAdapter(ABC):
     """
-    Abstract base for all Summit.OS signal adapters.
+    Abstract base for all Heli.OS signal adapters.
 
     An adapter connects to ONE signal source and emits a stream of
     observation dicts that the Fusion service ingests.
@@ -243,7 +243,7 @@ class BaseAdapter(ABC):
         self._stop_event: asyncio.Event = asyncio.Event()
 
         self._log = logging.getLogger(
-            f"summit.adapters.{config.adapter_type}.{config.adapter_id}"
+            f"heli.adapters.{config.adapter_type}.{config.adapter_id}"
         )
 
     # -------------------------------------------------------------------------
@@ -306,7 +306,7 @@ class BaseAdapter(ABC):
     @abstractmethod
     async def stream_observations(self) -> AsyncIterator[dict]:
         """
-        Yield observation dicts conforming to the Summit.OS observation
+        Yield observation dicts conforming to the Heli.OS observation
         schema (see module docstring).
 
         The generator runs inside the framework's reconnect loop.  If it

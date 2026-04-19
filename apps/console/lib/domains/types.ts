@@ -1,5 +1,5 @@
 /**
- * Summit.OS Domain Configuration Types
+ * Heli.OS Domain Configuration Types
  *
  * Each deployment domain (fire, pipeline, SAR, construction, etc.)
  * provides a DomainConfig that drives the entire UI — vocabulary,

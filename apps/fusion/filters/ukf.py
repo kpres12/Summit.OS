@@ -1,5 +1,5 @@
 """
-Unscented Kalman Filter (UKF) for Summit.OS Fusion
+Unscented Kalman Filter (UKF) for Heli.OS Fusion
 
 Complements the existing EKF with a sigma-point filter that handles
 highly nonlinear dynamics (e.g., maneuvering targets, coordinated turns)

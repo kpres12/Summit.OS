@@ -1,5 +1,5 @@
 """
-Resync Protocol — Summit.OS Fabric
+Resync Protocol — Heli.OS Fabric
 
 After a link reconnects, drains the PriorityQueue in batches and delivers to
 a transport callback. Tracks per-peer last-seen sequence numbers so duplicate

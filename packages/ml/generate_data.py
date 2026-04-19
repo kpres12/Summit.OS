@@ -1,5 +1,5 @@
 """
-Synthetic training data generator for Summit.OS ML models.
+Synthetic training data generator for Heli.OS ML models.
 
 Strategy: domain-expert rules → labeled synthetic samples → trained model.
 The model then generalizes beyond the exact rules (fuzzy matches, compound
@@ -9,7 +9,7 @@ When real operator-approved mission data accumulates in the tasking DB,
 run: python train_mission_classifier.py --real-data  to blend synthetic
 with real, progressively replacing synthetic over time.
 
-Domains covered (NOT just wildfire — Summit.OS is general-purpose):
+Domains covered (NOT just wildfire — Heli.OS is general-purpose):
   Disaster response: wildfire, flood, earthquake, hurricane, tornado
   Search & rescue:   wilderness SAR, maritime SAR, avalanche, urban rescue
   Infrastructure:    power grid, pipeline, bridge, dam, rail inspection

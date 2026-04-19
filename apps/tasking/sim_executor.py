@@ -1,5 +1,5 @@
 """
-Summit.OS Tasking Simulation Executor (SITL/HITL scaffolding)
+Heli.OS Tasking Simulation Executor (SITL/HITL scaffolding)
 
 Purpose:
 - Connect to one or more PX4/ArduPilot SITL endpoints via MAVLink
@@ -154,7 +154,7 @@ async def run_sim(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Summit.OS SITL/HITL simulation executor")
+    p = argparse.ArgumentParser(description="Heli.OS SITL/HITL simulation executor")
     p.add_argument(
         "--asset",
         dest="assets",

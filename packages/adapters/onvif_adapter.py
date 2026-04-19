@@ -1,5 +1,5 @@
 """
-Summit.OS — ONVIF IP Camera Adapter
+Heli.OS — ONVIF IP Camera Adapter
 =====================================
 
 Connects to ONVIF-compliant IP cameras. Fetches device info, media profiles,
@@ -27,7 +27,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.onvif")
+logger = logging.getLogger("heli.adapters.onvif")
 
 _UPDATE_INTERVAL = 60.0  # seconds between heartbeat observations
 

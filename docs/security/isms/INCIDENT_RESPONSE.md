@@ -1,5 +1,5 @@
 # Incident Response Procedure
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 
@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-This procedure defines how Summit.OS responds to security incidents — from initial detection through containment, eradication, recovery, and post-incident review. It applies to all personnel who build, operate, or maintain Summit.OS systems.
+This procedure defines how Heli.OS responds to security incidents — from initial detection through containment, eradication, recovery, and post-incident review. It applies to all personnel who build, operate, or maintain Heli.OS systems.
 
 ---
 

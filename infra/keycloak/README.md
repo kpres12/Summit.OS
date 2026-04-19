@@ -1,6 +1,6 @@
-# Keycloak — Identity Provider for Summit.OS
+# Keycloak — Identity Provider for Heli.OS
 
-Keycloak is the OIDC Identity Provider for Summit.OS. It handles user authentication (login/password), issues JWTs signed with RS256, enforces brute-force protection and password policy, and is what the Next.js console's OIDC flow talks to.
+Keycloak is the OIDC Identity Provider for Heli.OS. It handles user authentication (login/password), issues JWTs signed with RS256, enforces brute-force protection and password policy, and is what the Next.js console's OIDC flow talks to.
 
 The `summit` realm is automatically imported on first startup from `realm-export.json`.
 
@@ -32,7 +32,7 @@ Keycloak depends on the `keycloak-db-init` init container (defined in the base c
 ## OIDC Discovery URL
 
 ```
-http://localhost:8080/realms/summit/.well-known/openid-configuration
+http://localhost:8080/realms/heli/.well-known/openid-configuration
 ```
 
 ---
@@ -42,7 +42,7 @@ http://localhost:8080/realms/summit/.well-known/openid-configuration
 Add the following to `apps/console/.env.local` to wire the Next.js console to Keycloak:
 
 ```
-OIDC_ISSUER=http://localhost:8080/realms/summit
+OIDC_ISSUER=http://localhost:8080/realms/heli
 OIDC_CLIENT_ID=summit-console
 OIDC_CLIENT_SECRET=REDACTED
 OIDC_REDIRECT_URI=http://localhost:3000/api/auth/callback

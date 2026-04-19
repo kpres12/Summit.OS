@@ -1,6 +1,6 @@
 # OPERATIONS_RUNBOOK.md
 
-This runbook covers failure modes for upstream integrations and Summit.OS fallbacks.
+This runbook covers failure modes for upstream integrations and Heli.OS fallbacks.
 
 Common failures and responses
 - ROS 2 bridge failure

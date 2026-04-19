@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[Summit.OS] ErrorBoundary caught:', error, info.componentStack);
+    console.error('[Heli.OS] ErrorBoundary caught:', error, info.componentStack);
   }
 
   render() {

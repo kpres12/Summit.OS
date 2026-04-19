@@ -21,7 +21,7 @@ def test_api_version_response_structure(api_base: str):
         assert r.status_code == 200
         data = r.json()
         assert "api_version" in data, "Missing 'api_version' field"
-        assert "summit_os_version" in data, "Missing 'summit_os_version' field"
+        assert "heli_os_version" in data, "Missing 'heli_os_version' field"
         assert "min_sdk_version" in data, "Missing 'min_sdk_version' field"
     finally:
         client.close()
@@ -44,7 +44,7 @@ def test_os_version_header_present(api_base: str):
     client = ApiClient(api_base)
     try:
         r = client.get("/health")
-        assert "x-summit-os-version" in {k.lower() for k in r.headers}, (
+        assert "x-heli-os-version" in {k.lower() for k in r.headers}, (
             "X-Summit-OS-Version header missing from response"
         )
     finally:

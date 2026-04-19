@@ -28,7 +28,7 @@ except Exception:
 
 def get_url():
     url = os.getenv(
-        "POSTGRES_URL", "postgresql://summit:summit_password@localhost:5432/summit_os"
+        "POSTGRES_URL", "postgresql://heli:summit_password@localhost:5432/heli_os"
     )
     return url
 

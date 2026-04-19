@@ -21,7 +21,7 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: "Summit.OS",
+  title: "Heli.OS",
   description: "Autonomous systems coordination platform for real-world operations",
 };
 

@@ -1,5 +1,5 @@
 """
-Summit.OS Adapter Registry
+Heli.OS Adapter Registry
 ===========================
 
 Central registry for all configured adapters.  Responsibilities:
@@ -41,7 +41,7 @@ from typing import Optional
 
 from .base import AdapterConfig, AdapterHealth, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.registry")
+logger = logging.getLogger("heli.adapters.registry")
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +177,7 @@ BUILT_IN_ADAPTERS: list[dict] = [
         "name": "Meshtastic LoRa Mesh",
         "description": (
             "Off-grid LoRa mesh radio — field teams, sensors, and vehicles "
-            "tracked without cellular or internet. Bidirectional: Summit.OS "
+            "tracked without cellular or internet. Bidirectional: Heli.OS "
             "can send waypoints and alerts back through the mesh."
         ),
     },

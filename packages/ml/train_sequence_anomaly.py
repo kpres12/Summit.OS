@@ -1,5 +1,5 @@
 """
-Train the Summit.OS sequence anomaly detector.
+Train the Heli.OS sequence anomaly detector.
 
 Detects anomalous entity behavior in time-series telemetry sequences.
 Catches things cameras miss — a vessel that suddenly stops in a shipping lane,
@@ -796,7 +796,7 @@ def train(n_samples: int = 80000, output_dir: str = None, real_csv: str = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS sequence anomaly detector and export to ONNX."
+        description="Train Heli.OS sequence anomaly detector and export to ONNX."
     )
     parser.add_argument(
         "--samples",

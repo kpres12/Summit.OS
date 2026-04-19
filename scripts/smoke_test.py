@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Smoke Test
+Heli.OS Smoke Test
 
 End-to-end test that verifies the core data path:
   1. POST an entity to fabric's WorldStore API
@@ -59,7 +59,7 @@ async def run():
     }
 
     print(f"\n{'='*60}")
-    print(f"  Summit.OS Smoke Test")
+    print(f"  Heli.OS Smoke Test")
     print(f"  Gateway: {GATEWAY}")
     print(f"  Fabric:  {FABRIC}")
     print(f"{'='*60}\n")

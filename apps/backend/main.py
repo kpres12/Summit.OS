@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Backend — single-file FastAPI service.
+Heli.OS Backend — single-file FastAPI service.
 
 Provides everything the console needs:
   - WebSocket entity stream  ws://localhost:8001/ws
@@ -309,14 +309,14 @@ async def entity_broadcast_loop() -> None:
 async def lifespan(app: FastAPI):
     init_db()
     task = asyncio.create_task(entity_broadcast_loop())
-    print(f"\n  Summit.OS Backend  →  http://localhost:{PORT}")
+    print(f"\n  Heli.OS Backend  →  http://localhost:{PORT}")
     print(f"  WebSocket stream   →  ws://localhost:{PORT}/ws")
     print(f"  REST API           →  http://localhost:{PORT}/v1/\n")
     yield
     task.cancel()
 
 
-app = FastAPI(title="Summit.OS Backend", lifespan=lifespan)
+app = FastAPI(title="Heli.OS Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

@@ -140,7 +140,7 @@ Add to `infra/docker/prometheus-alerts.yml`:
 
 ```yaml
 groups:
-  - name: summit-os
+  - name: heli-os
     interval: 30s
     rules:
       - alert: HighErrorRate

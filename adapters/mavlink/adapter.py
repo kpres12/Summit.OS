@@ -1,8 +1,8 @@
 """
-Summit.OS MAVLink Adapter
+Heli.OS MAVLink Adapter
 
 Connects to MAVLink-compatible autopilots (ArduPilot, PX4) and publishes
-real-time telemetry as Summit.OS TRACK entities into the data fabric.
+real-time telemetry as Heli.OS TRACK entities into the data fabric.
 
 Vehicle Config (MAVLINK_VEHICLES env var, path to JSON file):
     [

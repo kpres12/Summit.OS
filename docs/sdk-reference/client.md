@@ -20,7 +20,7 @@ SummitClient(
 ```
 
 **Parameters:**
-- `api_url` — Base URL of the Summit.OS API gateway.
+- `api_url` — Base URL of the Heli.OS API gateway.
 - `ws_url` — WebSocket URL. Auto-derived from `api_url` if empty.
 - `api_key` — API key sent as `X-API-Key` header.
 - `jwt_token` — JWT sent as `Authorization: Bearer` header.

@@ -1,7 +1,7 @@
 """
-Summit.OS AI Model Showcase
+Heli.OS AI Model Showcase
 
-Demonstrates the AI capabilities of Summit.OS with interactive examples
+Demonstrates the AI capabilities of Heli.OS with interactive examples
 of sensor fusion, risk assessment, and autonomous decision-making.
 """
 
@@ -34,8 +34,8 @@ from fusion.ai_models import (
 from intelligence.ai_reasoning import RiskAssessmentEngine, AdvisoryGenerator
 
 app = FastAPI(
-    title="Summit.OS AI Showcase",
-    description="Interactive demonstration of Summit.OS AI capabilities",
+    title="Heli.OS AI Showcase",
+    description="Interactive demonstration of Heli.OS AI capabilities",
     version="1.0.0",
 )
 
@@ -64,7 +64,7 @@ async def startup_event():
     """Initialize AI models on startup."""
     global fusion_network, fire_predictor, anomaly_detector, risk_engine, advisory_generator
 
-    print("🧠 Initializing Summit.OS AI Models...")
+    print("🧠 Initializing Heli.OS AI Models...")
 
     # Initialize AI models
     fusion_network = MultimodalFusionNetwork(
@@ -87,7 +87,7 @@ async def root():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Summit.OS AI Showcase</title>
+        <title>Heli.OS AI Showcase</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 40px; background: #1a1a1a; color: #fff; }
             .container { max-width: 1200px; margin: 0 auto; }
@@ -102,7 +102,7 @@ async def root():
     <body>
         <div class="container">
             <div class="header">
-                <h1>🔥 Summit.OS AI Showcase</h1>
+                <h1>🔥 Heli.OS AI Showcase</h1>
                 <p>Distributed Intelligence Fabric for Autonomous Robotics</p>
             </div>
             

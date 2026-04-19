@@ -1,5 +1,5 @@
 """
-packages/observability/db_logger.py — Structured DB logging for Summit.OS services.
+packages/observability/db_logger.py — Structured DB logging for Heli.OS services.
 
 Three layers:
   1. PostgresLogHandler  — Python logging.Handler that writes log records to the

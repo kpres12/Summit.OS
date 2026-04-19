@@ -1,4 +1,4 @@
-"""Generic threat assessment framework for Summit.OS."""
+"""Generic threat assessment framework for Heli.OS."""
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List

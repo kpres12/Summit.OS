@@ -1,4 +1,4 @@
-"""Summit.OS Behavior Tree Engine."""
+"""Heli.OS Behavior Tree Engine."""
 
 from packages.autonomy.bt.nodes import (
     NodeStatus,

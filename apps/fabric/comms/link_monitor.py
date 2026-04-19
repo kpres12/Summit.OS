@@ -1,5 +1,5 @@
 """
-Link Monitor — Summit.OS Fabric
+Link Monitor — Heli.OS Fabric
 
 Tracks per-peer link quality metrics: round-trip time, packet loss, and a
 composite link_score (0.0–1.0) used by the swarm coordinator for leader election.

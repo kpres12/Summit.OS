@@ -1,5 +1,5 @@
 """
-Summit.OS MQTT Ingress Rate Limiter
+Heli.OS MQTT Ingress Rate Limiter
 
 Token bucket rate limiter keyed by source_id (extracted from entity payloads
 or MQTT topic). Prevents a misbehaving or compromised adapter from flooding
@@ -29,7 +29,7 @@ import time
 from collections import defaultdict
 from typing import Dict, Optional
 
-logger = logging.getLogger("summit.fabric.ratelimit")
+logger = logging.getLogger("heli.fabric.ratelimit")
 
 _RATE_LIMIT_ENABLED = os.getenv("MQTT_RATE_LIMIT_ENABLED", "true").lower() == "true"
 _DEFAULT_RATE = float(os.getenv("MQTT_RATE_LIMIT_DEFAULT", "50"))  # msgs/sec

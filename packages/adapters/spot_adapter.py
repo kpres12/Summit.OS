@@ -1,8 +1,8 @@
 """
-Summit.OS — Boston Dynamics Spot Adapter
+Heli.OS — Boston Dynamics Spot Adapter
 =========================================
 
-Integrates Boston Dynamics Spot robot dogs into Summit.OS.
+Integrates Boston Dynamics Spot robot dogs into Heli.OS.
 
 Uses the official Spot Python SDK (bosdyn-client) to read telemetry
 and publish GROUND_ROBOT observations. Spot is widely deployed for
@@ -36,7 +36,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.spot")
+logger = logging.getLogger("heli.adapters.spot")
 
 try:
     import bosdyn.client
@@ -73,7 +73,7 @@ class SpotAdapter(BaseAdapter):
         loop = asyncio.get_event_loop()
 
         def _authenticate():
-            sdk = bosdyn.client.create_standard_sdk("summit_os_spot_adapter")
+            sdk = bosdyn.client.create_standard_sdk("heli_os_spot_adapter")
             robot = sdk.create_robot(self._hostname)
             bosdyn.client.util.authenticate(robot)
             robot.sync_with_directory()

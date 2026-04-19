@@ -1,6 +1,6 @@
-# Summit.OS — SITL (Software-in-the-Loop) Testing Environment
+# Heli.OS — SITL (Software-in-the-Loop) Testing Environment
 #
-# Boots a full Summit.OS stack wired to software-simulated drones.
+# Boots a full Heli.OS stack wired to software-simulated drones.
 # No physical hardware required. Three simulation layers available:
 #
 #   Layer 1 — Scenario injector (always on):
@@ -38,7 +38,7 @@ services:
 
   # ── Layer 1: Scenario Injector ────────────────────────────────────────────
   # Injects pre-built simulation scenarios (packages/simulation/scenarios.py)
-  # into the Summit.OS entity stream at 1 Hz.
+  # into the Heli.OS entity stream at 1 Hz.
   sim-injector:
     build:
       context: ../..

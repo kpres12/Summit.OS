@@ -1,5 +1,5 @@
 """
-Conflict-Free Replicated Data Types (CRDTs) for Summit.OS Mesh
+Conflict-Free Replicated Data Types (CRDTs) for Heli.OS Mesh
 
 Provides eventually-consistent distributed data structures that can be
 replicated across mesh nodes without coordination. Supports:

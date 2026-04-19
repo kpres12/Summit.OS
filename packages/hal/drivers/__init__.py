@@ -1,1 +1,1 @@
-"""Summit.OS HAL Drivers."""
+"""Heli.OS HAL Drivers."""

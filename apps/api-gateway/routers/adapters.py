@@ -1,5 +1,5 @@
 """
-Summit.OS Adapter Status Router
+Heli.OS Adapter Status Router
 ================================
 
 FastAPI router that surfaces adapter status to the operator console and
@@ -119,7 +119,7 @@ async def list_adapters():
 @router.get(
     "/types",
     summary="List supported adapter types",
-    response_description="Catalogue of adapter types that Summit.OS supports.",
+    response_description="Catalogue of adapter types that Heli.OS supports.",
 )
 async def list_adapter_types():
     """

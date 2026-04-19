@@ -1,5 +1,5 @@
 """
-Object Detection Pipeline for Summit.OS
+Object Detection Pipeline for Heli.OS
 
 Provides a unified interface for running object detection models.
 Supports:

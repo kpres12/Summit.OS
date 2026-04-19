@@ -1,5 +1,5 @@
 """
-routers/learning.py — CyberSynetic learning API for Summit.OS.
+routers/learning.py — CyberSynetic learning API for Heli.OS.
 
 Exposes the four learning loops to the console UI and external integrators.
 All endpoints are read-heavy; writes happen only via POST /learning/feedback.

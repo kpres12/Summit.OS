@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Comprehensive Demo Mission
+Heli.OS Comprehensive Demo Mission
 
 Demonstrates the full intelligence fabric flow:
 1. Publishes realistic observations (smoke/fire) via MQTT
@@ -43,7 +43,7 @@ class DemoMission:
         
     async def run_demo(self):
         """Run the complete demo mission."""
-        print("🔥 Summit.OS Demo Mission: Wildfire Detection & Response")
+        print("🔥 Heli.OS Demo Mission: Wildfire Detection & Response")
         print("=" * 60)
         print(f"Mission ID: {self.mission_id}")
         print(f"Fire Location: {self.fire_location['latitude']:.4f}, {self.fire_location['longitude']:.4f}")

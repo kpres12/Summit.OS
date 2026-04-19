@@ -1,5 +1,5 @@
 """
-Summit.OS — Modbus TCP Adapter
+Heli.OS — Modbus TCP Adapter
 ================================
 
 Connects to industrial sensors, PLCs, and SCADA systems via Modbus TCP.
@@ -28,7 +28,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.modbus")
+logger = logging.getLogger("heli.adapters.modbus")
 
 
 class ModbusAdapter(BaseAdapter):

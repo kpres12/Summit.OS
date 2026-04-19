@@ -1,5 +1,5 @@
 """
-Summit.OS — J1939 / CAN Bus Adapter
+Heli.OS — J1939 / CAN Bus Adapter
 =====================================
 
 Reads SAE J1939 messages from heavy vehicles and construction equipment
@@ -42,7 +42,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.j1939")
+logger = logging.getLogger("heli.adapters.j1939")
 
 try:
     import can

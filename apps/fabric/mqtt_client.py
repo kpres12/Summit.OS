@@ -1,4 +1,4 @@
-"""MQTT client for Summit.OS Data Fabric Service."""
+"""MQTT client for Heli.OS Data Fabric Service."""
 
 import asyncio
 import json

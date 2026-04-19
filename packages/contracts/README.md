@@ -1,4 +1,4 @@
-# Contracts (schemas) for Summit.OS
+# Contracts (schemas) for Heli.OS
 
 This package contains versioned JSON Schemas that define the structure of messages and REST payloads across the platform.
 

@@ -1,5 +1,5 @@
 """
-World Simulation for Summit.OS
+World Simulation for Heli.OS
 
 Provides a lightweight discrete-event simulation of:
 - Entity movement (constant velocity, waypoint following)

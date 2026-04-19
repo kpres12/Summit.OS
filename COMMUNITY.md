@@ -1,6 +1,6 @@
-# Summit.OS Community Edition
+# Heli.OS Community Edition
 
-Summit.OS is an open platform for autonomous systems coordination — free to use,
+Heli.OS is an open platform for autonomous systems coordination — free to use,
 self-host, fork, and build on. Think Linux for autonomous operations, or LatticeOS for civilians: the core OS
 is open, the ecosystem is yours to shape.
 
@@ -8,7 +8,7 @@ is open, the ecosystem is yours to shape.
 
 ## The Model
 
-Summit.OS follows the open-core model:
+Heli.OS follows the open-core model:
 
 | | Community | Enterprise |
 |---|---|---|
@@ -33,12 +33,12 @@ Summit.OS follows the open-core model:
 
 ## What You Can Build
 
-Summit.OS is designed to be a foundation, not a ceiling. Community edition is
+Heli.OS is designed to be a foundation, not a ceiling. Community edition is
 AGPL v3 — free to use, fork, and self-host. If you deploy it as a network service,
 the AGPL requires you to share your modifications. For proprietary SaaS or embedded
 products, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
-Examples of things people build on Summit.OS:
+Examples of things people build on Heli.OS:
 
 - **Wildfire response platforms** — custom alert ingestion, dispatch automation,
   crew coordination overlays
@@ -51,7 +51,7 @@ Examples of things people build on Summit.OS:
 - **Custom sensor adapters** — hardware integrations for specific sensors, radios,
   or data sources
 
-If you build something on Summit.OS, we'd love to know about it. Open a GitHub
+If you build something on Heli.OS, we'd love to know about it. Open a GitHub
 Discussion or reach out at kyle@branca.ai.
 
 ---
@@ -78,8 +78,8 @@ deployment configuration. They are fully implemented in the open source codebase
 ## Getting Started (Community)
 
 ```bash
-git clone https://github.com/BigMT-Ai/Summit.OS
-cd Summit.OS
+git clone https://github.com/BigMT-Ai/Heli.OS
+cd Heli.OS
 cp .env.example .env
 # Edit .env with your settings
 make dev
@@ -103,6 +103,6 @@ licensing, managed hosting, or custom deployment support.
 
 ## Contributing
 
-Summit.OS grows through community contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md)
+Heli.OS grows through community contributions. See [CONTRIBUTING.md](./CONTRIBUTING.md)
 for how to get involved — whether that's a new adapter, a bug fix, a new ML model,
 or documentation.

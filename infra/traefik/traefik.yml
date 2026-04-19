@@ -1,4 +1,4 @@
-# Traefik static configuration for Summit.OS
+# Traefik static configuration for Heli.OS
 # Provides HTTPS termination + automatic Let's Encrypt certificates.
 #
 # Usage:

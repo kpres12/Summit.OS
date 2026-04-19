@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.summit-os.local/detections.smoke.schema.json",
+  "$id": "https://schemas.heli-os.local/detections.smoke.schema.json",
   "title": "SmokeDetection",
   "type": "object",
   "properties": {

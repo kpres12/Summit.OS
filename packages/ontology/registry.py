@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology Registry
+Heli.OS Ontology Registry
 
 The single authoritative catalog of all ObjectTypes, LinkTypes, and ActionTypes.
 All definitions are registered at import time from packages/ontology/definitions/.
@@ -119,7 +119,7 @@ def get_registry() -> OntologyRegistry:
 
 
 def _bootstrap(registry: OntologyRegistry) -> None:
-    """Load all Summit.OS definitions into the registry."""
+    """Load all Heli.OS definitions into the registry."""
     from .definitions import register_all
 
     register_all(registry)

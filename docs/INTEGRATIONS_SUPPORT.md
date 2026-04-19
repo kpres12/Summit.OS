@@ -8,7 +8,7 @@ Upstreams (runtime dependencies)
 - ArduPilot (GPLv3) — optional, out-of-process. Fallback: PX4.
 - OpenCV (Apache-2.0) / PCL (BSD) — optional AI/3D libs. Fallback: disable models or use CPU-only paths.
 
-Summit.OS stance
+Heli.OS stance
 - Do not fork/ship proprietary versions of these. Integrate via adapters.
 - Keep GPL components out-of-process to avoid copyleft.
 

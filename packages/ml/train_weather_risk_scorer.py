@@ -1,5 +1,5 @@
 """
-Train the Summit.OS weather-adjusted risk scorer.
+Train the Heli.OS weather-adjusted risk scorer.
 
 Extends the base risk scorer (which uses class + confidence only) by incorporating
 real-time weather conditions into risk severity scoring.  A fire detection with
@@ -598,7 +598,7 @@ def train(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("Summit.OS — Weather Risk Scorer Training")
+    print("Heli.OS — Weather Risk Scorer Training")
     print("=" * 60)
     print(f"  Samples:     {n_samples:,}")
     print(f"  Features:    {WEATHER_FEATURE_DIM} (15 base + 6 weather)")
@@ -831,7 +831,7 @@ def train(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS weather-adjusted risk scorer"
+        description="Train Heli.OS weather-adjusted risk scorer"
     )
     parser.add_argument(
         "--samples",

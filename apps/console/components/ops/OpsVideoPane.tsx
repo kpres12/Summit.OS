@@ -3,7 +3,7 @@
 /**
  * OpsVideoPane — Live HLS video overlay for the OPS map view.
  *
- * Plays an HLS stream (served by Summit.OS fusion/hls_router) using hls.js
+ * Plays an HLS stream (served by Heli.OS fusion/hls_router) using hls.js
  * with a graceful fallback to native HLS on Safari.
  *
  * Props:

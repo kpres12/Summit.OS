@@ -1,8 +1,8 @@
 """
-Summit.OS — Tesla Fleet API Adapter
+Heli.OS — Tesla Fleet API Adapter
 =====================================
 
-Integrates Tesla vehicles into Summit.OS via the official Tesla Fleet API.
+Integrates Tesla vehicles into Heli.OS via the official Tesla Fleet API.
 Tesla publishes and maintains this API — it is fully open and documented.
 
 Use cases
@@ -39,7 +39,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.tesla")
+logger = logging.getLogger("heli.adapters.tesla")
 
 try:
     import teslapy
@@ -63,7 +63,7 @@ class TeslaAdapter(BaseAdapter):
     """
     Polls Tesla Fleet API and emits GROUND_VEHICLE observations.
 
-    Each vehicle in the account becomes a separate entity in Summit.OS.
+    Each vehicle in the account becomes a separate entity in Heli.OS.
     Rate-limit aware: Tesla allows ~200 API calls/day per vehicle when sleeping.
     Set poll_interval_seconds >= 30 to stay well under limits.
     """

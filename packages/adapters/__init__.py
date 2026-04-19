@@ -1,1 +1,1 @@
-# Summit.OS Adapter Framework
+# Heli.OS Adapter Framework

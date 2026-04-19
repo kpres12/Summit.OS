@@ -1,5 +1,5 @@
 """
-KOFA — Summit.OS autonomous dispatch engine.
+KOFA — Heli.OS autonomous dispatch engine.
 
 MissionPlanner — deterministic dispatch with trained ML upgrade path.
 

@@ -1,7 +1,7 @@
 """
-AdapterManifest — the contract an adapter declares to Summit.OS.
+AdapterManifest — the contract an adapter declares to Heli.OS.
 
-Every adapter must declare a manifest. Summit.OS uses it to:
+Every adapter must declare a manifest. Heli.OS uses it to:
 - Validate the adapter before it's allowed to publish
 - Display capabilities in the DEV view Adapter Registry
 - Enforce permission boundaries (a READ-only adapter cannot send actuator commands)
@@ -56,7 +56,7 @@ class AdapterManifest:
     """
     Declares what an adapter is and what it can do.
 
-    This is the contract between an adapter and Summit.OS.
+    This is the contract between an adapter and Heli.OS.
     The platform refuses to load an adapter without a valid manifest.
     """
 
@@ -82,12 +82,12 @@ class AdapterManifest:
     """Adapter author or organization."""
 
     min_summit_version: str = "1.0.0"
-    """Minimum Summit.OS version required."""
+    """Minimum Heli.OS version required."""
 
     required_env: List[str] = field(default_factory=list)
     """
     Environment variables this adapter requires.
-    Summit.OS will warn (not fail) if any are missing at startup.
+    Heli.OS will warn (not fail) if any are missing at startup.
     Example: ["MODBUS_HOST", "MODBUS_PORT"]
     """
 

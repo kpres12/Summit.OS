@@ -1,10 +1,10 @@
 """
-Summit.OS Device Certificate Authority
+Heli.OS Device Certificate Authority
 
 Issues per-device X.509 certificates so every physical device connecting
-to Summit.OS has a cryptographic identity — not just a network address.
+to Heli.OS has a cryptographic identity — not just a network address.
 
-When a Modbus PLC or MAVLink drone registers with Summit.OS, it receives
+When a Modbus PLC or MAVLink drone registers with Heli.OS, it receives
 a unique certificate signed by the Summit CA. All subsequent connections
 carry that certificate. If a device is compromised, its cert is revoked
 without touching anything else.
@@ -65,7 +65,7 @@ class DeviceCert:
 
 class DeviceCA:
     """
-    Self-signed Certificate Authority for Summit.OS device identity.
+    Self-signed Certificate Authority for Heli.OS device identity.
 
     In production, replace the CA key storage with Vault PKI secrets engine.
     Vault PKI provides automatic rotation, CRL, and OCSP — this implementation
@@ -129,8 +129,8 @@ class DeviceCA:
         subject = issuer = x509.Name(
             [
                 x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
-                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Summit.OS"),
-                x509.NameAttribute(NameOID.COMMON_NAME, "Summit.OS Device CA"),
+                x509.NameAttribute(NameOID.ORGANIZATION_NAME, "Heli.OS"),
+                x509.NameAttribute(NameOID.COMMON_NAME, "Heli.OS Device CA"),
             ]
         )
 
@@ -206,7 +206,7 @@ class DeviceCA:
                 [
                     x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
                     x509.NameAttribute(
-                        NameOID.ORGANIZATION_NAME, org_id or "Summit.OS"
+                        NameOID.ORGANIZATION_NAME, org_id or "Heli.OS"
                     ),
                     x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, device_type),
                     x509.NameAttribute(NameOID.COMMON_NAME, device_id),

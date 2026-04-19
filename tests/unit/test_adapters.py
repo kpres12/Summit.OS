@@ -1,5 +1,5 @@
 """
-Unit tests for Summit.OS adapter simulation mode.
+Unit tests for Heli.OS adapter simulation mode.
 
 Tests exercise entity-building logic and manifest validation without
 requiring hardware, live network connections, or hardware-specific

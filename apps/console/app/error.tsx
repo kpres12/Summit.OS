@@ -10,7 +10,7 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[Summit.OS] Route error:', error);
+    console.error('[Heli.OS] Route error:', error);
   }, [error]);
 
   return (

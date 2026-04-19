@@ -1,5 +1,5 @@
 """
-Train the Summit.OS risk level scorer.
+Train the Heli.OS risk level scorer.
 
 Outputs:
   packages/ml/models/risk_scorer.onnx

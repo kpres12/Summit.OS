@@ -1,4 +1,4 @@
-# Summit.OS
+# Heli.OS
 
 > **Open source autonomous coordination for the physical world.**
 > The operational platform for wildfire response, search & rescue, disaster coordination, and commercial UAV fleets.
@@ -12,7 +12,7 @@
 
 ## What it does
 
-At **14:33 on a Tuesday**, a camera on a ridge detects smoke. Here's what Summit.OS does in the next 90 seconds — with no human touching a keyboard:
+At **14:33 on a Tuesday**, a camera on a ridge detects smoke. Here's what Heli.OS does in the next 90 seconds — with no human touching a keyboard:
 
 1. **Fusion** receives the detection (`smoke, confidence 0.91, lat 34.12, lon -118.34`)
 2. **Intelligence** scores it CRITICAL, dispatches the nearest available UAV to SURVEY — automatically, using a trained ML model, no LLM required
@@ -24,13 +24,13 @@ The operator's job: watch, verify, decide whether to dispatch ground resources. 
 
 ---
 
-## Why Summit.OS
+## Why Heli.OS
 
 The coordination software that does this well — Anduril's LatticeOS, Shield AI's platform — is closed-source, defense-export-controlled, and costs millions per year. It is not available to a county fire department, a maritime SAR team, an NGO running conservation drones, or a startup building inspection UAVs.
 
-Summit.OS is the open-source alternative. Same architecture. Built for the civilian world.
+Heli.OS is the open-source alternative. Same architecture. Built for the civilian world.
 
-|  | Summit.OS | LatticeOS / Defense platforms |
+|  | Heli.OS | LatticeOS / Defense platforms |
 |---|---|---|
 | License | AGPL v3 | Proprietary |
 | Access | Anyone | Defense contractors |
@@ -98,7 +98,7 @@ The more you use it, the better it gets at your specific deployment context.
 
 **30-minute device integration** — One base class, two methods:
 ```python
-class MyDrone(SummitAdapter):
+class MyDrone(HeliAdapter):
     async def get_telemetry(self): ...
     async def handle_command(self, cmd): ...
 ```
@@ -108,7 +108,7 @@ class MyDrone(SummitAdapter):
 > [!WARNING]
 > **Security defaults are open for local development.** Out of the box, authentication is disabled (`OIDC_ENFORCE=false`, `RBAC_ENFORCE=false`, `API_KEY_ENFORCE=false`) and PII field encryption is off. This is intentional for local dev — running `docker compose up` should just work without configuring an identity provider.
 >
-> **Before connecting Summit.OS to any real network, real hardware, or real incident data**, read the [Production Hardening](#production-hardening) section below. The API Gateway will print a visible warning banner at startup until you set these values.
+> **Before connecting Heli.OS to any real network, real hardware, or real incident data**, read the [Production Hardening](#production-hardening) section below. The API Gateway will print a visible warning banner at startup until you set these values.
 
 ---
 
@@ -118,8 +118,8 @@ class MyDrone(SummitAdapter):
 
 ```bash
 # 1. Clone
-git clone https://github.com/BigMT-Ai/Summit.OS.git
-cd Summit.OS
+git clone https://github.com/BigMT-Ai/Heli.OS.git
+cd Heli.OS
 
 # 2. Configure (defaults work for local dev)
 cp .env.example .env
@@ -165,7 +165,7 @@ The system works fully without this. The LLM adds natural-language mission reaso
 
 ## How the AI works
 
-Summit.OS ships with two trained ML models in `packages/ml/models/`:
+Heli.OS ships with two trained ML models in `packages/ml/models/`:
 
 | Model | What it does | Size | Latency |
 |---|---|---|---|
@@ -198,7 +198,7 @@ python packages/ml/download_real_data.py --years 2020 2021 2022 2023
 # Blend with your operator-approved mission history
 python packages/ml/train_mission_classifier.py \
   --real-csv packages/ml/data/real_combined.csv \
-  --real-data postgresql://summit:password@localhost:5432/summit_os
+  --real-data postgresql://heli:password@localhost:5432/heli_os
 
 # New .onnx files drop in place — no redeployment needed
 ```
@@ -253,7 +253,7 @@ infra/
 
 ## Connecting hardware
 
-Summit.OS ships with built-in adapters for:
+Heli.OS ships with built-in adapters for:
 - **DJI / MAVLink autopilots** — via `pymavlink` (set `TASKING_DIRECT_AUTOPILOT=true`)
 - **CoT/ATAK** — bidirectional UDP, multicast at 239.2.3.1:6969
 - **ONVIF cameras** — discovery + RTSP stream registration
@@ -261,7 +261,7 @@ Summit.OS ships with built-in adapters for:
 - **AIS vessels** — maritime vessel positions (simulation mode; plug in AISHub credentials for live data)
 - **CelesTrak** — satellite orbital positions
 
-Custom hardware: subclass `SummitAdapter` in `packages/adapters/`. See `examples/` for a complete template.
+Custom hardware: subclass `HeliAdapter` in `packages/adapters/`. See `examples/` for a complete template.
 
 ---
 
@@ -285,7 +285,7 @@ OLLAMA_MODEL=llama3.1
 **To enforce auth:**
 ```bash
 OIDC_ENFORCE=true
-OIDC_ISSUER=https://your-keycloak/realms/summit
+OIDC_ISSUER=https://your-keycloak/realms/heli
 API_KEY_ENFORCE=true
 RBAC_ENFORCE=true
 ```
@@ -340,9 +340,9 @@ Migration files are in `apps/fabric/alembic/versions/`. Every schema change need
 docker compose -f infra/docker/docker-compose.yml up --build -d
 ```
 
-**Cloud:** Any Kubernetes cluster. A Helm chart is available at `infra/helm/summit-os/`:
+**Cloud:** Any Kubernetes cluster. A Helm chart is available at `infra/helm/heli-os/`:
 ```bash
-helm install summit ./infra/helm/summit-os \
+helm install heli ./infra/helm/heli-os \
   --set secrets.postgresPassword=$(openssl rand -hex 32) \
   --set secrets.fabricJwtSecret=$(openssl rand -hex 32) \
   --set secrets.fieldEncryptionKey=$(openssl rand -base64 32)
@@ -355,16 +355,16 @@ helm install summit ./infra/helm/summit-os \
 ## Production Hardening
 
 > [!IMPORTANT]
-> The steps below are **required** before deploying Summit.OS to any environment where it handles real incident data or real hardware.
+> The steps below are **required** before deploying Heli.OS to any environment where it handles real incident data or real hardware.
 
 ### 1. Enable authentication
 
 ```bash
 # In your .env
 OIDC_ENFORCE=true
-OIDC_ISSUER=https://your-keycloak/realms/summit
-OIDC_AUDIENCE=summit-api
-OIDC_JWKS_URL=https://your-keycloak/realms/summit/protocol/openid-connect/certs
+OIDC_ISSUER=https://your-keycloak/realms/heli
+OIDC_AUDIENCE=heli-api
+OIDC_JWKS_URL=https://your-keycloak/realms/heli/protocol/openid-connect/certs
 RBAC_ENFORCE=true
 API_KEY_ENFORCE=true
 ```
@@ -444,7 +444,7 @@ Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the co
 
 ## Roadmap
 
-- [x] Helm chart for Kubernetes deployment — available at `infra/helm/summit-os/`
+- [x] Helm chart for Kubernetes deployment — available at `infra/helm/heli-os/`
 - [x] SITL testing environment — `docker compose -f infra/docker/docker-compose.sitl.yml up`
 - [x] Pre-built adapters: Skydio, Autel, Parrot — see `adapters/skydio/`, `adapters/autel/`, `adapters/parrot/`
 - [ ] USCG SAR data integration (SEARCH model improvement)
@@ -460,18 +460,18 @@ Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the co
 
 Issues, PRs, and adapter contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-If you're a fire department, SAR team, or drone operator running Summit.OS in the field — we want to hear from you. Your operational data (anonymized) is what makes the ML models better for everyone.
+If you're a fire department, SAR team, or drone operator running Heli.OS in the field — we want to hear from you. Your operational data (anonymized) is what makes the ML models better for everyone.
 
 ---
 
 ## Who built this
 
-Summit.OS is a [Branca.ai](https://branca.ai) project. Built for civilian operators, not defense contractors.
+Heli.OS is a [Branca.ai](https://branca.ai) project. Built for civilian operators, not defense contractors.
 
 ---
 
 ## License
 
-[AGPL v3](LICENSE) — free to self-host, fork, and build on. If you deploy Summit.OS as a network service, the AGPL requires you to make your source available to users. For proprietary deployments where that's not workable, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
+[AGPL v3](LICENSE) — free to self-host, fork, and build on. If you deploy Heli.OS as a network service, the AGPL requires you to make your source available to users. For proprietary deployments where that's not workable, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
 
 The trained ML models in `packages/ml/models/` are custom-built and trained by BigMT.ai and released under the same license.

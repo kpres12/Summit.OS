@@ -1,5 +1,5 @@
 """
-routers/audit.py — Audit log query router for Summit.OS API Gateway.
+routers/audit.py — Audit log query router for Heli.OS API Gateway.
 
 Endpoints (all under /v1/audit, all require ADMIN role):
   GET /v1/audit/logs              — paginated HTTP audit log query
@@ -326,7 +326,7 @@ async def query_service_logs(
     _role: Any = Depends(require_role("ADMIN")),
 ) -> ServiceLogPage:
     """
-    Query structured service logs from all Summit.OS backend services.
+    Query structured service logs from all Heli.OS backend services.
 
     Rows include stack traces (exc_text) for ERROR/CRITICAL entries and
     any extra fields the caller attached (e.g. query_duration_ms for slow queries).

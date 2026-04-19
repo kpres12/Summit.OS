@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.summit-os.local/mission.task.schema.json",
+  "$id": "https://schemas.heli-os.local/mission.task.schema.json",
   "title": "MissionTask",
   "type": "object",
   "properties": {

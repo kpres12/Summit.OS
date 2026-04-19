@@ -1,6 +1,6 @@
-# Summit.OS Simulation Guide (SITL/HITL)
+# Heli.OS Simulation Guide (SITL/HITL)
 
-This guide shows how to run a local simulation using PX4 or ArduPilot SITL and drive simulated drones with the Summit.OS Tasking service.
+This guide shows how to run a local simulation using PX4 or ArduPilot SITL and drive simulated drones with the Heli.OS Tasking service.
 
 Prerequisites
 - MacOS or Linux
@@ -32,7 +32,7 @@ Start a SITL instance
      sim_vehicle.py -v ArduCopter -f quad --console --map
    - By default, MAVLink is typically available on udp:127.0.0.1:14550 (check console output)
 
-Run the Summit.OS sim executor
+Run the Heli.OS sim executor
 - One-liner (uses defaults shown):
   make sim
 

@@ -1,4 +1,4 @@
-"""Threat assessment framework for Summit.OS."""
+"""Threat assessment framework for Heli.OS."""
 
 from .base import (
     ThreatLevel,

@@ -1,5 +1,5 @@
 """
-Enhanced Offline Operation Manager for Summit.OS
+Enhanced Offline Operation Manager for Heli.OS
 
 Provides robust offline capabilities with local AI inference,
 mission execution, and data synchronization for FireWatch towers and FireFlies.
@@ -92,7 +92,7 @@ class OfflineMission:
 
 class OfflineDataManager:
     """
-    Manages offline data storage and synchronization for Summit.OS edge devices.
+    Manages offline data storage and synchronization for Heli.OS edge devices.
 
     Provides local SQLite storage, compression, and conflict resolution.
     """
@@ -597,7 +597,7 @@ class OfflineMissionManager:
 
 class OfflineManager:
     """
-    Main offline operation manager for Summit.OS edge devices.
+    Main offline operation manager for Heli.OS edge devices.
 
     Coordinates data storage, mission execution, and synchronization.
     Uses CRDT-based conflict resolution for entity state when available,
@@ -689,7 +689,7 @@ class OfflineManager:
         return await self.mission_manager.store_mission(mission)
 
     async def check_connection(self) -> bool:
-        """Check if connection to Summit.OS is available"""
+        """Check if connection to Heli.OS is available"""
         if not self.summit_client:
             return False
 
@@ -756,7 +756,7 @@ class OfflineManager:
                 await asyncio.sleep(30)
 
     async def _sync_pending_messages(self):
-        """Sync pending messages to Summit.OS. Uses CRDT merge for entity state."""
+        """Sync pending messages to Heli.OS. Uses CRDT merge for entity state."""
         try:
             # First: merge any CRDT-buffered entity states
             if self.entity_crdt and self.summit_client:
@@ -777,7 +777,7 @@ class OfflineManager:
 
             for message in pending_messages:
                 try:
-                    # Send message to Summit.OS
+                    # Send message to Heli.OS
                     if message.message_type == "telemetry":
                         await self.summit_client.publish_telemetry(message.data)
                     elif message.message_type == "alert":

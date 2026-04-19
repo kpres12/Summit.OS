@@ -1,5 +1,5 @@
 """
-Extended Kalman Filter (EKF) for Summit.OS Track Fusion
+Extended Kalman Filter (EKF) for Heli.OS Track Fusion
 
 State vector x = [lat, lon, alt, vn, ve, vd]  (6-state)
   - lat, lon in degrees

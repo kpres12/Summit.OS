@@ -1,5 +1,5 @@
 # Change Management Procedure
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 
@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-This procedure governs how changes to Summit.OS software, infrastructure, and configuration are proposed, reviewed, approved, deployed, and rolled back. It ensures that changes are traceable, reviewed for security impact, and reversible.
+This procedure governs how changes to Heli.OS software, infrastructure, and configuration are proposed, reviewed, approved, deployed, and rolled back. It ensures that changes are traceable, reviewed for security impact, and reversible.
 
 ---
 
@@ -40,7 +40,7 @@ Applies to all changes to:
 ### 4.1 Development
 
 1. Create feature branch from `main` using naming convention: `feat/<description>`, `fix/<description>`, `sec/<description>`
-2. Write code following Summit.OS secure coding standards:
+2. Write code following Heli.OS secure coding standards:
    - No hardcoded secrets; use Vault / `get_secret()`
    - All external inputs sanitized before use
    - SQL via parameterized queries (asyncpg `$N` or SQLAlchemy ORM); never string concatenation

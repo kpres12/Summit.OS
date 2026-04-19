@@ -1,5 +1,5 @@
 """
-Summit.OS — Generic Serial Adapter
+Heli.OS — Generic Serial Adapter
 =====================================
 
 Connects to any device over RS-232 or RS-485 serial and emits observations
@@ -42,7 +42,7 @@ parser          : str   — "json" | "csv" | "regex" (default "json")
 csv_fields      : list  — ordered field names for CSV parser
 regex_pattern   : str   — regex with named groups for regex parser
 entity_id       : str   — fixed entity ID for this device
-entity_type     : str   — Summit.OS entity type (default SERIAL_DEVICE)
+entity_type     : str   — Heli.OS entity type (default SERIAL_DEVICE)
 entity_lat      : float — static latitude (if device doesn't report position)
 entity_lon      : float — static longitude
 """
@@ -57,7 +57,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.serial")
+logger = logging.getLogger("heli.adapters.serial")
 
 try:
     import serial
@@ -70,7 +70,7 @@ except ImportError:
 
 class SerialAdapter(BaseAdapter):
     """
-    Generic serial adapter. Parses responses into Summit.OS observations.
+    Generic serial adapter. Parses responses into Heli.OS observations.
     """
 
     adapter_type = "serial"

@@ -1,6 +1,6 @@
-# Summit.OS ↔ Sentinel — Single Integration Standard (v1.1)
+# Heli.OS ↔ Sentinel — Single Integration Standard (v1.1)
 
-You are in the **Summit.OS** repo. Do NOT change repo structure.
+You are in the **Heli.OS** repo. Do NOT change repo structure.
 Enforce ONE interface only:
 
 - **HTTP REST (v1)** at `/api/v1`
@@ -84,7 +84,7 @@ Base env for clients: `SUMMIT_API_URL` (e.g., `http://localhost:8000/api`)
   "file_size_mb": 45.2,
   "resolution": "1920x1080",
   "fps": 30,
-  "url": "https://api.summit-os.bigmt.ai/v1/video/recordings/VID-001/download"
+  "url": "https://api.heli-os.bigmt.ai/v1/video/recordings/VID-001/download"
 }
 
 // DroneStatus
@@ -161,7 +161,7 @@ LWT: devices/{id}/status → "offline".
 
 ## 5) Acceptance (Contract Tests)
 
-Sentinel must, against a vanilla Summit.OS dev instance:
+Sentinel must, against a vanilla Heli.OS dev instance:
 - Health: GET /api/v1/system/health → "ok"
 - Alerts list renders; POST /api/v1/alerts/{id}/ack flips acknowledged
 - Active tasks render; POST /api/v1/task/assign adds a task and emits on missions/updates

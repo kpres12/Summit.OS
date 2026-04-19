@@ -1,8 +1,8 @@
-# Summit.OS Architecture
+# Heli.OS Architecture
 
 ## Overview
 
-Summit.OS is an open-source autonomous systems coordination platform. It is the **integration and coordination layer** that sits between your existing signals and the missions you need to run.
+Heli.OS is an open-source autonomous systems coordination platform. It is the **integration and coordination layer** that sits between your existing signals and the missions you need to run.
 
 The core loop is simple:
 
@@ -10,17 +10,17 @@ The core loop is simple:
 ANY SIGNAL → world model → operator builds mission → coordinated execution
 ```
 
-Summit.OS does not build drones, sensors, cameras, or robots. It connects to the ones you already have — or the ones your customers already have — and makes them work together. Every new adapter added to the platform extends what operators can see, understand, and act on.
+Heli.OS does not build drones, sensors, cameras, or robots. It connects to the ones you already have — or the ones your customers already have — and makes them work together. Every new adapter added to the platform extends what operators can see, understand, and act on.
 
 **Who it's for:** operators, incident commanders, fleet managers, emergency responders, and developers building on top of real-time sensor data. Any domain where humans need to coordinate autonomous or semi-autonomous systems in the physical world.
 
-**What makes it different:** You bring your own hardware. Summit.OS provides the fabric — signal ingestion, sensor fusion, world model, mission framework, and operator interface — as a unified open platform anyone can deploy, extend, and build on top of.
+**What makes it different:** You bring your own hardware. Heli.OS provides the fabric — signal ingestion, sensor fusion, world model, mission framework, and operator interface — as a unified open platform anyone can deploy, extend, and build on top of.
 
 ## System Architecture
 
 ### Core Principles
 
-1. **Connect Anything**: Standardized adapter framework — if it emits a signal, Summit.OS can ingest it
+1. **Connect Anything**: Standardized adapter framework — if it emits a signal, Heli.OS can ingest it
 2. **One World Model**: All signals fused into a single, real-time operational picture regardless of source
 3. **Mission-First**: Operators build and execute missions on top of live data — not the other way around
 4. **Human-in-the-Loop**: Autonomous coordination with operator authority at every decision point
@@ -166,7 +166,7 @@ Any Signal Source
   (drone telemetry, camera, ADS-B, weather, IoT sensor, webhook, NMEA GPS, ...)
       │
       ▼
-  Adapter Layer  ─── normalizes to Summit.OS observation schema
+  Adapter Layer  ─── normalizes to Heli.OS observation schema
       │
       ▼
   Data Fabric  ─── MQTT + Redis Streams
@@ -270,7 +270,7 @@ make dev  # Full local development stack
 
 ## Signal Integrations (Adapters)
 
-Adapters are the growth engine of Summit.OS. Each adapter connects a signal source to the platform. Adding a new adapter makes the platform more valuable for every existing deployment.
+Adapters are the growth engine of Heli.OS. Each adapter connects a signal source to the platform. Adding a new adapter makes the platform more valuable for every existing deployment.
 
 ### Built-in Adapters
 | Adapter | Protocol | Use Cases |

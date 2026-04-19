@@ -1,4 +1,4 @@
-# Contributing to Summit.OS
+# Contributing to Heli.OS
 
 Thank you for your interest in contributing. This guide covers setup, conventions, and the PR process.
 
@@ -6,7 +6,7 @@ Thank you for your interest in contributing. This guide covers setup, convention
 
 ```bash
 git clone <repo-url>
-cd Summit.OS
+cd Heli.OS
 make dev          # starts infrastructure + all services
 make health       # verify everything is up
 ```
@@ -85,13 +85,13 @@ make smoke
 
 ## Adding a New SDK Adapter
 
-Summit.OS uses a base adapter class. Any hardware or data source can be integrated in ~30 minutes.
+Heli.OS uses a base adapter class. Any hardware or data source can be integrated in ~30 minutes.
 
 ```python
 # packages/adapters/my_sensor.py
-from packages.sdk import SummitAdapter, AdapterManifest, EntityBuilder
+from packages.sdk import HeliAdapter, AdapterManifest, EntityBuilder
 
-class MySensorAdapter(SummitAdapter):
+class MySensorAdapter(HeliAdapter):
     async def get_telemetry(self):
         # Return current position, status, etc.
         return {"lat": ..., "lon": ..., "alt": ...}
@@ -101,7 +101,7 @@ class MySensorAdapter(SummitAdapter):
         pass
 ```
 
-1. Subclass `SummitAdapter` in `packages/adapters/` or your own repo
+1. Subclass `HeliAdapter` in `packages/adapters/` or your own repo
 2. Implement `get_telemetry()` and `handle_command()`
 3. Register via `AdapterRegistry.add()` or `adapters.json` config
 4. Test with `python -m pytest packages/adapters/tests/`
@@ -110,7 +110,7 @@ See `docs/INTEGRATION_GUIDE.md` and `examples/quickstart_adapter.py` for a compl
 
 ## Database Migrations
 
-Summit.OS uses [Alembic](https://alembic.sqlalchemy.org/) for schema migrations, wired to the Fabric service.
+Heli.OS uses [Alembic](https://alembic.sqlalchemy.org/) for schema migrations, wired to the Fabric service.
 
 ```bash
 # Apply all pending migrations (fresh install or upgrade)
@@ -127,7 +127,7 @@ Migration files live in `apps/fabric/alembic/versions/`. To create a new migrati
 
 ```bash
 cd apps/fabric
-POSTGRES_URL=postgresql://summit:summit_password@localhost:5433/summit_os \
+POSTGRES_URL=postgresql://heli:summit_password@localhost:5433/heli_os \
   python -m alembic revision --autogenerate -m "describe your change"
 ```
 
@@ -147,7 +147,7 @@ python packages/ml/download_real_data.py --years 2022 2023 2024
 # 2. Train — optionally blend in your operator-approved mission history from Postgres
 python packages/ml/train_mission_classifier.py \
   --real-csv packages/ml/data/real_combined.csv \
-  --real-data postgresql://summit:password@localhost:5432/summit_os
+  --real-data postgresql://heli:password@localhost:5432/heli_os
 
 # 3. New .onnx files drop into packages/ml/models/ automatically
 # 4. Inference picks them up without a restart (hot-swap supported)
@@ -157,7 +157,7 @@ To contribute improved base models back upstream, open a PR with the new `.onnx`
 
 ## Contributor License Agreement (CLA)
 
-All contributors must sign the Summit.OS CLA before their first pull request can be merged. The CLA grants the project maintainers the right to distribute your contributions under both the AGPL v3 (community edition) and commercial licenses (enterprise edition).
+All contributors must sign the Heli.OS CLA before their first pull request can be merged. The CLA grants the project maintainers the right to distribute your contributions under both the AGPL v3 (community edition) and commercial licenses (enterprise edition).
 
 **How it works:**
 1. Open a pull request

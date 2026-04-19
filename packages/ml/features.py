@@ -1,5 +1,5 @@
 """
-Feature extraction for Summit.OS ML models.
+Feature extraction for Heli.OS ML models.
 
 Shared between training and inference — the exact same function is called
 in both contexts so there is no train/serve skew.

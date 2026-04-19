@@ -9,7 +9,7 @@ Software: dump1090-fa, dump1090-mutability, or readsb
 
 This replaces the OpenSky adapter for offline/denied-environment operations.
 Every aircraft within ~200nm that has ADS-B OUT broadcasts its position
-on 1090MHz — Summit.OS picks it up directly from the air.
+on 1090MHz — Heli.OS picks it up directly from the air.
 
 What it provides:
   - ICAO hex code (unique aircraft ID)
@@ -51,7 +51,7 @@ Quick start:
   # Or run via Docker:
   docker run -d --device=/dev/bus/usb --net=host ghcr.io/flightaware/piaware
 
-  # Register in Summit.OS:
+  # Register in Heli.OS:
   {
     "adapter_id": "adsb-local",
     "adapter_type": "dump1090",
@@ -73,9 +73,9 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 from .base import BaseAdapter, AdapterConfig
 
-logger = logging.getLogger("summit.adapters.dump1090")
+logger = logging.getLogger("heli.adapters.dump1090")
 
-# dump1090 JSON field → Summit.OS field mapping
+# dump1090 JSON field → Heli.OS field mapping
 # aircraft.json format: https://github.com/flightaware/dump1090/blob/master/README-json.md
 _SQUAWK_EMERGENCY = {"7500", "7600", "7700"}  # hijack, radio fail, emergency
 
@@ -85,7 +85,7 @@ class Dump1090Adapter(BaseAdapter):
     Local ADS-B adapter via dump1090 or compatible software.
 
     Polls aircraft.json for current aircraft positions, converting each
-    aircraft into a Summit.OS AIRCRAFT entity observation.
+    aircraft into a Heli.OS AIRCRAFT entity observation.
 
     Works completely offline — data comes directly from RF signals in the air.
     Range: ~200nm (line of sight, terrain dependent).
@@ -194,7 +194,7 @@ class Dump1090Adapter(BaseAdapter):
     def _aircraft_to_observation(
         self, ac: Dict[str, Any], ts_iso: str
     ) -> Optional[dict]:
-        """Convert a dump1090 aircraft object to a Summit.OS observation."""
+        """Convert a dump1090 aircraft object to a Heli.OS observation."""
         hex_id = ac.get("hex", "").upper().strip("~")
         if not hex_id:
             return None
@@ -306,7 +306,7 @@ class Dump1090Adapter(BaseAdapter):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _category_to_classification(category: str) -> str:
-    """Map dump1090 ADS-B emitter category to Summit.OS classification."""
+    """Map dump1090 ADS-B emitter category to Heli.OS classification."""
     # ADS-B emitter categories: A0-A7, B0-B7, C0-C7, D0-D7
     if not category:
         return "UNKNOWN"

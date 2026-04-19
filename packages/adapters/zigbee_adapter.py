@@ -1,5 +1,5 @@
 """
-Summit.OS — Zigbee2MQTT Adapter
+Heli.OS — Zigbee2MQTT Adapter
 ==================================
 
 Ingests Zigbee sensor data via Zigbee2MQTT — the industry-standard open-source
@@ -9,11 +9,11 @@ Zigbee2MQTT supports 3,000+ devices from Aqara, IKEA, Philips Hue, Sonoff,
 Tuya, Xiaomi, and many others — motion sensors, door contacts, temperature
 probes, smoke detectors, water leak sensors, vibration sensors.
 
-Relevant for Summit.OS
+Relevant for Heli.OS
 -----------------------
 - Perimeter intrusion sensors (door/window/motion)
 - Environmental monitoring (temp, humidity, CO2, VOC)
-- Smoke / CO detectors → auto-alert on Summit.OS
+- Smoke / CO detectors → auto-alert on Heli.OS
 - Vibration sensors on critical infrastructure
 - Flood sensors in low-lying areas
 
@@ -21,7 +21,7 @@ Zigbee2MQTT publishes each device to: zigbee2mqtt/{friendly_name}
 
 Dependencies
 ------------
-    pip install paho-mqtt  (already a Summit.OS dependency)
+    pip install paho-mqtt  (already a Heli.OS dependency)
     Requires Zigbee2MQTT running separately: https://www.zigbee2mqtt.io
 
 Config extras
@@ -46,7 +46,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.zigbee")
+logger = logging.getLogger("heli.adapters.zigbee")
 
 try:
     import paho.mqtt.client as _mqtt

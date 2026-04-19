@@ -1,7 +1,7 @@
 """
-Summit.OS Data Fabric Service
+Heli.OS Data Fabric Service
 
-Real-time message bus and synchronization layer for Summit.OS.
+Real-time message bus and synchronization layer for Heli.OS.
 Handles MQTT, Redis Streams, and gRPC streaming for distributed intelligence.
 """
 
@@ -232,7 +232,7 @@ async def lifespan(app: FastAPI):
     settings = Settings()
 
     _log_capabilities()
-    logger.info("Starting Summit.OS Data Fabric Service")
+    logger.info("Starting Heli.OS Data Fabric Service")
 
     # Resolve sensitive secrets via secrets client (Vault → env var fallback)
     try:
@@ -256,7 +256,7 @@ async def lifespan(app: FastAPI):
     else:
         pg_url = os.getenv(
             "POSTGRES_URL",
-            "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os",
+            "postgresql+asyncpg://summit:summit_password@localhost:5432/heli_os",
         )
         if pg_url.startswith("postgresql://"):
             pg_url = pg_url.replace("postgresql://", "postgresql+asyncpg://", 1)
@@ -424,11 +424,11 @@ async def lifespan(app: FastAPI):
         await redis_client.disconnect()
     if engine:
         await engine.dispose()
-    logger.info("Shutting down Summit.OS Data Fabric Service")
+    logger.info("Shutting down Heli.OS Data Fabric Service")
 
 
 app = FastAPI(
-    title="Summit.OS Data Fabric",
+    title="Heli.OS Data Fabric",
     description="Real-time message bus and synchronization layer",
     version="1.1.0",
     lifespan=lifespan,
@@ -1642,7 +1642,7 @@ def _run_migrations():
         # Ensure env picks up the DB URL
         if not os.getenv("POSTGRES_URL"):
             os.environ["POSTGRES_URL"] = (
-                "postgresql://summit:summit_password@localhost:5432/summit_os"
+                "postgresql://heli:summit_password@localhost:5432/heli_os"
             )
         alembic_command.upgrade(cfg, "head")
         logger.info("Alembic migrations applied")

@@ -1,7 +1,7 @@
 """
 Plainview Intelligence Adapter
 
-Bridges Summit.OS Intelligence service to Plainview's domain modules:
+Bridges Heli.OS Intelligence service to Plainview's domain modules:
 - Consumes advisories from Intelligence service
 - Enriches with Plainview domain context
 - Forwards to Plainview API via HTTP/WebSocket
@@ -257,7 +257,7 @@ async def _advisory_processor():
 
 def _enrich_advisory(advisory: Advisory) -> PlainviewInsight:
     """
-    Enrich Summit.OS advisory with Plainview domain context.
+    Enrich Heli.OS advisory with Plainview domain context.
     Maps risk levels to Plainview modules (FlowIQ, ValveOps, PipelineGuard).
     """
     # Parse advisory message to extract domain context
@@ -335,7 +335,7 @@ async def _forward_to_plainview(insight: PlainviewInsight):
             "asset_id": insight.asset_id,
             "recommendations": insight.recommendations,
             "timestamp": insight.timestamp,
-            "source": "summit-os-intelligence",
+            "source": "heli-os-intelligence",
         }
 
         # Send to Plainview event endpoint (assuming it exists or will be added)
@@ -375,7 +375,7 @@ async def _broadcast_insight(insight: PlainviewInsight):
 
 async def _plainview_event_forwarder():
     """
-    Forward Plainview events back to Summit.OS via MQTT/Redis.
+    Forward Plainview events back to Heli.OS via MQTT/Redis.
     This creates bidirectional integration.
     """
     logger.info("Plainview event forwarder started")
@@ -383,7 +383,7 @@ async def _plainview_event_forwarder():
     while True:
         try:
             # This is a placeholder - would connect to Plainview's SSE /events endpoint
-            # and forward relevant events to Summit.OS MQTT topics
+            # and forward relevant events to Heli.OS MQTT topics
 
             # For now, just log and sleep
             await asyncio.sleep(10)

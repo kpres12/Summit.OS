@@ -1,5 +1,5 @@
 """
-Edge Inference Runtime for Summit.OS
+Edge Inference Runtime for Heli.OS
 
 Lightweight ONNX-based inference for edge devices (towers, drones, UGVs)
 that may be offline or bandwidth-constrained. Falls back to mock

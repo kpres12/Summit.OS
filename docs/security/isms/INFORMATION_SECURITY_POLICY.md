@@ -1,5 +1,5 @@
 # Information Security Policy
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Effective: 2026-03-21 | Review: Annually**
 **Owner: Head of Engineering**
@@ -8,20 +8,20 @@
 
 ## 1. Purpose
 
-This policy establishes the security principles and obligations that govern how Summit.OS is designed, operated, and accessed. It applies to the platform itself, all personnel who build or operate it, and all third parties with access to Summit.OS systems or data.
+This policy establishes the security principles and obligations that govern how Heli.OS is designed, operated, and accessed. It applies to the platform itself, all personnel who build or operate it, and all third parties with access to Heli.OS systems or data.
 
-Summit.OS is an autonomous systems coordination platform used in civilian operational contexts including disaster response, search and rescue, wildfire operations, and commercial UAV fleet management. The platform handles real-time telemetry, mission-critical tasking decisions, and operational data for its customers. Security failures can have direct physical consequences.
+Heli.OS is an autonomous systems coordination platform used in civilian operational contexts including disaster response, search and rescue, wildfire operations, and commercial UAV fleet management. The platform handles real-time telemetry, mission-critical tasking decisions, and operational data for its customers. Security failures can have direct physical consequences.
 
 ---
 
 ## 2. Scope
 
 This policy covers:
-- All Summit.OS software systems (API Gateway, Fabric, Fusion, Intelligence, Tasking, Console, adapters)
+- All Heli.OS software systems (API Gateway, Fabric, Fusion, Intelligence, Tasking, Console, adapters)
 - All infrastructure (cloud, containerized, edge deployments)
-- All data processed by Summit.OS (entity telemetry, mission data, operator actions, billing data)
+- All data processed by Heli.OS (entity telemetry, mission data, operator actions, billing data)
 - All personnel (employees, contractors, contributors)
-- All customer environments where Summit.OS is deployed
+- All customer environments where Heli.OS is deployed
 
 ---
 

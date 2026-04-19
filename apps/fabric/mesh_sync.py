@@ -1,7 +1,7 @@
 """
-Summit.OS Mesh Sync — prioritised WorldStore delta sync for degraded networks.
+Heli.OS Mesh Sync — prioritised WorldStore delta sync for degraded networks.
 
-Enables Summit.OS nodes to stay synchronised over contested or low-bandwidth
+Enables Heli.OS nodes to stay synchronised over contested or low-bandwidth
 links (BATMAN-adv mesh, satellite, LTE with 90% packet loss).
 
 Key design decisions:
@@ -39,7 +39,7 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any, Deque, Dict, List, Optional, Set
 
-logger = logging.getLogger("summit.fabric.mesh_sync")
+logger = logging.getLogger("heli.fabric.mesh_sync")
 
 MESH_NODE_ID = os.getenv("MESH_NODE_ID", socket.gethostname())
 MESH_SYNC_INTERVAL = float(os.getenv("MESH_SYNC_INTERVAL", "5"))
@@ -156,7 +156,7 @@ class BandwidthBucket:
 
 class MeshSync:
     """
-    Manages prioritised delta sync between Summit.OS mesh nodes.
+    Manages prioritised delta sync between Heli.OS mesh nodes.
 
     Plugs into the WorldStore via subscription callbacks — call
     `on_entity_update(entity)` whenever an entity changes locally.

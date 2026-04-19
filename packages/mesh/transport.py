@@ -1,5 +1,5 @@
 """
-Mesh Transport Layer for Summit.OS
+Mesh Transport Layer for Heli.OS
 
 Real asyncio UDP transport replacing mock/stub networking:
 - UDPTransport: asyncio DatagramProtocol for peer-to-peer messaging

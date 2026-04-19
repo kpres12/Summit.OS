@@ -1,13 +1,13 @@
 # Summit Sentinel Platform — Architecture Overview
 
-Unify Sentinel (sense) and Summit.OS (act) via a shared mission & data fabric. Keep subsystems independently deployable; expose one operator experience and canonical APIs/schemas.
+Unify Sentinel (sense) and Heli.OS (act) via a shared mission & data fabric. Keep subsystems independently deployable; expose one operator experience and canonical APIs/schemas.
 
 ## Diagram
 - Mermaid source: docs/platform/diagram.mmd
 
 ## Subsystems and Fabric
 - Sentinel (Sensors & Detection): multi-sensor ingest at edge → detection → events/track seeds.
-- Summit.OS (Mission & Autonomy): tasking, vehicle control, safety, payloads, swarm.
+- Heli.OS (Mission & Autonomy): tasking, vehicle control, safety, payloads, swarm.
 - Shared Fabric (the Platform): canonical object model, message bus, persistence, policy/ROE, APIs, operator UI, digital twin/simulation.
 
 ## Text Diagram (logical)
@@ -44,4 +44,4 @@ Located in docs/platform/schemas/*.json:
 - Autonomy: SIL/HIL, latency budgets, failover drills.
 
 ## Phasing
-1) Sentinel MVP → 2) Summit.OS baseline (human-in-loop) → 3) Integrated ops under strict ROE → 4) Swarm autonomy post-certification.
+1) Sentinel MVP → 2) Heli.OS baseline (human-in-loop) → 3) Integrated ops under strict ROE → 4) Swarm autonomy post-certification.

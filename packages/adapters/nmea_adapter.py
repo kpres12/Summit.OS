@@ -1,5 +1,5 @@
 """
-Summit.OS — NMEA 0183 GPS Adapter
+Heli.OS — NMEA 0183 GPS Adapter
 ===================================
 
 Connects to a GPS receiver via serial port or TCP socket, parses NMEA 0183
@@ -27,7 +27,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.nmea")
+logger = logging.getLogger("heli.adapters.nmea")
 
 
 class NMEAAdapter(BaseAdapter):

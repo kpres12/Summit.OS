@@ -1,7 +1,7 @@
 """
-Summit.OS OPC-UA Adapter
+Heli.OS OPC-UA Adapter
 
-Subscribes to an OPC-UA server and publishes node values as Summit.OS
+Subscribes to an OPC-UA server and publishes node values as Heli.OS
 ASSET Entities into the data fabric.
 
 OPC-UA is the modern industrial standard — GE, Honeywell, Siemens, ABB,

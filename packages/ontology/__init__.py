@@ -1,7 +1,7 @@
 """
-Summit.OS Ontology
+Heli.OS Ontology
 
-The semantic layer and operational backbone of Summit.OS.
+The semantic layer and operational backbone of Heli.OS.
 
 Equivalent in function to Palantir Foundry's Ontology:
   - Object Types:  canonical real-world entities (Asset, Mission, Alert, Incident, …)

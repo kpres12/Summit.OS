@@ -1,9 +1,9 @@
 """
-Summit.OS Skydio Adapter
+Heli.OS Skydio Adapter
 
 Connects to Skydio drones via the Skydio Cloud API (REST/WebSocket) or
 the on-vehicle UDP telemetry stream, and publishes real-time telemetry as
-Summit.OS TRACK entities into the data fabric.
+Heli.OS TRACK entities into the data fabric.
 
 Connection modes
 ----------------
@@ -58,7 +58,7 @@ _CLOUD_API_BASE = "https://api.skydio.com/api/v0"
 
 
 class SkydioAdapter(BaseAdapter):
-    """Publishes Skydio drone telemetry as Summit.OS TRACK entities.
+    """Publishes Skydio drone telemetry as Heli.OS TRACK entities.
 
     Supports Skydio X2D, X10, and Dock-based autonomous flight.
     Falls back to simulated telemetry if the SDK / credentials are unavailable.

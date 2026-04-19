@@ -1,5 +1,5 @@
 """
-Fire Detection and Analysis Models for Summit.OS
+Fire Detection and Analysis Models for Heli.OS
 
 Provides specialized AI models for fire detection, smoke analysis,
 and fire spread prediction for FireWatch towers and FireFly operations.

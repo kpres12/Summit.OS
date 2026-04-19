@@ -1,4 +1,4 @@
-// OIDC Authentication for Summit.OS Console
+// OIDC Authentication for Heli.OS Console
 
 export interface User {
   id: string;
@@ -18,7 +18,7 @@ export interface AuthConfig {
 
 // Default OIDC configuration from environment
 export const authConfig: AuthConfig = {
-  issuer: process.env.NEXT_PUBLIC_OIDC_ISSUER || 'https://auth.summit-os.local',
+  issuer: process.env.NEXT_PUBLIC_OIDC_ISSUER || 'https://auth.heli-os.local',
   clientId: process.env.NEXT_PUBLIC_OIDC_CLIENT_ID || 'summit-console',
   clientSecret: process.env.OIDC_CLIENT_SECRET,
   redirectUri: process.env.NEXT_PUBLIC_OIDC_REDIRECT_URI || 'http://localhost:3000/auth/callback',

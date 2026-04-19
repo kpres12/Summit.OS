@@ -133,7 +133,7 @@ async def _parse_claude(text: str, api_key: str) -> Optional[NlpParseResponse]:
     try:
         import httpx, json as _json
         system_prompt = (
-            "You are a mission planning assistant for Summit.OS, an autonomous systems coordination platform.\n"
+            "You are a mission planning assistant for Heli.OS, an autonomous systems coordination platform.\n"
             "Parse the operator's natural-language mission description and return structured JSON.\n\n"
             "Return ONLY a JSON object — no prose, no markdown:\n"
             '{\n'

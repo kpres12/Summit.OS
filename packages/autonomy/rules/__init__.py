@@ -1,4 +1,4 @@
-"""Summit.OS Rule Engine."""
+"""Heli.OS Rule Engine."""
 
 from packages.autonomy.rules.engine import (
     Rule,

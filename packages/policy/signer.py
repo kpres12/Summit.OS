@@ -1,7 +1,7 @@
 """
-Summit.OS Policy Signer
+Heli.OS Policy Signer
 
-Signs OPA .rego policy files with Ed25519 so Summit.OS can verify
+Signs OPA .rego policy files with Ed25519 so Heli.OS can verify
 that no policy has been tampered with before loading it.
 
 In a system that commands physical hardware, policy files are a critical
@@ -46,7 +46,7 @@ class PolicyVerificationError(Exception):
 
 class PolicySigner:
     """
-    Signs and verifies Summit.OS OPA policy files.
+    Signs and verifies Heli.OS OPA policy files.
 
     Uses Ed25519 (PyNaCl) — fast, modern, small keys (32 bytes).
     Falls back to a warning-only mode if PyNaCl is not installed.

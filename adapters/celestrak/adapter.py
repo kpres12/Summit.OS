@@ -1,9 +1,9 @@
 """
-Summit.OS CelesTrak Satellite Adapter
+Heli.OS CelesTrak Satellite Adapter
 
 Fetches Two-Line Element (TLE) sets from CelesTrak, propagates satellite
 positions to the current epoch using SGP4, and publishes each satellite
-as a Summit.OS TRACK entity into the data fabric via MQTT.
+as a Heli.OS TRACK entity into the data fabric via MQTT.
 
 Environment variables:
     CELESTRAK_ENABLED            - "true" to enable (default: "true")

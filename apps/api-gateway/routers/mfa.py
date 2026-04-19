@@ -1,5 +1,5 @@
 """
-Summit.OS MFA API Router
+Heli.OS MFA API Router
 
 Endpoints:
   POST /auth/mfa/totp/enroll/begin   — generate secret + QR code
@@ -210,7 +210,7 @@ class WebAuthnRegisterBeginRequest(BaseModel):
     """Body for /auth/mfa/webauthn/register/begin."""
 
     rp_id: str
-    rp_name: str = "Summit.OS"
+    rp_name: str = "Heli.OS"
 
 
 class WebAuthnRegisterCompleteRequest(BaseModel):

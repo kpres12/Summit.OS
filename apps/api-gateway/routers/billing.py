@@ -1,5 +1,5 @@
 """
-routers/billing.py — Billing and API key management router for Summit.OS api-gateway.
+routers/billing.py — Billing and API key management router for Heli.OS api-gateway.
 
 Endpoints (all under /v1/billing):
   POST /v1/billing/keys               — generate a new API key for an org
@@ -474,16 +474,16 @@ async def stripe_webhook(
 _POLAR_PRODUCT_TIER: dict[str, str] = {
     # Pro
     "pro": "pro",
-    "summit.os pro": "pro",
+    "heli.os pro": "pro",
     # Organization
     "org": "org",
     "organization": "org",
-    "summit.os organization": "org",
+    "heli.os organization": "org",
     # Enterprise
     "enterprise": "enterprise",
     "enterprise+": "enterprise",
-    "summit.os enterprise": "enterprise",
-    "summit.os enterprise+": "enterprise",
+    "heli.os enterprise": "enterprise",
+    "heli.os enterprise+": "enterprise",
 }
 
 # Polar product ID env var names (set after creating products in the Polar dashboard)

@@ -1,4 +1,4 @@
-# Summit.OS SDK — Quickstart
+# Heli.OS SDK — Quickstart
 
 ## Install
 
@@ -111,7 +111,7 @@ feed.push_track(
     domain="AIR", classification="CIVILIAN_AIRCRAFT",
 )
 
-# Flush buffered tracks to Summit.OS
+# Flush buffered tracks to Heli.OS
 await feed.flush()
 await feed.stop()
 ```

@@ -1,5 +1,5 @@
 """
-Modality Adapters — Summit.OS Fusion
+Modality Adapters — Heli.OS Fusion
 
 Normalizes raw observations from different sensor modalities into a common
 TrackDescriptor for cross-modal association. Each adapter extracts the features

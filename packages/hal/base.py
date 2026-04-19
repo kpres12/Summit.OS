@@ -1,5 +1,5 @@
 """
-Hardware Abstraction Layer (HAL) for Summit.OS
+Hardware Abstraction Layer (HAL) for Heli.OS
 
 Defines abstract interfaces for hardware interaction:
 - Vehicle: movement, navigation, status

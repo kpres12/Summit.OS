@@ -1,5 +1,5 @@
 """
-Sensor Frame Signing — Summit.OS Security
+Sensor Frame Signing — Heli.OS Security
 
 Each sensor adapter signs its observation frames with Ed25519 before publishing
 to MQTT. The fusion service verifies signatures before accepting data into the

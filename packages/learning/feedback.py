@@ -1,5 +1,5 @@
 """
-feedback.py — Core feedback event schema and collection for Summit.OS CyberSynetic engine.
+feedback.py — Core feedback event schema and collection for Heli.OS CyberSynetic engine.
 
 Every operator action is a learning signal. This module defines the canonical
 event schema and the store that persists all feedback for the learning loops.

@@ -75,6 +75,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
   const typeColor = entityTypeColor(entity.entity_type);
   const shortId = entity.entity_id.slice(0, 12);
   const displayName = entity.callsign || shortId;
+  const controllable = entity.properties?.controllable !== false;
 
   const handleDispatch = () => {
     setPendingAction({
@@ -165,22 +166,36 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         className="flex-none px-4 py-3"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <button
-          onClick={handleDispatch}
-          disabled={dispatched}
-          aria-label={dispatched ? `Task assigned to ${displayName}` : `Assign task to ${displayName}`}
-          className="w-full py-3 text-sm font-bold tracking-[0.2em] transition-all"
-          style={{
-            fontFamily: 'var(--font-ibm-plex-mono), monospace',
-            color: 'var(--background)',
-            background: dispatched ? 'var(--accent-dim)' : 'var(--accent)',
-            border: 'none',
-            cursor: dispatched ? 'default' : 'pointer',
-            letterSpacing: '0.2em',
-          }}
-        >
-          {dispatched ? 'ASSIGNED' : 'ASSIGN TASK'}
-        </button>
+        {controllable ? (
+          <button
+            onClick={handleDispatch}
+            disabled={dispatched}
+            aria-label={dispatched ? `Task assigned to ${displayName}` : `Assign task to ${displayName}`}
+            className="w-full py-3 text-sm font-bold tracking-[0.2em] transition-all"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'var(--background)',
+              background: dispatched ? 'var(--accent-dim)' : 'var(--accent)',
+              border: 'none',
+              cursor: dispatched ? 'default' : 'pointer',
+              letterSpacing: '0.2em',
+            }}
+          >
+            {dispatched ? 'ASSIGNED' : 'ASSIGN TASK'}
+          </button>
+        ) : (
+          <div
+            className="w-full py-3 text-sm font-bold tracking-[0.2em] text-center"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border)',
+              letterSpacing: '0.2em',
+            }}
+          >
+            OBSERVE ONLY
+          </div>
+        )}
       </div>
 
       {/* Scrollable content */}
@@ -329,6 +344,8 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         </div>
 
         {/* Manual Overrides */}
+        {controllable && (
+        <>
         <SectionHeader title="MANUAL OVERRIDES" />
         <div
           aria-live="polite"
@@ -456,6 +473,8 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
             </button>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
     </>

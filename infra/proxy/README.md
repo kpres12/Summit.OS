@@ -1,6 +1,6 @@
-# Summit.OS mTLS Configuration
+# Heli.OS mTLS Configuration
 
-This directory contains mTLS (mutual TLS) proxy configuration for securing Summit.OS services with client certificate authentication and organization-level multi-tenancy.
+This directory contains mTLS (mutual TLS) proxy configuration for securing Heli.OS services with client certificate authentication and organization-level multi-tenancy.
 
 ## Overview
 
@@ -80,7 +80,7 @@ When mTLS is enabled, services are available on these HTTPS ports:
 Client certificates MUST include the `OU` field in the Distinguished Name (DN):
 
 ```
-/C=US/ST=CA/L=SF/O=Summit.OS/OU=org1/CN=client-org1
+/C=US/ST=CA/L=SF/O=Heli.OS/OU=org1/CN=client-org1
                                ^^^^^^
                                This becomes org_id
 ```
@@ -121,7 +121,7 @@ cd infra/proxy/certs
 # Generate key and certificate signing request
 openssl genrsa -out client-org3.key 2048
 openssl req -new -key client-org3.key -out client-org3.csr \
-  -subj "/C=US/ST=CA/L=SF/O=Summit.OS/OU=org3/CN=client-org3"
+  -subj "/C=US/ST=CA/L=SF/O=Heli.OS/OU=org3/CN=client-org3"
 
 # Sign with CA
 openssl x509 -req -in client-org3.csr -CA ca.crt -CAkey ca.key \

@@ -1,5 +1,5 @@
 """
-engine.py — CyberSynetic learning engine for Summit.OS.
+engine.py — CyberSynetic learning engine for Heli.OS.
 
 This is the single entry point for the rest of the system. Every operator
 action flows through process_feedback(); every recommendation request comes
@@ -46,12 +46,12 @@ _ALERT_OUTCOME_MAP: dict[FeedbackEventType, str] = {
 
 class CyberSyneticEngine:
     """
-    The learning and adaptation engine for Summit.OS.
+    The learning and adaptation engine for Heli.OS.
 
     Receives feedback events and routes them to the appropriate learning models.
     Provides a unified API for recommendations.
 
-    This is what makes Summit.OS self-improving: every operator action feeds
+    This is what makes Heli.OS self-improving: every operator action feeds
     back into the models, making the next recommendation slightly better than
     the last.
     """

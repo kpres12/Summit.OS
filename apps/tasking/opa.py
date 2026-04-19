@@ -1,5 +1,5 @@
 """
-OPA Policy Engine Client for Summit.OS Tasking
+OPA Policy Engine Client for Heli.OS Tasking
 
 Fail-closed by default: if OPA is unreachable, deny the action.
 All policy evaluations are audit-logged to a local SQLite database.
@@ -51,7 +51,7 @@ def _get_policy_signer():
 
 def verify_policies(policy_dir: str = _POLICY_DIR) -> bool:
     """
-    Verify all policy file signatures before Summit.OS loads them into OPA.
+    Verify all policy file signatures before Heli.OS loads them into OPA.
     Call this at service startup.
 
     Returns True if all policies are valid (or verification is unavailable).
@@ -319,7 +319,7 @@ class OPAClient:
         """
         Pre-flight safety check for physical actuator commands.
 
-        This is the last gate before Summit.OS sends a command to real
+        This is the last gate before Heli.OS sends a command to real
         hardware. If this returns allow=False, the command is rejected
         and the denial reason is surfaced to the operator.
 

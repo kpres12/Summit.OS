@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Mock Data Generator
+Heli.OS Mock Data Generator
 
 Generates realistic mock data for development and testing.
 Simulates wildfire detection scenario with multiple assets.
@@ -72,7 +72,7 @@ class MockDataGenerator:
         
     async def start(self):
         """Start generating mock data."""
-        print("🔥 Starting Summit.OS Mock Data Generator")
+        print("🔥 Starting Heli.OS Mock Data Generator")
         print("=" * 50)
         
         self.running = True

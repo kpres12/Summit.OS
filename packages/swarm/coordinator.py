@@ -1,5 +1,5 @@
 """
-Swarm Coordinator — Summit.OS
+Swarm Coordinator — Heli.OS
 
 Peer-to-peer swarm coordination without a central server.
 Leader election uses a scored vote:

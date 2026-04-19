@@ -1,4 +1,4 @@
-"""Telemetry data schemas for Summit.OS."""
+"""Telemetry data schemas for Heli.OS."""
 
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List

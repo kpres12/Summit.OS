@@ -1,5 +1,5 @@
 """
-Summit.OS Edge Agent
+Heli.OS Edge Agent
 
 Standalone process that runs on-asset (Raspberry Pi, Jetson Nano, etc.).
 Connects to the central Fabric when available, falls back to autonomous

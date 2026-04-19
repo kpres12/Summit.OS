@@ -1,4 +1,4 @@
-"""Redis client for Summit.OS Data Fabric Service."""
+"""Redis client for Heli.OS Data Fabric Service."""
 
 import asyncio
 import json

@@ -1,4 +1,4 @@
-"""Summit.OS Hardware Abstraction Layer."""
+"""Heli.OS Hardware Abstraction Layer."""
 
 from packages.hal.base import (
     HardwareState,

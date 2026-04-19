@@ -1,9 +1,9 @@
 """
-Summit.OS — MQTT Relay Adapter
+Heli.OS — MQTT Relay Adapter
 ================================
 
 Subscribes to topics on an external MQTT broker and relays observations into
-Summit.OS. Covers the IoT ecosystem — any device publishing MQTT becomes a
+Heli.OS. Covers the IoT ecosystem — any device publishing MQTT becomes a
 signal source.
 
 Dependencies
@@ -28,7 +28,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.mqtt_relay")
+logger = logging.getLogger("heli.adapters.mqtt_relay")
 
 _LAT_ALIASES = ("lat", "latitude", "y", "LAT", "LATITUDE")
 _LON_ALIASES = ("lon", "lng", "longitude", "x", "LON", "LNG", "LONGITUDE")

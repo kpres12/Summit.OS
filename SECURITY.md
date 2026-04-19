@@ -12,7 +12,7 @@
 **Do not open a public GitHub issue for security vulnerabilities.**
 
 Report security issues via:
-1. **GitHub Security Advisories (preferred):** [Security → Advisories → New draft](https://github.com/BigMT-Ai/Summit.OS/security/advisories/new)
+1. **GitHub Security Advisories (preferred):** [Security → Advisories → New draft](https://github.com/BigMT-Ai/Heli.OS/security/advisories/new)
 2. **Email:** kyle@branca.ai
 
 Please include:
@@ -25,12 +25,12 @@ We will acknowledge receipt within **48 hours** and aim to provide a resolution 
 
 ## Security Defaults
 
-Summit.OS ships with security controls **disabled by default** to simplify local development. Before deploying to any network-accessible environment, you must:
+Heli.OS ships with security controls **disabled by default** to simplify local development. Before deploying to any network-accessible environment, you must:
 
 ```bash
 # Enable authentication (OIDC + API key enforcement)
 OIDC_ENFORCE=true
-OIDC_ISSUER=https://your-keycloak/realms/summit
+OIDC_ISSUER=https://your-keycloak/realms/heli
 API_KEY_ENFORCE=true
 RBAC_ENFORCE=true
 
@@ -62,7 +62,7 @@ See `.env.example` and the README Configuration section for full details.
 
 ## Threat Model
 
-Summit.OS is designed for self-hosted deployment on trusted infrastructure (private cloud, on-premises, or air-gapped edge). It is not designed to be exposed directly to the public internet without a reverse proxy and authentication enforcement.
+Heli.OS is designed for self-hosted deployment on trusted infrastructure (private cloud, on-premises, or air-gapped edge). It is not designed to be exposed directly to the public internet without a reverse proxy and authentication enforcement.
 
 Key trust boundaries:
 - **API Gateway** is the single ingress point — all external traffic must go through it
@@ -70,7 +70,7 @@ Key trust boundaries:
 - **WebSocket endpoint** (`/ws/{org_id}`) requires a valid JWT when `OIDC_ENFORCE=true`
 - **OPA policies** in `infra/policy/` define role-based access for all mission operations
 
-Summit.OS operates autonomous physical systems. A compromised instance could:
+Heli.OS operates autonomous physical systems. A compromised instance could:
 - **Dispatch hardware** to incorrect locations
 - **Suppress alerts** that should reach operators
 - **Exfiltrate position data** of personnel and assets

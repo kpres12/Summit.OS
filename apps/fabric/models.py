@@ -1,4 +1,4 @@
-"""Data models for Summit.OS Data Fabric Service."""
+"""Data models for Heli.OS Data Fabric Service."""
 
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List

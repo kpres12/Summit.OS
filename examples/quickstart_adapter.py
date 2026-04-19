@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Quickstart Adapter Template
+Heli.OS Quickstart Adapter Template
 
 Copy this file, implement get_telemetry() and handle_command(),
 and your device will appear in the world model within 30 seconds.
@@ -13,17 +13,17 @@ Steps:
   5. Run: python my_adapter.py
 
 Your device will:
-  - Register with the Summit.OS gateway
+  - Register with the Heli.OS gateway
   - Publish heartbeats every 30s
   - Stream telemetry every 5s into the shared world model
   - Listen for commands on MQTT topics
 """
 import asyncio
 import random
-from summit_os.adapter import SummitAdapter
+from heli_os.adapter import HeliAdapter
 
 
-class MyDeviceAdapter(SummitAdapter):
+class MyDeviceAdapter(HeliAdapter):
     """
     Example adapter — replace with your real hardware interface.
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         # api_base="http://localhost:8000",
     )
 
-    print("Summit.OS Quickstart Adapter")
+    print("Heli.OS Quickstart Adapter")
     print(f"  Device: {adapter.device_id}")
     print(f"  Type:   {adapter.device_type}")
     print(f"  MQTT:   {adapter.mqtt_host}:{adapter.mqtt_port}")

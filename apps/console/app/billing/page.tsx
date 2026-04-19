@@ -134,7 +134,7 @@ export default function BillingPage() {
 
   async function handleUpgrade(tier: Tier) {
     if (tier === 'enterprise') {
-      window.location.href = 'mailto:sales@branca.ai?subject=Summit.OS%20Enterprise';
+      window.location.href = 'mailto:sales@branca.ai?subject=Heli.OS%20Enterprise';
       return;
     }
     if (!sub) return;
@@ -173,7 +173,7 @@ export default function BillingPage() {
       {/* Header */}
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         <div style={{ marginBottom: 8, color: '#4FC3F7', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-          Summit.OS
+          Heli.OS
         </div>
         <h1 style={{
           fontFamily: 'var(--font-orbitron), sans-serif',

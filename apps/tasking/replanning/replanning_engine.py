@@ -1,5 +1,5 @@
 """
-Replanning Engine — Summit.OS Tasking
+Replanning Engine — Heli.OS Tasking
 
 Consumes TriggerEvents from the TriggerMonitor queue and generates
 updated mission assignments. Strategy per trigger type:

@@ -1,5 +1,5 @@
 """
-Alert Escalation Service for Summit.OS
+Alert Escalation Service for Heli.OS
 
 Monitors active alerts. Any alert unacknowledged for longer than
 ESCALATION_UNACK_TIMEOUT_S is escalated:
@@ -138,7 +138,7 @@ class AlertEscalationService:
                 f"Time:        {payload['ts_iso']}\n"
             )
             message = (
-                f"From: Summit.OS <{self._config.escalation_from}>\n"
+                f"From: Heli.OS <{self._config.escalation_from}>\n"
                 f"To: {self._config.escalation_email}\n"
                 f"Subject: {subject}\n\n{body}"
             )

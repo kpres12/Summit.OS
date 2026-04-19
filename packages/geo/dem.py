@@ -1,5 +1,5 @@
 """
-Digital Elevation Model (DEM) Provider for Summit.OS
+Digital Elevation Model (DEM) Provider for Heli.OS
 
 Serves elevation lookups from SRTM .hgt tile files.
 SRTM1 (1 arc-second ≈ 30m resolution) and SRTM3 (3 arc-sec ≈ 90m) supported.

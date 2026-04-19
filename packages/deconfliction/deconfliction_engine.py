@@ -1,5 +1,5 @@
 """
-Deconfliction Engine — Summit.OS
+Deconfliction Engine — Heli.OS
 
 Detects 3D airspace conflicts between active assets and planned flight paths.
 Runs at 0.5s tick rate (asyncio task). Emits conflict alerts to MQTT

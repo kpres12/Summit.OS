@@ -1,9 +1,9 @@
 """
-Summit.OS CoT/ATAK Adapter
+Heli.OS CoT/ATAK Adapter
 
 Bidirectional Cursor on Target (CoT) integration for ATAK-equipped teams.
-Receives SA (situational awareness) CoT events and publishes them as Summit.OS
-entities. Also broadcasts Summit.OS entities back as CoT so ATAK clients see
+Receives SA (situational awareness) CoT events and publishes them as Heli.OS
+entities. Also broadcasts Heli.OS entities back as CoT so ATAK clients see
 the full operating picture.
 
 CoT is the universal protocol for first-responder interoperability:
@@ -43,7 +43,7 @@ from sdk import BaseAdapter, AdapterManifest, EntityBuilder, Protocol, Capabilit
 
 logger = logging.getLogger("summit.adapter.atak")
 
-# CoT type prefix → Summit.OS entity classification
+# CoT type prefix → Heli.OS entity classification
 _COT_TYPE_MAP = {
     "a-f": ("friendly", "active"),
     "a-h": ("hostile", "alert"),
@@ -62,7 +62,7 @@ _COT_HOW_DOMAIN = {
 
 
 def _parse_cot(xml_bytes: bytes) -> Optional[Dict[str, Any]]:
-    """Parse a CoT XML message into a Summit.OS observation dict. Returns None on failure."""
+    """Parse a CoT XML message into a Heli.OS observation dict. Returns None on failure."""
     try:
         root = ET.fromstring(xml_bytes.decode("utf-8", errors="replace"))
         if root.tag != "event":
@@ -128,7 +128,7 @@ def _parse_cot(xml_bytes: bytes) -> Optional[Dict[str, Any]]:
 
 
 def _build_cot(entity: Dict[str, Any], callsign_self: str) -> bytes:
-    """Build a minimal SA CoT XML event from a Summit.OS entity dict."""
+    """Build a minimal SA CoT XML event from a Heli.OS entity dict."""
     now  = datetime.now(timezone.utc)
     stale = (now + timedelta(seconds=60)).strftime("%Y-%m-%dT%H:%M:%S.0Z")
     now_s = now.strftime("%Y-%m-%dT%H:%M:%S.0Z")
@@ -148,7 +148,7 @@ def _build_cot(entity: Dict[str, Any], callsign_self: str) -> bytes:
         f'<point lat="{lat:.7f}" lon="{lon:.7f}" hae="{alt:.1f}" ce="9999999.0" le="9999999.0"/>'
         f'<detail>'
         f'<contact callsign="{callsign}"/>'
-        f'<remarks>Summit.OS entity — {uid}</remarks>'
+        f'<remarks>Heli.OS entity — {uid}</remarks>'
         f'</detail>'
         f'</event>'
     )
@@ -159,8 +159,8 @@ class ATAKAdapter(BaseAdapter):
     """
     CoT/ATAK adapter — bidirectional situational awareness bridge.
 
-    Receives CoT XML over UDP (unicast or multicast), publishes as Summit.OS
-    TRACK entities. Also sends Summit.OS entities out as CoT so ATAK clients
+    Receives CoT XML over UDP (unicast or multicast), publishes as Heli.OS
+    TRACK entities. Also sends Heli.OS entities out as CoT so ATAK clients
     maintain a complete common operating picture.
     """
 
@@ -238,7 +238,7 @@ class ATAKAdapter(BaseAdapter):
             return None, None
 
     def send_cot(self, entity: Dict[str, Any]) -> bool:
-        """Send a Summit.OS entity out as a CoT SA event to ATAK clients."""
+        """Send a Heli.OS entity out as a CoT SA event to ATAK clients."""
         if not self._send_sock:
             return False
         try:

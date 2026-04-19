@@ -1,9 +1,9 @@
 """
-Summit.OS Parrot Adapter
+Heli.OS Parrot Adapter
 
 Connects to Parrot drones (ANAFI Series: ANAFI 4K, ANAFI Thermal, ANAFI USA,
 ANAFI Ai) via the Parrot Olympe Python SDK or the ARSDK REST API, and
-publishes real-time telemetry as Summit.OS TRACK entities.
+publishes real-time telemetry as Heli.OS TRACK entities.
 
 Connection modes
 ----------------
@@ -57,7 +57,7 @@ _ORG_ID = os.getenv("PARROT_ORG_ID", "")
 
 
 class ParrotAdapter(BaseAdapter):
-    """Publishes Parrot ANAFI drone telemetry as Summit.OS TRACK entities.
+    """Publishes Parrot ANAFI drone telemetry as Heli.OS TRACK entities.
 
     Supports ANAFI 4K, ANAFI Thermal, ANAFI USA, and ANAFI Ai.
     Uses the Olympe SDK for direct Wi-Fi connection or the ARSDK HTTP API

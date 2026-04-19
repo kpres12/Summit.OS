@@ -1,5 +1,5 @@
 """
-End-to-End Integration Tests for Summit.OS
+End-to-End Integration Tests for Heli.OS
 
 Tests the full pipeline: detection → classification → fusion → intent → tasking.
 Also tests security layer, mesh sync, and gRPC services.

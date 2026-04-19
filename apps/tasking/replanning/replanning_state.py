@@ -1,5 +1,5 @@
 """
-Replanning State — Summit.OS Tasking
+Replanning State — Heli.OS Tasking
 
 Tracks per-mission state used to detect replan triggers. Persists in Redis
 so the trigger monitor and replanning engine can share state across restarts.

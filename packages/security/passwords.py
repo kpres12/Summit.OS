@@ -1,5 +1,5 @@
 """
-Argon2id password hashing for Summit.OS.
+Argon2id password hashing for Heli.OS.
 
 Production parameters: time_cost=3, memory_cost=65536 (64MB), parallelism=4
 These are OWASP recommended minimums for Argon2id.

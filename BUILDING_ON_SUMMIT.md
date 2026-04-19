@@ -1,6 +1,6 @@
-# Building on Summit.OS
+# Building on Heli.OS
 
-Summit.OS is an **operational kernel** for autonomous systems — not a finished product. It provides the sensor fusion, entity tracking, mission orchestration, and command-and-control primitives. You build the product on top.
+Heli.OS is an **operational kernel** for autonomous systems — not a finished product. It provides the sensor fusion, entity tracking, mission orchestration, and command-and-control primitives. You build the product on top.
 
 This guide covers:
 1. [Creating a custom domain](#1-creating-a-custom-domain)
@@ -13,7 +13,7 @@ This guide covers:
 
 ## 1. Creating a Custom Domain
 
-A **domain** defines how Summit.OS looks and speaks for a specific use case — wildfire, pipeline monitoring, construction safety, maritime, agriculture, or anything you need.
+A **domain** defines how Heli.OS looks and speaks for a specific use case — wildfire, pipeline monitoring, construction safety, maritime, agriculture, or anything you need.
 
 ### Zero code required
 
@@ -79,7 +79,7 @@ Then register it in `public/domains/index.json`:
 
 ```json
 [
-  { "id": "default", "name": "Summit.OS", "file": "default.json" },
+  { "id": "default", "name": "Heli.OS", "file": "default.json" },
   { "id": "agriculture", "name": "Crop Monitoring", "file": "agriculture.json" }
 ]
 ```
@@ -124,7 +124,7 @@ npm run dev
 
 Good for: teams with specific UX requirements, different frameworks, or mobile targets.
 
-Summit.OS exposes everything through two interfaces:
+Heli.OS exposes everything through two interfaces:
 
 **REST API** (documented at `/docs` when running):
 ```
@@ -151,18 +151,18 @@ Build your console in React, Vue, Svelte, Flutter, Swift — anything that can s
 
 ### Option C: Embed in an existing product
 
-If you already have a product and want to add autonomous coordination, use Summit.OS as a headless backend. Your existing UI calls the REST API; the WebSocket pushes real-time updates. No console needed.
+If you already have a product and want to add autonomous coordination, use Heli.OS as a headless backend. Your existing UI calls the REST API; the WebSocket pushes real-time updates. No console needed.
 
 ---
 
 ## 3. Connecting Hardware
 
-The Adapter SDK is the primary integration surface. Any device that can run Python (Raspberry Pi, Jetson, laptop, server) can become a Summit.OS adapter.
+The Adapter SDK is the primary integration surface. Any device that can run Python (Raspberry Pi, Jetson, laptop, server) can become a Heli.OS adapter.
 
 ### Quick start
 
 ```bash
-pip install summit-os-sdk
+pip install heli-os-sdk
 ```
 
 ```python
@@ -201,7 +201,7 @@ class MyDrone(BaseAdapter):
 
 ### Built-in adapters
 
-Summit.OS ships adapters for common protocols in `adapters/`:
+Heli.OS ships adapters for common protocols in `adapters/`:
 
 | Adapter | Protocol | Use case |
 |---|---|---|
@@ -290,7 +290,7 @@ See `docs/DEPLOYMENT_GUIDE.md` for:
 
 ### Licensing
 
-Summit.OS is AGPL v3. This means:
+Heli.OS is AGPL v3. This means:
 - **Free to use, modify, and deploy** — even commercially
 - **If you modify the server code and offer it as a service**, you must publish your modifications
 - **Adapters you write using the SDK are yours** — the SDK is a separate module, your adapter code is not a derivative work
@@ -312,7 +312,7 @@ Your Product
 └── your-policies/         ← Your OPA rules
     │
     ▼
-Summit.OS (the kernel)
+Heli.OS (the kernel)
 ├── API Gateway            ← Auth, routing, rate limiting
 ├── Fabric                 ← Entity persistence, MQTT bridge, WebSocket
 ├── Fusion                 ← Multi-sensor track fusion
@@ -321,4 +321,4 @@ Summit.OS (the kernel)
 └── Inference              ← ONNX model serving
 ```
 
-You own everything above the line. Summit.OS owns everything below it. Updates to the kernel don't break your product. Your product doesn't require forking the kernel.
+You own everything above the line. Heli.OS owns everything below it. Updates to the kernel don't break your product. Your product doesn't require forking the kernel.

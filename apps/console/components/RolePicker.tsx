@@ -92,7 +92,7 @@ export default function RolePicker({ onSelect, currentRole, onBack }: RolePicker
             textShadow: '0 0 20px var(--accent-30), 0 0 40px var(--accent-15)',
           }}
         >
-          SUMMIT.OS
+          HELI.OS
         </h1>
         <div
           className="mt-1 text-xs tracking-[0.3em]"

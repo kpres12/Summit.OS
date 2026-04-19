@@ -1,7 +1,7 @@
 """
-Summit.OS Entity Simulator
+Heli.OS Entity Simulator
 ==========================
-Pushes synthetic moving entities to the Summit.OS fabric HTTP API.
+Pushes synthetic moving entities to the Heli.OS fabric HTTP API.
 Simulates drones, UGVs, towers, and sensors for demos / development.
 
 Usage:
@@ -133,7 +133,7 @@ async def _push_entity(client: httpx.AsyncClient, e: dict) -> None:
 
 async def main() -> None:
     entities = [_make_entity(i) for i in range(SIM_COUNT)]
-    print(f"Summit.OS Simulator — {SIM_COUNT} entities @ {FABRIC_URL}")
+    print(f"Heli.OS Simulator — {SIM_COUNT} entities @ {FABRIC_URL}")
     print(f"Area: {CENTER_LAT:.3f}, {CENTER_LON:.3f} ± {SIM_RADIUS}°")
     print(f"Update interval: {SIM_INTERVAL}s  |  Ctrl+C to stop\n")
 

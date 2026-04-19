@@ -1,5 +1,5 @@
 """
-Mission State Machine for Summit.OS Tasking
+Mission State Machine for Heli.OS Tasking
 
 Formal state machine governing mission lifecycle:
 

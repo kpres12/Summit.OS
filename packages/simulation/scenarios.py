@@ -1,5 +1,5 @@
 """
-Pre-built Simulation Scenarios for Summit.OS
+Pre-built Simulation Scenarios for Heli.OS
 
 Ready-to-run simulation scenarios for testing and demo.
 Each scenario creates a WorldSimulator with entities and sensors.

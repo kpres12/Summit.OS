@@ -1,4 +1,4 @@
-"""Summit.OS Observability — Metrics, Health, Tracing."""
+"""Heli.OS Observability — Metrics, Health, Tracing."""
 
 from packages.observability.metrics import (
     Counter,

@@ -1,5 +1,5 @@
 """
-Video Streaming Service for Summit.OS
+Video Streaming Service for Heli.OS
 
 Provides real-time video streaming capabilities for FireWatch towers, FireFlies,
 and other edge devices with RTSP, WebRTC, and video analytics support.
@@ -48,7 +48,7 @@ class VideoAnalytics(BaseModel):
 
 class VideoStreamingService:
     """
-    Real-time video streaming service for Summit.OS edge devices.
+    Real-time video streaming service for Heli.OS edge devices.
 
     Supports RTSP, WebRTC, and HTTP streaming with real-time analytics.
     """

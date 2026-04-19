@@ -1,5 +1,5 @@
 """
-Summit.OS Shared Inference Service
+Heli.OS Shared Inference Service
 
 Centralized AI inference endpoint. All services (fusion, intelligence, console)
 call this instead of running their own models. Supports hot-swapping models
@@ -117,7 +117,7 @@ class ModelSelectRequest(BaseModel):
 async def lifespan(app: FastAPI):
     global active_detector, active_model_name, available_models
 
-    logger.info("Starting Summit.OS Inference Service")
+    logger.info("Starting Heli.OS Inference Service")
 
     # Discover available backends
     available_models = _discover_models()
@@ -139,7 +139,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Summit.OS Inference Service",
+    title="Heli.OS Inference Service",
     description="Centralized AI detection and classification",
     version="1.0.0",
     lifespan=lifespan,

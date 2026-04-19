@@ -1,5 +1,5 @@
 """
-Replay Injector — Summit.OS
+Replay Injector — Heli.OS
 
 Reads mission replay data (from ReplayPersistence) and re-injects it into
 the system at configurable speeds (1x, 2x, 4x). Used for regression testing,

@@ -1,5 +1,5 @@
 # Risk Register
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 
@@ -21,7 +21,7 @@ Risk appetite: scores **≥ 15** require active treatment and executive sign-off
 ### SEC-001 — API Credential Compromise
 | Field | Value |
 |-------|-------|
-| **Description** | A Summit.OS API key or JWT is stolen (phishing, leaked repo, MITM) and used by an unauthorized party to issue commands or exfiltrate operational data |
+| **Description** | A Heli.OS API key or JWT is stolen (phishing, leaked repo, MITM) and used by an unauthorized party to issue commands or exfiltrate operational data |
 | **Likelihood (inherent)** | 3 |
 | **Impact (inherent)** | 5 |
 | **Inherent Score** | 15 |
@@ -140,11 +140,11 @@ Risk appetite: scores **≥ 15** require active treatment and executive sign-off
 ### SEC-008 — Data Breach via Third-Party (Stripe)
 | Field | Value |
 |-------|-------|
-| **Description** | Stripe suffers a breach that exposes billing data for Summit.OS customers |
+| **Description** | Stripe suffers a breach that exposes billing data for Heli.OS customers |
 | **Likelihood (inherent)** | 1 |
 | **Impact (inherent)** | 3 |
 | **Inherent Score** | 3 |
-| **Controls** | Summit.OS never stores full card data — Stripe handles all PCI scope; Stripe webhook signatures verified via HMAC; `STRIPE_WEBHOOK_SECRET` managed via Vault; Stripe has SOC2 Type 2 and PCI DSS Level 1 certification |
+| **Controls** | Heli.OS never stores full card data — Stripe handles all PCI scope; Stripe webhook signatures verified via HMAC; `STRIPE_WEBHOOK_SECRET` managed via Vault; Stripe has SOC2 Type 2 and PCI DSS Level 1 certification |
 | **Likelihood (residual)** | 1 |
 | **Impact (residual)** | 2 |
 | **Residual Score** | 2 |

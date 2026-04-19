@@ -1,8 +1,8 @@
-# Summit.OS AI Architecture
+# Heli.OS AI Architecture
 
 ## Overview
 
-Summit.OS is the distributed intelligence fabric that serves as the **sense-making and autonomy brain** for all Summit.OS robotics systems. AI is not an add-on feature—it's the connective tissue that enables every robot, drone, and sensor to understand, decide, and act in the physical world.
+Heli.OS is the distributed intelligence fabric that serves as the **sense-making and autonomy brain** for all Heli.OS robotics systems. AI is not an add-on feature—it's the connective tissue that enables every robot, drone, and sensor to understand, decide, and act in the physical world.
 
 ## 🧠 AI Integration by Layer
 
@@ -36,7 +36,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 - **Temporal Reasoning**: Predict object motion or environmental changes
 
 #### Cross-Domain Applications:
-- **Summit.OS**: Track smoke plumes, vehicle paths, suppression progress
+- **Heli.OS**: Track smoke plumes, vehicle paths, suppression progress
 - **Farm DitchBot**: Track water flow, debris motion
 - **Oilfield**: Track hose coupling alignment, valve positions
 - **GreaseBot**: Track clog progression, fluid dynamics
@@ -53,7 +53,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 - **Contextual Advisory**: Generate human-readable summaries for ops consoles
 
 #### Cross-Domain Applications:
-- **Summit.OS** → fire spread prediction + suppression tasking
+- **Heli.OS** → fire spread prediction + suppression tasking
 - **Farm DitchBot** → route optimization for culvert clearing
 - **Oilfield** → valve sequence automation
 - **GreaseBot** → dynamic route scheduling
@@ -73,12 +73,12 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                Summit.OS / DitchBot / OilfieldBot            │
+│                Heli.OS / DitchBot / OilfieldBot            │
 │              (Applications & Consoles)                      │
 └─────────────────────▲───────────────────────────────────────┘
                       │ REST / gRPC / MQTT
 ┌─────────────────────┴───────────────────────────────────────┐
-│                    Summit.OS                                │
+│                    Heli.OS                                │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
 │ │ Fusion Layer  │ AI: data fusion, CV, sensors            │ │
 │ │ Intelligence  │ AI: reasoning, prediction               │ │
@@ -92,7 +92,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 
 ## 🧬 AI Responsibilities by Service
 
-| Summit.OS Service | Primary Function | Embedded AI Tasks |
+| Heli.OS Service | Primary Function | Embedded AI Tasks |
 |-------------------|------------------|-------------------|
 | `/fusion` | Sensor fusion and anomaly detection | Multimodal fusion, anomaly classification, segmentation |
 | `/intelligence` | Contextual reasoning | Risk scores, pattern correlation, advisory messages |
@@ -108,7 +108,7 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
    ↓  (video, LiDAR, weather, gas)
 [Edge Inference - ONNX]
    ↓  (smoke_detected: true, confidence: 0.93)
-[Summit.OS Fusion Service]
+[Heli.OS Fusion Service]
    ↓  (fused world model: cells, slope, moisture, ignition prob.)
 [Intelligence Layer]
    ↓  (contextual alerts + recommendations)
@@ -155,21 +155,21 @@ Summit.OS is the distributed intelligence fabric that serves as the **sense-maki
 - False positive tracking
 - Continuous model tuning
 
-## 🔗 Summit.OS Integration
+## 🔗 Heli.OS Integration
 
-Console interacts with Summit.OS through:
+Console interacts with Heli.OS through:
 - **REST/gRPC APIs** for queries and commands
 - **WebSocket/MQTT Streams** for real-time updates
 - **Shared schemas** for alerts, telemetry, and missions
 - **AI visualization** of risk layers, recommendations, tasking states
 
-## 🧭 Extending to Future Summit.OS Products
+## 🧭 Extending to Future Heli.OS Products
 
-Each new Summit.OS robotics platform connects to Summit.OS via the same AI layers:
+Each new Heli.OS robotics platform connects to Heli.OS via the same AI layers:
 
 | Product | Shared AI Services | Unique Additions |
 |---------|-------------------|------------------|
-| **Summit.OS** | Fusion, Intelligence, Tasking, Predict | Fire behavior, smoke detection |
+| **Heli.OS** | Fusion, Intelligence, Tasking, Predict | Fire behavior, smoke detection |
 | **DitchBot** | Fusion, Tasking, Predict | Water flow, soil erosion |
 | **OilfieldBot** | Fusion, Tasking, Predict | Pressure anomalies, leak detection |
 | **GreaseBot** | Fusion, Tasking | Fill-level estimation, route scheduling |
@@ -179,7 +179,7 @@ Each new Summit.OS robotics platform connects to Summit.OS via the same AI layer
 
 ### Reusability
 - All future robots share the same intelligence core
-- Consistent AI capabilities across all Summit.OS products
+- Consistent AI capabilities across all Heli.OS products
 - Shared training data and model improvements
 
 ### Consistency
@@ -188,12 +188,12 @@ Each new Summit.OS robotics platform connects to Summit.OS via the same AI layer
 - Standardized AI interfaces and protocols
 
 ### Scalability
-- As you add new sensors or vehicles, Summit.OS already knows how to interpret their data
+- As you add new sensors or vehicles, Heli.OS already knows how to interpret their data
 - Distributed AI processing across edge and cloud
 - Automatic scaling of AI workloads
 
 ### Defensibility
-- Proprietary fusion + autonomy stack becomes Summit.OS's competitive moat
+- Proprietary fusion + autonomy stack becomes Heli.OS's competitive moat
 - Continuous learning and improvement
 - Domain-specific AI expertise
 
@@ -243,7 +243,7 @@ def plan_mission(objectives, assets, constraints):
 
 ## ✅ Summary
 
-- **Summit.OS uses AI for sensemaking, prediction, and coordination** — not chat or content
+- **Heli.OS uses AI for sensemaking, prediction, and coordination** — not chat or content
 - **Every robot and drone contributes to and benefits from** the shared intelligence fabric
-- **Summit.OS and future Summit.OS products** simply plug into this ecosystem via APIs and event streams
+- **Heli.OS and future Heli.OS products** simply plug into this ecosystem via APIs and event streams
 - **AI is the connective tissue** that enables autonomous operations across all domains

@@ -1,5 +1,5 @@
 """
-Summit.OS MFA — TOTP + WebAuthn + Backup Codes
+Heli.OS MFA — TOTP + WebAuthn + Backup Codes
 
 TOTP secrets are AES-256-GCM encrypted before storage.
 Backup codes are hashed with Argon2id.
@@ -161,7 +161,7 @@ def decrypt_secret(encrypted: str, key: bytes) -> str:
 # ---------------------------------------------------------------------------
 
 
-def get_totp_uri(secret: str, user_email: str, issuer: str = "Summit.OS") -> str:
+def get_totp_uri(secret: str, user_email: str, issuer: str = "Heli.OS") -> str:
     """
     Build a TOTP provisioning URI (otpauth://) suitable for QR codes.
 

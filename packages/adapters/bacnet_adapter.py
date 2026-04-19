@@ -1,5 +1,5 @@
 """
-Summit.OS — BACnet Adapter
+Heli.OS — BACnet Adapter
 ============================
 
 Integrates building automation systems via BACnet/IP.
@@ -40,7 +40,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.bacnet")
+logger = logging.getLogger("heli.adapters.bacnet")
 
 try:
     import BAC0

@@ -1,5 +1,5 @@
 """
-Sensor Models for Summit.OS Fusion Engine
+Sensor Models for Heli.OS Fusion Engine
 
 Each sensor model describes:
 - Measurement type (position, bearing-range, range-only, etc.)

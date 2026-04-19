@@ -1,5 +1,5 @@
 """
-Summit.OS AI Brain — Local LLM via Ollama
+Heli.OS AI Brain — Local LLM via Ollama
 
 Implements the Perceive → Plan → Act loop using a local Llama model.
 Zero API dependency. Works fully offline. Falls back gracefully if
@@ -30,7 +30,7 @@ from prompt_guard import sanitize_text, _INJECTION_PATTERNS
 from context_builder import ContextBuilder
 from tools import TOOL_DEFINITIONS, ToolExecutor
 
-logger = logging.getLogger("summit.intelligence.brain")
+logger = logging.getLogger("heli.intelligence.brain")
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
@@ -49,7 +49,7 @@ def _sanitize_objective(text: str) -> str:
 
 
 _SYSTEM_PROMPT = """\
-You are Summit.OS, an autonomous systems coordination AI. You operate in the physical world.
+You are Heli.OS, an autonomous systems coordination AI. You operate in the physical world.
 Your job: given a mission objective and live world state, decide what actions to take.
 
 Rules:

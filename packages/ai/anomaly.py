@@ -1,5 +1,5 @@
 """
-Anomaly Detection for Summit.OS
+Anomaly Detection for Heli.OS
 
 Detects anomalous behavior in entity telemetry streams:
 - ZScoreDetector: statistical z-score on sliding windows

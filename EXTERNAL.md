@@ -1,6 +1,6 @@
 # External Integration Guide
 
-This guide shows how to run Summit.OS apps against external infrastructure without deploying that infra yourself.
+This guide shows how to run Heli.OS apps against external infrastructure without deploying that infra yourself.
 
 ## 1) Create your .env
 

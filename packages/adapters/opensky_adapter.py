@@ -1,8 +1,8 @@
 """
-Summit.OS — OpenSky Network ADS-B Adapter
+Heli.OS — OpenSky Network ADS-B Adapter
 ==========================================
 Pulls real-time aircraft positions from the OpenSky Network REST API and
-ingests them as AIRCRAFT entities into Summit.OS.
+ingests them as AIRCRAFT entities into Heli.OS.
 
 Zero hardware required — uses the public free tier (400 requests/day,
 no auth) or an OpenSky account for higher limits.
@@ -54,7 +54,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.opensky")
+logger = logging.getLogger("heli.adapters.opensky")
 
 OPENSKY_STATES_URL = "https://opensky-network.org/api/states/all"
 
@@ -144,13 +144,14 @@ class OpenSkyAdapter(BaseAdapter):
                         "position":    {"lat": lat, "lon": lon, "alt": alt},
                         "last_seen":   int(last_contact or now),
                         "properties": {
-                            "asset_type":  "AIRCRAFT",
-                            "icao24":      icao24,
-                            "speed_ms":    round(speed, 1),
-                            "heading":     round(heading, 1),
-                            "on_ground":   on_ground,
-                            "origin":      state[_COL["origin_country"]] or "",
-                            "source":      "opensky",
+                            "asset_type":    "AIRCRAFT",
+                            "icao24":        icao24,
+                            "speed_ms":      round(speed, 1),
+                            "heading":       round(heading, 1),
+                            "on_ground":     on_ground,
+                            "origin":        state[_COL["origin_country"]] or "",
+                            "source":        "opensky",
+                            "controllable":  False,
                         },
                     }
 

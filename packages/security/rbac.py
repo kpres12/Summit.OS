@@ -1,8 +1,8 @@
 """
-Role-Based Access Control (RBAC) for Summit.OS
+Role-Based Access Control (RBAC) for Heli.OS
 
 Provides:
-- Role/Permission definitions for Summit.OS access control
+- Role/Permission definitions for Heli.OS access control
 - Hierarchical role inheritance
 - Resource-level permission checks
 - Audit logging

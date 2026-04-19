@@ -1,8 +1,8 @@
-# Summit.OS Deployment Guide
+# Heli.OS Deployment Guide
 
 ## Overview
 
-This guide covers deploying Summit.OS across different environments, from local development to production edge and cloud deployments.
+This guide covers deploying Heli.OS across different environments, from local development to production edge and cloud deployments.
 
 ## 🏗️ Deployment Architecture
 
@@ -11,11 +11,11 @@ This guide covers deploying Summit.OS across different environments, from local 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Developer Machine                       │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
-│ │ Summit.OS      │ Next.js development server              │ │
+│ │ Heli.OS      │ Next.js development server              │ │
 │ │ Console       │ http://localhost:3000                   │ │
 │ └───────────────┴─────────────────────────────────────────┘ │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
-│ │ Summit.OS     │ Docker Compose services                 │ │
+│ │ Heli.OS     │ Docker Compose services                 │ │
 │ │ Services      │ - API Gateway (8000)                    │ │
 │ │               │ - Data Fabric (8001)                   │ │
 │ │               │ - Sensor Fusion (8002)                 │ │
@@ -39,7 +39,7 @@ This guide covers deploying Summit.OS across different environments, from local 
 │ │               │ - Local Data Buffer                    │ │
 │ └───────────────┴─────────────────────────────────────────┘ │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
-│ │ Edge Summit.OS│ k3s cluster with Summit.OS services    │ │
+│ │ Edge Heli.OS│ k3s cluster with Heli.OS services    │ │
 │ │               │ - Data Fabric (local)                  │ │
 │ │               │ - Sensor Fusion (edge)                │ │
 │ │               │ - Mission Tasking (edge)               │ │
@@ -60,7 +60,7 @@ This guide covers deploying Summit.OS across different environments, from local 
 │ │ Load Balancer │ AWS ALB / GCP LB / Azure LB            │ │
 │ └───────────────┴─────────────────────────────────────────┘ │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
-│ │ Summit.OS     │ EKS / GKE / AKS cluster                 │ │
+│ │ Heli.OS     │ EKS / GKE / AKS cluster                 │ │
 │ │ Services      │ - Auto-scaling services                 │ │
 │ │               │ - Multi-region deployment              │ │
 │ │               │ - High availability                   │ │
@@ -81,14 +81,14 @@ This guide covers deploying Summit.OS across different environments, from local 
 #### Prerequisites
 - Docker and Docker Compose
 - Node.js 18+ (for Console)
-- Python 3.11+ (for Summit.OS services)
+- Python 3.11+ (for Heli.OS services)
 - Git
 
 #### Quick Start
 ```bash
 # Clone repository
-git clone https://github.com/bigmt/summit-os.git
-cd summit-os
+git clone https://github.com/bigmt/heli-os.git
+cd heli-os
 
 # Start development environment
 make dev
@@ -104,7 +104,7 @@ make dev
 # Start infrastructure services
 docker-compose -f infra/docker/docker-compose.yml up -d redis postgres mqtt
 
-# Start Summit.OS services
+# Start Heli.OS services
 docker-compose -f infra/docker/docker-compose.yml up -d fabric fusion intelligence tasking api-gateway
 
 # Start Console
@@ -123,22 +123,22 @@ npm run dev
 #### Deploy to Edge
 ```bash
 # Create namespace
-kubectl create namespace summit-os
+kubectl create namespace heli-os
 
-# Deploy Summit.OS to k3s
-helm install summit-os ./infra/k8s/summit-os \
-  --namespace summit-os \
+# Deploy Heli.OS to k3s
+helm install heli-os ./infra/k8s/heli-os \
+  --namespace heli-os \
   --set edge.enabled=true \
   --set storage.local=true \
   --set ai.models.edge=true
 
 # Verify deployment
-kubectl get pods -n summit-os
+kubectl get pods -n heli-os
 ```
 
 #### Edge Configuration
 ```yaml
-# infra/k8s/summit-os/values-edge.yaml
+# infra/k8s/heli-os/values-edge.yaml
 edge:
   enabled: true
   offline: true
@@ -170,11 +170,11 @@ networking:
 #### AWS EKS Deployment
 ```bash
 # Create EKS cluster
-eksctl create cluster --name summit-os --region us-west-2 --nodes 3
+eksctl create cluster --name heli-os --region us-west-2 --nodes 3
 
-# Deploy Summit.OS to EKS
-helm install summit-os ./infra/k8s/summit-os \
-  --namespace summit-os \
+# Deploy Heli.OS to EKS
+helm install heli-os ./infra/k8s/heli-os \
+  --namespace heli-os \
   --set cloud.provider=aws \
   --set storage.rds.enabled=true \
   --set monitoring.prometheus.enabled=true \
@@ -187,13 +187,13 @@ kubectl apply -f infra/k8s/ingress/aws-alb.yaml
 #### Google GKE Deployment
 ```bash
 # Create GKE cluster
-gcloud container clusters create summit-os \
+gcloud container clusters create heli-os \
   --zone us-central1-a \
   --num-nodes 3
 
-# Deploy Summit.OS to GKE
-helm install summit-os ./infra/k8s/summit-os \
-  --namespace summit-os \
+# Deploy Heli.OS to GKE
+helm install heli-os ./infra/k8s/heli-os \
+  --namespace heli-os \
   --set cloud.provider=gcp \
   --set storage.cloudsql.enabled=true \
   --set monitoring.stackdriver.enabled=true
@@ -202,13 +202,13 @@ helm install summit-os ./infra/k8s/summit-os \
 #### Azure AKS Deployment
 ```bash
 # Create AKS cluster
-az aks create --resource-group summit-os-rg \
-  --name summit-os-cluster \
+az aks create --resource-group heli-os-rg \
+  --name heli-os-cluster \
   --node-count 3
 
-# Deploy Summit.OS to AKS
-helm install summit-os ./infra/k8s/summit-os \
-  --namespace summit-os \
+# Deploy Heli.OS to AKS
+helm install heli-os ./infra/k8s/heli-os \
+  --namespace heli-os \
   --set cloud.provider=azure \
   --set storage.cosmosdb.enabled=true \
   --set monitoring.azure.enabled=true
@@ -218,7 +218,7 @@ helm install summit-os ./infra/k8s/summit-os \
 
 #### Edge-Cloud Synchronization
 ```yaml
-# infra/k8s/summit-os/values-hybrid.yaml
+# infra/k8s/heli-os/values-hybrid.yaml
 edge:
   enabled: true
   cloudSync: true
@@ -244,26 +244,26 @@ networking:
   mqtt:
     bridge: true
     topics:
-      - "summit-os/edge/+/telemetry"
-      - "summit-os/edge/+/alerts"
-      - "summit-os/cloud/+/commands"
+      - "heli-os/edge/+/telemetry"
+      - "heli-os/edge/+/alerts"
+      - "heli-os/cloud/+/commands"
 ```
 
 ## 🔧 Configuration Management
 
 ### Environment Variables
 ```bash
-# Summit.OS Configuration
+# Heli.OS Configuration
 export SUMMIT_API_KEY="your-api-key"
-export SUMMIT_BASE_URL="https://api.summit-os.bigmt.ai"
+export SUMMIT_BASE_URL="https://api.heli-os.bigmt.ai"
 export SUMMIT_ENVIRONMENT="production"
 
 # Database Configuration
-export POSTGRES_URL="postgresql://user:pass@host:5432/summit_os"
+export POSTGRES_URL="postgresql://user:pass@host:5432/heli_os"
 export REDIS_URL="redis://host:6379"
 
 # MQTT Configuration
-export MQTT_BROKER="mqtt.summit-os.bigmt.ai"
+export MQTT_BROKER="mqtt.heli-os.bigmt.ai"
 export MQTT_PORT="1883"
 export MQTT_USERNAME="summit"
 export MQTT_PASSWORD="your-password"
@@ -280,16 +280,16 @@ export GRAFANA_ENDPOINT="http://grafana:3000"
 
 ### Configuration Files
 ```yaml
-# config/summit-os.yaml
+# config/heli-os.yaml
 summit:
   api:
-    base_url: "https://api.summit-os.bigmt.ai"
+    base_url: "https://api.heli-os.bigmt.ai"
     timeout: 30
     retry_attempts: 3
   
   database:
     postgres:
-      url: "postgresql://user:pass@host:5432/summit_os"
+      url: "postgresql://user:pass@host:5432/heli_os"
       pool_size: 20
       max_overflow: 30
     
@@ -299,7 +299,7 @@ summit:
       max_connections: 100
   
   mqtt:
-    broker: "mqtt.summit-os.bigmt.ai"
+    broker: "mqtt.heli-os.bigmt.ai"
     port: 1883
     username: "summit"
     password: "your-password"
@@ -336,13 +336,13 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'summit-os-services'
+  - job_name: 'heli-os-services'
     static_configs:
       - targets: ['api-gateway:8000', 'fabric:8001', 'fusion:8002', 'intelligence:8003', 'tasking:8004']
     metrics_path: '/metrics'
     scrape_interval: 5s
 
-  - job_name: 'summit-os-edge'
+  - job_name: 'heli-os-edge'
     static_configs:
       - targets: ['edge-agent:8005']
     metrics_path: '/metrics'
@@ -359,14 +359,14 @@ scrape_configs:
 ```json
 {
   "dashboard": {
-    "title": "Summit.OS Overview",
+    "title": "Heli.OS Overview",
     "panels": [
       {
         "title": "Service Health",
         "type": "stat",
         "targets": [
           {
-            "expr": "up{job=\"summit-os-services\"}",
+            "expr": "up{job=\"heli-os-services\"}",
             "legendFormat": "{{instance}}"
           }
         ]
@@ -404,12 +404,12 @@ scrape_configs:
 tls:
   enabled: true
   certificates:
-    - name: "summit-os-tls"
-      secret: "summit-os-tls-secret"
+    - name: "heli-os-tls"
+      secret: "heli-os-tls-secret"
       hosts:
-        - "api.summit-os.bigmt.ai"
-        - "ws.summit-os.bigmt.ai"
-        - "mqtt.summit-os.bigmt.ai"
+        - "api.heli-os.bigmt.ai"
+        - "ws.heli-os.bigmt.ai"
+        - "mqtt.heli-os.bigmt.ai"
   
   mqtt:
     enabled: true
@@ -430,9 +430,9 @@ tls:
 authentication:
   keycloak:
     enabled: true
-    url: "https://auth.summit-os.bigmt.ai"
-    realm: "summit-os"
-    client_id: "summit-os-client"
+    url: "https://auth.heli-os.bigmt.ai"
+    realm: "heli-os"
+    client_id: "heli-os-client"
   
   jwt:
     secret: "your-jwt-secret"
@@ -452,7 +452,7 @@ authentication:
 ### GitHub Actions
 ```yaml
 # .github/workflows/deploy.yml
-name: Deploy Summit.OS
+name: Deploy Heli.OS
 
 on:
   push:
@@ -478,11 +478,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build Docker images
         run: |
-          docker build -t summit-os/api-gateway ./apps/api-gateway
-          docker build -t summit-os/fabric ./apps/fabric
-          docker build -t summit-os/fusion ./apps/fusion
-          docker build -t summit-os/intelligence ./apps/intelligence
-          docker build -t summit-os/tasking ./apps/tasking
+          docker build -t heli-os/api-gateway ./apps/api-gateway
+          docker build -t heli-os/fabric ./apps/fabric
+          docker build -t heli-os/fusion ./apps/fusion
+          docker build -t heli-os/intelligence ./apps/intelligence
+          docker build -t heli-os/tasking ./apps/tasking
 
   deploy-dev:
     runs-on: ubuntu-latest
@@ -491,8 +491,8 @@ jobs:
     steps:
       - name: Deploy to development
         run: |
-          helm upgrade --install summit-os-dev ./infra/k8s/summit-os \
-            --namespace summit-os-dev \
+          helm upgrade --install heli-os-dev ./infra/k8s/heli-os \
+            --namespace heli-os-dev \
             --set environment=development
 
   deploy-prod:
@@ -502,8 +502,8 @@ jobs:
     steps:
       - name: Deploy to production
         run: |
-          helm upgrade --install summit-os ./infra/k8s/summit-os \
-            --namespace summit-os \
+          helm upgrade --install heli-os ./infra/k8s/heli-os \
+            --namespace heli-os \
             --set environment=production
 ```
 
@@ -531,8 +531,8 @@ build:
 deploy:
   stage: deploy
   script:
-    - helm upgrade --install summit-os ./infra/k8s/summit-os \
-        --namespace summit-os \
+    - helm upgrade --install heli-os ./infra/k8s/heli-os \
+        --namespace heli-os \
         --set image.tag=$CI_COMMIT_SHA
   only:
     - main
@@ -550,7 +550,7 @@ deploy:
 
 ### Deployment
 - [ ] **Infrastructure** - Deploy infrastructure components
-- [ ] **Summit.OS Services** - Deploy Summit.OS microservices
+- [ ] **Heli.OS Services** - Deploy Heli.OS microservices
 - [ ] **Console** - Deploy Console frontend
 - [ ] **AI Models** - Deploy AI models to edge/cloud
 - [ ] **Configuration** - Apply configuration settings
@@ -571,36 +571,36 @@ deploy:
 #### Service Not Starting
 ```bash
 # Check service logs
-kubectl logs -n summit-os deployment/api-gateway
-kubectl logs -n summit-os deployment/fabric
+kubectl logs -n heli-os deployment/api-gateway
+kubectl logs -n heli-os deployment/fabric
 
 # Check service status
-kubectl get pods -n summit-os
-kubectl describe pod <pod-name> -n summit-os
+kubectl get pods -n heli-os
+kubectl describe pod <pod-name> -n heli-os
 ```
 
 #### Database Connection Issues
 ```bash
 # Check database connectivity
-kubectl exec -it <pod-name> -n summit-os -- psql $POSTGRES_URL
+kubectl exec -it <pod-name> -n heli-os -- psql $POSTGRES_URL
 
 # Check Redis connectivity
-kubectl exec -it <pod-name> -n summit-os -- redis-cli -u $REDIS_URL ping
+kubectl exec -it <pod-name> -n heli-os -- redis-cli -u $REDIS_URL ping
 ```
 
 #### MQTT Connection Issues
 ```bash
 # Check MQTT broker
-kubectl exec -it <pod-name> -n summit-os -- mosquitto_pub -h $MQTT_BROKER -t test -m "test"
+kubectl exec -it <pod-name> -n heli-os -- mosquitto_pub -h $MQTT_BROKER -t test -m "test"
 ```
 
 #### AI Model Issues
 ```bash
 # Check AI model deployment
-kubectl exec -it <pod-name> -n summit-os -- ls -la /models
+kubectl exec -it <pod-name> -n heli-os -- ls -la /models
 
 # Test AI inference
-kubectl exec -it <pod-name> -n summit-os -- python -c "import onnxruntime; print('ONNX Runtime OK')"
+kubectl exec -it <pod-name> -n heli-os -- python -c "import onnxruntime; print('ONNX Runtime OK')"
 ```
 
 ### Performance Optimization
@@ -632,8 +632,8 @@ message_size_limit 268435456
 
 ## 📞 Support
 
-- **Documentation**: https://docs.summit-os.bigmt.ai
-- **Deployment Guide**: https://deploy.summit-os.bigmt.ai
+- **Documentation**: https://docs.heli-os.bigmt.ai
+- **Deployment Guide**: https://deploy.heli-os.bigmt.ai
 - **Support**: kyle@branca.ai
-- **Community**: https://community.summit-os.bigmt.ai
-- **Status Page**: https://status.summit-os.bigmt.ai
+- **Community**: https://community.heli-os.bigmt.ai
+- **Status Page**: https://status.heli-os.bigmt.ai

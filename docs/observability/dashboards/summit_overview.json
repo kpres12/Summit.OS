@@ -1,7 +1,7 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Summit.OS - System Overview",
+    "title": "Heli.OS - System Overview",
     "tags": ["summit", "overview"],
     "timezone": "browser",
     "panels": [

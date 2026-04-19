@@ -1,5 +1,5 @@
 """
-billing.py — API key enforcement middleware for Summit.OS api-gateway.
+billing.py — API key enforcement middleware for Heli.OS api-gateway.
 
 Provides:
   - OrgContext dataclass returned by require_api_key

@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "summit-os.fullname" . }}
+  name: {{ include "heli-os.fullname" . }}
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -19,7 +19,7 @@ spec:
         {{- range .Values.ingress.hosts }}
         - {{ .host | quote }}
         {{- end }}
-      secretName: {{ include "summit-os.fullname" . }}-tls
+      secretName: {{ include "heli-os.fullname" . }}-tls
   {{- end }}
   rules:
     {{- range .Values.ingress.hosts }}
@@ -33,11 +33,11 @@ spec:
               service:
                 name: >-
                   {{- if eq .service "console" }}
-                  {{ include "summit-os.fullname" $ }}-console
+                  {{ include "heli-os.fullname" $ }}-console
                   {{- else if eq .service "apiGateway" }}
-                  {{ include "summit-os.fullname" $ }}-api-gateway
+                  {{ include "heli-os.fullname" $ }}-api-gateway
                   {{- else }}
-                  {{ include "summit-os.fullname" $ }}-{{ .service }}
+                  {{ include "heli-os.fullname" $ }}-{{ .service }}
                   {{- end }}
                 port:
                   number: >-

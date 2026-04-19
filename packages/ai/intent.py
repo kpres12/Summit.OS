@@ -1,5 +1,5 @@
 """
-Intent Prediction for Summit.OS
+Intent Prediction for Heli.OS
 
 Predicts entity intent from observed behavior:
 - TrajectoryPredictor: kinematic extrapolation + waypoint matching

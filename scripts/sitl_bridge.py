@@ -1,5 +1,5 @@
 """
-Summit.OS SITL Bridge
+Heli.OS SITL Bridge
 
 Starts a virtual ArduPilot drone at your coordinates, reads its MAVLink
 telemetry, and pushes it into the mock server as a live entity on the map.
@@ -164,7 +164,7 @@ def launch_drone(index: int, lat: float, lon: float, name: str) -> tuple:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Summit.OS SITL Bridge")
+    parser = argparse.ArgumentParser(description="Heli.OS SITL Bridge")
     parser.add_argument("--lat",   type=float, default=34.0522, help="Home latitude")
     parser.add_argument("--lon",   type=float, default=-118.2437, help="Home longitude")
     parser.add_argument("--name",  default="Ghost-1", help="Drone name")
@@ -176,7 +176,7 @@ def main():
     vehicle_ids = [f"sitl-drone-{i+1}" for i in range(count)]
 
     print("=" * 50)
-    print("  Summit.OS SITL Bridge")
+    print("  Heli.OS SITL Bridge")
     print("=" * 50)
     print(f"  Spawning {count} virtual drone(s) over {args.lat:.4f},{args.lon:.4f}")
     print(f"  Telemetry → {MOCK_URL}")

@@ -1,4 +1,4 @@
-# Summit.OS MQTT and Stream Topics
+# Heli.OS MQTT and Stream Topics
 
 Canonical topics and streams (v1):
 

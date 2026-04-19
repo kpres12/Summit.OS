@@ -2,7 +2,7 @@
 
 ## Our Pledge
 
-Summit.OS is built for civilian emergency responders, search and rescue teams, conservation operators, and UAV fleets. We are committed to maintaining a welcoming, respectful environment for everyone who contributes — regardless of experience level, background, or affiliation.
+Heli.OS is built for civilian emergency responders, search and rescue teams, conservation operators, and UAV fleets. We are committed to maintaining a welcoming, respectful environment for everyone who contributes — regardless of experience level, background, or affiliation.
 
 ## Expected Behavior
 
@@ -21,7 +21,7 @@ Summit.OS is built for civilian emergency responders, search and rescue teams, c
 
 ## Scope
 
-This Code of Conduct applies to all project spaces: GitHub issues, pull requests, discussions, and any other forum where Summit.OS community members interact.
+This Code of Conduct applies to all project spaces: GitHub issues, pull requests, discussions, and any other forum where Heli.OS community members interact.
 
 ## Enforcement
 

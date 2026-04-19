@@ -1,8 +1,8 @@
-# Summit.OS Edge Protocol
+# Heli.OS Edge Protocol
 
 ## Overview
 
-The Summit.OS Edge Protocol defines the communication standards and data formats for edge devices (robots, drones, sensors) to integrate with the Summit.OS distributed intelligence fabric. This protocol ensures reliable, secure, and efficient communication between edge devices and the central intelligence system.
+The Heli.OS Edge Protocol defines the communication standards and data formats for edge devices (robots, drones, sensors) to integrate with the Heli.OS distributed intelligence fabric. This protocol ensures reliable, secure, and efficient communication between edge devices and the central intelligence system.
 
 ## Protocol Architecture
 
@@ -167,7 +167,7 @@ The Summit.OS Edge Protocol defines the communication standards and data formats
 ### MQTT Protocol
 
 #### Connection Parameters
-- **Broker**: `mqtt.summit-os.bigmt.ai:1883`
+- **Broker**: `mqtt.heli-os.bigmt.ai:1883`
 - **Client ID**: `{device_type}-{device_id}`
 - **Username**: Device authentication token
 - **Password**: Device secret key
@@ -176,7 +176,7 @@ The Summit.OS Edge Protocol defines the communication standards and data formats
 
 #### Topic Structure
 ```
-summit-os/
+heli-os/
 ├── devices/
 │   ├── {device_id}/
 │   │   ├── telemetry/
@@ -202,20 +202,20 @@ summit-os/
 
 **Publish Telemetry**
 ```bash
-Topic: summit-os/devices/drone-001/telemetry
+Topic: heli-os/devices/drone-001/telemetry
 QoS: 1
 Payload: {telemetry_message_json}
 ```
 
 **Subscribe to Commands**
 ```bash
-Topic: summit-os/devices/drone-001/commands/+
+Topic: heli-os/devices/drone-001/commands/+
 QoS: 1
 ```
 
 **Publish Alert**
 ```bash
-Topic: summit-os/alerts/fire
+Topic: heli-os/alerts/fire
 QoS: 1
 Payload: {alert_message_json}
 ```
@@ -226,7 +226,7 @@ Payload: {alert_message_json}
 ```protobuf
 syntax = "proto3";
 
-package summit.os.edge;
+package heli.os.edge;
 
 service EdgeService {
   rpc StreamTelemetry(stream TelemetryRequest) returns (TelemetryResponse);
@@ -253,7 +253,7 @@ message CommandResponse {
 ```
 
 #### Connection Parameters
-- **Endpoint**: `grpc.summit-os.bigmt.ai:443`
+- **Endpoint**: `grpc.heli-os.bigmt.ai:443`
 - **TLS**: Required
 - **Authentication**: mTLS certificates
 - **Compression**: gzip
@@ -263,8 +263,8 @@ message CommandResponse {
 
 #### Connection
 ```javascript
-const ws = new WebSocket('wss://ws.summit-os.bigmt.ai/edge', {
-  protocols: ['summit-os-v1'],
+const ws = new WebSocket('wss://ws.heli-os.bigmt.ai/edge', {
+  protocols: ['heli-os-v1'],
   headers: {
     'Authorization': 'Bearer <device_token>',
     'Device-ID': 'drone-001',
@@ -300,7 +300,7 @@ openssl req -new -x509 -key device.key -out device.crt -days 365 \
   -subj "/CN=drone-001/O=BigMT/C=US"
 
 # Install certificate on device
-scp device.crt device.key root@drone-001:/etc/summit-os/certs/
+scp device.crt device.key root@drone-001:/etc/heli-os/certs/
 ```
 
 ### Encryption
@@ -490,12 +490,12 @@ def resolve_conflict(local_msg, remote_msg):
         "data_priority": "critical_only"
       },
       "mqtt": {
-        "broker": "mqtt.summit-os.bigmt.ai",
+        "broker": "mqtt.heli-os.bigmt.ai",
         "port": 1883,
         "qos": 1
       },
       "grpc": {
-        "endpoint": "grpc.summit-os.bigmt.ai:443",
+        "endpoint": "grpc.heli-os.bigmt.ai:443",
         "tls": true
       }
     },
@@ -651,15 +651,15 @@ class SummitEdgeAgent:
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_message = self.on_message
         
-        self.mqtt_client.connect("mqtt.summit-os.bigmt.ai", 1883, 60)
+        self.mqtt_client.connect("mqtt.heli-os.bigmt.ai", 1883, 60)
         self.mqtt_client.loop_start()
         
     def on_connect(self, client, userdata, flags, rc):
         if rc == 0:
             self.connected = True
-            print(f"Connected to Summit.OS as {self.device_id}")
+            print(f"Connected to Heli.OS as {self.device_id}")
             # Subscribe to commands
-            client.subscribe(f"summit-os/devices/{self.device_id}/commands/+")
+            client.subscribe(f"heli-os/devices/{self.device_id}/commands/+")
         else:
             print(f"Failed to connect: {rc}")
             
@@ -690,7 +690,7 @@ class SummitEdgeAgent:
             "status": status
         }
         
-        topic = f"summit-os/devices/{self.device_id}/telemetry"
+        topic = f"heli-os/devices/{self.device_id}/telemetry"
         self.mqtt_client.publish(topic, json.dumps(message))
         
     async def send_alert(self, alert_type, location, data):
@@ -711,7 +711,7 @@ class SummitEdgeAgent:
             "data": data
         }
         
-        topic = f"summit-os/alerts/{alert_type}"
+        topic = f"heli-os/alerts/{alert_type}"
         self.mqtt_client.publish(topic, json.dumps(message))
 ```
 
@@ -773,7 +773,7 @@ class SummitROS2Bridge(Node):
 
 ## Conclusion
 
-The Summit.OS Edge Protocol provides a comprehensive framework for integrating edge devices with the distributed intelligence fabric. It ensures reliable, secure, and efficient communication while supporting offline operation and automatic synchronization. The protocol is designed to be extensible and adaptable to various device types and communication scenarios.
+The Heli.OS Edge Protocol provides a comprehensive framework for integrating edge devices with the distributed intelligence fabric. It ensures reliable, secure, and efficient communication while supporting offline operation and automatic synchronization. The protocol is designed to be extensible and adaptable to various device types and communication scenarios.
 
 For more information, see:
 - [API Documentation](./API.md)

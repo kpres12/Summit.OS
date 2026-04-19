@@ -1,4 +1,4 @@
-"""Device schemas for Summit.OS."""
+"""Device schemas for Heli.OS."""
 
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List

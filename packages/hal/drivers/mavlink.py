@@ -1,5 +1,5 @@
 """
-MAVLink Vehicle Driver for Summit.OS
+MAVLink Vehicle Driver for Heli.OS
 
 Interfaces with MAVLink-compatible autopilots (ArduPilot, PX4) via:
 - pymavlink (when installed)

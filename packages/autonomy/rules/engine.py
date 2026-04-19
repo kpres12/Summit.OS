@@ -1,5 +1,5 @@
 """
-Reactive Rule Engine for Summit.OS Autonomy
+Reactive Rule Engine for Heli.OS Autonomy
 
 Provides a lightweight reactive layer that runs alongside behavior trees.
 Rules are condition → action pairs with:

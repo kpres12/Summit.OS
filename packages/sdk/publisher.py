@@ -11,12 +11,12 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger("summit.sdk.publisher")
+logger = logging.getLogger("heli.sdk.publisher")
 
 
 class AdapterPublisher:
     """
-    MQTT publisher for Summit.OS adapters.
+    MQTT publisher for Heli.OS adapters.
 
     Connects to the broker, validates the adapter manifest on first publish,
     and routes entities to the correct topic.
@@ -70,7 +70,7 @@ class AdapterPublisher:
             logger.info(f"Adapter '{self.manifest.name}' disconnected")
 
     def publish_entity(self, entity: Dict[str, Any], qos: int = 1):
-        """Publish an entity to the Summit.OS data fabric."""
+        """Publish an entity to the Heli.OS data fabric."""
         if not self._client:
             raise RuntimeError("Publisher not connected. Call connect() first.")
 

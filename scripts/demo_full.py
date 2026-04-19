@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Comprehensive Demo Mission
+Heli.OS Comprehensive Demo Mission
 
 Demonstrates the full intelligence fabric flow:
 1. Publishes realistic observations (smoke/fire) via MQTT
@@ -85,7 +85,7 @@ SCENARIOS = [
 
 
 class DemoOrchestrator:
-    """Orchestrates the Summit.OS demo mission."""
+    """Orchestrates the Heli.OS demo mission."""
     
     def __init__(self):
         self.mqtt_client = mqtt.Client(client_id="demo_mission")
@@ -298,7 +298,7 @@ class DemoOrchestrator:
     def display_summary(self, observations: List, advisories: List, tasks: List):
         """Display demo summary."""
         print("\n" + "="*80)
-        print("📊 SUMMIT.OS DEMO SUMMARY")
+        print("📊 HELI.OS DEMO SUMMARY")
         print("="*80)
         
         print(f"\n📡 MQTT Messages Published: {self.published_count}")
@@ -348,7 +348,7 @@ class DemoOrchestrator:
     async def run_demo(self):
         """Run the complete demo sequence."""
         print("="*80)
-        print("🚀 SUMMIT.OS COMPREHENSIVE DEMONSTRATION")
+        print("🚀 HELI.OS COMPREHENSIVE DEMONSTRATION")
         print("="*80)
         print(f"\n📍 Region: {DEMO_REGION['name']}")
         print(f"🎯 Scenario: Wildfire Detection and Response")

@@ -1,5 +1,5 @@
 """
-Train the Summit.OS mission type classifier.
+Train the Heli.OS mission type classifier.
 
 Outputs:
   packages/ml/models/mission_classifier.onnx   — runtime model

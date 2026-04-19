@@ -2,7 +2,7 @@ import type { DomainConfig } from './types';
 
 const defaultDomain: DomainConfig = {
   id: 'default',
-  name: 'Summit.OS',
+  name: 'Heli.OS',
   description: 'General-purpose operations platform',
   palette: {
     accent: '#4AEDC4',

@@ -10,7 +10,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[Summit.OS] Global error:', error);
+    console.error('[Heli.OS] Global error:', error);
   }, [error]);
 
   return (
@@ -40,7 +40,7 @@ export default function GlobalError({
             Critical System Error
           </span>
           <span style={{ color: 'rgba(255,59,59,0.7)', fontSize: '10px', maxWidth: '420px', textAlign: 'center' }}>
-            {error.message || 'Summit.OS encountered an unrecoverable error.'}
+            {error.message || 'Heli.OS encountered an unrecoverable error.'}
           </span>
           {error.digest && (
             <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '9px' }}>

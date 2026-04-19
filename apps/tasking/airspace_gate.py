@@ -5,7 +5,7 @@ Called by _validate_policies() in planning.py before OPA policy evaluation.
 Fetches live FAA airspace data (NOTAMs + facility map + LAANC) and injects
 the resulting geofences into the OPA geofence check.
 
-This is the regulatory enforcement layer — it turns Summit.OS from a system
+This is the regulatory enforcement layer — it turns Heli.OS from a system
 that *can* fly anywhere into one that *knows* where it's legally allowed to fly.
 
 Integration diagram:

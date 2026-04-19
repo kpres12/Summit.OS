@@ -1,10 +1,10 @@
 """
-Summit.OS — ROS 2 Adapter
+Heli.OS — ROS 2 Adapter
 ==========================
 
-Bridges ROS 2 robots into the Summit.OS entity stream.
+Bridges ROS 2 robots into the Heli.OS entity stream.
 
-Subscribes to standard ROS 2 topics and translates them into Summit.OS
+Subscribes to standard ROS 2 topics and translates them into Heli.OS
 observations. Covers any robot running ROS 2: Boston Dynamics Spot (via
 spot_ros2), Clearpath Husky/Jackal, AgileX, Unitree, custom AMRs, and
 any research platform.
@@ -41,7 +41,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.ros2")
+logger = logging.getLogger("heli.adapters.ros2")
 
 try:
     import rclpy
@@ -55,7 +55,7 @@ except ImportError:
 
 class ROS2Adapter(BaseAdapter):
     """
-    Bridges any ROS 2 robot into the Summit.OS entity stream.
+    Bridges any ROS 2 robot into the Heli.OS entity stream.
 
     Runs a minimal ROS 2 node in a background thread, subscribing to
     standard topics and enqueuing observations for the async stream.

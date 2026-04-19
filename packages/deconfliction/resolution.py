@@ -1,5 +1,5 @@
 """
-Deconfliction Resolution — Summit.OS
+Deconfliction Resolution — Heli.OS
 
 Resolution strategies for detected airspace conflicts:
   ALTITUDE_SEPARATION  — assign different altitude layers (every 30m)

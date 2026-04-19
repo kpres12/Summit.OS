@@ -1,8 +1,8 @@
 """
-Summit.OS OpenSky Network Adapter
+Heli.OS OpenSky Network Adapter
 
 Polls the OpenSky Network REST API for live ADS-B aircraft positions
-and publishes each aircraft as a Summit.OS Entity into the data fabric.
+and publishes each aircraft as a Heli.OS Entity into the data fabric.
 
 Built on BaseAdapter — manifests its capabilities, uses EntityBuilder
 for schema-consistent entity construction, and self-manages MQTT.

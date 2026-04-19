@@ -22,7 +22,7 @@ services:
           name: summitos_postgress
           property: connectionString
       - key: CORS_ORIGINS
-        value: "https://summit-os-6uo0.onrender.com,http://localhost:3000"
+        value: "https://heli-os-6uo0.onrender.com,http://localhost:3000"
       - key: GATEWAY_TEST_MODE
         value: "false"
       - key: OIDC_ENFORCE

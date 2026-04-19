@@ -1,5 +1,5 @@
 """
-middleware/rbac.py — Role-based access control FastAPI dependency for Summit.OS.
+middleware/rbac.py — Role-based access control FastAPI dependency for Heli.OS.
 
 Provides require_role(*roles) — a factory returning a FastAPI Depends() that
 checks JWT role claims. When RBAC_ENFORCE=false (default) all checks are no-ops,

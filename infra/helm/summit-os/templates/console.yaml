@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "summit-os.fullname" . }}-console
+  name: {{ include "heli-os.fullname" . }}-console
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
     app: console
 spec:
   replicas: {{ .Values.console.replicas }}
@@ -27,12 +27,12 @@ spec:
             - name: NEXT_PUBLIC_API_URL
               valueFrom:
                 configMapKeyRef:
-                  name: {{ include "summit-os.configmapName" . }}
+                  name: {{ include "heli-os.configmapName" . }}
                   key: API_GATEWAY_URL
             - name: NEXT_PUBLIC_WS_URL
               valueFrom:
                 configMapKeyRef:
-                  name: {{ include "summit-os.configmapName" . }}
+                  name: {{ include "heli-os.configmapName" . }}
                   key: FABRIC_WS_URL
           livenessProbe:
             httpGet:
@@ -50,9 +50,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "summit-os.fullname" . }}-console
+  name: {{ include "heli-os.fullname" . }}-console
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
 spec:
   selector:
     app: console

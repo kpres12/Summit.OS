@@ -1,18 +1,18 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "summit-os.configmapName" . }}
+  name: {{ include "heli-os.configmapName" . }}
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
 data:
-  REDIS_URL: "redis://{{ include "summit-os.fullname" . }}-redis:6379"
-  API_GATEWAY_URL: "http://{{ include "summit-os.fullname" . }}-api-gateway:{{ .Values.apiGateway.port }}"
-  FABRIC_WS_URL: "ws://{{ include "summit-os.fullname" . }}-fabric:{{ .Values.fabric.port }}/ws"
-  FABRIC_URL: "http://{{ include "summit-os.fullname" . }}-fabric:{{ .Values.fabric.port }}"
-  FUSION_URL: "http://{{ include "summit-os.fullname" . }}-fusion:{{ .Values.fusion.port }}"
-  INTELLIGENCE_URL: "http://{{ include "summit-os.fullname" . }}-intelligence:{{ .Values.intelligence.port }}"
-  TASKING_URL: "http://{{ include "summit-os.fullname" . }}-tasking:{{ .Values.tasking.port }}"
-  INFERENCE_URL: "http://{{ include "summit-os.fullname" . }}-inference:{{ .Values.inference.port }}"
+  REDIS_URL: "redis://{{ include "heli-os.fullname" . }}-redis:6379"
+  API_GATEWAY_URL: "http://{{ include "heli-os.fullname" . }}-api-gateway:{{ .Values.apiGateway.port }}"
+  FABRIC_WS_URL: "ws://{{ include "heli-os.fullname" . }}-fabric:{{ .Values.fabric.port }}/ws"
+  FABRIC_URL: "http://{{ include "heli-os.fullname" . }}-fabric:{{ .Values.fabric.port }}"
+  FUSION_URL: "http://{{ include "heli-os.fullname" . }}-fusion:{{ .Values.fusion.port }}"
+  INTELLIGENCE_URL: "http://{{ include "heli-os.fullname" . }}-intelligence:{{ .Values.intelligence.port }}"
+  TASKING_URL: "http://{{ include "heli-os.fullname" . }}-tasking:{{ .Values.tasking.port }}"
+  INFERENCE_URL: "http://{{ include "heli-os.fullname" . }}-inference:{{ .Values.inference.port }}"
   API_KEY_ENFORCE: {{ .Values.config.apiKeyEnforce | quote }}
   OIDC_ENFORCE: {{ .Values.config.oidcEnforce | quote }}
   OTLP_ENDPOINT: {{ .Values.config.otlpEndpoint | quote }}

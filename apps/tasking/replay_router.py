@@ -1,5 +1,5 @@
 """
-Mission Replay API for Summit.OS Tasking Service
+Mission Replay API for Heli.OS Tasking Service
 
 Records world-state snapshots at regular intervals during active missions,
 then serves a time-indexed playback API so operators can scrub through

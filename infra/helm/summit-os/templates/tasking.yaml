@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "summit-os.fullname" . }}-tasking
+  name: {{ include "heli-os.fullname" . }}-tasking
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
     app: tasking
 spec:
   replicas: {{ .Values.tasking.replicas }}
@@ -29,25 +29,25 @@ spec:
             - name: FABRIC_URL
               valueFrom:
                 configMapKeyRef:
-                  name: {{ include "summit-os.configmapName" . }}
+                  name: {{ include "heli-os.configmapName" . }}
                   key: FABRIC_URL
             - name: INFERENCE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: {{ include "summit-os.configmapName" . }}
+                  name: {{ include "heli-os.configmapName" . }}
                   key: INFERENCE_URL
             - name: OTLP_ENDPOINT
               valueFrom:
                 configMapKeyRef:
-                  name: {{ include "summit-os.configmapName" . }}
+                  name: {{ include "heli-os.configmapName" . }}
                   key: OTLP_ENDPOINT
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "summit-os.secretName" . }}
+                  name: {{ include "heli-os.secretName" . }}
                   key: POSTGRES_PASSWORD
             - name: POSTGRES_URL
-              value: "postgresql+asyncpg://summit:$(POSTGRES_PASSWORD)@{{ include "summit-os.fullname" . }}-postgres:5432/summit_os"
+              value: "postgresql+asyncpg://summit:$(POSTGRES_PASSWORD)@{{ include "heli-os.fullname" . }}-postgres:5432/heli_os"
           livenessProbe:
             httpGet:
               path: /health
@@ -64,9 +64,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "summit-os.fullname" . }}-tasking
+  name: {{ include "heli-os.fullname" . }}-tasking
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
 spec:
   selector:
     app: tasking

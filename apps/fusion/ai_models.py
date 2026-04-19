@@ -1,8 +1,8 @@
 """
-AI Models for Summit.OS Fusion Service
+AI Models for Heli.OS Fusion Service
 
 This module contains the AI models used for multimodal sensor fusion,
-anomaly detection, and world model updates in the Summit.OS fusion service.
+anomaly detection, and world model updates in the Heli.OS fusion service.
 """
 
 import torch

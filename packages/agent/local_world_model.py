@@ -1,5 +1,5 @@
 """
-Local World Model — Summit.OS Edge Agent
+Local World Model — Heli.OS Edge Agent
 
 Subset of the WorldStore that runs on-asset. Stores entity states in a
 bounded in-memory dict (max 200 entities, LRU eviction). Syncs with the

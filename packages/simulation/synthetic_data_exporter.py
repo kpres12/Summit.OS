@@ -1,5 +1,5 @@
 """
-Synthetic Data Exporter — Summit.OS
+Synthetic Data Exporter — Heli.OS
 
 Generates synthetic sensor observations from simulated mission scenarios.
 Used to bootstrap ML training datasets without real field data.

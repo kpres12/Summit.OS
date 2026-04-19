@@ -1,4 +1,4 @@
-# Traefik dynamic configuration for Summit.OS
+# Traefik dynamic configuration for Heli.OS
 # TLS options and security headers applied globally.
 
 tls:

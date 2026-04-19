@@ -1,7 +1,7 @@
 """
-Entity Classification for Summit.OS
+Entity Classification for Heli.OS
 
-Summit.OS Automatic Recognition (AR) pipeline:
+Heli.OS Automatic Recognition (AR) pipeline:
 - BayesianClassifier: updates entity class probabilities as new
   evidence (detections, radar signatures, behavioral features) arrives.
 - RuleBasedClassifier: deterministic rules for quick classification
@@ -28,7 +28,7 @@ logger = logging.getLogger("ai.classification")
 
 class EntityTaxonomy:
     """
-    Hierarchical entity class taxonomy for Summit.OS.
+    Hierarchical entity class taxonomy for Heli.OS.
 
     Level 0: Domain     (AIR, GROUND, SURFACE, SUBSURFACE, SPACE, CYBER)
     Level 1: Category   (FIXED_WING, ROTARY_WING, UAV, ...)

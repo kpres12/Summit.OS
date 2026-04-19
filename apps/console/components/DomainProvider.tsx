@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * DomainProvider — locked to Summit.OS baseline config.
+ * DomainProvider — locked to Heli.OS baseline config.
  *
  * Domain packs (fire, pipeline, SAR, etc.) are available in lib/domains/
  * for Forward Deployed Engineers to configure per customer deployment.
@@ -13,7 +13,7 @@ import type { DomainConfig } from '@/lib/domains/types';
 
 const DEFAULT_CONFIG: DomainConfig = {
   id: 'default',
-  name: 'Summit.OS',
+  name: 'Heli.OS',
   description: 'Autonomous systems coordination platform',
   palette: {
     accent: '#00FF9C',

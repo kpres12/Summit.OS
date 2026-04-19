@@ -1,5 +1,5 @@
 """
-Summit.OS — AISStream.io Maritime Vessel Adapter
+Heli.OS — AISStream.io Maritime Vessel Adapter
 =================================================
 Connects to aisstream.io WebSocket for real-time AIS vessel tracking.
 Free API key at https://aisstream.io — provides global vessel positions.
@@ -46,7 +46,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.aisstream")
+logger = logging.getLogger("heli.adapters.aisstream")
 
 AISSTREAM_URL = "wss://stream.aisstream.io/v0/stream"
 
@@ -57,7 +57,7 @@ _NAV_STATUS = {
 }
 
 _VESSEL_TYPE_MAP = {
-    # IMO vessel type codes → Summit.OS label
+    # IMO vessel type codes → Heli.OS label
     range(60, 70): "PASSENGER",
     range(70, 80): "CARGO",
     range(80, 90): "TANKER",
@@ -136,13 +136,14 @@ class AISStreamAdapter(BaseAdapter):
                     "position":   {"lat": lat, "lon": lon, "alt": 0},
                     "last_seen":  int(time.time()),
                     "properties": {
-                        "asset_type":  "VESSEL",
-                        "mmsi":        mmsi,
-                        "cog_deg":     round(cog, 1),
-                        "sog_kts":     round(sog, 1),
-                        "heading":     round(heading, 1),
-                        "nav_status":  nav_s,
-                        "source":      "aisstream",
+                        "asset_type":   "VESSEL",
+                        "mmsi":         mmsi,
+                        "cog_deg":      round(cog, 1),
+                        "sog_kts":      round(sog, 1),
+                        "heading":      round(heading, 1),
+                        "nav_status":   nav_s,
+                        "source":       "aisstream",
+                        "controllable": False,
                     },
                 }
 
@@ -166,5 +167,6 @@ class AISStreamAdapter(BaseAdapter):
                         "destination":  dest,
                         "draught_m":    sd.get("MaximumStaticDraught"),
                         "source":       "aisstream",
+                        "controllable": False,
                     },
                 }

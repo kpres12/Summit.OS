@@ -1,7 +1,7 @@
-# Show HN: Summit.OS — open source autonomous coordination for drones and disaster response
+# Show HN: Heli.OS — open source autonomous coordination for drones and disaster response
 
 **Title (under 80 chars):**
-> Show HN: Summit.OS – open source autonomous UAV coordination for disaster response
+> Show HN: Heli.OS – open source autonomous UAV coordination for disaster response
 
 ---
 
@@ -19,9 +19,9 @@ The operator's job: watch, verify, decide whether to dispatch ground resources. 
 
 ---
 
-This is **Summit.OS** — the open source alternative to Anduril's LatticeOS for civilian operators.
+This is **Heli.OS** — the open source alternative to Anduril's LatticeOS for civilian operators.
 
-The coordination software that does this well is closed-source, defense-export-controlled, and costs millions per year. It's not available to a county fire department, a maritime SAR team, an NGO running conservation drones, or a startup building inspection UAVs. We built Summit.OS to change that.
+The coordination software that does this well is closed-source, defense-export-controlled, and costs millions per year. It's not available to a county fire department, a maritime SAR team, an NGO running conservation drones, or a startup building inspection UAVs. We built Heli.OS to change that.
 
 **What's in it:**
 
@@ -39,8 +39,8 @@ The coordination software that does this well is closed-source, defense-export-c
 
 **Quick start:**
 ```
-git clone https://github.com/bigmt-ai/summit-os
-cd summit-os && cp .env.example .env
+git clone https://github.com/bigmt-ai/heli-os
+cd heli-os && cp .env.example .env
 cd infra/docker && docker compose up
 python scripts/seed_demo.py  # seeds demo data so the map isn't empty
 ```
@@ -55,7 +55,7 @@ AGPL v3. The trained models are included under the same license. Commercial lice
 
 If you're running drones for wildfire detection, SAR, maritime patrol, pipeline inspection, or agriculture — we want to talk. Your operational data (anonymized) is what makes the ML models better for everyone. We're offering free pilot deployments in exchange for feedback.
 
-GitHub: https://github.com/bigmt-ai/summit-os
+GitHub: https://github.com/bigmt-ai/heli-os
 
 ---
 
@@ -64,14 +64,14 @@ GitHub: https://github.com/bigmt-ai/summit-os
 ### r/drone
 **Title:** I built an open source autonomous coordination platform for UAV fleets — wildfire response, SAR, inspection [Show and Tell]
 
-Tired of watching expensive closed-source platforms get all the serious drone coordination work. Built Summit.OS — free, AGPL v3, runs on docker compose. A camera detects smoke → UAV dispatches automatically in under 2 seconds, no LLM required. Trained ML models included. Would love feedback from anyone running real operations.
+Tired of watching expensive closed-source platforms get all the serious drone coordination work. Built Heli.OS — free, AGPL v3, runs on docker compose. A camera detects smoke → UAV dispatches automatically in under 2 seconds, no LLM required. Trained ML models included. Would love feedback from anyone running real operations.
 
-GitHub: https://github.com/bigmt-ai/summit-os
+GitHub: https://github.com/bigmt-ai/heli-os
 
 ### r/ARES (Amateur Radio Emergency Service)
 **Title:** Open source autonomous coordination platform for emergency response — CoT/ATAK compatible
 
-Built Summit.OS for civilian emergency response coordination. Bidirectional CoT/ATAK bridge, so entities show up on your TAK devices. Runs air-gapped. Looking for ARES teams who'd want to pilot it. AGPL v3, self-hosted.
+Built Heli.OS for civilian emergency response coordination. Bidirectional CoT/ATAK bridge, so entities show up on your TAK devices. Runs air-gapped. Looking for ARES teams who'd want to pilot it. AGPL v3, self-hosted.
 
 ### r/searchandrescue
 **Title:** Open source platform for autonomous UAV SAR coordination — looking for field testers
@@ -86,7 +86,7 @@ Built an open source alternative to the expensive closed-source drone coordinati
 
 Hi [Name],
 
-I'm the founder of BigMT, and we just open-sourced Summit.OS — autonomous coordination software for wildfire response using drone fleets.
+I'm the founder of BigMT, and we just open-sourced Heli.OS — autonomous coordination software for wildfire response using drone fleets.
 
 When a camera detects smoke, it automatically dispatches the nearest available UAV, adjusts altitude for terrain, and alerts your operator — in under 90 seconds, no human touching a keyboard until the drone is already on-site.
 

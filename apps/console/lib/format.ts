@@ -1,5 +1,5 @@
 /**
- * Summit.OS — shared formatting utilities.
+ * Heli.OS — shared formatting utilities.
  *
  * Centralises helpers that were duplicated across 4+ component files.
  * All color helpers return CSS variable references so they respond to

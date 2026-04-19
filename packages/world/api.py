@@ -1,5 +1,5 @@
 """
-Summit.OS World Model API Router
+Heli.OS World Model API Router
 
 Mountable FastAPI router providing the canonical entity CRUD endpoints.
 Any service can include this router to expose the world model API.

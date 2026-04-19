@@ -1,5 +1,5 @@
 """
-Behavior Tree Node Types for Summit.OS Autonomy Engine
+Behavior Tree Node Types for Heli.OS Autonomy Engine
 
 Implements the standard BT node taxonomy:
 

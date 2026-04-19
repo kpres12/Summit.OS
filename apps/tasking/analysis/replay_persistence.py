@@ -1,5 +1,5 @@
 """
-Replay Persistence — Summit.OS Tasking
+Replay Persistence — Heli.OS Tasking
 
 Persists mission replay snapshots to SQLite for long-term storage and
 post-mission analysis. The in-memory replay_router only holds 1 hour;

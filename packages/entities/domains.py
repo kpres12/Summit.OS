@@ -1,5 +1,5 @@
 """
-Multi-Domain Entity Extensions for Summit.OS
+Multi-Domain Entity Extensions for Heli.OS
 
 Extends the core Entity model with domain-specific attributes for:
 - Aerial: fixed-wing, rotary-wing, UAS

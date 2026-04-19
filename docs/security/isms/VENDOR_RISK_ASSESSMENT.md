@@ -1,5 +1,5 @@
 # Vendor Risk Assessment
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 
@@ -7,7 +7,7 @@
 
 ## 1. Purpose
 
-This document records the risk assessment for each third-party vendor with access to Summit.OS systems or data. New vendors with access to Confidential or Restricted data must complete this assessment before onboarding.
+This document records the risk assessment for each third-party vendor with access to Heli.OS systems or data. New vendors with access to Confidential or Restricted data must complete this assessment before onboarding.
 
 ---
 
@@ -24,7 +24,7 @@ Each vendor is scored on:
 | Subprocessor transparency | Medium | Does vendor disclose subprocessors? |
 | Contractual protections | Medium | DPA in place? Liability clauses? |
 | Business criticality | Medium | What breaks if vendor goes offline? |
-| Concentration risk | Low | Is Summit.OS over-dependent on this vendor? |
+| Concentration risk | Low | Is Heli.OS over-dependent on this vendor? |
 
 **Risk tiers:**
 - **Low**: Vendor access to non-Confidential data only, or strong certifications + minimal data access
@@ -42,7 +42,7 @@ Each vendor is scored on:
 | Field | Value |
 |-------|-------|
 | **Purpose** | Payment processing and subscription management |
-| **Data Access** | Billing contact info, org name, subscription plan. Summit.OS does NOT transmit card data — Stripe-hosted checkout |
+| **Data Access** | Billing contact info, org name, subscription plan. Heli.OS does NOT transmit card data — Stripe-hosted checkout |
 | **Data Classification** | Confidential (billing data), but no Restricted data |
 | **SOC2 Type 2** | Yes |
 | **PCI DSS** | Level 1 (highest level) |
@@ -87,7 +87,7 @@ Each vendor is scored on:
 
 | Field | Value |
 |-------|-------|
-| **Purpose** | Operator authentication and SSO for Summit.OS console |
+| **Purpose** | Operator authentication and SSO for Heli.OS console |
 | **Data Access** | User identities, authentication events |
 | **Data Classification** | Confidential |
 | **SOC2 Type 2** | Depends on provider — verify before onboarding |
@@ -97,7 +97,7 @@ Each vendor is scored on:
 | **DPA Available** | Verify for specific provider |
 | **Business Criticality** | High — unavailability prevents operator login (fallback: API key auth available) |
 | **Risk Tier** | **Medium** (identity provider; auth fallback exists) |
-| **Compensating Controls** | API key authentication as fallback; short-lived JWTs (1 hour max); Summit.OS does not store plaintext credentials — only JWT validation |
+| **Compensating Controls** | API key authentication as fallback; short-lived JWTs (1 hour max); Heli.OS does not store plaintext credentials — only JWT validation |
 | **Open Action** | Confirm specific OIDC provider and complete provider-specific fields above before production |
 | **Last Reviewed** | 2026-03-21 |
 | **Next Review** | 2027-03-21 |

@@ -1,5 +1,5 @@
 """
-Sensor Auth — Summit.OS Fusion
+Sensor Auth — Heli.OS Fusion
 
 Middleware layer that verifies Ed25519 signatures on incoming sensor
 observations before they enter the fusion pipeline. Unsigned frames are

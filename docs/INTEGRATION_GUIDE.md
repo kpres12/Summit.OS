@@ -1,8 +1,8 @@
-# Summit.OS Integration Guide
+# Heli.OS Integration Guide
 
 ## Overview
 
-Summit.OS is designed as a **distributed intelligence fabric** that can integrate with any platform, robot, or system. This guide covers all integration patterns, from simple sensor connections to complex multi-robot coordination.
+Heli.OS is designed as a **distributed intelligence fabric** that can integrate with any platform, robot, or system. This guide covers all integration patterns, from simple sensor connections to complex multi-robot coordination.
 
 ## 🏗️ Integration Architecture
 
@@ -19,11 +19,11 @@ Summit.OS is designed as a **distributed intelligence fabric** that can integrat
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Your Application                         │
-│              (Summit.OS, DitchBot, OilfieldBot, etc.)       │
+│              (Heli.OS, DitchBot, OilfieldBot, etc.)       │
 └─────────────────────▲───────────────────────────────────────┘
                       │ REST/gRPC/WebSocket APIs
 ┌─────────────────────┴───────────────────────────────────────┐
-│                 Summit.OS Core                              │
+│                 Heli.OS Core                              │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
 │ │ API Gateway   │ Unified REST/gRPC interface              │ │
 │ │ Data Fabric   │ MQTT + Redis Streams + WebSocket        │ │
@@ -35,7 +35,7 @@ Summit.OS is designed as a **distributed intelligence fabric** that can integrat
 ┌─────────────────────┴───────────────────────────────────────┐
 │              Integration Adapters                           │
 │ ┌───────────────┬─────────────────────────────────────────┐ │
-│ │ ROS 2 Bridge  │ ROS 2 ↔ Summit.OS translation          │ │
+│ │ ROS 2 Bridge  │ ROS 2 ↔ Heli.OS translation          │ │
 │ │ IoT Gateway   │ MQTT/CoAP/HTTP sensor integration      │ │
 │ │ Cloud Bridge  │ AWS/GCP/Azure cloud integration        │ │
 │ │ Legacy Bridge │ Legacy system integration               │ │
@@ -60,12 +60,12 @@ Summit.OS is designed as a **distributed intelligence fabric** that can integrat
 **Best for**: New applications, web services, mobile apps
 
 ```python
-from summit_os import SummitClient
+from heli_os import SummitClient
 
 # Initialize client
 client = SummitClient(
     api_key="your-api-key",
-    base_url="https://api.summit-os.bigmt.ai"
+    base_url="https://api.heli-os.bigmt.ai"
 )
 
 # Publish telemetry
@@ -90,18 +90,18 @@ mission = await client.tasking.create_mission({
 **Best for**: ROS 2 robots, existing robotics systems
 
 ```python
-# ROS 2 Summit.OS Bridge
+# ROS 2 Heli.OS Bridge
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import NavSatFix, Image, Temperature
-from summit_os_ros2 import SummitOSBridge
+from heli_os_ros2 import HeliOSBridge
 
 class RobotNode(Node):
     def __init__(self):
         super().__init__('robot_node')
         
-        # Initialize Summit.OS bridge
-        self.summit_bridge = SummitOSBridge(
+        # Initialize Heli.OS bridge
+        self.summit_bridge = HeliOSBridge(
             robot_id="ugv-001",
             summit_api_url="http://localhost:8000"
         )
@@ -115,7 +115,7 @@ class RobotNode(Node):
             Temperature, '/sensors/temperature', self.temp_callback, 10)
     
     def gps_callback(self, msg):
-        # Convert ROS 2 message to Summit.OS format
+        # Convert ROS 2 message to Heli.OS format
         telemetry = {
             "device_id": "ugv-001",
             "location": {
@@ -126,7 +126,7 @@ class RobotNode(Node):
             "sensors": {"gps_quality": msg.status.status}
         }
         
-        # Send to Summit.OS
+        # Send to Heli.OS
         asyncio.create_task(
             self.summit_bridge.publish_telemetry(telemetry)
         )
@@ -154,7 +154,7 @@ import paho.mqtt.client as mqtt
 import json
 
 class SummitMQTTClient:
-    def __init__(self, broker="mqtt.summit-os.bigmt.ai", port=1883):
+    def __init__(self, broker="mqtt.heli-os.bigmt.ai", port=1883):
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -162,21 +162,21 @@ class SummitMQTTClient:
         self.client.loop_start()
     
     def on_connect(self, client, userdata, flags, rc):
-        print(f"Connected to Summit.OS MQTT: {rc}")
+        print(f"Connected to Heli.OS MQTT: {rc}")
         # Subscribe to commands
-        client.subscribe("summit-os/devices/+/commands/+")
+        client.subscribe("heli-os/devices/+/commands/+")
     
     def on_message(self, client, userdata, msg):
-        # Handle commands from Summit.OS
+        # Handle commands from Heli.OS
         command = json.loads(msg.payload.decode())
         self.handle_command(command)
     
     def publish_telemetry(self, device_id, telemetry):
-        topic = f"summit-os/devices/{device_id}/telemetry"
+        topic = f"heli-os/devices/{device_id}/telemetry"
         self.client.publish(topic, json.dumps(telemetry))
     
     def publish_alert(self, device_id, alert):
-        topic = f"summit-os/alerts/{alert['category']}"
+        topic = f"heli-os/alerts/{alert['category']}"
         self.client.publish(topic, json.dumps(alert))
 
 # Usage
@@ -194,14 +194,14 @@ mqtt_client.publish_telemetry("sensor-001", {
 
 ```javascript
 // JavaScript/TypeScript integration
-import { SummitWebSocketClient } from '@bigmt/summit-os-sdk';
+import { SummitWebSocketClient } from '@bigmt/heli-os-sdk';
 
 const summit = new SummitWebSocketClient({
-  url: 'wss://ws.summit-os.bigmt.ai',
+  url: 'wss://ws.heli-os.bigmt.ai',
   apiKey: 'your-api-key'
 });
 
-// Connect to Summit.OS
+// Connect to Heli.OS
 await summit.connect();
 
 // Subscribe to real-time data
@@ -233,9 +233,9 @@ await summit.publishTelemetry({
 **Best for**: Edge devices, offline operation, local processing
 
 ```python
-# Edge Summit.OS Agent
+# Edge Heli.OS Agent
 import asyncio
-from summit_os_edge import EdgeAgent, ONNXInferenceEngine
+from heli_os_edge import EdgeAgent, ONNXInferenceEngine
 
 class CustomEdgeAgent(EdgeAgent):
     def __init__(self, device_id, device_type):
@@ -249,7 +249,7 @@ class CustomEdgeAgent(EdgeAgent):
         self.data_buffer = []
     
     async def process_sensor_data(self, sensor_data):
-        """Process sensor data locally before sending to Summit.OS"""
+        """Process sensor data locally before sending to Heli.OS"""
         
         # Local AI inference
         if 'thermal_image' in sensor_data:
@@ -272,7 +272,7 @@ class CustomEdgeAgent(EdgeAgent):
             self.data_buffer = []
     
     async def handle_command(self, command):
-        """Handle commands from Summit.OS"""
+        """Handle commands from Heli.OS"""
         if command['type'] == 'navigate':
             await self.navigate_to(command['target_location'])
         elif command['type'] == 'return_home':
@@ -292,7 +292,7 @@ await agent.start()
 ```python
 # DJI Tello integration
 from djitellopy import Tello
-from summit_os_dji import DJISummitBridge
+from heli_os_dji import DJISummitBridge
 
 class DJISummitIntegration:
     def __init__(self):
@@ -300,7 +300,7 @@ class DJISummitIntegration:
         self.summit_bridge = DJISummitBridge("tello-001")
         
     async def start_mission(self, mission):
-        """Execute Summit.OS mission with DJI drone"""
+        """Execute Heli.OS mission with DJI drone"""
         
         # Take off
         self.tello.takeoff()
@@ -313,7 +313,7 @@ class DJISummitIntegration:
             image = self.tello.get_frame_read().frame
             analysis = await self.summit_bridge.analyze_image(image)
             
-            # Send results to Summit.OS
+            # Send results to Heli.OS
             await self.summit_bridge.publish_analysis(analysis)
         
         # Return home
@@ -325,7 +325,7 @@ class DJISummitIntegration:
 ```python
 # ArduPilot MAVLink integration
 from pymavlink import mavutil
-from summit_os_mavlink import MAVLinkSummitBridge
+from heli_os_mavlink import MAVLinkSummitBridge
 
 class ArduPilotSummitIntegration:
     def __init__(self):
@@ -333,7 +333,7 @@ class ArduPilotSummitIntegration:
         self.summit_bridge = MAVLinkSummitBridge("ardupilot-001")
         
     async def start_autonomous_mission(self, mission):
-        """Execute Summit.OS mission with ArduPilot"""
+        """Execute Heli.OS mission with ArduPilot"""
         
         # Upload mission to ArduPilot
         waypoints = self.convert_mission_to_waypoints(mission)
@@ -367,7 +367,7 @@ class ArduPilotSummitIntegration:
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, PoseStamped
-from summit_os_ros2 import ROS2SummitBridge
+from heli_os_ros2 import ROS2SummitBridge
 
 class TurtleBotSummitNode(Node):
     def __init__(self):
@@ -379,13 +379,13 @@ class TurtleBotSummitNode(Node):
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
         self.goal_pub = self.create_publisher(PoseStamped, '/goal_pose', 10)
         
-        # Summit.OS command handler
+        # Heli.OS command handler
         self.summit_bridge.on_command(self.handle_summit_command)
     
     def handle_summit_command(self, command):
-        """Handle commands from Summit.OS"""
+        """Handle commands from Heli.OS"""
         if command['type'] == 'navigate':
-            # Convert Summit.OS location to ROS 2 pose
+            # Convert Heli.OS location to ROS 2 pose
             pose = self.summit_to_ros_pose(command['target_location'])
             self.goal_pub.publish(pose)
             
@@ -400,7 +400,7 @@ class TurtleBotSummitNode(Node):
 # Raspberry Pi sensor integration
 import board
 import adafruit_dht
-from summit_os_iot import IoTSummitBridge
+from heli_os_iot import IoTSummitBridge
 
 class SensorNode:
     def __init__(self):
@@ -408,7 +408,7 @@ class SensorNode:
         self.summit_bridge = IoTSummitBridge("weather-station-001")
         
     async def read_sensors(self):
-        """Read sensors and send to Summit.OS"""
+        """Read sensors and send to Heli.OS"""
         try:
             temperature = self.dht.temperature
             humidity = self.dht.humidity
@@ -434,7 +434,7 @@ class SensorNode:
 ```python
 # AWS IoT Core integration
 import boto3
-from summit_os_aws import AWSSummitBridge
+from heli_os_aws import AWSSummitBridge
 
 class AWSSummitIntegration:
     def __init__(self):
@@ -460,7 +460,7 @@ class AWSSummitIntegration:
 ```python
 # Azure IoT Hub integration
 from azure.iot.device import IoTHubDeviceClient
-from summit_os_azure import AzureSummitBridge
+from heli_os_azure import AzureSummitBridge
 
 class AzureSummitIntegration:
     def __init__(self, connection_string):
@@ -477,7 +477,7 @@ class AzureSummitIntegration:
 ```python
 # Google Cloud IoT integration
 from google.cloud import iot_v1
-from summit_os_gcp import GCPSummitBridge
+from heli_os_gcp import GCPSummitBridge
 
 class GCPSummitIntegration:
     def __init__(self, project_id, registry_id, device_id):
@@ -495,11 +495,11 @@ class GCPSummitIntegration:
 ### Python SDK
 
 ```bash
-pip install summit-os-sdk
+pip install heli-os-sdk
 ```
 
 ```python
-from summit_os import SummitClient, EdgeAgent, ROS2Bridge
+from heli_os import SummitClient, EdgeAgent, ROS2Bridge
 
 # Full-featured Python SDK
 client = SummitClient(api_key="your-key")
@@ -510,20 +510,20 @@ bridge = ROS2Bridge()
 ### JavaScript/TypeScript SDK
 
 ```bash
-npm install @bigmt/summit-os-sdk
+npm install @bigmt/heli-os-sdk
 ```
 
 ```javascript
-import { SummitClient, WebSocketClient } from '@bigmt/summit-os-sdk';
+import { SummitClient, WebSocketClient } from '@bigmt/heli-os-sdk';
 
 const client = new SummitClient({ apiKey: 'your-key' });
-const ws = new WebSocketClient({ url: 'wss://ws.summit-os.bigmt.ai' });
+const ws = new WebSocketClient({ url: 'wss://ws.heli-os.bigmt.ai' });
 ```
 
 ### C++ SDK
 
 ```cpp
-#include <summit_os_cpp/summit_client.h>
+#include <heli_os_cpp/summit_client.h>
 
 SummitClient client("your-api-key");
 client.publishTelemetry({
@@ -535,26 +535,26 @@ client.publishTelemetry({
 ### ROS 2 Package
 
 ```bash
-# Install ROS 2 Summit.OS package
-sudo apt install ros-humble-summit-os
+# Install ROS 2 Heli.OS package
+sudo apt install ros-humble-heli-os
 
 # Use in your ROS 2 package
-<depend>summit_os</depend>
+<depend>heli_os</depend>
 ```
 
 ## 📋 Integration Checklist
 
 ### Pre-Integration Setup
 
-- [ ] **Obtain API Keys** - Get Summit.OS API credentials
+- [ ] **Obtain API Keys** - Get Heli.OS API credentials
 - [ ] **Choose Integration Pattern** - Direct API, ROS 2, MQTT, WebSocket, Edge
-- [ ] **Install SDK** - Install appropriate Summit.OS SDK
-- [ ] **Configure Network** - Ensure network connectivity to Summit.OS
-- [ ] **Test Connection** - Verify connection to Summit.OS services
+- [ ] **Install SDK** - Install appropriate Heli.OS SDK
+- [ ] **Configure Network** - Ensure network connectivity to Heli.OS
+- [ ] **Test Connection** - Verify connection to Heli.OS services
 
 ### Device Registration
 
-- [ ] **Register Device** - Register your robot/device with Summit.OS
+- [ ] **Register Device** - Register your robot/device with Heli.OS
 - [ ] **Configure Capabilities** - Define device capabilities and constraints
 - [ ] **Set Permissions** - Configure device permissions and access levels
 - [ ] **Test Authentication** - Verify device authentication works
@@ -586,10 +586,10 @@ sudo apt install ros-humble-summit-os
 
 ```python
 # 1. Install SDK
-pip install summit-os-sdk
+pip install heli-os-sdk
 
 # 2. Basic integration
-from summit_os import SummitClient
+from heli_os import SummitClient
 
 client = SummitClient(api_key="your-key")
 
@@ -615,15 +615,15 @@ mission = await client.tasking.create_mission({
 
 1. **Choose your integration pattern** based on your platform
 2. **Install the appropriate SDK** for your language/platform
-3. **Register your device** with Summit.OS
+3. **Register your device** with Heli.OS
 4. **Implement telemetry publishing** for your sensors
 5. **Implement command handling** for mission execution
-6. **Test the integration** with the Summit.OS development environment
+6. **Test the integration** with the Heli.OS development environment
 
 ## 📞 Support
 
-- **Documentation**: https://docs.summit-os.bigmt.ai
-- **SDK Downloads**: https://github.com/bigmt/summit-os-sdk
-- **Integration Examples**: https://github.com/bigmt/summit-os-examples
+- **Documentation**: https://docs.heli-os.bigmt.ai
+- **SDK Downloads**: https://github.com/bigmt/heli-os-sdk
+- **Integration Examples**: https://github.com/bigmt/heli-os-examples
 - **Support**: kyle@branca.ai
-- **Community**: https://community.summit-os.bigmt.ai
+- **Community**: https://community.heli-os.bigmt.ai

@@ -1,5 +1,5 @@
 """
-Track Lifecycle Manager for Summit.OS Fusion Service
+Track Lifecycle Manager for Heli.OS Fusion Service
 
 Manages track creation, confirmation, coasting, and deletion.
 Uses M-of-N confirmation logic and integrates with the EKF and correlator.

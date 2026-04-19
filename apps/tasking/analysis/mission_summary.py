@@ -1,5 +1,5 @@
 """
-Mission Summary Generator — Summit.OS
+Mission Summary Generator — Heli.OS
 
 Generates structured after-action reports from mission execution data.
 Covers: timeline, asset utilization, waypoint completion rate, alerts triggered,

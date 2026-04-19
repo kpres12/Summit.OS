@@ -1,5 +1,5 @@
 """
-Intent-Based Assignment Engine for Summit.OS
+Intent-Based Assignment Engine for Heli.OS
 
 Given a mission intent (what you want done), this engine:
 1. Queries the WorldStore for available assets

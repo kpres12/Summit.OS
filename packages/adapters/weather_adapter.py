@@ -1,5 +1,5 @@
 """
-Summit.OS — Weather REST Adapter
+Heli.OS — Weather REST Adapter
 ==================================
 
 Polls weather APIs and emits WEATHER_STATION entities at configured geographic
@@ -27,7 +27,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.weather")
+logger = logging.getLogger("heli.adapters.weather")
 
 # NWS base URL
 _NWS_BASE = "https://api.weather.gov"
@@ -91,7 +91,7 @@ class WeatherAdapter(BaseAdapter):
 
     async def connect(self) -> None:
         self._session = aiohttp.ClientSession(
-            headers={"User-Agent": "SummitOS-WeatherAdapter/1.0 (summit-os)"}
+            headers={"User-Agent": "HeliOS-WeatherAdapter/1.0 (heli-os)"}
         )
         self._log.info(
             "Weather adapter ready: source=%s, locations=%d",

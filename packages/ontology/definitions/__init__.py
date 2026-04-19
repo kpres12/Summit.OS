@@ -1,4 +1,4 @@
-"""Register all Summit.OS ontology definitions into the registry."""
+"""Register all Heli.OS ontology definitions into the registry."""
 
 from __future__ import annotations
 

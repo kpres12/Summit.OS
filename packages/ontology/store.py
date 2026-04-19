@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology Object Store
+Heli.OS Ontology Object Store
 
 In-memory store for ObjectInstances and LinkInstances.
 

@@ -1,5 +1,5 @@
 """
-Summit.OS — ISOBUS (ISO 11783) Adapter
+Heli.OS — ISOBUS (ISO 11783) Adapter
 =========================================
 
 Integrates agricultural and off-highway machinery via ISOBUS.
@@ -41,7 +41,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.isobus")
+logger = logging.getLogger("heli.adapters.isobus")
 
 try:
     import can

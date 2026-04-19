@@ -1,5 +1,5 @@
 """
-Enhanced FireFly Autopilot Integration for Summit.OS
+Enhanced FireFly Autopilot Integration for Heli.OS
 
 Provides MAVLink/PX4 integration for autonomous FireFly operations,
 mission planning, and emergency procedures.
@@ -89,7 +89,7 @@ class FireFlyAutopilot:
     Enhanced FireFly autopilot integration with MAVLink/PX4 support.
 
     Provides autonomous mission execution, emergency procedures,
-    and real-time telemetry for Summit.OS FireFly operations.
+    and real-time telemetry for Heli.OS FireFly operations.
     """
 
     def __init__(self, device_id: str, connection_string: str = "udp:localhost:14550"):

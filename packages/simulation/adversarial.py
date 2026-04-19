@@ -1,5 +1,5 @@
 """
-Adversarial Scenario Generator — Summit.OS
+Adversarial Scenario Generator — Heli.OS
 
 Generates adversarial test scenarios by mutating baseline mission scenarios.
 Used to stress-test the replanning engine, deconfliction, and fusion pipeline.

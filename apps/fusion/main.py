@@ -1,5 +1,5 @@
 """
-Summit.OS Sensor Fusion Service (thin-slice)
+Heli.OS Sensor Fusion Service (thin-slice)
 
 Consumes smoke detections from MQTT, validates against JSON Schema,
 triangulates (stub), persists ignition estimates to Postgres, and exposes APIs.
@@ -125,7 +125,7 @@ async def lifespan(app: FastAPI):
     pg_url = _to_asyncpg_url(
         os.getenv(
             "POSTGRES_URL",
-            "postgresql://summit:summit_password@localhost:5432/summit_os",
+            "postgresql://heli:summit_password@localhost:5432/heli_os",
         )
     )
     engine = create_async_engine(pg_url, echo=False, future=True)
@@ -231,7 +231,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Summit.OS Fusion (Thin Slice)",
+    title="Heli.OS Fusion (Thin Slice)",
     version="0.3.0",
     lifespan=lifespan,
 )

@@ -1,4 +1,4 @@
-"""Plugin architecture for Summit.OS domain extensions."""
+"""Plugin architecture for Heli.OS domain extensions."""
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
@@ -9,7 +9,7 @@ import os
 
 
 class PluginType(str, Enum):
-    """Types of plugins supported by Summit.OS."""
+    """Types of plugins supported by Heli.OS."""
 
     THREAT_ASSESSOR = "threat_assessor"
     PAYLOAD_HANDLER = "payload_handler"
@@ -19,7 +19,7 @@ class PluginType(str, Enum):
 
 
 class PluginMetadata(BaseModel):
-    """Metadata for a Summit.OS plugin."""
+    """Metadata for a Heli.OS plugin."""
 
     name: str
     version: str
@@ -32,7 +32,7 @@ class PluginMetadata(BaseModel):
 
 
 class BasePlugin(ABC):
-    """Abstract base class for all Summit.OS plugins."""
+    """Abstract base class for all Heli.OS plugins."""
 
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
@@ -65,7 +65,7 @@ class BasePlugin(ABC):
 
 
 class PluginRegistry:
-    """Registry for managing Summit.OS plugins."""
+    """Registry for managing Heli.OS plugins."""
 
     def __init__(self):
         self._plugins: Dict[str, BasePlugin] = {}
@@ -146,7 +146,7 @@ class PluginRegistry:
 
 
 class PluginLoader:
-    """Dynamic plugin loader for Summit.OS."""
+    """Dynamic plugin loader for Heli.OS."""
 
     def __init__(self, plugin_registry: PluginRegistry):
         self.registry = plugin_registry

@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in Summit.OS
+about: Report a bug in Heli.OS
 title: "[BUG] "
 labels: bug
 assignees: ''

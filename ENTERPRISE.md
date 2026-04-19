@@ -1,7 +1,7 @@
-# Summit.OS Enterprise
+# Heli.OS Enterprise
 
-Summit.OS Enterprise is the production-hardened, commercially-licensed deployment
-of Summit.OS — built for organizations that need multi-org tenancy, enforced
+Heli.OS Enterprise is the production-hardened, commercially-licensed deployment
+of Heli.OS — built for organizations that need multi-org tenancy, enforced
 security controls, SLA-backed support, and a licensing model that doesn't require
 open-sourcing their products.
 
@@ -51,14 +51,14 @@ view cross-org audit logs.
 the enterprise-licensed binary (or Docker images), deployment runbooks, and
 remote support. You own the data, the keys, and the infrastructure.
 
-**BigMT.ai managed** — We host and operate Summit.OS for you on dedicated
+**BigMT.ai managed** — We host and operate Heli.OS for you on dedicated
 infrastructure. Zero ops burden. Your data stays in your region.
 
 ---
 
 ## SOC2 readiness
 
-Summit.OS Enterprise includes every technical control required for a SOC2 Type II
+Heli.OS Enterprise includes every technical control required for a SOC2 Type II
 audit:
 
 - Argon2id password hashing (OWASP 2024 parameters)
@@ -71,8 +71,8 @@ audit:
 - HashiCorp Vault integration for secret management
 - Trivy container scanning in CI
 
-Summit.OS is **built to pass a SOC2 audit** — the controls are implemented and
-documented. Summit.OS itself is not SOC2 certified; your organization pursues
+Heli.OS is **built to pass a SOC2 audit** — the controls are implemented and
+documented. Heli.OS itself is not SOC2 certified; your organization pursues
 certification for your specific deployment with a licensed CPA firm. Enterprise
 customers get the audit evidence package (control mappings, policy docs,
 architecture diagrams) to accelerate that process.

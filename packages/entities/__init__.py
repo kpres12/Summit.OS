@@ -1,7 +1,7 @@
 """
-Summit.OS Unified Entity Model
+Heli.OS Unified Entity Model
 
-Every object in Summit.OS is an Entity. This module provides the canonical
+Every object in Heli.OS is an Entity. This module provides the canonical
 Python dataclasses that mirror the protobuf definitions and are used by
 all services for inter-service communication.
 

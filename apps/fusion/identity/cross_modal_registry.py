@@ -1,5 +1,5 @@
 """
-Cross-Modal Identity Registry — Summit.OS Fusion
+Cross-Modal Identity Registry — Heli.OS Fusion
 
 Associates observations from multiple sensor modalities (ADS-B, AIS, camera,
 radar, sonar, Meshtastic mesh) to canonical entity IDs. Uses a configurable

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Demo Seed
+Heli.OS Demo Seed
 ===================
 Seeds the platform with realistic demo entities and triggers the full
 autonomous pipeline so a fresh docker compose up shows a working system,
@@ -392,7 +392,7 @@ async def main(args: argparse.Namespace) -> None:
     redis_url        = args.redis
 
     print("=" * 60)
-    print("  Summit.OS Demo Seed")
+    print("  Heli.OS Demo Seed")
     print("=" * 60)
     print(f"  Fabric:      {fabric_url}")
     print(f"  Tasking:     {tasking_url}")
@@ -425,7 +425,7 @@ async def main(args: argparse.Namespace) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Summit.OS demo seed")
+    parser = argparse.ArgumentParser(description="Heli.OS demo seed")
     parser.add_argument("--fabric",       default=DEFAULT_FABRIC_URL)
     parser.add_argument("--tasking",      default=DEFAULT_TASKING_URL)
     parser.add_argument("--intelligence", default=DEFAULT_INTELLIGENCE_URL)

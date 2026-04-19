@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology Query Interface
+Heli.OS Ontology Query Interface
 
 Fluent builder for filtering objects and traversing the link graph.
 
@@ -193,7 +193,7 @@ class OntologyQuery:
         """
         store = get_store()
         stats = store.stats()
-        lines = ["## Summit.OS Ontology — Live State\n"]
+        lines = ["## Heli.OS Ontology — Live State\n"]
 
         # Object counts
         lines.append("### Object counts")

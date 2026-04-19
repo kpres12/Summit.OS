@@ -1,17 +1,17 @@
 """
 packages/adapters/meshtastic_adapter.py — Meshtastic mesh radio adapter.
 
-Connects Summit.OS to a Meshtastic LoRa mesh network. Each mesh node
+Connects Heli.OS to a Meshtastic LoRa mesh network. Each mesh node
 becomes a tracked entity in the world model — field teams, sensors, vehicles,
 or any device running Meshtastic firmware appear on the operator map in
 real-time without cellular infrastructure.
 
-Why this matters for Summit.OS:
+Why this matters for Heli.OS:
   - Meshtastic operates on LoRa (915MHz/868MHz/433MHz) — works where cellular,
     Wi-Fi, and internet don't. Dense smoke, remote terrain, urban canyons.
   - Range: 10–50km per hop (terrain-dependent), multi-hop mesh routing
   - GPS position broadcasting: every node with GPS reports lat/lon/alt/speed
-  - Bidirectional: Summit.OS can send mission waypoints, alerts, and commands
+  - Bidirectional: Heli.OS can send mission waypoints, alerts, and commands
     back through the mesh to field operators
   - No infrastructure required — pure off-grid coordination
 
@@ -19,7 +19,7 @@ Packet types handled:
   POSITION_APP     → entity position update (lat/lon/alt/speed/heading)
   NODEINFO_APP     → entity identity (callsign, hardware type, MAC)
   TELEMETRY_APP    → battery level, environment sensors (temp/pressure/humidity)
-  TEXT_MESSAGE_APP → freetext mesh messages → Summit.OS alert feed
+  TEXT_MESSAGE_APP → freetext mesh messages → Heli.OS alert feed
 
 Connection modes:
   serial  → direct USB connection to a Meshtastic node (default: auto-detect)
@@ -59,7 +59,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 
 from .base import BaseAdapter, AdapterConfig
 
-logger = logging.getLogger("summit.adapters.meshtastic")
+logger = logging.getLogger("heli.adapters.meshtastic")
 
 # Meshtastic PortNums (packet type identifiers)
 _PORT_TEXT_MESSAGE = 1
@@ -69,7 +69,7 @@ _PORT_NODEINFO = 4
 _PORT_TELEMETRY = 67
 _PORT_WAYPOINT = 71
 
-# Entity type mapping for Summit.OS world model
+# Entity type mapping for Heli.OS world model
 _HARDWARE_TYPE_MAP = {
     # Meshtastic hardware IDs → Summit entity type
     "TBEAM": "GROUND",
@@ -89,7 +89,7 @@ class MeshtasticAdapter(BaseAdapter):
     """
     Meshtastic LoRa mesh radio adapter.
 
-    Publishes each mesh node as a Summit.OS entity with position, battery,
+    Publishes each mesh node as a Heli.OS entity with position, battery,
     and telemetry. Supports sending text messages and waypoints back through
     the mesh to field operators.
 
@@ -257,7 +257,7 @@ class MeshtasticAdapter(BaseAdapter):
     # ── Packet parsing ─────────────────────────────────────────────────────────
 
     def _packet_to_observation(self, packet: dict) -> Optional[dict]:
-        """Convert a raw Meshtastic packet to a Summit.OS observation dict."""
+        """Convert a raw Meshtastic packet to a Heli.OS observation dict."""
         from_id = packet.get("fromId") or packet.get("from")
         if not from_id:
             return None
@@ -454,7 +454,7 @@ class MeshtasticAdapter(BaseAdapter):
         }
 
     def _parse_text_message(self, node_id: str, decoded: dict, packet: dict) -> Optional[dict]:
-        """Parse TEXT_MESSAGE_APP — mesh text → Summit.OS alert."""
+        """Parse TEXT_MESSAGE_APP — mesh text → Heli.OS alert."""
         text = decoded.get("text", decoded.get("payload", b""))
         if isinstance(text, bytes):
             try:
@@ -650,7 +650,7 @@ class MeshtasticAdapter(BaseAdapter):
 
     async def broadcast_alert(self, alert_text: str) -> bool:
         """
-        Broadcast a Summit.OS alert to all mesh nodes.
+        Broadcast a Heli.OS alert to all mesh nodes.
         Appears as an incoming message on all connected Meshtastic devices.
         """
         return await self.send_text(f"[SUMMIT] {alert_text}", "^all")

@@ -1,4 +1,4 @@
-"""Configuration settings for Summit.OS Data Fabric Service."""
+"""Configuration settings for Heli.OS Data Fabric Service."""
 
 from pydantic_settings import BaseSettings
 from typing import Optional

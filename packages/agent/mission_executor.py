@@ -1,5 +1,5 @@
 """
-Mission Executor — Summit.OS Edge Agent
+Mission Executor — Heli.OS Edge Agent
 
 Executes a waypoint mission on a single asset without requiring continuous
 uplink. Downloads the mission plan when connected, then executes it offline.

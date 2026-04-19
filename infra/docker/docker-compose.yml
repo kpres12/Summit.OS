@@ -1,4 +1,4 @@
-# Summit.OS — Docker Compose
+# Heli.OS — Docker Compose
 #
 # PROFILES
 # --------
@@ -45,7 +45,7 @@ services:
     image: postgis/postgis:15-3.3
     container_name: summit-postgres
     environment:
-      POSTGRES_DB: summit_os
+      POSTGRES_DB: heli_os
       POSTGRES_USER: summit
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-summit_password}
     ports:
@@ -60,7 +60,7 @@ services:
       -c ssl_cert_file=/etc/postgresql/ssl/server.crt
       -c ssl_key_file=/etc/postgresql/ssl/server.key
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U summit -d summit_os"]
+      test: ["CMD-SHELL", "pg_isready -U summit -d heli_os"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -90,13 +90,13 @@ services:
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:-summit_password}
     command: >
-      sh -c "psql -h postgres -U summit -d summit_os -c \"SELECT 1 FROM pg_database WHERE datname='keycloak'\" | grep -q 1 || psql -h postgres -U summit -d summit_os -c \"CREATE DATABASE keycloak OWNER summit\""
+      sh -c "psql -h postgres -U summit -d heli_os -c \"SELECT 1 FROM pg_database WHERE datname='keycloak'\" | grep -q 1 || psql -h postgres -U summit -d heli_os -c \"CREATE DATABASE keycloak OWNER summit\""
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
-  # Summit.OS Services
+  # Heli.OS Services
   fabric:
     build:
       context: ../../apps/fabric
@@ -108,7 +108,7 @@ services:
       - FABRIC_REDIS_URL=redis://redis:6379
       - FABRIC_MQTT_BROKER=mqtt
       - FABRIC_MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
+      - POSTGRES_URL=postgresql://heli:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/heli_os?sslmode=require
       - FABRIC_JWT_SECRET=${FABRIC_JWT_SECRET:-dev_secret}
       - FABRIC_SKIP_MIGRATIONS=${FABRIC_SKIP_MIGRATIONS:-false}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
@@ -144,7 +144,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
+      - POSTGRES_URL=postgresql://heli:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/heli_os?sslmode=require
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - OBSERVATION_SCHEMA_PATH=/contracts/jsonschemas/observation.schema.json
       - FUSION_ENABLE_VISION_AI=${FUSION_ENABLE_VISION_AI-false}
@@ -186,7 +186,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
+      - POSTGRES_URL=postgresql://heli:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/heli_os?sslmode=require
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - INTELLIGENCE_ENABLE_XGB=${INTELLIGENCE_ENABLE_XGB-false}
       - MODEL_REGISTRY=${MODEL_REGISTRY-/models}
@@ -232,7 +232,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - MQTT_BROKER=mqtt
       - MQTT_PORT=1883
-      - POSTGRES_URL=postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
+      - POSTGRES_URL=postgresql://heli:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/heli_os?sslmode=require
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       - TASKING_DIRECT_AUTOPILOT=${TASKING_DIRECT_AUTOPILOT-false}
       - ENTERPRISE_MULTI_TENANT=${ENTERPRISE_MULTI_TENANT:-false}
@@ -328,7 +328,7 @@ services:
       INTELLIGENCE_URL: http://intelligence:8003
       TASKING_URL: http://tasking:8004
       INFERENCE_URL: http://inference:8006
-      POSTGRES_URL: postgresql://summit:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/summit_os?sslmode=require
+      POSTGRES_URL: postgresql://heli:${POSTGRES_PASSWORD:-summit_password}@postgres:5432/heli_os?sslmode=require
       MISSIONS: sentinel
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
       API_KEY_ENFORCE: ${API_KEY_ENFORCE:-false}
@@ -564,7 +564,7 @@ services:
 
   # ── Optional: local LLM (enable with: docker compose --profile llm up) ──────
   # Provides the autonomous mission brain (Ollama + llama3.1).
-  # Without this, Summit.OS runs fully on rule-based + trained ML dispatch.
+  # Without this, Heli.OS runs fully on rule-based + trained ML dispatch.
   # First run: docker compose --profile llm exec ollama ollama pull llama3.1
   ollama:
     image: ollama/ollama:latest

@@ -1,4 +1,4 @@
-"""Unit tests for the Summit.OS Secret Client."""
+"""Unit tests for the Heli.OS Secret Client."""
 import importlib.util
 import os
 import sys

@@ -1,5 +1,5 @@
 """
-Swarm Task CRDT — Summit.OS
+Swarm Task CRDT — Heli.OS
 
 Conflict-free replicated data type for distributed task assignment.
 Uses OR-Set semantics: tasks can be assigned to assets and reassigned;

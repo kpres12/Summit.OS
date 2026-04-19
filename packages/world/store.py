@@ -1,7 +1,7 @@
 """
-Summit.OS World Store — The Single Source of Truth
+Heli.OS World Store — The Single Source of Truth
 
-Every entity in Summit.OS (asset, track, alert, mission, sensor, geofence)
+Every entity in Heli.OS (asset, track, alert, mission, sensor, geofence)
 lives in the WorldStore. Services MUST read/write entities through this
 interface rather than maintaining their own state.
 

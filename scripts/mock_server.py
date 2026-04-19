@@ -1,5 +1,5 @@
 """
-Summit.OS Mock Data Server
+Heli.OS Mock Data Server
 
 Single-file server that gives the console live data with zero Docker/services.
 Runs on port 8000 — exactly where the console expects the API gateway.
@@ -911,7 +911,7 @@ async def main(bbox: str):
     t.start()
 
     log.info("="*50)
-    log.info("  Summit.OS Mock Server")
+    log.info("  Heli.OS Mock Server")
     log.info("="*50)
     log.info(f"  REST  → http://localhost:8000")
     log.info(f"  WS    → ws://localhost:8001/ws  (Next.js proxy)")

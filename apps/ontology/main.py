@@ -1,7 +1,7 @@
 """
-Summit.OS Ontology Service
+Heli.OS Ontology Service
 
-REST + WebSocket API exposing the Summit.OS Ontology layer.
+REST + WebSocket API exposing the Heli.OS Ontology layer.
 
 Endpoints:
 
@@ -161,8 +161,8 @@ async def lifespan(app: FastAPI):
 # ── app ────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="Summit.OS Ontology Service",
-    description="Semantic layer and operational backbone for Summit.OS",
+    title="Heli.OS Ontology Service",
+    description="Semantic layer and operational backbone for Heli.OS",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -230,7 +230,7 @@ def health():
     stats = store.stats()
     return {
         "status": "ok",
-        "service": "Summit.OS Ontology",
+        "service": "Heli.OS Ontology",
         "schema": reg.summary(),
         "store": stats,
     }

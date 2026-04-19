@@ -1,5 +1,5 @@
 """
-Fine-tune YOLOv8n on the Summit.OS visual dataset for multi-domain object detection.
+Fine-tune YOLOv8n on the Heli.OS visual dataset for multi-domain object detection.
 
 Covers all operational domains out of the box:
   Wildfire       — smoke, fire, fire_front
@@ -326,7 +326,7 @@ def smoke_test_onnx(onnx_path: Path, imgsz: int) -> None:
 # ── CLI ────────────────────────────────────────────────────────────────────────
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS visual detector (YOLOv8) across all operational domains"
+        description="Train Heli.OS visual detector (YOLOv8) across all operational domains"
     )
     parser.add_argument(
         "--epochs",
@@ -396,7 +396,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.list_classes:
-        print("Summit.OS visual detector — 18 classes:\n")
+        print("Heli.OS visual detector — 18 classes:\n")
         for idx, name in VISUAL_CLASSES.items():
             domain = next((d for d, ids in DOMAIN_CLASSES.items() if idx in ids), "—")
             print(f"  {idx:2d}  {name:25s}  [{domain}]")
@@ -446,7 +446,7 @@ def main() -> None:
     print(
         f"""
 ╔══════════════════════════════════════════════════════════╗
-║  Summit.OS visual detector training complete             ║
+║  Heli.OS visual detector training complete             ║
 ║                                                          ║
 ║  Model   : packages/ml/models/summit_detector.onnx       ║
 ║  Classes : packages/ml/models/summit_detector_classes.json║

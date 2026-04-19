@@ -1,5 +1,5 @@
 """
-ONVIF IP Camera Driver for Summit.OS
+ONVIF IP Camera Driver for Heli.OS
 
 Interfaces with ONVIF-compatible IP cameras for:
 - RTSP stream discovery and management

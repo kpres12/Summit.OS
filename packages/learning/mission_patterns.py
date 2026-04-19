@@ -1,5 +1,5 @@
 """
-mission_patterns.py — Mission pattern library for Summit.OS CyberSynetic engine.
+mission_patterns.py — Mission pattern library for Heli.OS CyberSynetic engine.
 
 Builds a reusable library from completed missions. When a new mission is being
 planned, suggests the most relevant successful patterns.

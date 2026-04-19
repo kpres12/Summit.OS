@@ -1,6 +1,6 @@
-# Summit.OS Individual Contributor License Agreement
+# Heli.OS Individual Contributor License Agreement
 
-Thank you for your interest in contributing to Summit.OS. This Contributor License Agreement ("Agreement") documents the rights granted by contributors to the Summit.OS project.
+Thank you for your interest in contributing to Heli.OS. This Contributor License Agreement ("Agreement") documents the rights granted by contributors to the Heli.OS project.
 
 By submitting a pull request or otherwise contributing to this project, you accept and agree to the following terms.
 
@@ -10,7 +10,7 @@ By submitting a pull request or otherwise contributing to this project, you acce
 
 **"Contribution"** means any original work of authorship, including any modifications or additions to an existing work, that is submitted by You to the project for inclusion in, or documentation of, the project.
 
-**"Project"** means the Summit.OS software and associated documentation maintained at https://github.com/BigMT-Ai/Summit.OS.
+**"Project"** means the Heli.OS software and associated documentation maintained at https://github.com/BigMT-Ai/Heli.OS.
 
 ## 2. Grant of Copyright License
 

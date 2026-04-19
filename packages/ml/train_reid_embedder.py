@@ -1,5 +1,5 @@
 """
-Train a small CNN appearance embedding model for Summit.OS cross-camera entity re-identification.
+Train a small CNN appearance embedding model for Heli.OS cross-camera entity re-identification.
 
 Produces the ONNX model consumed by apps/fusion/reid.py (_ONNXEmbedder).
 
@@ -491,7 +491,7 @@ def _save_config(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS re-ID appearance embedder"
+        description="Train Heli.OS re-ID appearance embedder"
     )
     parser.add_argument(
         "--samples",
@@ -520,7 +520,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 60)
-    print("Summit.OS — ReID Embedder Training")
+    print("Heli.OS — ReID Embedder Training")
     print("=" * 60)
     print(f"  Identities:   {args.samples}")
     print(f"  Output dir:   {output_dir}")

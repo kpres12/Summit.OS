@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Detection Demo
+Heli.OS Detection Demo
 
 Sends a synthetic test image to the inference service and displays results.
 Optionally routes through the fusion → WorldStore pipeline.
@@ -57,7 +57,7 @@ def create_test_image() -> str:
 async def run(via_fusion: bool = False):
     image_b64 = create_test_image()
     print(f"\n{'='*60}")
-    print(f"  Summit.OS Detection Demo")
+    print(f"  Heli.OS Detection Demo")
     print(f"  Mode: {'fusion → inference → WorldStore' if via_fusion else 'direct inference'}")
     print(f"{'='*60}\n")
 
@@ -117,7 +117,7 @@ async def run(via_fusion: bool = False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Summit.OS Detection Demo")
+    parser = argparse.ArgumentParser(description="Heli.OS Detection Demo")
     parser.add_argument("--via-fusion", action="store_true",
                         help="Route through fusion → inference → WorldStore pipeline")
     args = parser.parse_args()

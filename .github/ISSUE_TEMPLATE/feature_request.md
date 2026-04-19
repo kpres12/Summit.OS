@@ -16,7 +16,7 @@ Describe the feature and how it should work.
 Any alternative approaches you've thought about.
 
 ## Integration Points
-Which Summit.OS services does this touch?
+Which Heli.OS services does this touch?
 - [ ] Console (frontend)
 - [ ] Fabric (data layer)
 - [ ] Fusion (perception)

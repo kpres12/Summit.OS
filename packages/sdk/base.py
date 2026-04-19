@@ -1,5 +1,5 @@
 """
-BaseAdapter — the base class every Summit.OS adapter should extend.
+BaseAdapter — the base class every Heli.OS adapter should extend.
 
 Handles lifecycle (start/stop), MQTT publishing via AdapterPublisher,
 manifest validation, and missing env var warnings.
@@ -17,12 +17,12 @@ from typing import Any, Dict, Optional
 from .manifest import AdapterManifest
 from .publisher import AdapterPublisher
 
-logger = logging.getLogger("summit.sdk.adapter")
+logger = logging.getLogger("heli.sdk.adapter")
 
 
 class BaseAdapter(ABC):
     """
-    Base class for all Summit.OS adapters.
+    Base class for all Heli.OS adapters.
 
     Subclasses must define:
         MANIFEST: AdapterManifest  — static class attribute
@@ -93,7 +93,7 @@ class BaseAdapter(ABC):
         return self._stop_event.is_set()
 
     def publish(self, entity: Dict[str, Any], qos: int = 1):
-        """Publish an entity to the Summit.OS data fabric."""
+        """Publish an entity to the Heli.OS data fabric."""
         if self._publisher:
             self._publisher.publish_entity(entity, qos=qos)
 

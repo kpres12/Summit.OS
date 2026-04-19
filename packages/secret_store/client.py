@@ -1,5 +1,5 @@
 """
-Summit.OS Secret Client
+Heli.OS Secret Client
 
 Resolves secrets with this priority chain:
   1. Infisical (cloud or self-hosted) — if INFISICAL_TOKEN is set
@@ -7,7 +7,7 @@ Resolves secrets with this priority chain:
   3. Environment variable            — development / fallback
   4. Default value                   — non-sensitive config only
 
-This means you can run Summit.OS locally with plain env vars,
+This means you can run Heli.OS locally with plain env vars,
 move to Infisical (free) for a small team, or Vault for enterprise —
 zero code changes required.
 

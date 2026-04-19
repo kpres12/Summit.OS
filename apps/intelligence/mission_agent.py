@@ -1,5 +1,5 @@
 """
-Summit.OS Mission Agent
+Heli.OS Mission Agent
 
 Hosts the AI agent loop for a single mission objective. Wires together:
   - Brain (Ollama LLM — perceive/plan/act)
@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 
 from brain import Brain
 
-logger = logging.getLogger("summit.intelligence.agent")
+logger = logging.getLogger("heli.intelligence.agent")
 
 AGENT_TICK_INTERVAL = float(os.getenv("AGENT_TICK_INTERVAL", "30"))
 AGENT_MAX_STEPS = int(os.getenv("AGENT_MAX_STEPS", "20"))

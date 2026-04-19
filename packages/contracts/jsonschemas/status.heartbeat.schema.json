@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.summit-os.local/status.heartbeat.schema.json",
+  "$id": "https://schemas.heli-os.local/status.heartbeat.schema.json",
   "title": "AssetHeartbeat",
   "type": "object",
   "properties": {

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Summit.OS AI Training Pipeline
+Heli.OS AI Training Pipeline
 
-Implements the complete AI training and deployment pipeline for Summit.OS.
+Implements the complete AI training and deployment pipeline for Heli.OS.
 Includes data collection, model training, validation, and deployment to edge devices.
 """
 
@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 class SummitAITrainingPipeline:
     """
-    Complete AI training pipeline for Summit.OS.
+    Complete AI training pipeline for Heli.OS.
     Handles data collection, model training, validation, and deployment.
     """
     
@@ -68,7 +68,7 @@ class SummitAITrainingPipeline:
     
     async def run_training_pipeline(self):
         """Run the complete AI training pipeline."""
-        logger.info("🚀 Starting Summit.OS AI Training Pipeline")
+        logger.info("🚀 Starting Heli.OS AI Training Pipeline")
         
         try:
             # Step 1: Data Collection
@@ -554,7 +554,7 @@ class DataCollector:
 
 
 class ModelTrainer:
-    """Trains AI models for Summit.OS."""
+    """Trains AI models for Heli.OS."""
     
     def __init__(self, models_dir: Path):
         self.models_dir = models_dir

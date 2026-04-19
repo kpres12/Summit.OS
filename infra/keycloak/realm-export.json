@@ -1,7 +1,7 @@
 {
   "id": "summit",
   "realm": "summit",
-  "displayName": "Summit.OS",
+  "displayName": "Heli.OS",
   "enabled": true,
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
@@ -110,8 +110,8 @@
   "clients": [
     {
       "clientId": "summit-console",
-      "name": "Summit.OS Console",
-      "description": "The Summit.OS operator console (Next.js app)",
+      "name": "Heli.OS Console",
+      "description": "The Heli.OS operator console (Next.js app)",
       "enabled": true,
       "publicClient": false,
       "secret": "REDACTED",

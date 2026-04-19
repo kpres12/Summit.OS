@@ -1,7 +1,7 @@
-# RFC: Device Adapter Architecture for Summit.OS
+# RFC: Device Adapter Architecture for Heli.OS
 
 Status: Draft
-Author: Summit.OS Platform
+Author: Heli.OS Platform
 
 1. Problem
 - Vendors expose heterogeneous protocols (MAVLink, ROS 2, ONVIF/RTSP, Modbus/CAN, proprietary).

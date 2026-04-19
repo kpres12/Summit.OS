@@ -1,7 +1,7 @@
 """
-gRPC Task Service for Summit.OS
+gRPC Task Service for Heli.OS
 
-Implements the Summit.OS Task API:
+Implements the Heli.OS Task API:
 - CreateTask / GetTask / ListTasks / CancelTask
 - AssignTask / CompleteTask / FailTask
 - Task state machine: PENDING → ASSIGNED → RUNNING → COMPLETED/FAILED/CANCELLED
@@ -273,7 +273,7 @@ class TaskStore:
 
 
 class TaskServicer:
-    """gRPC Task service for Summit.OS."""
+    """gRPC Task service for Heli.OS."""
 
     def __init__(self, store: Optional[TaskStore] = None):
         self.store = store or TaskStore()

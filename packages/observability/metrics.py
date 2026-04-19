@@ -1,5 +1,5 @@
 """
-Observability Metrics for Summit.OS
+Observability Metrics for Heli.OS
 
 Provides structured metrics collection compatible with Prometheus/OpenTelemetry.
 Includes counters, gauges, histograms, and a health aggregator.
@@ -97,7 +97,7 @@ class Histogram:
 class MetricsRegistry:
     """Central registry for all metrics."""
 
-    def __init__(self, service_name: str = "summit-os"):
+    def __init__(self, service_name: str = "heli-os"):
         self.service_name = service_name
         self.counters: Dict[str, Counter] = {}
         self.gauges: Dict[str, Gauge] = {}
@@ -203,7 +203,7 @@ _default_registry: Optional[MetricsRegistry] = None
 _default_health: Optional[HealthAggregator] = None
 
 
-def get_metrics(service_name: str = "summit-os") -> MetricsRegistry:
+def get_metrics(service_name: str = "heli-os") -> MetricsRegistry:
     global _default_registry
     if _default_registry is None:
         _default_registry = MetricsRegistry(service_name)

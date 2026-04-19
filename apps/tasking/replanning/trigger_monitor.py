@@ -1,5 +1,5 @@
 """
-Trigger Monitor — Summit.OS Tasking
+Trigger Monitor — Heli.OS Tasking
 
 Watches active missions for conditions that should trigger a replan:
   - ASSET_FAILED: entity goes offline or last_seen > 60s

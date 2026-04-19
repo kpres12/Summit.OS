@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology — Link Type Definitions
+Heli.OS Ontology — Link Type Definitions
 
 All typed, directed relationships between object types.
 Links are the semantic connective tissue of the ontology —

@@ -1,5 +1,5 @@
 """
-Anti-Replay Protection — Summit.OS Security
+Anti-Replay Protection — Heli.OS Security
 
 Sliding-window deduplication for sensor frames. Each frame carries:
   - sensor_id: str

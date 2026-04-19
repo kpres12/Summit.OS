@@ -1,8 +1,8 @@
 """
-YOLO Trainer — Summit.OS
+YOLO Trainer — Heli.OS
 
 Fine-tunes YOLOv8 on domain-specific datasets for SAR, wildfire, and
-inspection use cases. Wraps the ultralytics training API with Summit.OS
+inspection use cases. Wraps the ultralytics training API with Heli.OS
 conventions (checkpoint naming, eval metrics, ONNX export).
 
 Requires: pip install ultralytics

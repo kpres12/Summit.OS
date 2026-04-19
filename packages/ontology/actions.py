@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology Action Runner
+Heli.OS Ontology Action Runner
 
 The ONLY way to modify ontology state is through ActionRunner.execute().
 

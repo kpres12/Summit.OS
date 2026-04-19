@@ -1,4 +1,4 @@
-# Summit.OS Mission Planning
+# Heli.OS Mission Planning
 
 This document describes planning parameters and profiles supported by the Tasking service.
 

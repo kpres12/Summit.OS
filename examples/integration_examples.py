@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Summit.OS Integration Examples
+Heli.OS Integration Examples
 
-Practical examples showing how to integrate Summit.OS with various
+Practical examples showing how to integrate Heli.OS with various
 platforms, robots, and systems.
 """
 
@@ -16,9 +16,9 @@ import paho.mqtt.client as mqtt
 import websocket
 import numpy as np
 
-# Summit.OS SDK (mock implementation)
+# Heli.OS SDK (mock implementation)
 class SummitClient:
-    """Summit.OS Python SDK client."""
+    """Heli.OS Python SDK client."""
     
     def __init__(self, api_key: str, base_url: str = "http://localhost:8000"):
         self.api_key = api_key
@@ -30,7 +30,7 @@ class SummitClient:
         })
     
     async def publish_telemetry(self, telemetry: Dict[str, Any]) -> Dict[str, Any]:
-        """Publish telemetry data to Summit.OS."""
+        """Publish telemetry data to Heli.OS."""
         response = self.session.post(
             f"{self.base_url}/api/v1/telemetry",
             json=telemetry
@@ -38,7 +38,7 @@ class SummitClient:
         return response.json()
     
     async def publish_alert(self, alert: Dict[str, Any]) -> Dict[str, Any]:
-        """Publish alert to Summit.OS."""
+        """Publish alert to Heli.OS."""
         response = self.session.post(
             f"{self.base_url}/api/v1/alerts",
             json=alert
@@ -46,7 +46,7 @@ class SummitClient:
         return response.json()
     
     async def get_alerts(self, severity: str = None) -> List[Dict[str, Any]]:
-        """Get alerts from Summit.OS."""
+        """Get alerts from Heli.OS."""
         params = {'severity': severity} if severity else {}
         response = self.session.get(
             f"{self.base_url}/api/v1/alerts",
@@ -55,7 +55,7 @@ class SummitClient:
         return response.json()
     
     async def create_mission(self, mission: Dict[str, Any]) -> Dict[str, Any]:
-        """Create mission in Summit.OS."""
+        """Create mission in Heli.OS."""
         response = self.session.post(
             f"{self.base_url}/api/v1/missions",
             json=mission
@@ -64,7 +64,7 @@ class SummitClient:
 
 
 class SummitMQTTClient:
-    """Summit.OS MQTT client for IoT devices."""
+    """Heli.OS MQTT client for IoT devices."""
     
     def __init__(self, broker: str = "localhost", port: int = 1883, 
                  device_id: str = "device-001"):
@@ -78,9 +78,9 @@ class SummitMQTTClient:
         self.command_handlers = {}
     
     def on_connect(self, client, userdata, flags, rc):
-        print(f"Connected to Summit.OS MQTT: {rc}")
+        print(f"Connected to Heli.OS MQTT: {rc}")
         # Subscribe to commands for this device
-        client.subscribe(f"summit-os/devices/{self.device_id}/commands/+")
+        client.subscribe(f"heli-os/devices/{self.device_id}/commands/+")
     
     def on_message(self, client, userdata, msg):
         """Handle incoming commands."""
@@ -91,7 +91,7 @@ class SummitMQTTClient:
             print(f"Error handling command: {e}")
     
     def handle_command(self, command: Dict[str, Any]):
-        """Handle command from Summit.OS."""
+        """Handle command from Heli.OS."""
         command_type = command.get('type')
         if command_type in self.command_handlers:
             self.command_handlers[command_type](command)
@@ -103,18 +103,18 @@ class SummitMQTTClient:
         self.command_handlers[command_type] = handler
     
     def publish_telemetry(self, telemetry: Dict[str, Any]):
-        """Publish telemetry to Summit.OS."""
-        topic = f"summit-os/devices/{self.device_id}/telemetry"
+        """Publish telemetry to Heli.OS."""
+        topic = f"heli-os/devices/{self.device_id}/telemetry"
         self.client.publish(topic, json.dumps(telemetry))
     
     def publish_alert(self, alert: Dict[str, Any]):
-        """Publish alert to Summit.OS."""
-        topic = f"summit-os/alerts/{alert.get('category', 'general')}"
+        """Publish alert to Heli.OS."""
+        topic = f"heli-os/alerts/{alert.get('category', 'general')}"
         self.client.publish(topic, json.dumps(alert))
 
 
 class SummitWebSocketClient:
-    """Summit.OS WebSocket client for real-time applications."""
+    """Heli.OS WebSocket client for real-time applications."""
     
     def __init__(self, url: str = "ws://localhost:8001/ws", api_key: str = "your-key"):
         self.url = url
@@ -123,7 +123,7 @@ class SummitWebSocketClient:
         self.message_handlers = {}
     
     def connect(self):
-        """Connect to Summit.OS WebSocket."""
+        """Connect to Heli.OS WebSocket."""
         self.ws = websocket.WebSocketApp(
             self.url,
             header=[f"Authorization: Bearer {self.api_key}"],
@@ -135,7 +135,7 @@ class SummitWebSocketClient:
         self.ws.run_forever()
     
     def on_open(self, ws):
-        print("Connected to Summit.OS WebSocket")
+        print("Connected to Heli.OS WebSocket")
     
     def on_message(self, ws, message):
         """Handle incoming messages."""
@@ -151,24 +151,24 @@ class SummitWebSocketClient:
         print(f"WebSocket error: {error}")
     
     def on_close(self, ws, close_status_code, close_msg):
-        print("Disconnected from Summit.OS WebSocket")
+        print("Disconnected from Heli.OS WebSocket")
     
     def register_message_handler(self, message_type: str, handler):
         """Register message handler."""
         self.message_handlers[message_type] = handler
     
     def send_message(self, message: Dict[str, Any]):
-        """Send message to Summit.OS."""
+        """Send message to Heli.OS."""
         if self.ws:
             self.ws.send(json.dumps(message))
 
 
 # Example 1: Basic API Integration
 async def example_basic_api_integration():
-    """Example: Basic API integration with Summit.OS."""
+    """Example: Basic API integration with Heli.OS."""
     print("🔌 Example 1: Basic API Integration")
     
-    # Initialize Summit.OS client
+    # Initialize Heli.OS client
     client = SummitClient(api_key="your-api-key")
     
     # Publish telemetry
@@ -284,13 +284,13 @@ def example_websocket_integration():
     ws_client.register_message_handler("alert", handle_alert)
     ws_client.register_message_handler("mission", handle_mission)
     
-    # Connect to Summit.OS
+    # Connect to Heli.OS
     ws_client.connect()
 
 
 # Example 4: ROS 2 Integration
 class ROS2SummitIntegration:
-    """Example: ROS 2 integration with Summit.OS."""
+    """Example: ROS 2 integration with Heli.OS."""
     
     def __init__(self, robot_id: str = "turtlebot-001"):
         self.robot_id = robot_id
@@ -299,7 +299,7 @@ class ROS2SummitIntegration:
         
     async def gps_callback(self, gps_msg):
         """Handle GPS messages from ROS 2."""
-        # Convert ROS 2 GPS message to Summit.OS format
+        # Convert ROS 2 GPS message to Heli.OS format
         telemetry = {
             "device_id": self.robot_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -313,7 +313,7 @@ class ROS2SummitIntegration:
             }
         }
         
-        # Send to Summit.OS
+        # Send to Heli.OS
         await self.summit_client.publish_telemetry(telemetry)
         self.last_location = (gps_msg.latitude, gps_msg.longitude)
     
@@ -343,10 +343,10 @@ class ROS2SummitIntegration:
         return np.random.random() > 0.9  # 10% chance of fire detection
     
     async def handle_summit_command(self, command):
-        """Handle commands from Summit.OS."""
+        """Handle commands from Heli.OS."""
         if command['type'] == 'navigate':
             target_location = command['target_location']
-            # Convert Summit.OS location to ROS 2 navigation goal
+            # Convert Heli.OS location to ROS 2 navigation goal
             # This would publish to ROS 2 navigation stack
             print(f"Navigating to: {target_location}")
         
@@ -361,7 +361,7 @@ class ROS2SummitIntegration:
 
 # Example 5: DJI Drone Integration
 class DJISummitIntegration:
-    """Example: DJI drone integration with Summit.OS."""
+    """Example: DJI drone integration with Heli.OS."""
     
     def __init__(self, drone_id: str = "dji-001"):
         self.drone_id = drone_id
@@ -411,7 +411,7 @@ class DJISummitIntegration:
         }
     
     async def execute_mission(self, mission):
-        """Execute Summit.OS mission with DJI drone."""
+        """Execute Heli.OS mission with DJI drone."""
         print(f"Executing mission: {mission['mission_id']}")
         
         # Connect to drone
@@ -428,7 +428,7 @@ class DJISummitIntegration:
             image = await self.capture_image()
             analysis = await self.analyze_image(image)
             
-            # Send analysis to Summit.OS
+            # Send analysis to Heli.OS
             if analysis['fire_detected']:
                 alert = {
                     "alert_id": f"fire-{int(time.time())}",
@@ -451,7 +451,7 @@ class DJISummitIntegration:
 
 # Example 6: Edge Device Integration
 class EdgeSummitIntegration:
-    """Example: Edge device integration with Summit.OS."""
+    """Example: Edge device integration with Heli.OS."""
     
     def __init__(self, device_id: str = "edge-device-001"):
         self.device_id = device_id
@@ -548,7 +548,7 @@ class MockSmokeDetector:
 
 # Example 7: Multi-Robot Coordination
 class MultiRobotSummitIntegration:
-    """Example: Multi-robot coordination with Summit.OS."""
+    """Example: Multi-robot coordination with Heli.OS."""
     
     def __init__(self):
         self.robots = {
@@ -623,7 +623,7 @@ class MissionCoordinator:
 # Main execution
 async def main():
     """Run all integration examples."""
-    print("🚀 Summit.OS Integration Examples")
+    print("🚀 Heli.OS Integration Examples")
     print("=" * 50)
     
     # Example 1: Basic API Integration

@@ -1,4 +1,4 @@
-"""WebSocket manager for Summit.OS Data Fabric Service."""
+"""WebSocket manager for Heli.OS Data Fabric Service."""
 
 import asyncio
 import json

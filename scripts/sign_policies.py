@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Summit.OS Policy Signing Script
+Heli.OS Policy Signing Script
 
 Signs all OPA .rego policy files in infra/policy/ with an Ed25519 key.
 Run this whenever you add or update a policy file.
@@ -15,7 +15,7 @@ Usage:
     # Verify signatures only (don't sign)
     python scripts/sign_policies.py --verify
 
-    # Print the public key (to set POLICY_VERIFY_KEY on all Summit.OS services)
+    # Print the public key (to set POLICY_VERIFY_KEY on all Heli.OS services)
     python scripts/sign_policies.py --show-key
 
 Environment:
@@ -35,7 +35,7 @@ from policy.signer import PolicySigner, PolicyVerificationError
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Summit.OS Policy Signer")
+    parser = argparse.ArgumentParser(description="Heli.OS Policy Signer")
     parser.add_argument("--dir", default=str(repo_root / "infra" / "policy"),
                         help="Directory containing .rego files")
     parser.add_argument("--verify", action="store_true",
@@ -49,7 +49,7 @@ def main():
     if args.show_key:
         pub = signer.export_public_key_hex()
         if pub:
-            print(f"\nPublic key (set as POLICY_VERIFY_KEY on all Summit.OS services):\n{pub}\n")
+            print(f"\nPublic key (set as POLICY_VERIFY_KEY on all Heli.OS services):\n{pub}\n")
         else:
             print("Public key unavailable — is PyNaCl installed?")
         return

@@ -1,5 +1,5 @@
 # Access Control Policy
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 
@@ -7,13 +7,13 @@
 
 ## 1. Purpose
 
-This policy governs how access to Summit.OS systems, data, and infrastructure is granted, reviewed, modified, and revoked. It implements the principle of least privilege and ensures that access rights are proportionate to role requirements and business need.
+This policy governs how access to Heli.OS systems, data, and infrastructure is granted, reviewed, modified, and revoked. It implements the principle of least privilege and ensures that access rights are proportionate to role requirements and business need.
 
 ---
 
 ## 2. Role Hierarchy
 
-Summit.OS uses a tiered role model enforced at the API layer via RBAC middleware (`apps/api-gateway/middleware/rbac.py`):
+Heli.OS uses a tiered role model enforced at the API layer via RBAC middleware (`apps/api-gateway/middleware/rbac.py`):
 
 | Role | Access Level | Typical Holder |
 |------|-------------|----------------|
@@ -37,7 +37,7 @@ Role inheritance is strict — each role includes all permissions of roles below
 ### 3.1 New Employee / Contractor
 1. Hiring manager submits access request to Head of Engineering specifying:
    - Name, role, start date
-   - Required system access (Summit.OS role, infrastructure access, GitHub team)
+   - Required system access (Heli.OS role, infrastructure access, GitHub team)
    - Business justification for each access level
 2. Head of Engineering approves access levels within 1 business day
 3. On-call engineer provisions access:
@@ -67,8 +67,8 @@ Production database and infrastructure access is restricted to:
 
 | System | Authentication Requirement |
 |--------|---------------------------|
-| Summit.OS platform (API) | Short-lived OIDC JWT (max 1 hour) or scoped API key |
-| Summit.OS console | OIDC + MFA |
+| Heli.OS platform (API) | Short-lived OIDC JWT (max 1 hour) or scoped API key |
+| Heli.OS console | OIDC + MFA |
 | Production cloud console | MFA required; SSO preferred |
 | Production Kubernetes cluster | kubeconfig with RBAC; no shared credentials |
 | GitHub (codebase) | SSO + MFA enforced at organization level |
@@ -107,7 +107,7 @@ On confirmed termination (voluntary or involuntary):
 
 | Action | Timing | Owner |
 |--------|--------|-------|
-| Revoke Summit.OS account | Within 24 hours | On-call engineer |
+| Revoke Heli.OS account | Within 24 hours | On-call engineer |
 | Revoke GitHub organization access | Within 24 hours | Head of Engineering |
 | Revoke cloud infrastructure access | Within 24 hours | On-call engineer |
 | Rotate any personal API keys | Within 24 hours | On-call engineer |

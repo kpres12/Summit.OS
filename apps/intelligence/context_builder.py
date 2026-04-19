@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 # Shared sanitization — avoids duplicating injection pattern lists
 from prompt_guard import _safe_str, sanitize_text
 
-logger = logging.getLogger("summit.intelligence.context")
+logger = logging.getLogger("heli.intelligence.context")
 
 # Rough chars-per-token estimate for budget enforcement
 _CHARS_PER_TOKEN = 4
@@ -193,7 +193,7 @@ class ContextBuilder:
 
         # Build sections
         ts_now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        header = f"SUMMIT.OS OPERATOR AI | {ts_now}\n"
+        header = f"HELI.OS OPERATOR AI | {ts_now}\n"
         mission_section = (
             f"CURRENT MISSION: {mission_objective}\n" if mission_objective else ""
         )

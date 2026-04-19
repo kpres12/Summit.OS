@@ -1,5 +1,5 @@
 """
-Summit.OS Device Registry
+Heli.OS Device Registry
 
 Stores the mapping of device_id → certificate fingerprint.
 When a device connects and presents its cert, the Fabric service
@@ -23,7 +23,7 @@ logger = logging.getLogger("summit.identity.registry")
 
 _DB_URL = os.getenv(
     "POSTGRES_URL",
-    "postgresql+asyncpg://summit:summit_password@localhost:5432/summit_os",
+    "postgresql+asyncpg://summit:summit_password@localhost:5432/heli_os",
 )
 
 
@@ -31,7 +31,7 @@ class DeviceRegistry:
     """
     Registry of authorized devices and their certificate fingerprints.
 
-    A device must be registered before it can connect to Summit.OS.
+    A device must be registered before it can connect to Heli.OS.
     Registration associates a device_id with its certificate fingerprint,
     device type, capabilities, and org_id.
     """
@@ -186,7 +186,7 @@ class DeviceRegistry:
         """
         Revoke a device's authorization.
 
-        The device's cert remains cryptographically valid but Summit.OS
+        The device's cert remains cryptographically valid but Heli.OS
         will reject all connections from it.
         """
         if self._use_db:

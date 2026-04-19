@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.summit-os.local/planner.to.actuation.schema.json",
+  "$id": "https://schemas.heli-os.local/planner.to.actuation.schema.json",
   "title": "PlannerToActuation",
   "type": "object",
   "properties": {

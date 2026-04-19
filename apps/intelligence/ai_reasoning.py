@@ -1,8 +1,8 @@
 """
-Summit.OS AI Reasoning Engine
+Heli.OS AI Reasoning Engine
 
 Implements contextual reasoning, risk assessment, and advisory generation
-for the intelligence layer of Summit.OS.
+for the intelligence layer of Heli.OS.
 """
 
 import numpy as np

@@ -1,5 +1,5 @@
 """
-User MFA state store for Summit.OS.
+User MFA state store for Heli.OS.
 
 Stores per-user MFA enrollment state:
 - TOTP secrets (AES-256-GCM encrypted)

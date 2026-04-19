@@ -1,5 +1,5 @@
 """
-packages/utm — Unmanned Traffic Management integration for Summit.OS.
+packages/utm — Unmanned Traffic Management integration for Heli.OS.
 
 Provides real-time airspace awareness by pulling from public FAA data sources
 and structuring the results as OPA-compatible geofence objects that the tasking

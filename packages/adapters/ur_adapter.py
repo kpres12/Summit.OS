@@ -1,9 +1,9 @@
 """
-Summit.OS — Universal Robots (UR) Adapter
+Heli.OS — Universal Robots (UR) Adapter
 ==========================================
 
 Integrates Universal Robots cobots (UR3, UR5, UR10, UR16, UR20, UR30)
-into Summit.OS via the RTDE (Real-Time Data Exchange) protocol.
+into Heli.OS via the RTDE (Real-Time Data Exchange) protocol.
 
 Universal Robots are the world's best-selling collaborative robots.
 They are deployed for: inspection, assembly, palletizing, machine tending,
@@ -38,7 +38,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.ur")
+logger = logging.getLogger("heli.adapters.ur")
 
 try:
     import rtde.rtde as rtde_lib

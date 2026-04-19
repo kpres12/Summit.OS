@@ -1,5 +1,5 @@
 """
-Summit.OS — CAP (Common Alerting Protocol) Adapter
+Heli.OS — CAP (Common Alerting Protocol) Adapter
 ====================================================
 
 Polls CAP/Atom feeds (NWS, FEMA, international emergency alert systems) and
@@ -29,7 +29,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.cap")
+logger = logging.getLogger("heli.adapters.cap")
 
 DEFAULT_CAP_FEEDS: list[str] = [
     "https://alerts.weather.gov/cap/us.php?x=1",  # NWS all US alerts
@@ -133,7 +133,7 @@ class CAPAdapter(BaseAdapter):
 
     async def connect(self) -> None:
         self._session = aiohttp.ClientSession(
-            headers={"User-Agent": "SummitOS-CAPAdapter/1.0"}
+            headers={"User-Agent": "HeliOS-CAPAdapter/1.0"}
         )
         self._log.info("CAP adapter ready — polling %d feed(s)", len(self._feed_urls))
 

@@ -1,9 +1,9 @@
 """
-Summit.OS Adapter SDK
+Heli.OS Adapter SDK
 
 pip install summit-sdk
 
-The canonical way to write a Summit.OS adapter. Handles MQTT connection,
+The canonical way to write a Heli.OS adapter. Handles MQTT connection,
 entity publishing, manifest registration, and graceful shutdown.
 
 Quick start:

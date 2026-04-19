@@ -1,5 +1,5 @@
 """
-Deconfliction Volume — Summit.OS
+Deconfliction Volume — Heli.OS
 
 Represents an asset's occupied airspace as a cylinder:
   - center: lat/lon

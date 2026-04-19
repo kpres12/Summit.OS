@@ -1,5 +1,5 @@
 """
-Distributed Tracing for Summit.OS
+Distributed Tracing for Heli.OS
 
 OpenTelemetry-compatible tracing that works with or without
 the opentelemetry SDK. Provides:
@@ -137,7 +137,7 @@ class Tracer:
     """
 
     def __init__(
-        self, service_name: str = "summit-os", exporter: Optional[SpanExporter] = None
+        self, service_name: str = "heli-os", exporter: Optional[SpanExporter] = None
     ):
         self.service_name = service_name
         self._exporter = exporter or ConsoleExporter()
@@ -289,7 +289,7 @@ def create_tracing_middleware(tracer: Tracer):
 _tracer_registry: Dict[str, Tracer] = {}
 
 
-def get_tracer(service_name: str = "summit-os") -> Tracer:
+def get_tracer(service_name: str = "heli-os") -> Tracer:
     """Get or create a tracer for the given service name."""
     if service_name not in _tracer_registry:
         _tracer_registry[service_name] = Tracer(service_name)

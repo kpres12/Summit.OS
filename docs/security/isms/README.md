@@ -1,11 +1,11 @@
-# Summit.OS ISMS Document Set
+# Heli.OS ISMS Document Set
 **BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21**
 
 ---
 
-This directory contains the Information Security Management System (ISMS) documentation for Summit.OS. These documents support ISO 27001:2022 and SOC2 Type 2 certification readiness.
+This directory contains the Information Security Management System (ISMS) documentation for Heli.OS. These documents support ISO 27001:2022 and SOC2 Type 2 certification readiness.
 
 ---
 

@@ -1,5 +1,5 @@
 """
-Summit.OS MAVLink Adapter
+Heli.OS MAVLink Adapter
 ==========================
 
 Bidirectional adapter for MAVLink-speaking vehicles (ArduPilot, PX4).
@@ -59,7 +59,7 @@ except ImportError:
     mavutil = None  # type: ignore[assignment]
     _MAVLINK_AVAILABLE = False
 
-logger = logging.getLogger("summit.adapters.mavlink")
+logger = logging.getLogger("heli.adapters.mavlink")
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +348,7 @@ class MAVLinkAdapter(BaseAdapter):
     # -------------------------------------------------------------------------
 
     def _build_observation(self, sysid: int, state: dict) -> dict:
-        """Construct a normalised Summit.OS observation from vehicle state."""
+        """Construct a normalised Heli.OS observation from vehicle state."""
         ts_ms = int(time.time() * 1000)
         utcnow_iso = datetime.now(timezone.utc).isoformat()
 

@@ -1,5 +1,5 @@
 """
-Download and preprocess public real-world datasets for Summit.OS model training.
+Download and preprocess public real-world datasets for Heli.OS model training.
 
 Sources (all public, no auth required):
   NASA FIRMS      — active fire detections, global, updated every 10 min
@@ -42,7 +42,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 def _fetch(url: str, timeout: int = 30, retries: int = 3) -> Optional[bytes]:
-    headers = {"User-Agent": "Summit.OS/1.0 (public data research)"}
+    headers = {"User-Agent": "Heli.OS/1.0 (public data research)"}
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=headers)
@@ -1045,7 +1045,7 @@ def download_reliefweb(max_rows: int = 5000) -> List[Dict]:
     }
 
     params = {
-        "appname": "summit-os-training",
+        "appname": "heli-os-training",
         "fields[include][]": ["name", "type", "country", "date"],
         "limit": str(min(max_rows, 1000)),
         "sort[]": "date:desc",

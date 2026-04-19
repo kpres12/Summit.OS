@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology Sync
+Heli.OS Ontology Sync
 
 Bridges raw service data into the ontology object store.
 

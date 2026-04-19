@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "summit-os.fullname" . }}-fabric
+  name: {{ include "heli-os.fullname" . }}-fabric
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
     app: fabric
 spec:
   replicas: {{ .Values.fabric.replicas }}
@@ -27,17 +27,17 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "summit-os.fullname" . }}-secrets
+                  name: {{ include "heli-os.fullname" . }}-secrets
                   key: POSTGRES_PASSWORD
             - name: FABRIC_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "summit-os.fullname" . }}-secrets
+                  name: {{ include "heli-os.fullname" . }}-secrets
                   key: FABRIC_JWT_SECRET
             - name: REDIS_URL
               value: {{ .Values.global.env.REDIS_URL | quote }}
             - name: POSTGRES_URL
-              value: "postgresql+asyncpg://summit:$(POSTGRES_PASSWORD)@summit-postgres:5432/summit_os"
+              value: "postgresql+asyncpg://summit:$(POSTGRES_PASSWORD)@summit-postgres:5432/heli_os"
           livenessProbe:
             httpGet:
               path: /health
@@ -54,9 +54,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "summit-os.fullname" . }}-fabric
+  name: {{ include "heli-os.fullname" . }}-fabric
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
 spec:
   selector:
     app: fabric

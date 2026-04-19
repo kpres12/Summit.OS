@@ -1,5 +1,5 @@
 """
-Mesh Peer Networking for Summit.OS
+Mesh Peer Networking for Heli.OS
 
 Implements a gossip-based mesh network where nodes:
 1. Discover peers via UDP broadcast
@@ -54,7 +54,7 @@ class PeerInfo:
 
 class MeshPeer:
     """
-    A node in the Summit.OS mesh network.
+    A node in the Heli.OS mesh network.
 
     Provides:
     - Peer discovery (UDP broadcast or seed list)

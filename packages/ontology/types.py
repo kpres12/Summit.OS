@@ -1,7 +1,7 @@
 """
-Summit.OS Ontology — Base Type Definitions
+Heli.OS Ontology — Base Type Definitions
 
-Every concept in Summit.OS is expressed as one of three primitives:
+Every concept in Heli.OS is expressed as one of three primitives:
 
   ObjectTypeDef   — the schema for a class of real-world things
                     (Asset, Mission, Alert, Incident, Zone, …)

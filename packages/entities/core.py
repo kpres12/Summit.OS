@@ -1,5 +1,5 @@
 """
-Summit.OS Core Entity Dataclasses
+Heli.OS Core Entity Dataclasses
 
 Pure-Python dataclasses mirroring the protobuf definitions.  Every field
 supports JSON serialization via .to_dict() / .from_dict() for backward
@@ -248,7 +248,7 @@ class SensorData:
 
 @dataclass
 class Entity:
-    """The universal data type in Summit.OS.  Everything is an Entity."""
+    """The universal data type in Heli.OS.  Everything is an Entity."""
 
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     entity_type: EntityType = EntityType.ASSET

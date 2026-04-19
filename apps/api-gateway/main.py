@@ -93,14 +93,14 @@ def _startup_security_check() -> None:
     if warnings:
         border = "=" * 72
         logger.warning(border)
-        logger.warning("  SUMMIT.OS SECURITY WARNING — NOT SAFE FOR PRODUCTION")
+        logger.warning("  HELI.OS SECURITY WARNING — NOT SAFE FOR PRODUCTION")
         logger.warning(border)
         for w in warnings:
             logger.warning(w)
         logger.warning("")
         logger.warning("  To harden this deployment, set in your .env:")
         logger.warning("    OIDC_ENFORCE=true")
-        logger.warning("    OIDC_ISSUER=https://your-keycloak/realms/summit")
+        logger.warning("    OIDC_ISSUER=https://your-keycloak/realms/heli")
         logger.warning("    RBAC_ENFORCE=true")
         logger.warning("    API_KEY_ENFORCE=true")
         logger.warning("    FIELD_ENCRYPTION_KEY=$(openssl rand -base64 32)")
@@ -121,10 +121,10 @@ async def lifespan(app: FastAPI):
     else:
         _pg_url = await _get_secret(
             "POSTGRES_URL",
-            default="postgresql://summit:summit_password@localhost:5432/summit_os",
+            default="postgresql://heli:summit_password@localhost:5432/heli_os",
         )
         db_url = _to_asyncpg_url(
-            _pg_url or "postgresql://summit:summit_password@localhost:5432/summit_os"
+            _pg_url or "postgresql://heli:summit_password@localhost:5432/heli_os"
         )
     engine = create_async_engine(db_url, echo=False, future=True)
     SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
@@ -363,11 +363,11 @@ async def lifespan(app: FastAPI):
 
 
 SUMMIT_API_VERSION = "1"
-SUMMIT_OS_VERSION = "1.0.0"
+HELI_OS_VERSION = "1.0.0"
 
 app = FastAPI(
-    title="Summit.OS API Gateway",
-    version=SUMMIT_OS_VERSION,
+    title="Heli.OS API Gateway",
+    version=HELI_OS_VERSION,
     lifespan=lifespan,
     docs_url="/api/docs",
     redoc_url="/api/redoc",
@@ -396,7 +396,7 @@ class _VersionHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: _StarletteRequest, call_next):
         response = await call_next(request)
         response.headers["X-Summit-API-Version"] = SUMMIT_API_VERSION
-        response.headers["X-Summit-OS-Version"] = SUMMIT_OS_VERSION
+        response.headers["X-Summit-OS-Version"] = HELI_OS_VERSION
         return response
 
 
@@ -590,7 +590,7 @@ async def api_version():
     """Returns current API and platform version. Use this to check compatibility."""
     return {
         "api_version": SUMMIT_API_VERSION,
-        "summit_os_version": SUMMIT_OS_VERSION,
+        "heli_os_version": HELI_OS_VERSION,
         "min_sdk_version": "1.0.0",
         "supported_api_versions": [SUMMIT_API_VERSION],
         "deprecations": [],
@@ -599,7 +599,7 @@ async def api_version():
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "api-gateway", "version": SUMMIT_OS_VERSION}
+    return {"status": "ok", "service": "api-gateway", "version": HELI_OS_VERSION}
 
 
 # ── Device Identity Endpoints ─────────────────────────────────────────────────
@@ -659,7 +659,7 @@ async def register_device(
     Register a new device and issue it a certificate.
 
     Returns the device certificate (cert_pem) and private key (key_pem).
-    The key is returned ONCE — Summit.OS does not store it.
+    The key is returned ONCE — Heli.OS does not store it.
     Store it securely on the device.
     """
     registry, ca = await _get_device_registry()
@@ -710,7 +710,7 @@ async def register_device(
         "device_id": req.device_id,
         "fingerprint": cert.fingerprint,
         "cert_pem": cert.cert_pem,
-        "key_pem": cert.key_pem,  # returned once — never stored by Summit.OS
+        "key_pem": cert.key_pem,  # returned once — never stored by Heli.OS
         "not_before": cert.not_before.isoformat(),
         "not_after": cert.not_after.isoformat(),
         "message": "Store the key_pem securely on the device. It will not be shown again.",

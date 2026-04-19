@@ -1,8 +1,8 @@
 """
-Summit.OS — Generic WebSocket Adapter
+Heli.OS — Generic WebSocket Adapter
 =======================================
 
-Subscribes to any WebSocket feed and translates messages into Summit.OS
+Subscribes to any WebSocket feed and translates messages into Heli.OS
 observations.
 
 Modern connected hardware increasingly exposes a WebSocket API: drones,
@@ -28,7 +28,7 @@ url             : str   — WebSocket URL, e.g. "ws://192.168.1.100:8080/telemet
 auth_token      : str   — Bearer token (sent as Authorization header)
 auth_query_param: str   — Token sent as ?token=... query param instead
 subscribe_msg   : str   — JSON string to send immediately after connect (optional)
-field_map       : dict  — map source field names → Summit.OS field names
+field_map       : dict  — map source field names → Heli.OS field names
                           e.g. {"vehicle_id": "entity_id", "gps_lat": "lat"}
 entity_type     : str   — default entity type if not in message (default ASSET)
 entity_id_field : str   — which source field to use as entity_id (default "id")
@@ -43,7 +43,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.websocket")
+logger = logging.getLogger("heli.adapters.websocket")
 
 try:
     import websockets

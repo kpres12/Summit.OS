@@ -1,5 +1,5 @@
 """
-Multi-Hypothesis Tracker (MHT) for Summit.OS
+Multi-Hypothesis Tracker (MHT) for Heli.OS
 
 Maintains multiple association hypotheses when sensor measurements
 are ambiguous. Uses hypothesis tree pruning to keep computation bounded.

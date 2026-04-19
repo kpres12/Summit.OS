@@ -1,7 +1,7 @@
 """
-Summit.OS Adapter Runner
+Heli.OS Adapter Runner
 
-Single entry point that starts all enabled Summit.OS adapters.
+Single entry point that starts all enabled Heli.OS adapters.
 Each adapter is a BaseAdapter subclass that self-manages its MQTT connection,
 declares its capabilities via a manifest, and runs as a concurrent asyncio task.
 
@@ -29,7 +29,7 @@ logging.basicConfig(
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
-logger = logging.getLogger("summit.adapters")
+logger = logging.getLogger("heli.adapters")
 
 _ADAPTER_CLASSES = [
     ("opensky",   "opensky.adapter",   "OpenSkyAdapter"),

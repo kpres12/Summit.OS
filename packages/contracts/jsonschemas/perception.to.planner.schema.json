@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.summit-os.local/perception.to.planner.schema.json",
+  "$id": "https://schemas.heli-os.local/perception.to.planner.schema.json",
   "title": "PerceptionToPlanner",
   "type": "object",
   "properties": {

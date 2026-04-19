@@ -2,7 +2,7 @@
 
 ## Overview
 
-Summit.OS supports multiple secrets management patterns for production deployments. **Never commit secrets to version control.**
+Heli.OS supports multiple secrets management patterns for production deployments. **Never commit secrets to version control.**
 
 ## Supported Patterns
 
@@ -76,8 +76,8 @@ kind: Pod
 metadata:
   annotations:
     vault.hashicorp.com/agent-inject: "true"
-    vault.hashicorp.com/role: "summit-os"
-    vault.hashicorp.com/agent-inject-secret-config: "secret/data/summit-os/config"
+    vault.hashicorp.com/role: "heli-os"
+    vault.hashicorp.com/agent-inject-secret-config: "secret/data/heli-os/config"
 ```
 
 ### 5. AWS Secrets Manager / Azure Key Vault / GCP Secret Manager
@@ -88,7 +88,7 @@ Use cloud-provider SDKs to fetch secrets at runtime:
 import boto3
 
 client = boto3.client('secretsmanager', region_name='us-west-2')
-response = client.get_secret_value(SecretId='summit-os/postgres-password')
+response = client.get_secret_value(SecretId='heli-os/postgres-password')
 password = response['SecretString']
 ```
 

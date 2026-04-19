@@ -1,1 +1,1 @@
-"""Summit.OS Autonomy Engine — Behavior Trees + Reactive Rules."""
+"""Heli.OS Autonomy Engine — Behavior Trees + Reactive Rules."""

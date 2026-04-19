@@ -1,5 +1,5 @@
 """
-Summit.OS Behavior Tree — safe mission execution via py-trees.
+Heli.OS Behavior Tree — safe mission execution via py-trees.
 
 The LLM brain decides WHAT to do. The behavior tree handles HOW:
   - Validates preconditions before any physical action
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-logger = logging.getLogger("summit.tasking.behavior_tree")
+logger = logging.getLogger("heli.tasking.behavior_tree")
 
 try:
     import py_trees  # type: ignore

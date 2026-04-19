@@ -91,7 +91,7 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
             className="text-sm font-bold tracking-widest"
             style={{ fontFamily: 'var(--font-orbitron), Orbitron, sans-serif', color: 'var(--accent)' }}
           >
-            SUMMIT.OS
+            HELI.OS
           </span>
           {/* Incident name — click to edit */}
           <span style={{ color: 'var(--accent-30)' }}>|</span>

@@ -1,5 +1,5 @@
 """
-Tactical Priority Message Queue — Summit.OS Fabric
+Tactical Priority Message Queue — Heli.OS Fabric
 
 SQLite WAL-backed store-and-forward queue for degraded/intermittent links.
 Messages survive service restarts. Higher priority messages drain first.

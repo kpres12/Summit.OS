@@ -1,5 +1,5 @@
 """
-Train the Summit.OS asset assignment scorer.
+Train the Heli.OS asset assignment scorer.
 
 Given a (mission, candidate asset) pair, outputs a score 0-1 indicating how
 well-suited the asset is for the mission.  At runtime the mission planner runs
@@ -702,7 +702,7 @@ def train(n_samples: int = 50_000, real_csv: str = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS asset assignment scorer"
+        description="Train Heli.OS asset assignment scorer"
     )
     parser.add_argument(
         "--samples",

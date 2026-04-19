@@ -1,5 +1,5 @@
 """
-ML Model Registry — Summit.OS
+ML Model Registry — Heli.OS
 
 Tracks trained models by domain and version. When a new model is promoted
 (after passing eval metrics threshold), it's copied to the hot-reload

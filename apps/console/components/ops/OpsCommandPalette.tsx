@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Command Palette — Summit.OS Ops Console
+ * Command Palette — Heli.OS Ops Console
  *
  * Opens on '/' keypress. Fuzzy-searches available commands.
  * Commands: investigate alert, fly-to entity, dispatch mission,

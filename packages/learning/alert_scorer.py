@@ -1,5 +1,5 @@
 """
-alert_scorer.py — Source reliability scoring for Summit.OS CyberSynetic engine.
+alert_scorer.py — Source reliability scoring for Heli.OS CyberSynetic engine.
 
 Learns which signal sources (adapters, cameras, sensors) produce reliable alerts
 vs. noisy ones. Adjusts priority weights automatically based on operator feedback.

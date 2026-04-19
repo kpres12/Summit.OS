@@ -1,6 +1,6 @@
 # Contract Test Template (drop-in)
 
-Purpose: keep domain packs and Sentinel aligned with Summit.OS canonical contracts.
+Purpose: keep domain packs and Sentinel aligned with Heli.OS canonical contracts.
 
 Run locally:
 - pip install -r ci/templates/requirements.txt

@@ -1,8 +1,8 @@
 """
-Summit.OS Camera Adapter — ONVIF/RTSP
+Heli.OS Camera Adapter — ONVIF/RTSP
 
 Connects to IP cameras via RTSP, streams frames to the Inference service
-for YOLO detection, and publishes detected objects as Summit.OS TRACK
+for YOLO detection, and publishes detected objects as Heli.OS TRACK
 entities using ByteTrack IDs for persistent cross-frame identity.
 
 Simulation mode (CAMERA_ENABLED=true, no actual camera reachable):

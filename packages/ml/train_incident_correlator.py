@@ -1,5 +1,5 @@
 """
-Train the Summit.OS incident correlator.
+Train the Heli.OS incident correlator.
 
 Pairwise binary classifier — given two detections, predicts whether they
 represent the same incident (1) or separate incidents (0). Prevents the
@@ -992,7 +992,7 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS incident correlator and export to ONNX."
+        description="Train Heli.OS incident correlator and export to ONNX."
     )
     parser.add_argument(
         "--samples",

@@ -1,5 +1,5 @@
 """
-Behavior Tree Executor for Summit.OS
+Behavior Tree Executor for Heli.OS
 
 Manages the tick loop, tree lifecycle, and provides introspection
 for debugging and visualization.

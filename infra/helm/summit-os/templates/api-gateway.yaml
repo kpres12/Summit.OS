@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "summit-os.fullname" . }}-api-gateway
+  name: {{ include "heli-os.fullname" . }}-api-gateway
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
     app: api-gateway
 spec:
   replicas: {{ .Values.apiGateway.replicas }}
@@ -27,12 +27,12 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "summit-os.fullname" . }}-secrets
+                  name: {{ include "heli-os.fullname" . }}-secrets
                   key: POSTGRES_PASSWORD
             - name: STRIPE_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "summit-os.fullname" . }}-secrets
+                  name: {{ include "heli-os.fullname" . }}-secrets
                   key: STRIPE_WEBHOOK_SECRET
             - name: REDIS_URL
               value: {{ .Values.global.env.REDIS_URL | quote }}
@@ -53,12 +53,12 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "summit-os.fullname" . }}-api-gateway
+  name: {{ include "heli-os.fullname" . }}-api-gateway
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "summit-os.fullname" . }}-api-gateway
+    name: {{ include "heli-os.fullname" . }}-api-gateway
   minReplicas: {{ .Values.apiGateway.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.apiGateway.autoscaling.maxReplicas }}
   metrics:
@@ -73,9 +73,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "summit-os.fullname" . }}-api-gateway
+  name: {{ include "heli-os.fullname" . }}-api-gateway
   labels:
-    {{- include "summit-os.labels" . | nindent 4 }}
+    {{- include "heli-os.labels" . | nindent 4 }}
 spec:
   selector:
     app: api-gateway

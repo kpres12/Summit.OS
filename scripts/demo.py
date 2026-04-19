@@ -1,5 +1,5 @@
 """
-Summit.OS Standalone Demo
+Heli.OS Standalone Demo
 
 No Docker. No services. Just Python + Ollama.
 
@@ -100,7 +100,7 @@ def build_context(entities: list, mission: str) -> str:
     entities = entities[:30]
 
     lines = [
-        f"SUMMIT.OS OPERATOR AI | {ts}",
+        f"HELI.OS OPERATOR AI | {ts}",
         f"CURRENT MISSION: {mission}",
         "",
         f"WORLD STATE ({len(entities)} aerial tracks):",
@@ -132,7 +132,7 @@ def build_context(entities: list, mission: str) -> str:
 # ── Ask Ollama ────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """\
-You are Summit.OS, an autonomous systems coordination AI. You monitor live sensor data \
+You are Heli.OS, an autonomous systems coordination AI. You monitor live sensor data \
 and advise operators on what actions to take.
 
 Given a mission objective and live world state, analyse the situation briefly. \
@@ -171,14 +171,14 @@ def ask_brain(context: str, model: str) -> str:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Summit.OS standalone demo")
+    parser = argparse.ArgumentParser(description="Heli.OS standalone demo")
     parser.add_argument("--mission", default="Monitor all aircraft and identify anything unusual or potentially concerning")
     parser.add_argument("--bbox", default="", help="lat_min,lon_min,lat_max,lon_max — leave blank for global")
     parser.add_argument("--model", default="gemma3:4b", help="Ollama model to use")
     args = parser.parse_args()
 
     print("\n" + "="*60)
-    print("  SUMMIT.OS — Live Demo")
+    print("  HELI.OS — Live Demo")
     print("="*60)
     print(f"  Mission : {args.mission}")
     print(f"  Model   : {args.model}")

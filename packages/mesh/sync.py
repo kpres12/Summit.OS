@@ -1,5 +1,5 @@
 """
-Anti-Entropy Synchronization Protocol for Summit.OS Mesh
+Anti-Entropy Synchronization Protocol for Heli.OS Mesh
 
 Implements a pull-based anti-entropy protocol where nodes periodically:
 1. Exchange state digests (hashes of CRDT keys + versions)

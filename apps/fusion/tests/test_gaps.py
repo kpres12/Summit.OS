@@ -1,5 +1,5 @@
 """
-Tests for the 8 LatticeOS parity gaps implemented in Summit.OS fusion service.
+Tests for the 8 LatticeOS parity gaps implemented in Heli.OS fusion service.
 
 Gap 1: Multi-sensor track fusion (TrackManager + /api/v1/tracks endpoint)
 Gap 4: HLS video streaming (hls_router endpoints)

@@ -1,7 +1,7 @@
 """
-Summit.OS Integration Tests
+Heli.OS Integration Tests
 
-Comprehensive test suite for Summit.OS integration across different platforms.
+Comprehensive test suite for Heli.OS integration across different platforms.
 """
 
 import pytest
@@ -18,20 +18,20 @@ mqtt = pytest.importorskip("paho.mqtt.client")
 websocket = pytest.importorskip("websocket")
 import numpy as np
 
-# Import Summit.OS SDK
+# Import Heli.OS SDK
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent / "packages" / "summit-os-sdk"))
+sys.path.append(str(Path(__file__).parent.parent / "packages" / "heli-os-sdk"))
 
-from summit_os import SummitClient, SummitOSError
+from heli_os import SummitClient, HeliOSError
 
 
-class TestSummitOSIntegration:
-    """Test suite for Summit.OS integration."""
+class TestHeliOSIntegration:
+    """Test suite for Heli.OS integration."""
     
     @pytest.fixture
     def summit_client(self):
-        """Create Summit.OS client for testing."""
+        """Create Heli.OS client for testing."""
         return SummitClient(
             api_key="test-api-key",
             base_url="http://localhost:8000"
@@ -87,21 +87,21 @@ class TestSummitOSIntegration:
     
     @pytest.mark.asyncio
     async def test_telemetry_publishing(self, summit_client, mock_telemetry_data):
-        """Test telemetry publishing to Summit.OS."""
-        # This would test against a real Summit.OS instance
+        """Test telemetry publishing to Heli.OS."""
+        # This would test against a real Heli.OS instance
         # For now, we'll mock the response
         with pytest.raises(ConnectionError):
             await summit_client.publish_telemetry(mock_telemetry_data)
     
     @pytest.mark.asyncio
     async def test_alert_publishing(self, summit_client, mock_alert_data):
-        """Test alert publishing to Summit.OS."""
+        """Test alert publishing to Heli.OS."""
         with pytest.raises(ConnectionError):
             await summit_client.publish_alert(mock_alert_data)
     
     @pytest.mark.asyncio
     async def test_mission_creation(self, summit_client, mock_mission_data):
-        """Test mission creation in Summit.OS."""
+        """Test mission creation in Heli.OS."""
         with pytest.raises(ConnectionError):
             await summit_client.create_mission(mock_mission_data)
     
@@ -121,7 +121,7 @@ class TestSummitOSIntegration:
     # MQTT Integration Tests
     
     def test_mqtt_connection(self):
-        """Test MQTT connection to Summit.OS."""
+        """Test MQTT connection to Heli.OS."""
         client = mqtt.Client(client_id="test-client")
         
         def on_connect(client, userdata, flags, rc):
@@ -153,12 +153,12 @@ class TestSummitOSIntegration:
         # Test publishing (would fail without running MQTT broker)
         with pytest.raises(ConnectionRefusedError):
             client.connect("localhost", 1883, 60)
-            client.publish("summit-os/devices/test-device-001/telemetry", json.dumps(telemetry))
+            client.publish("heli-os/devices/test-device-001/telemetry", json.dumps(telemetry))
     
     # WebSocket Integration Tests
     
     def test_websocket_connection(self):
-        """Test WebSocket connection to Summit.OS."""
+        """Test WebSocket connection to Heli.OS."""
         def on_open(ws):
             print("WebSocket connected")
         
@@ -182,7 +182,7 @@ class TestSummitOSIntegration:
     # ROS 2 Integration Tests
     
     def test_ros2_message_conversion(self):
-        """Test ROS 2 message to Summit.OS format conversion."""
+        """Test ROS 2 message to Heli.OS format conversion."""
         # Mock ROS 2 GPS message
         class MockGPSMessage:
             def __init__(self):
@@ -193,7 +193,7 @@ class TestSummitOSIntegration:
         
         gps_msg = MockGPSMessage()
         
-        # Convert to Summit.OS format
+        # Convert to Heli.OS format
         telemetry = {
             "device_id": "ros2-robot-001",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -462,19 +462,19 @@ class TestSummitOSIntegration:
 # Integration Test Configuration
 
 @pytest.fixture(scope="session")
-def summit_os_services():
-    """Start Summit.OS services for integration testing."""
+def heli_os_services():
+    """Start Heli.OS services for integration testing."""
     # This would start Docker containers or local services
     # For now, we'll skip this in the test
-    pytest.skip("Summit.OS services not available for testing")
+    pytest.skip("Heli.OS services not available for testing")
 
 
 @pytest.mark.integration
-class TestSummitOSIntegrationWithServices:
-    """Integration tests that require running Summit.OS services."""
+class TestHeliOSIntegrationWithServices:
+    """Integration tests that require running Heli.OS services."""
     
     @pytest.mark.asyncio
-    async def test_end_to_end_workflow(self, summit_os_services):
+    async def test_end_to_end_workflow(self, heli_os_services):
         """Test complete end-to-end workflow."""
         # This would test the complete workflow:
         # 1. Publish telemetry
@@ -483,17 +483,17 @@ class TestSummitOSIntegrationWithServices:
         # 4. Create mission
         # 5. Execute mission
         # 6. Monitor progress
-        pytest.skip("Requires running Summit.OS services")
+        pytest.skip("Requires running Heli.OS services")
     
     @pytest.mark.asyncio
-    async def test_real_time_data_flow(self, summit_os_services):
-        """Test real-time data flow through Summit.OS."""
+    async def test_real_time_data_flow(self, heli_os_services):
+        """Test real-time data flow through Heli.OS."""
         # This would test:
         # 1. WebSocket connection
         # 2. Real-time telemetry streaming
         # 3. Live alert notifications
         # 4. Mission status updates
-        pytest.skip("Requires running Summit.OS services")
+        pytest.skip("Requires running Heli.OS services")
 
 
 if __name__ == "__main__":

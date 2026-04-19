@@ -1,4 +1,4 @@
-# Summit.OS — Coolify Deployment Compose
+# Heli.OS — Coolify Deployment Compose
 #
 # HOW TO DEPLOY ON COOLIFY
 # ─────────────────────────
@@ -77,13 +77,13 @@ services:
     image: postgis/postgis:15-3.3
     restart: always
     environment:
-      POSTGRES_DB: summit_os
+      POSTGRES_DB: heli_os
       POSTGRES_USER: summit
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U summit -d summit_os"]
+      test: ["CMD-SHELL", "pg_isready -U summit -d heli_os"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -108,7 +108,7 @@ services:
   # ── Core Application Services ───────────────────────────────────────────────
 
   fabric:
-    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/summit-os/fabric:latest}
+    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/heli-os/fabric:latest}
     restart: always
     environment:
       FABRIC_REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -131,10 +131,10 @@ services:
       - summit-internal
 
   api-gateway:
-    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/summit-os/api-gateway:latest}
+    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/heli-os/api-gateway:latest}
     restart: always
     environment:
-      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/summit_os
+      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/heli_os
       REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
       FABRIC_WS_URL: ws://fabric:8001/ws
       FABRIC_HTTP_URL: http://fabric:8001
@@ -167,7 +167,7 @@ services:
       - summit-internal
 
   console:
-    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/summit-os/console:latest}
+    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/heli-os/console:latest}
     restart: always
     environment:
       NEXT_PUBLIC_API_URL: https://${DOMAIN:?DOMAIN is required}
@@ -210,12 +210,12 @@ services:
 # These require more RAM (~4 GB total vs ~1.5 GB for core).
 
 #  fusion:
-#    image: ${FUSION_IMAGE:-ghcr.io/bigmt-ai/summit-os/fusion:latest}
+#    image: ${FUSION_IMAGE:-ghcr.io/bigmt-ai/heli-os/fusion:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
 #      MQTT_BROKER: mqtt
-#      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/summit_os
+#      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/heli_os
 #    depends_on:
 #      redis:
 #        condition: service_healthy
@@ -223,11 +223,11 @@ services:
 #      - summit-internal
 #
 #  intelligence:
-#    image: ${INTELLIGENCE_IMAGE:-ghcr.io/bigmt-ai/summit-os/intelligence:latest}
+#    image: ${INTELLIGENCE_IMAGE:-ghcr.io/bigmt-ai/heli-os/intelligence:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
-#      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/summit_os
+#      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/heli_os
 #    depends_on:
 #      redis:
 #        condition: service_healthy
@@ -235,11 +235,11 @@ services:
 #      - summit-internal
 #
 #  tasking:
-#    image: ${TASKING_IMAGE:-ghcr.io/bigmt-ai/summit-os/tasking:latest}
+#    image: ${TASKING_IMAGE:-ghcr.io/bigmt-ai/heli-os/tasking:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
-#      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/summit_os
+#      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/heli_os
 #      ENTERPRISE_MULTI_TENANT: ${ENTERPRISE_MULTI_TENANT:-false}
 #    depends_on:
 #      redis:
@@ -248,7 +248,7 @@ services:
 #      - summit-internal
 #
 #  inference:
-#    image: ${INFERENCE_IMAGE:-ghcr.io/bigmt-ai/summit-os/inference:latest}
+#    image: ${INFERENCE_IMAGE:-ghcr.io/bigmt-ai/heli-os/inference:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379

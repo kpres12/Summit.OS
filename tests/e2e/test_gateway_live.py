@@ -127,7 +127,7 @@ class TestOpenAPI:
         r = await client.get("/api/openapi.json")
         assert r.status_code == 200
         schema = r.json()
-        assert schema["info"]["title"] == "Summit.OS API Gateway"
+        assert schema["info"]["title"] == "Heli.OS API Gateway"
         assert "/health" in schema["paths"]
 
     @pytest.mark.anyio

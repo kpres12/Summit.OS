@@ -1,5 +1,5 @@
 """
-Train the Summit.OS false-positive filter.
+Train the Heli.OS false-positive filter.
 
 Binary classifier that filters out noisy/spurious sensor detections before
 they reach the KOFA dispatch engine.  Reducing alert fatigue is the primary
@@ -473,7 +473,7 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train the Summit.OS false-positive filter model."
+        description="Train the Heli.OS false-positive filter model."
     )
     parser.add_argument(
         "--samples",

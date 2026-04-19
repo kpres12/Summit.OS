@@ -1,7 +1,7 @@
 version: 1
 metadata:
   description: Feature-flag matrix for platform shell and domain packs
-  note: Toggle packs per-tenant via RBAC/feature flags; all call the same Summit.OS contracts
+  note: Toggle packs per-tenant via RBAC/feature flags; all call the same Heli.OS contracts
 
 features:
   ui:

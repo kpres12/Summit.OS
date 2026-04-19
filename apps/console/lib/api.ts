@@ -1,5 +1,5 @@
 /**
- * Summit.OS API client.
+ * Heli.OS API client.
  *
  * All backend calls go through the API gateway at NEXT_PUBLIC_API_URL.
  * Policy denials (400/403) are surfaced via custom window events so

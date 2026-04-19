@@ -1,5 +1,5 @@
 # Statement of Applicability (SoA)
-**Summit.OS — BigMT.ai / Branca.ai**
+**Heli.OS — BigMT.ai / Branca.ai**
 **Classification: Internal**
 **Version: 1.0 | Last Updated: 2026-03-21 | Owner: Head of Engineering**
 **Standard: ISO/IEC 27001:2022 Annex A**
@@ -8,17 +8,17 @@
 
 ## 1. Purpose
 
-This Statement of Applicability documents which ISO 27001:2022 Annex A controls are applicable to Summit.OS, whether each is implemented, and the justification for any excluded controls. This document is required for ISO 27001 certification and demonstrates the completeness of the ISMS scope.
+This Statement of Applicability documents which ISO 27001:2022 Annex A controls are applicable to Heli.OS, whether each is implemented, and the justification for any excluded controls. This document is required for ISO 27001 certification and demonstrates the completeness of the ISMS scope.
 
 ---
 
 ## 2. Scope Statement
 
-This SoA covers the Summit.OS platform as operated by BigMT.ai / Branca.ai, including:
+This SoA covers the Heli.OS platform as operated by BigMT.ai / Branca.ai, including:
 - All application services (API Gateway, Fabric, Fusion, Intelligence, Tasking, Inference, Console)
 - All supporting infrastructure (Kubernetes, Postgres, Redis, Vault, CI/CD)
-- All data processed by Summit.OS (telemetry, mission data, audit logs, billing data)
-- All personnel who build and operate Summit.OS
+- All data processed by Heli.OS (telemetry, mission data, audit logs, billing data)
+- All personnel who build and operate Heli.OS
 
 ---
 

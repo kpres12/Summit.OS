@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Download YOLOv8n ONNX model for Summit.OS inference service.
+Download YOLOv8n ONNX model for Heli.OS inference service.
 
 Downloads from Ultralytics GitHub releases (~12.8 MB).
 The model is licensed under AGPL-3.0 — see models/LICENSE.

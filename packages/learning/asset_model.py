@@ -1,5 +1,5 @@
 """
-asset_model.py — Bayesian asset capability model for Summit.OS CyberSynetic engine.
+asset_model.py — Bayesian asset capability model for Heli.OS CyberSynetic engine.
 
 Learns the real-world performance characteristics of each asset (drone, vehicle,
 sensor) from observed mission outcomes. Starts with reasonable priors and updates

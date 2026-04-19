@@ -1,4 +1,4 @@
-"""Unit tests for the Summit.OS Adapter SDK."""
+"""Unit tests for the Heli.OS Adapter SDK."""
 import os
 import sys
 import pytest

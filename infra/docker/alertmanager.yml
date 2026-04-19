@@ -51,7 +51,7 @@ receivers:
     # slack_configs:
     #   - api_url: '${SLACK_WEBHOOK_URL}'
     #     channel: '#security-alerts'
-    #     title: 'Summit.OS Security Alert'
+    #     title: 'Heli.OS Security Alert'
     #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
 
 inhibit_rules:

@@ -1,5 +1,5 @@
 """
-Closed-Loop Execution Monitor for Summit.OS Tasking Service
+Closed-Loop Execution Monitor for Heli.OS Tasking Service
 
 Monitors active missions by comparing assigned asset positions (fetched live
 from Fabric) against planned waypoints. Advances waypoint progress, detects

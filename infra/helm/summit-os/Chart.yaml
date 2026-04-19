@@ -1,6 +1,6 @@
 apiVersion: v2
-name: summit-os
-description: Summit.OS — open source autonomous coordination platform for civilian emergency response, search & rescue, and commercial UAV fleets.
+name: heli-os
+description: Heli.OS — open source autonomous coordination platform for civilian emergency response, search & rescue, and commercial UAV fleets.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
@@ -13,9 +13,9 @@ keywords:
   - sar
   - coordination
 
-home: https://github.com/BigMT-Ai/Summit.OS
+home: https://github.com/BigMT-Ai/Heli.OS
 sources:
-  - https://github.com/BigMT-Ai/Summit.OS
+  - https://github.com/BigMT-Ai/Heli.OS
 
 maintainers:
   - name: Branca.ai

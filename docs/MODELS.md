@@ -1,4 +1,4 @@
-# Summit.OS Models Registry
+# Heli.OS Models Registry
 
 This directory holds model files used by services (Fusion, Intelligence, etc.). You can mount it in docker-compose (already configured) and reference models via env variables.
 

@@ -1,4 +1,4 @@
-"""Summit.OS Simulation Framework."""
+"""Heli.OS Simulation Framework."""
 
 from packages.simulation.world import WorldSimulator, SimEntity, SimSensor, Detection
 from packages.simulation.scenarios import (

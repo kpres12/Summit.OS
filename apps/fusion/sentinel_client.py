@@ -1,5 +1,5 @@
 """
-Sentinel prediction client for Summit.OS Fusion.
+Sentinel prediction client for Heli.OS Fusion.
 
 Provides an async helper to invoke Sentinel's fire spread simulation API
 whenever a smoke/ignition detection is confirmed.

@@ -1,5 +1,5 @@
 """
-Summit.OS Physical Tool Definitions — LLM callable actions.
+Heli.OS Physical Tool Definitions — LLM callable actions.
 
 These are the "hands" of the AI brain. Every physical action goes through
 the OPA safety gate before hardware dispatch. The LLM calls these by name
@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger("summit.intelligence.tools")
+logger = logging.getLogger("heli.intelligence.tools")
 
 
 # ── Tool definitions (sent to LLM as function schemas) ───────────────────────
@@ -284,7 +284,7 @@ TOOL_DEFINITIONS: List[Dict] = [
 
 class ToolExecutor:
     """
-    Dispatches LLM-requested tool calls to the appropriate Summit.OS services.
+    Dispatches LLM-requested tool calls to the appropriate Heli.OS services.
     All state-changing tools route through the OPA safety gate.
     """
 

@@ -1,5 +1,5 @@
 """
-Data Classification for Summit.OS
+Data Classification for Heli.OS
 
 Implements data classification labels matching defense standards:
 - UNCLASSIFIED (U)

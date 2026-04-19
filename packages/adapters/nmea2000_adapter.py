@@ -1,5 +1,5 @@
 """
-Summit.OS — NMEA 2000 Adapter
+Heli.OS — NMEA 2000 Adapter
 ================================
 
 Integrates modern marine electronics via NMEA 2000 (the CAN-based marine
@@ -44,7 +44,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.nmea2000")
+logger = logging.getLogger("heli.adapters.nmea2000")
 
 try:
     import can

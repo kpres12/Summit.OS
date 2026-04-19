@@ -1,4 +1,4 @@
-"""Plugin system for Summit.OS domain extensions."""
+"""Plugin system for Heli.OS domain extensions."""
 
 from .base import (
     PluginType,

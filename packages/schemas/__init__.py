@@ -1,4 +1,4 @@
-"""Shared data schemas for Summit.OS."""
+"""Shared data schemas for Heli.OS."""
 
 from .telemetry import TelemetrySchema, LocationSchema
 from .alerts import AlertSchema, SeverityLevel

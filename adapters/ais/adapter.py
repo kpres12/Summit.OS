@@ -1,8 +1,8 @@
 """
-Summit.OS AIS Maritime Adapter
+Heli.OS AIS Maritime Adapter
 
 Tracks vessel positions from AIS (Automatic Identification System) data.
-Publishes each vessel as a Summit.OS maritime Entity into the data fabric.
+Publishes each vessel as a Heli.OS maritime Entity into the data fabric.
 
 Data sources (in priority order):
   1. AISHub free API (register at aishub.net — free for non-commercial use)

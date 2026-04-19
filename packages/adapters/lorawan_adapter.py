@@ -1,5 +1,5 @@
 """
-Summit.OS — LoRaWAN Adapter (ChirpStack)
+Heli.OS — LoRaWAN Adapter (ChirpStack)
 ==========================================
 
 Ingests sensor data from LoRaWAN networks via ChirpStack (open-source
@@ -18,7 +18,7 @@ ChirpStack publishes uplinks to MQTT topic:
 
 Dependencies
 ------------
-    pip install paho-mqtt  (already a Summit.OS dependency)
+    pip install paho-mqtt  (already a Heli.OS dependency)
 
 Config extras
 -------------
@@ -40,7 +40,7 @@ from typing import AsyncIterator, Optional
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.lorawan")
+logger = logging.getLogger("heli.adapters.lorawan")
 
 try:
     import paho.mqtt.client as _mqtt

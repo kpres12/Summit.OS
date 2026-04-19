@@ -154,7 +154,7 @@ jobs:
           python -m pytest packages/ -v --tb=short \
             --ignore=packages/sdk \
             --ignore=packages/summit-sdk \
-            --ignore=packages/summit-os-sdk \
+            --ignore=packages/heli-os-sdk \
             || true
 
       - name: mypy (advisory)

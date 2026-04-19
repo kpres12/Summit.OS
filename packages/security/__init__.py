@@ -1,5 +1,5 @@
 """
-Summit.OS Security Layer
+Heli.OS Security Layer
 
 Provides mTLS, JWT/API-key auth, RBAC, and data classification.
 """

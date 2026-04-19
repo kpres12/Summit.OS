@@ -1,5 +1,5 @@
 """
-Train the Summit.OS mission outcome predictor.
+Train the Heli.OS mission outcome predictor.
 
 Given pre-dispatch conditions, predicts the probability that a mission will
 succeed.  The operator console uses the output score to show a confidence
@@ -709,7 +709,7 @@ def train(n_samples: int = 40_000, real_csv: str = None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Train Summit.OS mission outcome predictor"
+        description="Train Heli.OS mission outcome predictor"
     )
     parser.add_argument(
         "--samples",

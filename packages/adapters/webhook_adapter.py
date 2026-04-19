@@ -1,9 +1,9 @@
 """
-Summit.OS — Inbound HTTP Webhook Adapter
+Heli.OS — Inbound HTTP Webhook Adapter
 ==========================================
 
 Starts a lightweight aiohttp HTTP server that accepts POSTed JSON observations.
-Any system that can POST JSON becomes a Summit.OS signal source.
+Any system that can POST JSON becomes a Heli.OS signal source.
 
 POST /ingest   — ingest an observation
 GET  /health   — returns {"status": "ok"}
@@ -30,7 +30,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.webhook")
+logger = logging.getLogger("heli.adapters.webhook")
 
 # Field name aliases for common positional data
 _LAT_ALIASES = ("lat", "latitude", "y", "Lat", "LAT", "LATITUDE")

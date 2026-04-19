@@ -1,5 +1,5 @@
 """
-YOLO Dataset Builder — Summit.OS
+YOLO Dataset Builder — Heli.OS
 
 Assembles domain-specific YOLO training datasets from labeled mission footage.
 Supports SAR (search & rescue), wildfire, and inspection domains.

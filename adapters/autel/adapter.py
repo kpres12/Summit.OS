@@ -1,9 +1,9 @@
 """
-Summit.OS Autel Adapter
+Heli.OS Autel Adapter
 
 Connects to Autel EVO series drones (EVO II, EVO Nano, EVO Lite, EVO Max 4T)
 via the Autel SDK / USB bridge or MAVLink-compatible telemetry stream, and
-publishes real-time telemetry as Summit.OS TRACK entities.
+publishes real-time telemetry as Heli.OS TRACK entities.
 
 Autel EVO drones support MAVLink output when connected to a companion
 computer via USB or serial. The Autel SDK (Android/iOS) exposes a REST
@@ -61,7 +61,7 @@ _ORG_ID = os.getenv("AUTEL_ORG_ID", "")
 
 
 class AutelAdapter(BaseAdapter):
-    """Publishes Autel EVO drone telemetry as Summit.OS TRACK entities.
+    """Publishes Autel EVO drone telemetry as Heli.OS TRACK entities.
 
     Supports EVO II, EVO II Pro, EVO Nano, EVO Lite, and EVO Max 4T.
     EVO II Pro supports ArduPilot-based MAVLink firmware.

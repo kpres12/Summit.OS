@@ -1,9 +1,9 @@
 # Changelog
 
-All notable changes to Summit.OS will be documented here.
+All notable changes to Heli.OS will be documented here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-Summit.OS uses [Semantic Versioning](https://semver.org/).
+Heli.OS uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
@@ -38,5 +38,5 @@ _Changes staged for the next release go here._
 - Seed demo script: registers assets, injects detections, fires auto-dispatch pipeline
 - AGPL v3 license
 
-[Unreleased]: https://github.com/bigmt-ai/summit-os/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/bigmt-ai/summit-os/releases/tag/v0.1.0
+[Unreleased]: https://github.com/bigmt-ai/heli-os/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/bigmt-ai/heli-os/releases/tag/v0.1.0

@@ -1,5 +1,5 @@
 /**
- * Summit.OS — Server-side auth utilities (Node.js only, never imported by client components)
+ * Heli.OS — Server-side auth utilities (Node.js only, never imported by client components)
  *
  * Handles: PKCE generation, OIDC token exchange, JWT decoding, cookie config.
  * Tokens are NEVER exposed to client-side JavaScript. All token handling goes
@@ -11,7 +11,7 @@ import crypto from 'crypto';
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 export const AUTH_CONFIG = {
-  issuer:       process.env.OIDC_ISSUER       ?? process.env.NEXT_PUBLIC_OIDC_ISSUER       ?? 'https://auth.summit-os.local',
+  issuer:       process.env.OIDC_ISSUER       ?? process.env.NEXT_PUBLIC_OIDC_ISSUER       ?? 'https://auth.heli-os.local',
   clientId:     process.env.OIDC_CLIENT_ID    ?? process.env.NEXT_PUBLIC_OIDC_CLIENT_ID    ?? 'summit-console',
   clientSecret: process.env.OIDC_CLIENT_SECRET,
   // Redirect URI must point to the API route, not the page

@@ -1,4 +1,4 @@
-# Summit.OS Simulation Environment
+# Heli.OS Simulation Environment
 # Run with: docker compose -f docker-compose.sim.yml up
 # Starts all services + a synthetic data injector for testing without hardware.
 #
@@ -28,13 +28,13 @@ services:
     image: postgis/postgis:15-3.3
     restart: unless-stopped
     environment:
-      POSTGRES_DB: summit_os
+      POSTGRES_DB: heli_os
       POSTGRES_USER: summit
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-summitsim}
     volumes:
       - sim_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U summit -d summit_os"]
+      test: ["CMD-SHELL", "pg_isready -U summit -d heli_os"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,7 +58,7 @@ services:
   # ── Core Application Services ────────────────────────────────────────────────
 
   fabric:
-    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/summit-os/fabric:latest}
+    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/heli-os/fabric:latest}
     restart: unless-stopped
     environment:
       FABRIC_REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -81,10 +81,10 @@ services:
       - summit-sim
 
   api-gateway:
-    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/summit-os/api-gateway:latest}
+    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/heli-os/api-gateway:latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD:-summitsim}@postgres:5432/summit_os
+      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD:-summitsim}@postgres:5432/heli_os
       REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
       FABRIC_WS_URL: ws://fabric:8001/ws
       FABRIC_HTTP_URL: http://fabric:8001
@@ -111,7 +111,7 @@ services:
       - summit-sim
 
   console:
-    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/summit-os/console:latest}
+    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/heli-os/console:latest}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000

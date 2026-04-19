@@ -1,1 +1,1 @@
-"""Summit.OS gRPC Service Implementations."""
+"""Heli.OS gRPC Service Implementations."""

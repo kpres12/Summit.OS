@@ -1,7 +1,7 @@
 """
-Summit.OS — Kraken Robotics Adapter
+Heli.OS — Kraken Robotics Adapter
 =====================================
-Integrates Kraken Robotics underwater systems into Summit.OS as first-class
+Integrates Kraken Robotics underwater systems into Heli.OS as first-class
 entities: AUVs, towed sonar systems, acoustic positioning nodes.
 
 Kraken hardware supported:
@@ -15,13 +15,13 @@ Integration modes:
   websocket   — Real-time telemetry WebSocket (INSIGHT 2.x+)
   nmea_tcp    — Raw NMEA-0183 over TCP (legacy / hardware-direct)
 
-The adapter maps Kraken telemetry to Summit.OS entities:
+The adapter maps Kraken telemetry to Heli.OS entities:
   ThunderFish AUV → entity_type: active, asset_type: AUV
   KATFISH sonar   → entity_type: active, asset_type: SONAR_TOW
   APS node        → entity_type: active, asset_type: ACOUSTIC_NODE
   Sonar detections → pushed as alert entities with severity + coordinates
 
-Mission commands flow back from Summit.OS tasking → Kraken INSIGHT API:
+Mission commands flow back from Heli.OS tasking → Kraken INSIGHT API:
   survey_area  → translated to Kraken mission plan with SAS coverage legs
   abort        → Kraken emergency abort command
   rtb          → return to surface / recovery point
@@ -70,7 +70,7 @@ except ImportError:
 
 from .base import AdapterConfig, BaseAdapter
 
-logger = logging.getLogger("summit.adapters.kraken")
+logger = logging.getLogger("heli.adapters.kraken")
 
 # Kraken INSIGHT REST API endpoints (documented in INSIGHT Developer Guide)
 _INSIGHT_VEHICLES   = "/api/v1/vehicles"
@@ -78,7 +78,7 @@ _INSIGHT_SENSORS    = "/api/v1/sensors"
 _INSIGHT_DETECTIONS = "/api/v1/detections"
 _INSIGHT_MISSION    = "/api/v1/mission"
 
-# Map Kraken vehicle type strings → Summit.OS asset types
+# Map Kraken vehicle type strings → Heli.OS asset types
 _VEHICLE_TYPE_MAP = {
     "thunderfish": "AUV",
     "auv":         "AUV",
@@ -89,7 +89,7 @@ _VEHICLE_TYPE_MAP = {
     "seapower":    "POWER_UNIT",
 }
 
-# Map Kraken vehicle state → Summit.OS entity_type
+# Map Kraken vehicle state → Heli.OS entity_type
 _STATE_MAP = {
     "mission":    "active",
     "idle":       "active",
@@ -102,7 +102,7 @@ _STATE_MAP = {
 
 class KrakenAdapter(BaseAdapter):
     """
-    Integrates Kraken Robotics underwater systems with Summit.OS.
+    Integrates Kraken Robotics underwater systems with Heli.OS.
 
     In rest_poll mode: polls Kraken INSIGHT REST API for vehicle/sensor status.
     In websocket mode: maintains a persistent WebSocket to INSIGHT for real-time data.
@@ -171,7 +171,7 @@ class KrakenAdapter(BaseAdapter):
             except Exception as e:
                 logger.debug("Kraken vehicle poll failed: %s", e)
 
-            # ── Sonar detections → Summit.OS alerts ───────────────────────
+            # ── Sonar detections → Heli.OS alerts ───────────────────────
             try:
                 r = await self._client.get(
                     _INSIGHT_DETECTIONS,
@@ -191,7 +191,7 @@ class KrakenAdapter(BaseAdapter):
             await asyncio.sleep(self.config.poll_interval_seconds)
 
     def _vehicle_to_entity(self, v: dict) -> Optional[dict]:
-        """Map a Kraken INSIGHT vehicle record to a Summit.OS entity."""
+        """Map a Kraken INSIGHT vehicle record to a Heli.OS entity."""
         vid      = v.get("id") or v.get("name")
         if not vid:
             return None
@@ -235,7 +235,7 @@ class KrakenAdapter(BaseAdapter):
         }
 
     def _detection_to_alert(self, det: dict) -> Optional[dict]:
-        """Map a Kraken sonar detection to a Summit.OS alert entity."""
+        """Map a Kraken sonar detection to a Heli.OS alert entity."""
         det_id  = det.get("id")
         lat     = det.get("latitude")
         lon     = det.get("longitude")
@@ -265,7 +265,7 @@ class KrakenAdapter(BaseAdapter):
 
     async def send_mission_command(self, command: str, payload: dict) -> bool:
         """
-        Send a mission command back to Kraken INSIGHT from Summit.OS tasking.
+        Send a mission command back to Kraken INSIGHT from Heli.OS tasking.
 
         Commands:
           survey_area  — payload: {vehicle_id, area: [{lat,lon}], altitude_m, pattern}

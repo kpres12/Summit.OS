@@ -1,5 +1,5 @@
 """
-Summit.OS Ontology — Action Type Definitions
+Heli.OS Ontology — Action Type Definitions
 
 Governed mutations. The ONLY way to change ontology state is via ActionRunner.execute().
 

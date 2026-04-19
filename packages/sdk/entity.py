@@ -1,5 +1,5 @@
 """
-EntityBuilder — fluent builder for Summit.OS entities.
+EntityBuilder — fluent builder for Heli.OS entities.
 
 Eliminates the boilerplate of constructing entity dicts by hand.
 Every adapter should use this to guarantee schema consistency.
@@ -26,7 +26,7 @@ from typing import Any, Dict, Optional
 
 
 class EntityBuilder:
-    """Fluent builder for Summit.OS entity dicts."""
+    """Fluent builder for Heli.OS entity dicts."""
 
     def __init__(self, entity_id: str, name: str):
         self._id = entity_id

@@ -1,8 +1,8 @@
 """
-Summit.OS World Model
+Heli.OS World Model
 
 The shared world model is the single source of truth for every entity
-in Summit.OS. Drones, sensors, tracks, alerts, missions, geofences —
+in Heli.OS. Drones, sensors, tracks, alerts, missions, geofences —
 everything is an Entity, and every Entity lives here.
 
 Usage:

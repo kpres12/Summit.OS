@@ -95,7 +95,7 @@ async def lifespan(app: FastAPI):
         pg_url = _to_asyncpg_url(
             os.getenv(
                 "POSTGRES_URL",
-                "postgresql://summit:summit_password@localhost:5432/summit_os",
+                "postgresql://heli:summit_password@localhost:5432/heli_os",
             )
         )
     state.engine = create_async_engine(pg_url, echo=False, future=True)

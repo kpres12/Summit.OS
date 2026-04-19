@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Summit.OS Mock Server - Single Integration Standard (v1.1)
+Heli.OS Mock Server - Single Integration Standard (v1.1)
 
 One-file FastAPI mock + MQTT feeder that implements the exact contract
-for Summit.OS ↔ Sentinel integration.
+for Heli.OS ↔ Sentinel integration.
 
 Usage:
     python summit_mock.py
@@ -261,8 +261,8 @@ mqtt_publisher = MQTTPublisher()
 
 # Create FastAPI app
 app = FastAPI(
-    title="Summit.OS Mock API",
-description="Single Integration Standard (v1.1) for Summit.OS ↔ Sentinel",
+    title="Heli.OS Mock API",
+description="Single Integration Standard (v1.1) for Heli.OS ↔ Sentinel",
     version="1.1.0",
     docs_url="/docs",
     openapi_url="/openapi.json"
@@ -457,7 +457,7 @@ async def mqtt_telemetry_feeder():
 @app.on_event("startup")
 async def startup_event():
     """Initialize MQTT connection and start telemetry feeder"""
-    print("Starting Summit.OS Mock Server...")
+    print("Starting Heli.OS Mock Server...")
     
     # Connect to MQTT
     mqtt_publisher.connect()
@@ -465,7 +465,7 @@ async def startup_event():
     # Start telemetry feeder
     asyncio.create_task(mqtt_telemetry_feeder())
     
-    print("Summit.OS Mock Server started!")
+    print("Heli.OS Mock Server started!")
     print(f"API: http://localhost:{os.getenv('HTTP_PORT', '8000')}/api/v1")
     print(f"Docs: http://localhost:{os.getenv('HTTP_PORT', '8000')}/docs")
     print(f"MQTT: ws://localhost:1883")
@@ -473,7 +473,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    print("Shutting down Summit.OS Mock Server...")
+    print("Shutting down Heli.OS Mock Server...")
 
 
 # ============================================================================
@@ -487,7 +487,7 @@ if __name__ == "__main__":
     mqtt_url = os.getenv("MQTT_WS_URL", "ws://localhost:1883")
     
     print("=" * 60)
-    print("Summit.OS Mock Server - Single Integration Standard (v1.1)")
+    print("Heli.OS Mock Server - Single Integration Standard (v1.1)")
     print("=" * 60)
     print(f"HTTP_PORT: {http_port}")
     print(f"SUMMIT_API_KEY: {api_key}")

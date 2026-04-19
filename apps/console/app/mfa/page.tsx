@@ -162,7 +162,7 @@ export default function MFAPage() {
           letterSpacing: '0.3em',
           textShadow:    '0 0 20px rgba(0,255,156,0.4), 0 0 40px rgba(0,255,156,0.15)',
         }}>
-          SUMMIT.OS
+          HELI.OS
         </div>
         <div style={{
           marginTop:     '6px',
@@ -421,7 +421,7 @@ export default function MFAPage() {
         color:         'rgba(200,230,201,0.2)',
         letterSpacing: '0.15em',
       }}>
-        SUMMIT.OS v0.1.0
+        HELI.OS v0.1.0
       </div>
     </div>
   );

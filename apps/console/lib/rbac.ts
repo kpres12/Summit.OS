@@ -1,7 +1,7 @@
 /**
  * RBAC — role-based access control helpers.
  *
- * Keycloak realm roles map to Summit.OS capability tiers:
+ * Keycloak realm roles map to Heli.OS capability tiers:
  *
  *   VIEWER           → read-only OPS (no dispatch, no missions)
  *   OPERATOR         → full OPS view

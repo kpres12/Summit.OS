@@ -1,5 +1,5 @@
 """
-Cross-Camera Re-Identification for Summit.OS Fusion Service
+Cross-Camera Re-Identification for Heli.OS Fusion Service
 
 Maintains a gallery of appearance embeddings per track. When a new detection
 arrives from a different camera with no spatial match, compare its appearance
