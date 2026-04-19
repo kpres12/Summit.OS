@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import { useAuth } from '@/components/AuthProvider';
-import { useDomain } from '@/components/DomainProvider';
 import { highestRole, roleLabel } from '@/lib/rbac';
 import StatusDot from '@/components/ui/StatusDot';
 import SecuritySettings from '@/components/auth/SecuritySettings';
@@ -35,7 +34,6 @@ function utcString(d: Date): string {
 export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChange, assetCount, alertCount, linkQuality }: OpsTopBarProps) {
   const { connected, lastUpdate, meshStatus } = useEntityStream();
   const { user, logout }          = useAuth();
-  const { config } = useDomain();
   const [now, setNow]             = useState<Date>(new Date());
   const [menuOpen, setMenuOpen]   = useState(false);
   const [showSecurity, setShowSecurity] = useState(false);
@@ -71,11 +69,10 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
   const topRole = highestRole(user?.roles ?? []);
 
   const meshOk = !meshStatus?.partitioned && (meshStatus?.peers_dead ?? 0) === 0;
-  const statusPills = [
-    { label: 'FABRIC',    ok: connected,  title: connected ? 'Fabric service connected' : 'Fabric service unreachable' },
-    { label: 'INFERENCE', ok: connected,  title: connected ? 'Inference pipeline active' : 'Inference pipeline unreachable' },
-    { label: 'MESH',      ok: meshStatus ? meshOk : connected, title: meshStatus ? `${meshStatus.peers_alive} peers alive, ${meshStatus.peers_dead} dead` : 'No mesh status' },
-  ];
+  const connOk = connected && meshOk && dataFreshOk;
+  const connVariant: 'accent' | 'warning' | 'critical' = !connected ? 'critical' : !dataFreshOk ? 'warning' : 'accent';
+  const connLabel = !connected ? 'OFFLINE' : dataFreshOk ? 'LIVE' : dataFreshLabel;
+  const connTitle = `Fabric: ${connected ? 'ok' : 'down'} | Mesh: ${meshStatus ? `${meshStatus.peers_alive} alive, ${meshStatus.peers_dead} dead` : 'no data'} | Data: ${dataStaleSecs === null ? 'none' : `${dataStaleSecs}s ago`}`;
 
   return (
     <>
@@ -96,14 +93,6 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
           >
             SUMMIT.OS
           </span>
-          <span style={{ color: 'var(--accent-30)' }}>|</span>
-          <span
-            className="text-xs"
-            style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
-          >
-            {config.description.toUpperCase()}
-          </span>
-
           {/* Incident name — click to edit */}
           <span style={{ color: 'var(--accent-30)' }}>|</span>
           {editingName ? (
@@ -221,66 +210,37 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
 
         {/* Right */}
         <div className="ml-auto flex items-center gap-3 z-10">
-          {/* Status pills */}
-          {statusPills.map((p) => (
-            <div key={p.label} className="flex items-center gap-1.5" title={p.title}>
-              <StatusDot variant={p.ok ? 'accent' : 'critical'} glow={p.ok} />
-              <span
-                className="text-[10px] tracking-widest"
-                style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}
-              >
-                {p.label}
-              </span>
-            </div>
-          ))}
-
-          {/* Data freshness */}
-          <div
-            className="flex items-center gap-1.5"
-            title={dataStaleSecs === null ? 'No entity data received' : `Last entity update ${dataStaleSecs}s ago`}
-          >
-            <StatusDot variant={dataFreshOk ? 'accent' : 'critical'} glow={dataFreshOk} />
+          {/* Consolidated connection status */}
+          <div className="flex items-center gap-1.5" title={connTitle}>
+            <StatusDot variant={connVariant} glow={connOk} />
             <span
               className="text-[10px] tracking-widest"
               style={{
                 fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color: dataFreshOk ? 'var(--accent)' : 'var(--critical)',
+                color: connVariant === 'critical' ? 'var(--critical)' : connVariant === 'warning' ? 'var(--warning)' : 'var(--accent)',
               }}
             >
-              DATA {dataFreshLabel}
+              {connLabel}
             </span>
           </div>
 
-          {/* WS indicator */}
-          <div className="flex items-center gap-1.5">
-            <StatusDot
-              variant={connected ? 'accent' : 'critical'}
-              glow={connected}
-            />
-            <span
-              className="text-[10px] tracking-widest"
-              style={{
-                fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                color:      connected ? 'var(--accent)' : 'var(--critical)',
-              }}
-            >
-              {connected ? 'WS LIVE' : 'WS DOWN'}
-            </span>
-          </div>
-
-          {/* Role switch button */}
+          {/* Switch view — icon only */}
           <button
             onClick={onSwitchRole}
             aria-label="Switch view"
-            className="summit-btn text-[10px] tracking-widest px-2 py-0.5"
+            title="Switch view"
+            className="summit-btn"
             style={{
               fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              fontSize:   '14px',
               color:      'var(--text-dim)',
               border:     '1px solid var(--border)',
               background: 'transparent',
+              padding:    '2px 7px',
+              lineHeight: 1,
             }}
           >
-            SWITCH VIEW
+            ⇄
           </button>
 
           {/* User menu */}

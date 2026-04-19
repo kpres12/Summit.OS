@@ -90,7 +90,9 @@ export default function OpsMapView({
   // geofenceDrawMode is owned by OpsLayout — no intermediate state, use prop directly
   const [vertices, setVertices] = useState<DrawVertex[]>([]);
   const [geoName, setGeoName] = useState('');
+  const [cursorPos, setCursorPos] = useState<DrawVertex | null>(null);
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
+  const [savedPolygon, setSavedPolygon] = useState<[number, number][] | null>(null);
   // Mission area draw (controlled externally via missionDrawMode prop)
   const [missionVertices, setMissionVertices] = useState<DrawVertex[]>([]);
   // Entity trail
@@ -121,22 +123,50 @@ export default function OpsMapView({
     if (!geofenceDrawMode) {
       setVertices([]);
       setGeoName('');
+      setCursorPos(null);
     }
   }, [geofenceDrawMode]);
 
-  // ESC to cancel geofence draw
+  const finishPolygon = useCallback(async (verts: DrawVertex[], name: string) => {
+    if (verts.length < 3) return;
+    const coords = verts.map((v): [number, number] => [v.lon, v.lat]);
+    coords.push(coords[0]);
+    const finalName = name.trim() || `GEOFENCE-${Date.now().toString(36).toUpperCase()}`;
+    try {
+      await createGeofence({ name: finalName, type: 'exclusion', coordinates: coords.map(([lon, lat]) => ({ lat, lon })) });
+      setSavedFeedback(`SAVED: ${finalName}`);
+      setSavedPolygon(coords);
+    } catch {
+      setSavedFeedback('SAVE FAILED');
+    }
+    setVertices([]);
+    setGeoName('');
+    onGeofenceDrawEnd?.();
+    setTimeout(() => { setSavedFeedback(null); setSavedPolygon(null); }, 3000);
+  }, [onGeofenceDrawEnd]);
+
+  const verticesRef = useRef(vertices);
+  const geoNameRef  = useRef(geoName);
+  useEffect(() => { verticesRef.current = vertices; }, [vertices]);
+  useEffect(() => { geoNameRef.current  = geoName;  }, [geoName]);
+
+  // ESC to cancel, Enter to finish geofence draw
   useEffect(() => {
     if (!geofenceDrawMode) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setVertices([]);
         setGeoName('');
+        setCursorPos(null);
         onGeofenceDrawEnd?.();
+      }
+      if (e.key === 'Enter' && verticesRef.current.length >= 3) {
+        finishPolygon(verticesRef.current, geoNameRef.current);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [geofenceDrawMode, onGeofenceDrawEnd]);
+  }, [geofenceDrawMode, onGeofenceDrawEnd, finishPolygon]);
 
   // OSINT layer fetchers — only poll when layer is visible
   useEffect(() => {
@@ -202,40 +232,29 @@ export default function OpsMapView({
     if (missionDrawMode && missionVertices.length >= 3) {
       onMissionArea?.(missionVertices.map((v) => ({ lat: v.lat, lon: v.lon })));
       setMissionVertices([]);
-      return;
     }
-    if (!geofenceDrawMode || vertices.length < 3) return;
-    finishPolygon();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geofenceDrawMode, vertices, missionDrawMode, missionVertices]);
+  }, [missionDrawMode, missionVertices, onMissionArea]);
 
-  const finishPolygon = async () => {
-    if (vertices.length < 3) return;
-    const coords = vertices.map((v) => [v.lon, v.lat]);
-    coords.push(coords[0]); // close ring
-    const name = geoName.trim() || `GEOFENCE-${Date.now().toString(36).toUpperCase()}`;
-    try {
-      await createGeofence({ name, type: 'exclusion', coordinates: coords.map(([lon, lat]) => ({ lat, lon })) });
-      setSavedFeedback(`SAVED: ${name}`);
-    } catch {
-      setSavedFeedback('SAVE FAILED');
+  const handleMouseMove = useCallback((e: MapLayerMouseEvent) => {
+    if (geofenceDrawMode) {
+      setCursorPos({ lat: e.lngLat.lat, lon: e.lngLat.lng });
     }
-    setVertices([]);
-    setGeoName('');
-    onGeofenceDrawEnd?.();
-    setTimeout(() => setSavedFeedback(null), 3000);
-  };
+  }, [geofenceDrawMode]);
 
-  // Build GeoJSON for in-progress polygon
-  const drawGeoJSON = vertices.length >= 2 ? {
+  const handleContextMenu = useCallback((e: MapLayerMouseEvent) => {
+    if (geofenceDrawMode && verticesRef.current.length >= 3) {
+      e.originalEvent.preventDefault();
+      finishPolygon(verticesRef.current, geoNameRef.current);
+    }
+  }, [geofenceDrawMode, finishPolygon]);
+
+  // Build GeoJSON for in-progress polygon (includes live cursor position)
+  const drawPoints: [number, number][] = vertices.map((v): [number, number] => [v.lon, v.lat]);
+  if (cursorPos) drawPoints.push([cursorPos.lon, cursorPos.lat]);
+  if (drawPoints.length >= 3) drawPoints.push(drawPoints[0]); // close preview
+  const drawGeoJSON = drawPoints.length >= 2 ? {
     type: 'Feature' as const,
-    geometry: {
-      type: 'LineString' as const,
-      coordinates: [
-        ...vertices.map((v): [number, number] => [v.lon, v.lat]),
-        vertices.length >= 3 ? [vertices[0].lon, vertices[0].lat] as [number, number] : [vertices[vertices.length - 1].lon, vertices[vertices.length - 1].lat] as [number, number],
-      ],
-    },
+    geometry: { type: 'LineString' as const, coordinates: drawPoints },
     properties: {},
   } : null;
 
@@ -250,6 +269,8 @@ export default function OpsMapView({
         doubleClickZoom={!geofenceDrawMode && !missionDrawMode}
         onClick={handleMapClick}
         onDblClick={handleMapDblClick}
+        onMouseMove={handleMouseMove}
+        onContextMenu={handleContextMenu}
       >
         <NavigationControl position="top-right" />
         <ScaleControl position="bottom-left" />
@@ -413,6 +434,14 @@ export default function OpsMapView({
           </Marker>
         ))}
 
+        {/* Saved geofence flash — visible for 3s after save */}
+        {savedPolygon && savedPolygon.length >= 4 && (
+          <Source id="saved-geofence" type="geojson" data={{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [savedPolygon] }, properties: {} }}>
+            <Layer id="saved-geofence-fill" type="fill" paint={{ 'fill-color': '#FFB300', 'fill-opacity': 0.18 }} />
+            <Layer id="saved-geofence-outline" type="line" paint={{ 'line-color': '#FFB300', 'line-width': 2 }} />
+          </Source>
+        )}
+
         {/* Entity markers */}
         {entityList.map((entity) =>
           entity.position ? (
@@ -468,8 +497,8 @@ export default function OpsMapView({
               style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'color-mix(in srgb, var(--warning) 70%, transparent)' }}
             >
               {vertices.length < 3
-                ? `Click to place points — ${vertices.length}/3 minimum`
-                : `${vertices.length} points — double-click to close`}
+                ? `Click to add points — ${vertices.length}/3 minimum`
+                : `${vertices.length} points — right-click or [Enter] to finish`}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -489,7 +518,7 @@ export default function OpsMapView({
             />
             {vertices.length >= 3 && (
               <button
-                onClick={finishPolygon}
+                onClick={() => finishPolygon(vertices, geoName)}
                 className="text-[10px] px-3 py-1 tracking-wider"
                 style={{
                   fontFamily: 'var(--font-ibm-plex-mono), monospace',
