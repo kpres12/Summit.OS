@@ -4,12 +4,13 @@ import React, { useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useTier } from '@/hooks/useTier';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log' | 'tasks';
 
 // "entities" panel id kept for compatibility — label shown as "Assets"
 const NAV_ITEMS: { id: PanelId; icon: string; label: string }[] = [
   { id: 'alerts',   icon: '⚠',  label: 'Alerts' },
   { id: 'entities', icon: '◉',  label: 'Assets' },
+  { id: 'tasks',    icon: '▶',  label: 'Active Tasks' },
   { id: 'missions', icon: '⬡',  label: 'Missions' },
   { id: 'intel',    icon: '⊛',  label: 'Intel' },
   { id: 'layers',   icon: '◫',  label: 'Layers' },

@@ -46,7 +46,7 @@ _INJECTION_PATTERNS: list[re.Pattern] = [
     re.compile(r"pretend\s+(you\s+are|to\s+be)", re.I),
     re.compile(
         r"you\s+are\s+now\s+(a\s+)?(?!summit)", re.I
-    ),  # "you are now X" (not Summit)
+    ),  # "you are now X" (not Heli)
     # Structural tag injection — attempt to escape section boundaries
     re.compile(r"</?\s*(system|user|assistant|instruction|context|mission)\s*>", re.I),
     re.compile(

@@ -71,7 +71,7 @@ _PORT_WAYPOINT = 71
 
 # Entity type mapping for Heli.OS world model
 _HARDWARE_TYPE_MAP = {
-    # Meshtastic hardware IDs → Summit entity type
+    # Meshtastic hardware IDs → Heli entity type
     "TBEAM": "GROUND",
     "HELTEC_V1": "GROUND",
     "HELTEC_V2_0": "GROUND",

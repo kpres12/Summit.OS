@@ -5,7 +5,7 @@ build-backend = "setuptools.backends.legacy:build"
 [project]
 name = "summit-sdk"
 version = "1.0.0"
-description = "Summit.OS Adapter SDK — build physical world adapters for the Summit.OS platform"
+description = "Heli.OS Adapter SDK — build physical world adapters for the Heli.OS platform"
 readme = "README.md"
 license = { text = "AGPL-3.0-or-later" }
 requires-python = ">=3.11"

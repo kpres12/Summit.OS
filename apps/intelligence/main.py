@@ -194,7 +194,7 @@ async def _agent_prune_loop():
 ENGINE_NAME = "KOFA"  # Heli.OS autonomous dispatch engine
 
 app = FastAPI(
-    title=f"Summit Intelligence — {ENGINE_NAME}", version="0.2.0", lifespan=lifespan
+    title=f"Heli Intelligence — {ENGINE_NAME}", version="0.2.0", lifespan=lifespan
 )
 
 # ── OpenTelemetry tracing middleware ──────────────────────────────────────────

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import { useInvestigation } from '@/hooks/useInvestigation';
 import { useMissionDraw } from '@/hooks/useMissionDraw';
@@ -14,7 +14,7 @@ import OpsEntityList from './OpsEntityList';
 import OpsMissions from './OpsMissions';
 import OpsEntityDetail from './OpsEntityDetail';
 import OpsBottomBar from './OpsBottomBar';
-import OpsMapView from './OpsMapView';
+import OpsMapView, { RouteOverlay } from './OpsMapView';
 import OpsHardware from './OpsHardware';
 import OpsVideoPane from './OpsVideoPane';
 import OpsReplayControls from './OpsReplayControls';
@@ -23,10 +23,13 @@ import OpsMapLayers from './OpsMapLayers';
 import OpsSystem from './OpsSystem';
 import OpsIntel from './OpsIntel';
 import OpsActionLog from './OpsActionLog';
+import OpsActiveTasksPanel from './OpsActiveTasksPanel';
+import OpsMissionTimeline from './OpsMissionTimeline';
 import ToastContainer from '@/components/ui/ToastContainer';
 import SessionExpiryBanner from '@/components/auth/SessionExpiryBanner';
+import { fetchTasks, TaskAPI } from '@/lib/api';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log' | 'tasks';
 
 interface OpsLayoutProps {
   onSwitchRole: () => void;
@@ -75,6 +78,28 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
 
   // Live video overlay
   const [videoStreamId, setVideoStreamId] = useState<string | null>(null);
+
+  // Active tasks (polled, used by panel + map route overlays)
+  const [activeTasks, setActiveTasks] = useState<TaskAPI[]>([]);
+  useEffect(() => {
+    const load = async () => { const d = await fetchTasks(); setActiveTasks(d); };
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Build route overlays from active tasks
+  const taskRoutes: RouteOverlay[] = activeTasks
+    .filter(t => t.status === 'active' && t.waypoints?.length)
+    .map(t => ({
+      entityId: t.asset_id,
+      targetLat: t.waypoints![0].lat,
+      targetLon: t.waypoints![0].lon,
+      taskType: t.action,
+    }));
+
+  // Timeline visibility
+  const [timelineOpen, setTimelineOpen] = useState(true);
 
   // Mission replay
   const [replayMissionId, setReplayMissionId] = useState<string | null>(null);
@@ -140,6 +165,11 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       );
       case 'intel': return <OpsIntel />;
       case 'log':   return <OpsActionLog />;
+      case 'tasks': return (
+        <OpsActiveTasksPanel
+          onFlyTo={(lat, lon) => investigation.investigateAlert({ alert_id: '', severity: '', description: '', source: '', ts_iso: '', _lat: lat, _lon: lon } as never)}
+        />
+      );
       default: return null;
     }
   };
@@ -200,6 +230,8 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             showGpsJam={activeLayers.has('gpsjam')}
             showMaritime={activeLayers.has('maritime')}
             showNoFlyZones={activeLayers.has('noflyzones')}
+            showGrid={activeLayers.has('grid')}
+            taskRoutes={taskRoutes}
           />
           {/* Live video overlay */}
           {videoStreamId && (
@@ -240,6 +272,14 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
           </div>
         </aside>
       </div>
+
+      {/* Mission timeline */}
+      <OpsMissionTimeline
+        tasks={activeTasks}
+        entityList={entityList}
+        isOpen={timelineOpen}
+        onToggle={() => setTimelineOpen(o => !o)}
+      />
 
       {/* Bottom bar — ARIA contentinfo */}
       <OpsBottomBar onInvestigateEntity={investigation.investigateEntity} />

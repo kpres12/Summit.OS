@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Summit.OS Console (Next.js 15)
+# Multi-stage Dockerfile for Heli.OS Console (Next.js 15)
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed

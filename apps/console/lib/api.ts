@@ -275,3 +275,28 @@ export function connectWebSocket(onMessage: (data: unknown) => void): WebSocket 
 }
 
 export { API_BASE, WS_BASE };
+
+// --- Tasks (full list) ---
+
+export interface TaskAPI {
+  task_id: string;
+  asset_id: string;
+  asset_name?: string;
+  action: string;
+  status: 'pending' | 'active' | 'completed' | 'failed';
+  risk_level: string;
+  created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  waypoints?: { lat: number; lon: number; alt?: number }[];
+  mission_id?: string | null;
+  objective?: string | null;
+}
+
+export async function fetchTasks(limit = 100): Promise<TaskAPI[]> {
+  try {
+    return await apiJson<TaskAPI[]>(`/v1/tasks?limit=${limit}`);
+  } catch {
+    return [];
+  }
+}

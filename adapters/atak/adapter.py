@@ -91,7 +91,7 @@ def _parse_cot(xml_bytes: bytes) -> Optional[Dict[str, Any]]:
         role_el   = detail.find("__group")
         role      = role_el.get("role", "") if role_el is not None else ""
 
-        # Map CoT type to Summit classification
+        # Map CoT type to Heli classification
         entity_type, classification = "neutral", "neutral"
         for prefix, (etype, cls) in _COT_TYPE_MAP.items():
             if cot_type.startswith(prefix):
