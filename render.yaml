@@ -1,160 +1,30 @@
-databases:
-  - name: summitos_postgress
-    plan: free
-    region: ohio
-
 services:
   - type: web
-    name: api-gateway
-    env: python
-    region: ohio
+    name: heliOS
+    runtime: docker
+    region: oregon
     plan: starter
-    rootDir: apps/api-gateway
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: POSTGRES_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: DATABASE_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: CORS_ORIGINS
-        value: "https://heli-os-6uo0.onrender.com,http://localhost:3000"
-      - key: GATEWAY_TEST_MODE
-        value: "false"
-      - key: OIDC_ENFORCE
-        value: "false"
-      - key: RBAC_ENFORCE
-        value: "false"
-      - key: API_KEY_ENFORCE
-        value: "false"
-      # Set these in the Render dashboard once each service is deployed:
-      - key: FABRIC_URL
-        sync: false
-      - key: FUSION_URL
-        sync: false
-      - key: INTELLIGENCE_URL
-        sync: false
-      - key: TASKING_URL
-        sync: false
-      - key: INFERENCE_URL
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET
-        sync: false
-
-  - type: web
-    name: fabric
-    env: python
-    region: ohio
-    plan: starter
-    rootDir: apps/fabric
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: POSTGRES_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: DATABASE_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-
-  - type: web
-    name: fusion
-    env: python
-    region: ohio
-    plan: starter
-    rootDir: apps/fusion
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: POSTGRES_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: DATABASE_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-
-  - type: web
-    name: intelligence
-    env: python
-    region: ohio
-    plan: starter
-    rootDir: apps/intelligence
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: POSTGRES_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: DATABASE_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-
-  - type: web
-    name: tasking
-    env: python
-    region: ohio
-    plan: starter
-    rootDir: apps/tasking
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: POSTGRES_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: DATABASE_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: TASKING_TEST_MODE
-        value: "false"
-      # Set this in the Render dashboard for Claude-powered NLP mission parsing:
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-  - type: web
-    name: inference
-    env: python
-    region: ohio
-    plan: starter
-    rootDir: apps/inference
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: POSTGRES_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-      - key: DATABASE_URL
-        fromDatabase:
-          name: summitos_postgress
-          property: connectionString
-
-  - type: web
-    name: console
-    env: node
-    region: ohio
-    plan: starter
-    rootDir: apps/console
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NEXT_PUBLIC_DEV_BYPASS_AUTH
+        value: "POSTGRES_URL_REDACTED"
+      - key: FABRIC_JWT_SECRET
+        value: "FABRIC_JWT_SECRET_REDACTED"
+      - key: SESSION_SECRET
+        value: "SESSION_SECRET_REDACTED"
+      - key: OPENSKY_ENABLED
         value: "true"
-      # Set these after api-gateway deploys:
-      - key: NEXT_PUBLIC_API_URL
+      - key: OPENSKY_CLIENT_ID
+        value: "yekaneast-api-client"
+      - key: OPENSKY_CLIENT_SECRET
         sync: false
-      - key: NEXT_PUBLIC_WS_URL
+      - key: OPENSKY_POLL_INTERVAL
+        value: "10"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SERPER_API_KEY
+        sync: false
+      - key: FIRECRAWL_API_KEY
         sync: false

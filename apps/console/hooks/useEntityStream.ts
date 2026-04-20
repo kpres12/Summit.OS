@@ -2,7 +2,12 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8001/ws';
+function getWsUrl(): string {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+  if (typeof window === 'undefined') return 'ws://localhost:8001/ws';
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/ws`;
+}
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -143,7 +148,7 @@ export function useEntityStream() {
 
     const connect = () => {
       try {
-        ws = new WebSocket(WS_URL);
+        ws = new WebSocket(getWsUrl());
         wsRef.current = ws;
 
         ws.onopen = () => {

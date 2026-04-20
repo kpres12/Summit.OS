@@ -323,30 +323,35 @@ async def lifespan(app: FastAPI):
         logger.info("HistoryStore initialized")
 
     if not FABRIC_TEST_MODE:
-        # Redis connection
-        redis_client = RedisClient(settings.redis_url)
-        await redis_client.connect()
-        logger.info("Connected to Redis")
+        # Redis connection — optional, graceful degradation without it
+        try:
+            redis_client = RedisClient(settings.redis_url)
+            await redis_client.connect()
+            logger.info("Connected to Redis")
+        except Exception as e:
+            logger.warning(f"Redis unavailable — running without telemetry streams: {e}")
+            redis_client = None
 
-        # MQTT client
-        mqtt_client = MQTTClient(
-            broker=settings.mqtt_broker,
-            port=settings.mqtt_port,
-            username=settings.mqtt_username,
-            password=settings.mqtt_password,
-        )
-        await mqtt_client.connect()
-        logger.info("Connected to MQTT broker")
-
-        # Subscribe to topics
-        await mqtt_client.subscribe("observations/#", _handle_observation)
-        await mqtt_client.subscribe("detections/#", _handle_observation)  # legacy
-        await mqtt_client.subscribe("missions/#", _handle_mission)
-        await mqtt_client.subscribe("health/+/heartbeat", _handle_heartbeat)
-        # Plainview domain topics
-        await mqtt_client.subscribe("plainview/leaks", _handle_plainview_leak)
-        await mqtt_client.subscribe("valves/+/status", _handle_valve_status)
-        await mqtt_client.subscribe("pipeline/pressure/+", _handle_pipeline_pressure)
+        # MQTT client — optional
+        try:
+            mqtt_client = MQTTClient(
+                broker=settings.mqtt_broker,
+                port=settings.mqtt_port,
+                username=settings.mqtt_username,
+                password=settings.mqtt_password,
+            )
+            await mqtt_client.connect()
+            logger.info("Connected to MQTT broker")
+            await mqtt_client.subscribe("observations/#", _handle_observation)
+            await mqtt_client.subscribe("detections/#", _handle_observation)
+            await mqtt_client.subscribe("missions/#", _handle_mission)
+            await mqtt_client.subscribe("health/+/heartbeat", _handle_heartbeat)
+            await mqtt_client.subscribe("plainview/leaks", _handle_plainview_leak)
+            await mqtt_client.subscribe("valves/+/status", _handle_valve_status)
+            await mqtt_client.subscribe("pipeline/pressure/+", _handle_pipeline_pressure)
+        except Exception as e:
+            logger.warning(f"MQTT unavailable — running without hardware messaging: {e}")
+            mqtt_client = None
 
         # Wire MQTT into WorldStore
         if WORLD_STORE_AVAILABLE and world_store:
@@ -1649,6 +1654,39 @@ def _run_migrations():
     except Exception as e:
         logger.error(f"Failed to run migrations: {e}")
         raise
+
+
+# ── Next.js reverse proxy (single-service Docker deployment) ─────────────────
+# When NEXTJS_INTERNAL_URL is set, catch all unmatched routes and proxy them
+# to the Next.js standalone server running on an internal port.
+_NEXTJS_URL = os.getenv("NEXTJS_INTERNAL_URL")
+if _NEXTJS_URL:
+    import httpx
+    from fastapi import Request
+    from fastapi.responses import Response as _Response
+
+    @app.api_route("/{path:path}", methods=["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
+    async def _proxy_nextjs(path: str, request: Request):
+        url = f"{_NEXTJS_URL}/{path}"
+        if request.url.query:
+            url = f"{url}?{request.url.query}"
+        skip = {"host", "content-length", "transfer-encoding"}
+        headers = {k: v for k, v in request.headers.items() if k.lower() not in skip}
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+                resp = await client.request(
+                    method=request.method,
+                    url=url,
+                    headers=headers,
+                    content=await request.body(),
+                )
+            drop = {"content-encoding", "content-length", "transfer-encoding"}
+            out_headers = {k: v for k, v in resp.headers.items() if k.lower() not in drop}
+            return _Response(content=resp.content, status_code=resp.status_code,
+                             media_type=resp.headers.get("content-type"), headers=out_headers)
+        except Exception as e:
+            logger.error(f"Proxy error: {e}")
+            return _Response(content=b"Frontend unavailable", status_code=502)
 
 
 if __name__ == "__main__":
