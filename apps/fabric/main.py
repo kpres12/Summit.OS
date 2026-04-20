@@ -415,6 +415,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(alert_processor())
         asyncio.create_task(heartbeat_watcher())
         asyncio.create_task(_ttl_gc_task())
+        asyncio.create_task(_opensky_poll_loop())
 
         # Alert escalation service (uses live shared dict, updated as alerts arrive)
         try:
@@ -1675,6 +1676,119 @@ def _run_migrations():
     except Exception as e:
         logger.error(f"Failed to run migrations: {e}")
         raise
+
+
+# ── OpenSky ADS-B poller (direct, no MQTT) ───────────────────────────────────
+
+_OPENSKY_TOKEN_URL = (
+    "https://auth.opensky-network.org/auth/realms/opensky-network"
+    "/protocol/openid-connect/token"
+)
+
+async def _opensky_poll_loop():
+    """Poll OpenSky every OPENSKY_POLL_INTERVAL seconds and push entities to WebSocket."""
+    import time as _time
+
+    if os.getenv("OPENSKY_ENABLED", "true").lower() != "true":
+        logger.info("OpenSky poller disabled (OPENSKY_ENABLED != true)")
+        return
+
+    poll_interval = max(float(os.getenv("OPENSKY_POLL_INTERVAL", "10")), 5.0)
+    client_id = os.getenv("OPENSKY_CLIENT_ID")
+    client_secret = os.getenv("OPENSKY_CLIENT_SECRET")
+    bbox = os.getenv("OPENSKY_BBOX", "")
+
+    _token: Optional[str] = None
+    _token_expires: float = 0.0
+
+    async def _get_token(client: "httpx.AsyncClient") -> Optional[str]:
+        nonlocal _token, _token_expires
+        if _token and _time.monotonic() < _token_expires:
+            return _token
+        try:
+            resp = await client.post(
+                _OPENSKY_TOKEN_URL,
+                data={"grant_type": "client_credentials",
+                      "client_id": client_id, "client_secret": client_secret},
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            d = resp.json()
+            _token = d["access_token"]
+            _token_expires = _time.monotonic() + int(d.get("expires_in", 1800)) - 30
+            return _token
+        except Exception as e:
+            logger.warning("OpenSky token refresh failed: %s", e)
+            return None
+
+    logger.info("OpenSky poller starting (interval=%ss)", poll_interval)
+    import httpx as _httpx
+    async with _httpx.AsyncClient(timeout=30.0) as client:
+        while True:
+            try:
+                params: Dict[str, Any] = {}
+                if bbox and bbox.strip():
+                    parts = [float(x) for x in bbox.split(",")]
+                    if len(parts) == 4:
+                        params = {"lamin": parts[0], "lomin": parts[1],
+                                  "lamax": parts[2], "lomax": parts[3]}
+
+                headers: Dict[str, str] = {}
+                if client_id and client_secret:
+                    tok = await _get_token(client)
+                    if tok:
+                        headers["Authorization"] = f"Bearer {tok}"
+
+                resp = await client.get(
+                    "https://opensky-network.org/api/states/all",
+                    params=params, headers=headers,
+                )
+                resp.raise_for_status()
+                states = resp.json().get("states") or []
+
+                now = _time.time()
+                batch = []
+                for sv in states:
+                    try:
+                        icao24 = sv[0]
+                        lat, lon = sv[6], sv[5]
+                        if not icao24 or lat is None or lon is None:
+                            continue
+                        callsign = (sv[1] or "").strip() or icao24.upper()
+                        alt = float(sv[7] or sv[13] or 0)
+                        speed = float(sv[9] or 0)
+                        heading = float(sv[10] or 0)
+                        on_ground = bool(sv[8])
+                        batch.append({
+                            "entity_id": f"opensky-{icao24}",
+                            "entity_type": "neutral",
+                            "domain": "aerial",
+                            "classification": "aircraft",
+                            "position": {
+                                "lat": float(lat), "lon": float(lon),
+                                "alt": alt, "heading_deg": heading,
+                            },
+                            "speed_mps": speed,
+                            "confidence": 0.95,
+                            "last_seen": now,
+                            "source_sensors": ["opensky-adsb"],
+                            "callsign": callsign,
+                            "properties": {"on_ground": on_ground, "icao24": icao24},
+                        })
+                    except Exception:
+                        continue
+
+                if batch and websocket_manager:
+                    await websocket_manager.broadcast(
+                        json.dumps({"type": "entity_batch", "data": batch})
+                    )
+                    logger.info("OpenSky: broadcast %d aircraft", len(batch))
+
+            except Exception as e:
+                logger.error("OpenSky poll error: %s", e)
+
+            await asyncio.sleep(poll_interval)
 
 
 # ── Next.js reverse proxy (single-service Docker deployment) ─────────────────
