@@ -1,19 +1,20 @@
 """
-Heli.OS AI Brain — Local LLM via Ollama
+Heli.OS AI Brain — Multi-provider LLM
 
-Implements the Perceive → Plan → Act loop using a local Llama model.
-Zero API dependency. Works fully offline. Falls back gracefully if
-Ollama is unavailable (returns None from plan()).
-
-Perceive: reads world state via ContextBuilder
-Plan:     sends context + mission objective to Ollama, parses tool calls
-Act:      executes tool calls via ToolExecutor (with OPA safety gate)
+Supports Groq, Google Gemini, Anthropic, and Ollama (local).
+Priority: GROQ_API_KEY → GEMINI_API_KEY → ANTHROPIC_API_KEY → Ollama
 
 Environment variables:
+    GROQ_API_KEY        - Groq API key (groq.com — fast, cheap)
+    GROQ_MODEL          - Groq model (default: llama-3.3-70b-versatile)
+    GEMINI_API_KEY      - Google Gemini API key
+    GEMINI_MODEL        - Gemini model (default: gemini-2.0-flash)
+    ANTHROPIC_API_KEY   - Anthropic Claude API key
+    ANTHROPIC_MODEL     - Claude model (default: claude-haiku-4-5-20251001)
     OLLAMA_URL          - Ollama base URL (default: http://localhost:11434)
     OLLAMA_MODEL        - model to use (default: llama3.1)
     BRAIN_MAX_TOKENS    - max tokens to generate (default: 1024)
-    BRAIN_TEMPERATURE   - sampling temperature (default: 0.2 — factual/deterministic)
+    BRAIN_TEMPERATURE   - sampling temperature (default: 0.2)
     BRAIN_MAX_STEPS     - max perceive/plan/act cycles per mission tick (default: 5)
 """
 
@@ -37,6 +38,13 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
 BRAIN_MAX_TOKENS = int(os.getenv("BRAIN_MAX_TOKENS", "1024"))
 BRAIN_TEMPERATURE = float(os.getenv("BRAIN_TEMPERATURE", "0.2"))
 BRAIN_MAX_STEPS = int(os.getenv("BRAIN_MAX_STEPS", "5"))
+
+GROQ_API_KEY    = os.getenv("GROQ_API_KEY")
+GROQ_MODEL      = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL    = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+ANTHROPIC_API_KEY  = os.getenv("ANTHROPIC_API_KEY")
+ANTHROPIC_MODEL    = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
 # ---------------------------------------------------------------------------
 # Prompt injection defence — delegates to prompt_guard
@@ -142,6 +150,100 @@ class OllamaClient:
             return None
 
 
+class GroqClient:
+    """Groq API client — OpenAI-compatible, very fast inference."""
+
+    def __init__(self):
+        self.api_key = GROQ_API_KEY
+        self.model = GROQ_MODEL
+
+    async def chat(self, messages: List[Dict], max_tokens: int = BRAIN_MAX_TOKENS, temperature: float = BRAIN_TEMPERATURE) -> Optional[str]:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={"model": self.model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature},
+                )
+                r.raise_for_status()
+                return r.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            logger.error(f"Groq chat failed: {e}")
+            return None
+
+
+class GeminiClient:
+    """Google Gemini API client."""
+
+    def __init__(self):
+        self.api_key = GEMINI_API_KEY
+        self.model = GEMINI_MODEL
+
+    async def chat(self, messages: List[Dict], max_tokens: int = BRAIN_MAX_TOKENS, temperature: float = BRAIN_TEMPERATURE) -> Optional[str]:
+        try:
+            import httpx
+            # Convert OpenAI-style messages to Gemini format
+            contents = [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]} for m in messages if m["role"] != "system"]
+            system = next((m["content"] for m in messages if m["role"] == "system"), None)
+            payload: Dict[str, Any] = {"contents": contents, "generationConfig": {"maxOutputTokens": max_tokens, "temperature": temperature}}
+            if system:
+                payload["systemInstruction"] = {"parts": [{"text": system}]}
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}",
+                    json=payload,
+                )
+                r.raise_for_status()
+                return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            logger.error(f"Gemini chat failed: {e}")
+            return None
+
+
+class AnthropicClient:
+    """Anthropic Claude API client."""
+
+    def __init__(self):
+        self.api_key = ANTHROPIC_API_KEY
+        self.model = ANTHROPIC_MODEL
+
+    async def chat(self, messages: List[Dict], max_tokens: int = BRAIN_MAX_TOKENS, temperature: float = BRAIN_TEMPERATURE) -> Optional[str]:
+        try:
+            import httpx
+            system = next((m["content"] for m in messages if m["role"] == "system"), None)
+            user_messages = [m for m in messages if m["role"] != "system"]
+            payload: Dict[str, Any] = {"model": self.model, "max_tokens": max_tokens, "temperature": temperature, "messages": user_messages}
+            if system:
+                payload["system"] = system
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                r = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                r.raise_for_status()
+                return r.json()["content"][0]["text"]
+        except Exception as e:
+            logger.error(f"Anthropic chat failed: {e}")
+            return None
+
+
+def _get_llm_client():
+    """Pick the best available LLM provider. Priority: Groq > Gemini > Anthropic > Ollama."""
+    if GROQ_API_KEY:
+        logger.info(f"Brain using Groq ({GROQ_MODEL})")
+        return GroqClient()
+    if GEMINI_API_KEY:
+        logger.info(f"Brain using Gemini ({GEMINI_MODEL})")
+        return GeminiClient()
+    if ANTHROPIC_API_KEY:
+        logger.info(f"Brain using Anthropic ({ANTHROPIC_MODEL})")
+        return AnthropicClient()
+    logger.info(f"Brain using Ollama ({OLLAMA_MODEL})")
+    return OllamaClient()
+
+
 def _parse_tool_calls(response: str) -> Tuple[List[Tuple[str, Dict]], str]:
     """
     Parse tool calls from LLM response text.
@@ -217,6 +319,7 @@ class Brain:
         max_steps: int = BRAIN_MAX_STEPS,
     ):
         self.ollama = OllamaClient(base_url=ollama_url, model=model)
+        self._llm = _get_llm_client()
         self.context_builder = ContextBuilder(world_url=world_url)
         self.executor = ToolExecutor(
             tasking_url=tasking_url,
@@ -228,7 +331,11 @@ class Brain:
 
     async def is_available(self) -> bool:
         if self._available is None:
-            self._available = await self.ollama.check_available()
+            # Non-Ollama providers are always considered available if key is set
+            if not isinstance(self._llm, OllamaClient):
+                self._available = True
+            else:
+                self._available = await self.ollama.check_available()
         return self._available
 
     def _build_messages(self, context: str, mission_objective: str) -> List[Dict]:
@@ -291,7 +398,7 @@ class Brain:
 
         # 2. Plan
         messages = self._build_messages(context, mission_objective)
-        response = await self.ollama.chat(
+        response = await self._llm.chat(
             messages=messages,
             tools=TOOL_DEFINITIONS,
         )
