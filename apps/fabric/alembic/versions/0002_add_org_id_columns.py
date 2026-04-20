@@ -42,10 +42,13 @@ _GATEWAY_TABLES = [
 
 def upgrade() -> None:
     # ── Add org_id to tasking + gateway tables ──────────────────────────────
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_tables = inspector.get_table_names()
     for table in _TASKING_TABLES + _GATEWAY_TABLES:
-        # Guard: skip if column already exists (idempotent)
-        conn = op.get_bind()
-        inspector = sa.inspect(conn)
+        # Guard: skip if table doesn't exist (single-service deployments omit tasking/gateway)
+        if table not in existing_tables:
+            continue
         existing_cols = [c["name"] for c in inspector.get_columns(table)]
         if "org_id" not in existing_cols:
             op.add_column(table, sa.Column("org_id", sa.String(128), nullable=True))
