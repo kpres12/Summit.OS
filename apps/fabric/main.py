@@ -279,38 +279,41 @@ async def lifespan(app: FastAPI):
             _run_migrations()
         # Create geospatial and org_id indexes if available (skip if migrations disabled)
         if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
-            async with engine.begin() as conn:
-                await conn.execute(
-                    text(
-                        "ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"
-                    )
-                )
-                await conn.execute(
-                    text(
-                        "ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"
-                    )
-                )
-                await conn.execute(
-                    text(
-                        "CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"
-                    )
-                )
-                await conn.execute(
-                    text(
-                        "CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"
-                    )
-                )
-                if GEO_AVAILABLE:
+            try:
+                async with engine.begin() as conn:
                     await conn.execute(
                         text(
-                            "CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"
+                            "ALTER TABLE world_entities ADD COLUMN IF NOT EXISTS org_id varchar(128)"
                         )
                     )
                     await conn.execute(
                         text(
-                            "CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"
+                            "ALTER TABLE world_alerts ADD COLUMN IF NOT EXISTS org_id varchar(128)"
                         )
                     )
+                    await conn.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS idx_world_entities_org ON world_entities (org_id)"
+                        )
+                    )
+                    await conn.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS idx_world_alerts_org ON world_alerts (org_id)"
+                        )
+                    )
+                    if GEO_AVAILABLE:
+                        await conn.execute(
+                            text(
+                                "CREATE INDEX IF NOT EXISTS idx_world_entities_geom ON world_entities USING GIST (geom)"
+                            )
+                        )
+                        await conn.execute(
+                            text(
+                                "CREATE INDEX IF NOT EXISTS idx_world_alerts_geom ON world_alerts USING GIST (geom)"
+                            )
+                        )
+            except Exception as _idx_ex:
+                logger.warning("Schema post-migration steps skipped (tables not yet created): %s", _idx_ex)
 
     # WebSocket manager
     websocket_manager = WebSocketManager()
