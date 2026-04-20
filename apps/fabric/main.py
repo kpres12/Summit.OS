@@ -145,6 +145,21 @@ MAX_ALERTS = int(os.getenv("FABRIC_MAX_ALERTS", "200"))
 # Shared alert dict for AlertEscalationService (alert_id → alert dict, kept in sync)
 _escalation_alerts: Dict[str, Any] = {}
 
+# In-memory REST stores (survive process lifetime, reset on restart)
+import uuid as _uuid
+from datetime import datetime as _dt, timezone as _tz
+
+_alerts_store: Dict[str, Any] = {}
+_missions_store: Dict[str, Any] = {}
+_tasks_store: Dict[str, Any] = {}
+_assets_store: Dict[str, Any] = {}
+_agents_store: Dict[str, Any] = {}
+
+
+def _now_iso() -> str:
+    return _dt.now(_tz.utc).isoformat()
+
+
 # Database metadata and tables (registry)
 metadata = MetaData()
 
@@ -994,6 +1009,15 @@ async def publish_alert(
                 json.dumps({"type": "alert", "data": am.model_dump()}),
                 org_id=org_id or "default",
             )
+        # Store in memory for GET /v1/alerts
+        _alerts_store[alert.alert_id] = {
+            "alert_id": alert.alert_id,
+            "severity": alert.severity,
+            "description": alert.description,
+            "source": alert.source,
+            "ts_iso": alert.ts_iso or _now_iso(),
+            "acknowledged": False,
+        }
         return {"status": "published", "alert_id": alert.alert_id}
     except Exception as e:
         logger.error("Failed to publish alert", error=str(e))
@@ -1676,6 +1700,292 @@ def _run_migrations():
     except Exception as e:
         logger.error(f"Failed to run migrations: {e}")
         raise
+
+
+# ── REST API endpoints (/v1/ prefix — matches frontend lib/api.ts) ───────────
+
+# ── Alerts ────────────────────────────────────────────────────────────────────
+
+@app.get("/v1/alerts")
+async def list_alerts(limit: int = 100):
+    alerts = sorted(_alerts_store.values(), key=lambda a: a.get("ts_iso", ""), reverse=True)
+    return {"alerts": alerts[:limit]}
+
+
+@app.post("/v1/alerts/{alert_id}/acknowledge")
+async def ack_alert_v1(alert_id: str):
+    if alert_id in _alerts_store:
+        _alerts_store[alert_id]["acknowledged"] = True
+    return {"ok": True, "alert_id": alert_id}
+
+
+# ── Missions ──────────────────────────────────────────────────────────────────
+
+@app.get("/v1/missions")
+async def list_missions(limit: int = 50):
+    missions = sorted(_missions_store.values(), key=lambda m: m.get("created_at", ""), reverse=True)
+    return missions[:limit]
+
+
+@app.post("/v1/missions")
+async def create_mission_v1(payload: Dict[str, Any]):
+    mission_id = str(_uuid.uuid4())
+    mission = {
+        "mission_id": mission_id,
+        "name": payload.get("name"),
+        "objectives": payload.get("objectives", []),
+        "status": "PENDING",
+        "created_at": _now_iso(),
+        "started_at": None,
+        "completed_at": None,
+    }
+    _missions_store[mission_id] = mission
+    if websocket_manager:
+        await websocket_manager.broadcast(json.dumps({"type": "mission_created", "data": mission}))
+    return mission
+
+
+@app.post("/v1/missions/parse")
+async def parse_mission_nlp(payload: Dict[str, Any]):
+    text = payload.get("text", "")
+    groq_key = os.getenv("GROQ_API_KEY")
+    if not groq_key:
+        return {"mission_type": "SURVEY", "pattern": "grid", "altitude_m": 120,
+                "asset_hint": None, "objectives": [text], "confidence": 0.5,
+                "interpretation": text}
+    import httpx as _httpx
+    prompt = (
+        "Parse this mission command into JSON with fields: "
+        "mission_type (SURVEY/RECON/ESCORT/PATROL/INTERCEPT), pattern (grid/lawnmower/spiral/orbit), "
+        "altitude_m (number), asset_hint (string or null), objectives (array of strings), "
+        "confidence (0-1), interpretation (plain English summary). "
+        f"Command: {text}\nRespond with only valid JSON."
+    )
+    try:
+        async with _httpx.AsyncClient(timeout=15.0) as c:
+            r = await c.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                json={"model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                      "messages": [{"role": "user", "content": prompt}],
+                      "temperature": 0.1, "max_tokens": 300},
+            )
+            r.raise_for_status()
+            content = r.json()["choices"][0]["message"]["content"].strip()
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            return json.loads(content)
+    except Exception as e:
+        logger.warning("Mission NLP parse failed: %s", e)
+        return {"mission_type": "SURVEY", "pattern": "grid", "altitude_m": 120,
+                "asset_hint": None, "objectives": [text], "confidence": 0.4,
+                "interpretation": text}
+
+
+@app.post("/v1/missions/preview")
+async def preview_mission_waypoints(payload: Dict[str, Any]):
+    pattern = payload.get("pattern", "grid")
+    alt = float(payload.get("altitude_m", 120))
+    area = payload.get("area", [])
+    if not area:
+        return {"waypoints": [], "pattern": pattern, "count": 0}
+    lats = [p["lat"] for p in area]
+    lons = [p["lon"] for p in area]
+    min_lat, max_lat = min(lats), max(lats)
+    min_lon, max_lon = min(lons), max(lons)
+    waypoints = []
+    steps = 5
+    for i in range(steps + 1):
+        t = i / steps
+        lat = min_lat + t * (max_lat - min_lat)
+        lon = (min_lon if i % 2 == 0 else max_lon)
+        waypoints.append({"lat": lat, "lon": lon, "alt": alt})
+    return {"waypoints": waypoints, "pattern": pattern, "count": len(waypoints)}
+
+
+@app.get("/v1/missions/{mission_id}/replay/timeline")
+async def replay_timeline(mission_id: str):
+    return {"mission_id": mission_id, "count": 0, "start": None, "end": None, "timestamps": []}
+
+
+@app.get("/v1/missions/{mission_id}/replay/snapshot")
+async def replay_snapshot(mission_id: str, ts: str = "", index: int = 0):
+    return {"mission_id": mission_id, "ts": ts, "entities": []}
+
+
+# ── Tasks ─────────────────────────────────────────────────────────────────────
+
+@app.get("/v1/tasks")
+async def list_tasks(limit: int = 100):
+    tasks = sorted(_tasks_store.values(), key=lambda t: t.get("created_at", ""), reverse=True)
+    return tasks[:limit]
+
+
+@app.get("/v1/tasks/pending")
+async def list_pending_tasks():
+    return [t for t in _tasks_store.values() if t.get("status") == "pending"]
+
+
+@app.post("/v1/tasks")
+async def create_task(payload: Dict[str, Any]):
+    task_id = str(_uuid.uuid4())
+    task = {
+        "task_id": task_id,
+        "asset_id": payload.get("asset_id", ""),
+        "action": payload.get("action", ""),
+        "status": "pending",
+        "risk_level": payload.get("risk_level", "LOW"),
+        "waypoints": payload.get("waypoints", []),
+        "mission_id": payload.get("mission_id"),
+        "objective": payload.get("objective"),
+        "created_at": _now_iso(),
+        "started_at": None,
+        "completed_at": None,
+    }
+    _tasks_store[task_id] = task
+    if websocket_manager:
+        await websocket_manager.broadcast(json.dumps({"type": "task_created", "data": task}))
+    return {"task_id": task_id, "status": "pending"}
+
+
+@app.post("/v1/tasks/{task_id}/approve")
+async def approve_task(task_id: str, payload: Dict[str, Any]):
+    if task_id in _tasks_store:
+        _tasks_store[task_id]["status"] = "active"
+        _tasks_store[task_id]["started_at"] = _now_iso()
+        _tasks_store[task_id]["approved_by"] = payload.get("approved_by")
+    return {"ok": True, "task_id": task_id}
+
+
+# ── Assets ────────────────────────────────────────────────────────────────────
+
+@app.get("/v1/assets")
+async def list_assets():
+    return {"assets": list(_assets_store.values())}
+
+
+# ── Worldstate + geofence aliases at /v1/ (frontend calls /v1/ not /api/v1/) ─
+
+@app.get("/v1/worldstate")
+async def get_world_state_alias():
+    return {
+        "entity_count": len(world_state.get("devices", {})),
+        "alert_count": len(_alerts_store),
+        "mission_count": len(_missions_store),
+        "entities": list(world_state.get("devices", {}).values()),
+    }
+
+
+@app.get("/v1/geofences")
+async def list_geofences_alias():
+    if engine and SessionLocal:
+        try:
+            async with SessionLocal() as session:
+                rows = await session.execute(text("SELECT * FROM geofences ORDER BY id DESC"))
+                return {"geofences": [dict(r._mapping) for r in rows.all()]}
+        except Exception:
+            pass
+    return {"geofences": []}
+
+
+@app.post("/v1/geofences")
+async def create_geofence_alias(payload: Dict[str, Any]):
+    if engine and SessionLocal:
+        try:
+            async with SessionLocal() as session:
+                await session.execute(
+                    text("INSERT INTO geofences (name, type, props) VALUES (:name, :type, :props)"),
+                    {"name": payload.get("name", ""), "type": payload.get("type", "EXCLUSION"),
+                     "props": json.dumps(payload.get("props", {}))})
+                await session.commit()
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+    return {"ok": True}
+
+
+@app.delete("/v1/geofences/{gf_id}")
+async def delete_geofence_alias(gf_id: int):
+    if engine and SessionLocal:
+        try:
+            async with SessionLocal() as session:
+                await session.execute(text("DELETE FROM geofences WHERE id = :id"), {"id": gf_id})
+                await session.commit()
+        except Exception:
+            pass
+    return {"ok": True}
+
+
+# ── AI Agent (Groq-powered) ───────────────────────────────────────────────────
+
+_GROQ_SYSTEM_PROMPT = """You are HELIOS, an AI mission coordinator for Heli.OS — an autonomous systems platform for disaster response, search & rescue, and wildfire operations. You help operators plan and coordinate UAV and ground asset missions.
+
+When given a mission objective:
+1. Analyze the situation briefly
+2. Recommend specific assets and actions
+3. Identify risks
+4. Provide a concise execution plan
+
+Keep responses tactical, concise, and actionable. Use operator-style language."""
+
+
+@app.post("/agents")
+async def create_agent(payload: Dict[str, Any]):
+    agent_id = str(_uuid.uuid4())[:8].upper()
+    objective = payload.get("mission_objective") or payload.get("command") or ""
+    agent = {
+        "agent_id": agent_id,
+        "objective": objective,
+        "status": "RUNNING",
+        "created_at": _now_iso(),
+        "result": None,
+    }
+    _agents_store[agent_id] = agent
+
+    async def _run_agent():
+        groq_key = os.getenv("GROQ_API_KEY")
+        if not groq_key:
+            _agents_store[agent_id]["status"] = "COMPLETED"
+            _agents_store[agent_id]["result"] = "AI brain offline (no GROQ_API_KEY configured)."
+            return
+        import httpx as _httpx
+        try:
+            async with _httpx.AsyncClient(timeout=30.0) as c:
+                r = await c.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                    json={"model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                          "messages": [
+                              {"role": "system", "content": _GROQ_SYSTEM_PROMPT},
+                              {"role": "user", "content": objective},
+                          ],
+                          "temperature": 0.7, "max_tokens": 500},
+                )
+                r.raise_for_status()
+                result = r.json()["choices"][0]["message"]["content"].strip()
+                _agents_store[agent_id]["status"] = "COMPLETED"
+                _agents_store[agent_id]["result"] = result
+                if websocket_manager:
+                    await websocket_manager.broadcast(json.dumps({
+                        "type": "agent_result",
+                        "data": {"agent_id": agent_id, "result": result, "objective": objective}
+                    }))
+        except Exception as e:
+            _agents_store[agent_id]["status"] = "FAILED"
+            _agents_store[agent_id]["result"] = f"Error: {e}"
+
+    asyncio.create_task(_run_agent())
+    return {"ok": True, "agent_id": agent_id}
+
+
+@app.get("/agents")
+async def list_agents():
+    return {"agents": list(_agents_store.values())}
+
+
+# Also wire incoming alerts from the existing /alerts POST into _alerts_store
+# (patch the publish_alert handler to also store in memory)
 
 
 # ── OpenSky ADS-B poller (direct, no MQTT) ───────────────────────────────────
