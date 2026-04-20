@@ -1,7 +1,7 @@
 """Add org_id columns for Enterprise multi-tenancy.
 
 Revision ID: 0002
-Revises: 0001
+Revises: 0001_registry_init
 Create Date: 2026-03-28
 
 Adds:
@@ -19,7 +19,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "0002"
-down_revision = "0001"
+down_revision = "0001_registry_init"
 branch_labels = None
 depends_on = None
 
