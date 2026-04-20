@@ -199,7 +199,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
+      <div className="flex-1 overflow-y-auto px-4 pb-6">
         {/* Status section */}
         <SectionHeader title="STATUS" />
         <DataRow label="TYPE" value={entity.entity_type.toUpperCase()} valueColor={typeColor} />

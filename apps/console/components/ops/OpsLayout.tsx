@@ -257,12 +257,12 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
           aria-label="Entity detail"
           className="flex-none overflow-hidden transition-[width] duration-150 ease-out"
           style={{
-            width: investigation.selectedEntity ? '384px' : '0px',
+            width: investigation.selectedEntity ? '420px' : '0px',
             borderLeft: investigation.selectedEntity ? '1px solid var(--border)' : 'none',
             background: 'var(--background-panel)',
           }}
         >
-          <div style={{ width: '384px', height: '100%' }}>
+          <div style={{ width: '420px', height: '100%' }}>
             <OpsEntityDetail
               entity={investigation.selectedEntity}
               onClose={() => investigation.setSelectedEntity(null)}

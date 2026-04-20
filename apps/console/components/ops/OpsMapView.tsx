@@ -191,6 +191,17 @@ export default function OpsMapView({
   // Basemap
   const [basemap, setBasemap] = useState<'dark' | 'satellite'>('dark');
 
+  // Entity type filters — all visible by default
+  const ALL_ASSET_TYPES = ['DRONE', 'AIRCRAFT', 'UGV', 'VESSEL', 'SENSOR', 'TOWER'] as const;
+  const [hiddenAssetTypes, setHiddenAssetTypes] = useState<Set<string>>(new Set());
+  const toggleAssetType = (type: string) => {
+    setHiddenAssetTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type); else next.add(type);
+      return next;
+    });
+  };
+
   // Geofence draw
   const [vertices, setVertices] = useState<DrawVertex[]>([]);
   const [geoName, setGeoName] = useState('');
@@ -639,7 +650,13 @@ export default function OpsMapView({
         )}
 
         {/* === Entity markers — Lattice-style icons + labels === */}
-        {entityList.map((entity) => {
+        {entityList.filter(entity => {
+          const atype = ((entity.properties?.asset_type as string) || '').toUpperCase();
+          if (hiddenAssetTypes.size === 0) return true;
+          // Map to one of the known filter categories
+          const cat = ALL_ASSET_TYPES.find(t => atype.includes(t)) ?? 'OTHER';
+          return !hiddenAssetTypes.has(cat);
+        }).map((entity) => {
           if (!entity.position) return null;
           const color = markerColor(entity);
           const colorHex = markerColorHex(entity);
@@ -720,30 +737,87 @@ export default function OpsMapView({
         })}
       </MapGL>
 
-      {/* === Basemap toggle — top-left === */}
+      {/* === Basemap toggle + entity type filters — top-left === */}
       <div
         className="absolute"
-        style={{ top: '10px', left: '10px', zIndex: 10, display: 'flex', gap: '2px' }}
+        style={{ top: '10px', left: '10px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '4px' }}
       >
-        {(['dark', 'satellite'] as const).map(mode => (
-          <button
-            key={mode}
-            onClick={() => setBasemap(mode)}
-            style={{
-              fontFamily: 'var(--font-ibm-plex-mono), monospace',
-              fontSize: '9px',
-              letterSpacing: '0.08em',
-              padding: '3px 8px',
-              cursor: 'pointer',
-              border: `1px solid ${basemap === mode ? 'var(--accent)' : 'var(--border)'}`,
-              background: basemap === mode ? 'color-mix(in srgb, var(--accent) 15%, var(--background-panel))' : 'var(--background-panel)',
-              color: basemap === mode ? 'var(--accent)' : 'var(--text-muted)',
-              transition: 'all 0.15s',
-            }}
-          >
-            {mode.toUpperCase()}
-          </button>
-        ))}
+        {/* Basemap row */}
+        <div style={{ display: 'flex', gap: '2px' }}>
+          {(['dark', 'satellite'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setBasemap(mode)}
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                fontSize: '9px',
+                letterSpacing: '0.08em',
+                padding: '3px 8px',
+                cursor: 'pointer',
+                border: `1px solid ${basemap === mode ? 'var(--accent)' : 'var(--border)'}`,
+                background: basemap === mode ? 'color-mix(in srgb, var(--accent) 15%, var(--background-panel))' : 'var(--background-panel)',
+                color: basemap === mode ? 'var(--accent)' : 'var(--text-muted)',
+                transition: 'all 0.15s',
+              }}
+            >
+              {mode.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Entity type filter chips */}
+        <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', maxWidth: '220px' }}>
+          {ALL_ASSET_TYPES.map(type => {
+            const hidden = hiddenAssetTypes.has(type);
+            const count = entityList.filter(e => {
+              const atype = ((e.properties?.asset_type as string) || '').toUpperCase();
+              return ALL_ASSET_TYPES.find(t => atype.includes(t)) === type || (!ALL_ASSET_TYPES.find(t => atype.includes(t)) && type === 'OTHER' as never);
+            }).length;
+            const typeColor: Record<string, string> = {
+              DRONE: '#00FF9C', AIRCRAFT: '#4FC3F7', UGV: '#00FF9C',
+              VESSEL: '#4FC3F7', SENSOR: '#8A9A8A', TOWER: '#8A9A8A',
+            };
+            const color = typeColor[type] ?? '#8A8A8A';
+            return (
+              <button
+                key={type}
+                onClick={() => toggleAssetType(type)}
+                title={`${hidden ? 'Show' : 'Hide'} ${type}`}
+                style={{
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  fontSize: '8px',
+                  letterSpacing: '0.08em',
+                  padding: '2px 5px',
+                  cursor: 'pointer',
+                  border: `1px solid ${hidden ? 'var(--border)' : `${color}60`}`,
+                  background: hidden ? 'rgba(8,12,10,0.75)' : `color-mix(in srgb, ${color} 10%, rgba(8,12,10,0.85))`,
+                  color: hidden ? 'var(--text-muted)' : color,
+                  transition: 'all 0.15s',
+                  opacity: hidden ? 0.5 : 1,
+                }}
+              >
+                {type} {count > 0 && <span style={{ opacity: 0.7 }}>{count}</span>}
+              </button>
+            );
+          })}
+          {hiddenAssetTypes.size > 0 && (
+            <button
+              onClick={() => setHiddenAssetTypes(new Set())}
+              style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                fontSize: '8px',
+                letterSpacing: '0.08em',
+                padding: '2px 5px',
+                cursor: 'pointer',
+                border: '1px solid var(--warning)',
+                background: 'transparent',
+                color: 'var(--warning)',
+              }}
+            >
+              ALL
+            </button>
+          )}
+        </div>
       </div>
 
       {/* === Cursor coordinate display — bottom right === */}
