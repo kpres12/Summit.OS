@@ -276,7 +276,11 @@ async def lifespan(app: FastAPI):
             global GEO_AVAILABLE
             GEO_AVAILABLE = False
         if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
-            _run_migrations()
+            try:
+                _run_migrations()
+            except Exception as _mig_err:
+                import traceback
+                logger.error("Migration failed — continuing with existing schema: %s\n%s", _mig_err, traceback.format_exc())
         # Create geospatial and org_id indexes if available (skip if migrations disabled)
         if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
             try:
@@ -320,15 +324,21 @@ async def lifespan(app: FastAPI):
 
     # Initialize WorldStore (unified entity store)
     if WORLD_STORE_AVAILABLE:
-        world_store = WorldStore(org_id=os.getenv("FABRIC_ORG_ID", "default"))
-        await world_store.initialize(
-            engine=engine if not FABRIC_TEST_MODE else None,
-            session_factory=SessionLocal if not FABRIC_TEST_MODE else None,
-            ws_manager=websocket_manager,
-        )
-        logger.info("WorldStore initialized")
-        history_store = HistoryStore()
-        logger.info("HistoryStore initialized")
+        try:
+            world_store = WorldStore(org_id=os.getenv("FABRIC_ORG_ID", "default"))
+            await world_store.initialize(
+                engine=engine if not FABRIC_TEST_MODE else None,
+                session_factory=SessionLocal if not FABRIC_TEST_MODE else None,
+                ws_manager=websocket_manager,
+            )
+            logger.info("WorldStore initialized")
+            history_store = HistoryStore()
+            logger.info("HistoryStore initialized")
+        except Exception as _ws_err:
+            import traceback
+            logger.error("WorldStore initialization failed — running without persistence: %s\n%s", _ws_err, traceback.format_exc())
+            world_store = None
+            history_store = None
 
     if not FABRIC_TEST_MODE:
         # Redis connection — optional, graceful degradation without it
@@ -421,7 +431,10 @@ async def lifespan(app: FastAPI):
             await mqtt_client.subscribe("entities/+/update", _handle_entity_update)
 
     # Mount entity REST routes now that world_store is ready
-    _mount_world_router()
+    try:
+        _mount_world_router()
+    except Exception as _mwr_err:
+        logger.warning("World router mount failed: %s", _mwr_err)
 
     yield
 
