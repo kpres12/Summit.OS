@@ -267,9 +267,14 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(metadata.create_all)
     else:
-        # Ensure extensions
-        async with engine.begin() as conn:
-            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        # Ensure extensions (PostGIS optional — Render free tier doesn't have it)
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        except Exception as _pg_ex:
+            logger.warning("PostGIS extension unavailable, geospatial features disabled: %s", _pg_ex)
+            global GEO_AVAILABLE
+            GEO_AVAILABLE = False
         if os.getenv("FABRIC_SKIP_MIGRATIONS", "false").lower() != "true":
             _run_migrations()
         # Create geospatial and org_id indexes if available (skip if migrations disabled)
