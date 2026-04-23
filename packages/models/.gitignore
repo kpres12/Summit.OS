@@ -1,0 +1,6 @@
+# Trained model artifacts — download via export.py or CI/CD artifact store
+*.pt
+*.onnx
+*.joblib
+*.pkl
+!.gitkeep

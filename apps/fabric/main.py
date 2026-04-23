@@ -1943,6 +1943,15 @@ async def parse_mission_nlp(payload: Dict[str, Any]):
     text = payload.get("text", "")
     groq_key = os.getenv("GROQ_API_KEY")
     if not groq_key:
+        # Use trained intent classifier when Groq is unavailable
+        try:
+            from mission_orchestrator import parse_mission_nlp as _nlp
+            result = _nlp(text)
+            result["interpretation"] = text
+            result["asset_hint"] = None
+            return result
+        except Exception:
+            pass
         return {"mission_type": "SURVEY", "pattern": "grid", "altitude_m": 120,
                 "asset_hint": None, "objectives": [text], "confidence": 0.5,
                 "interpretation": text}
@@ -1971,7 +1980,15 @@ async def parse_mission_nlp(payload: Dict[str, Any]):
                     content = content[4:]
             return json.loads(content)
     except Exception as e:
-        logger.warning("Mission NLP parse failed: %s", e)
+        logger.warning("Mission NLP parse failed: %s — falling back to local classifier", e)
+        try:
+            from mission_orchestrator import parse_mission_nlp as _nlp
+            result = _nlp(text)
+            result["interpretation"] = text
+            result["asset_hint"] = None
+            return result
+        except Exception:
+            pass
         return {"mission_type": "SURVEY", "pattern": "grid", "altitude_m": 120,
                 "asset_hint": None, "objectives": [text], "confidence": 0.4,
                 "interpretation": text}

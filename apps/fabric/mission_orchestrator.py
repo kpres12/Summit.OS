@@ -135,6 +135,148 @@ def _generate_waypoints(pattern: str, area: List[Dict], alt_m: float) -> List[Di
 
 
 # ---------------------------------------------------------------------------
+# Natural language → mission intent
+# ---------------------------------------------------------------------------
+
+# Lazy-loaded intent classifier (trained by packages/training/train_intent.py)
+_intent_clf = None
+_intent_loaded = False
+
+_MISSION_TYPES = ["SAR", "SURVEY", "PATROL", "RECON", "MONITOR", "ESCORT"]
+
+# Keyword fallback — fast path when classifier isn't loaded
+_KEYWORD_MAP: Dict[str, str] = {
+    "find": "SAR", "search": "SAR", "rescue": "SAR", "missing": "SAR",
+    "locate": "SAR", "survivor": "SAR", "hiker": "SAR", "sar": "SAR",
+    "survey": "SURVEY", "map": "SURVEY", "assess": "SURVEY", "damage": "SURVEY",
+    "document": "SURVEY", "photograph": "SURVEY", "imagery": "SURVEY",
+    "patrol": "PATROL", "perimeter": "PATROL", "security": "PATROL",
+    "border": "PATROL", "sweep": "PATROL", "guard": "PATROL",
+    "recon": "RECON", "reconnaissance": "RECON", "scout": "RECON",
+    "intel": "RECON", "observe": "RECON", "eyes": "RECON",
+    "monitor": "MONITOR", "watch": "MONITOR", "track": "MONITOR",
+    "observe": "MONITOR", "continuous": "MONITOR",
+    "escort": "ESCORT", "convoy": "ESCORT", "accompany": "ESCORT",
+    "overwatch": "ESCORT", "protect": "ESCORT",
+}
+
+_SEARCH_PATTERN_KEYWORDS: Dict[str, str] = {
+    "grid":       "grid",
+    "lawnmower":  "lawnmower",
+    "sweep":      "lawnmower",
+    "spiral":     "spiral",
+    "expanding":  "spiral",
+    "orbit":      "spiral",
+    "circle":     "spiral",
+}
+
+
+def _load_intent_classifier():
+    global _intent_clf, _intent_loaded
+    if _intent_loaded:
+        return _intent_clf
+    _intent_loaded = True
+
+    try:
+        import joblib
+        from pathlib import Path as _Path
+        model_path = _Path(__file__).resolve().parents[2] / "packages" / "c2_intel" / "models" / "intent_classifier.joblib"
+        if model_path.exists():
+            _intent_clf = joblib.load(model_path)
+            logger.info("[MissionOrchestrator] Intent classifier loaded")
+        else:
+            logger.info("[MissionOrchestrator] Intent classifier not trained yet — using keyword fallback")
+    except Exception as e:
+        logger.warning("[MissionOrchestrator] Intent classifier load failed: %s", e)
+    return _intent_clf
+
+
+def parse_mission_nlp(text: str, area: Optional[List[Dict]] = None) -> Dict:
+    """
+    Parse operator free-text into a structured mission spec.
+
+    Args:
+        text: Natural language mission description (e.g. "Find the missing hiker")
+        area: Optional polygon defining the search area (list of {lat, lon} dicts)
+
+    Returns:
+        Dict with:
+          mission_type   (SAR | SURVEY | PATROL | RECON | MONITOR | ESCORT)
+          pattern        (grid | lawnmower | spiral)
+          altitude_m     (float)
+          objectives     (list of str)
+          confidence     (float, 0-1)
+          raw_text       (str)
+    """
+    text_lower = text.lower().strip()
+    mission_type = None
+    confidence = 0.0
+
+    # Try ML classifier first
+    clf = _load_intent_classifier()
+    if clf is not None:
+        try:
+            probs = clf.predict_proba([text_lower])[0]
+            classes = clf.classes_
+            best_idx = int(probs.argmax())
+            mission_type = str(classes[best_idx])
+            confidence = float(probs[best_idx])
+        except Exception as e:
+            logger.warning("Intent classifier inference failed: %s", e)
+
+    # Keyword fallback
+    if mission_type is None or confidence < 0.4:
+        for kw, mtype in _KEYWORD_MAP.items():
+            if kw in text_lower:
+                mission_type = mtype
+                confidence = max(confidence, 0.6)
+                break
+
+    if mission_type is None:
+        mission_type = "RECON"  # conservative default
+        confidence = 0.3
+
+    # Infer search pattern from text
+    pattern = "lawnmower"  # default for SAR/SURVEY
+    for kw, pat in _SEARCH_PATTERN_KEYWORDS.items():
+        if kw in text_lower:
+            pattern = pat
+            break
+    if mission_type in ("PATROL", "ESCORT", "MONITOR") and pattern == "lawnmower":
+        pattern = "grid"
+    if mission_type == "SAR" and "expand" in text_lower:
+        pattern = "spiral"
+
+    # Infer altitude from context
+    altitude_m = 50.0  # default
+    if "low" in text_lower or "close" in text_lower:
+        altitude_m = 25.0
+    elif "high" in text_lower or "wide" in text_lower:
+        altitude_m = 100.0
+    elif mission_type == "SURVEY":
+        altitude_m = 80.0
+    elif mission_type == "MONITOR":
+        altitude_m = 60.0
+
+    # Extract objectives (simple: split on connectors)
+    objectives = [text.strip()]
+    for conj in (" and ", " then ", " after ", " while "):
+        if conj in text_lower:
+            parts = text.split(conj, 1)
+            objectives = [p.strip() for p in parts if p.strip()]
+            break
+
+    return {
+        "mission_type": mission_type,
+        "pattern":      pattern,
+        "altitude_m":   altitude_m,
+        "objectives":   objectives,
+        "confidence":   round(confidence, 3),
+        "raw_text":     text,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Per-asset execution state
 # ---------------------------------------------------------------------------
 
