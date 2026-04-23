@@ -58,7 +58,7 @@ services:
   # ── Core Application Services ────────────────────────────────────────────────
 
   fabric:
-    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/heli-os/fabric:latest}
+    image: ${FABRIC_IMAGE:-ghcr.io/branca-ai/heli-os/fabric:latest}
     restart: unless-stopped
     environment:
       FABRIC_REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -81,7 +81,7 @@ services:
       - summit-sim
 
   api-gateway:
-    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/heli-os/api-gateway:latest}
+    image: ${API_GATEWAY_IMAGE:-ghcr.io/branca-ai/heli-os/api-gateway:latest}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD:-summitsim}@postgres:5432/heli_os
@@ -111,7 +111,7 @@ services:
       - summit-sim
 
   console:
-    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/heli-os/console:latest}
+    image: ${CONSOLE_IMAGE:-ghcr.io/branca-ai/heli-os/console:latest}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000

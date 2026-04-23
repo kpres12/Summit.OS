@@ -108,7 +108,7 @@ services:
   # ── Core Application Services ───────────────────────────────────────────────
 
   fabric:
-    image: ${FABRIC_IMAGE:-ghcr.io/bigmt-ai/heli-os/fabric:latest}
+    image: ${FABRIC_IMAGE:-ghcr.io/branca-ai/heli-os/fabric:latest}
     restart: always
     environment:
       FABRIC_REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -131,7 +131,7 @@ services:
       - summit-internal
 
   api-gateway:
-    image: ${API_GATEWAY_IMAGE:-ghcr.io/bigmt-ai/heli-os/api-gateway:latest}
+    image: ${API_GATEWAY_IMAGE:-ghcr.io/branca-ai/heli-os/api-gateway:latest}
     restart: always
     environment:
       DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD}@postgres:5432/heli_os
@@ -167,7 +167,7 @@ services:
       - summit-internal
 
   console:
-    image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/heli-os/console:latest}
+    image: ${CONSOLE_IMAGE:-ghcr.io/branca-ai/heli-os/console:latest}
     restart: always
     environment:
       NEXT_PUBLIC_API_URL: https://${DOMAIN:?DOMAIN is required}
@@ -210,7 +210,7 @@ services:
 # These require more RAM (~4 GB total vs ~1.5 GB for core).
 
 #  fusion:
-#    image: ${FUSION_IMAGE:-ghcr.io/bigmt-ai/heli-os/fusion:latest}
+#    image: ${FUSION_IMAGE:-ghcr.io/branca-ai/heli-os/fusion:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -223,7 +223,7 @@ services:
 #      - summit-internal
 #
 #  intelligence:
-#    image: ${INTELLIGENCE_IMAGE:-ghcr.io/bigmt-ai/heli-os/intelligence:latest}
+#    image: ${INTELLIGENCE_IMAGE:-ghcr.io/branca-ai/heli-os/intelligence:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -235,7 +235,7 @@ services:
 #      - summit-internal
 #
 #  tasking:
-#    image: ${TASKING_IMAGE:-ghcr.io/bigmt-ai/heli-os/tasking:latest}
+#    image: ${TASKING_IMAGE:-ghcr.io/branca-ai/heli-os/tasking:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379
@@ -248,7 +248,7 @@ services:
 #      - summit-internal
 #
 #  inference:
-#    image: ${INFERENCE_IMAGE:-ghcr.io/bigmt-ai/heli-os/inference:latest}
+#    image: ${INFERENCE_IMAGE:-ghcr.io/branca-ai/heli-os/inference:latest}
 #    restart: always
 #    environment:
 #      REDIS_URL: redis://:${REDIS_PASSWORD:-summitredis}@redis:6379

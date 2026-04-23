@@ -4,20 +4,20 @@ name: build-push
 # Runs on every push to main and on version tags (v*).
 #
 # Images pushed:
-#   ghcr.io/bigmt-ai/heli-os/console:latest      (and :<sha>)
-#   ghcr.io/bigmt-ai/heli-os/api-gateway:latest
-#   ghcr.io/bigmt-ai/heli-os/fabric:latest
-#   ghcr.io/bigmt-ai/heli-os/fusion:latest
-#   ghcr.io/bigmt-ai/heli-os/intelligence:latest
-#   ghcr.io/bigmt-ai/heli-os/tasking:latest
-#   ghcr.io/bigmt-ai/heli-os/inference:latest
+#   ghcr.io/branca-ai/heli-os/console:latest      (and :<sha>)
+#   ghcr.io/branca-ai/heli-os/api-gateway:latest
+#   ghcr.io/branca-ai/heli-os/fabric:latest
+#   ghcr.io/branca-ai/heli-os/fusion:latest
+#   ghcr.io/branca-ai/heli-os/intelligence:latest
+#   ghcr.io/branca-ai/heli-os/tasking:latest
+#   ghcr.io/branca-ai/heli-os/inference:latest
 #
 # Required repository secrets (Settings → Secrets → Actions):
 #   GHCR_TOKEN  — a GitHub PAT with write:packages scope
 #               (or just use GITHUB_TOKEN if the org allows it)
 #
 # The Coolify compose file references these images via:
-#   image: ${CONSOLE_IMAGE:-ghcr.io/bigmt-ai/heli-os/console:latest}
+#   image: ${CONSOLE_IMAGE:-ghcr.io/branca-ai/heli-os/console:latest}
 
 on:
   push:
@@ -27,7 +27,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  ORG: bigmt-ai
+  ORG: branca-ai
   REPO: heli-os
 
 jobs:
@@ -141,4 +141,4 @@ jobs:
           echo "| console | ${{ needs.build-console.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| services (matrix) | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Images pushed to: \`ghcr.io/bigmt-ai/heli-os/*:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "Images pushed to: \`ghcr.io/branca-ai/heli-os/*:latest\`" >> $GITHUB_STEP_SUMMARY
