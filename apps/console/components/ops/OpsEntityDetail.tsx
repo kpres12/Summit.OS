@@ -351,7 +351,7 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         )}
 
         {/* Live Video Feed */}
-        {entity.properties?.hls_url && (
+        {Boolean(entity.properties?.hls_url) && (
           <>
             <SectionHeader title="LIVE FEED" />
             <div
