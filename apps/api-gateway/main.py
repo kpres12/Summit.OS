@@ -1062,8 +1062,8 @@ async def approve_task(
             raise HTTPException(status_code=403, detail="Policy denied dispatch")
     except HTTPException:
         raise
-    except Exception as e:
-        logger.debug("Suppressed error", exc_info=True)  # was: pass
+    except Exception:
+        logger.debug("Suppressed error", exc_info=True)
 
     # Dispatch to Tasking
     try:
@@ -1346,7 +1346,8 @@ async def create_mission_proxy(
 ):
     # Validate against mission schema if present
     try:
-        import json, os
+        import json
+        import os
         from jsonschema import validate
 
         schema_path = os.path.join(
@@ -1362,8 +1363,8 @@ async def create_mission_proxy(
         with open(schema_path, "r") as f:
             schema = json.load(f)
         validate(instance=payload, schema=schema)
-    except Exception as e:
-        logger.debug("Suppressed error", exc_info=True)  # was: pass
+    except Exception:
+        logger.debug("Suppressed error", exc_info=True)
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             headers = {"X-Org-ID": org_id} if org_id else None
@@ -1750,7 +1751,6 @@ async def acknowledge_alert_proxy(
 # -------------------------
 # Contracts examples for UI/CI
 # -------------------------
-from fastapi.responses import JSONResponse
 
 _EXAMPLE_ALLOWED = {
     "detection_event",

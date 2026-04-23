@@ -8,7 +8,9 @@ Handles MQTT, Redis Streams, and gRPC streaming for distributed intelligence.
 import asyncio
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Dict, Any, Optional, List
 
 import structlog
@@ -52,10 +54,10 @@ try:
     from packages.c2_intel.dedup import ObservationDeduplicator
     from packages.c2_intel.evidence import C2EvidenceAggregator
 
-    _c2_priority   = C2PriorityMatrix()
-    _c2_chains     = get_chain_detector()
-    _c2_dedup      = ObservationDeduplicator(window_seconds=30.0)
-    _c2_evidence   = C2EvidenceAggregator()
+    _c2_priority = C2PriorityMatrix()
+    _c2_chains = get_chain_detector()
+    _c2_dedup = ObservationDeduplicator(window_seconds=30.0)
+    _c2_evidence = C2EvidenceAggregator()
 
     # Rolling window of recent observations per entity for evidence clustering
     # entity_id → deque of C2Observation (last 20)
@@ -111,7 +113,7 @@ if FABRIC_TEST_MODE:
 
 # ── Capability status at startup ──────────────────────────────────────────────
 def _log_capabilities() -> None:
-    _OK  = "✓"
+    _OK = "✓"
     _OFF = "✗"
     _log = logging.getLogger("fabric")
     _log.info("─── Fabric service capabilities ────────────────────────────────")
@@ -123,6 +125,7 @@ def _log_capabilities() -> None:
     if not MESH_AVAILABLE:
         _log.warning("  Mesh peer unavailable — multi-node CRDT sync disabled")
     _log.info("────────────────────────────────────────────────────────────────")
+
 
 # Configure structured logging
 structlog.configure(
@@ -852,8 +855,8 @@ async def publish_telemetry(
                 "status": telemetry.status,
                 "sensors": telemetry.sensors,
             }
-        except Exception as e:
-            logger.debug("Suppressed error", exc_info=True)  # was: pass
+        except Exception:
+            logger.debug("Suppressed error", exc_info=True)
         # Persist to world_entities
         try:
             assert SessionLocal is not None
@@ -911,8 +914,8 @@ async def publish_telemetry(
                         )
                     )
                 await session.commit()
-        except Exception as e:
-            logger.debug("Suppressed error", exc_info=True)  # was: pass
+        except Exception:
+            logger.debug("Suppressed error", exc_info=True)
         if websocket_manager:
             await websocket_manager.broadcast_to_org(
                 json.dumps({"type": "telemetry", "data": tm.model_dump()}),
@@ -969,8 +972,8 @@ async def publish_alert(
             del world_state["alerts"][MAX_ALERTS:]
             # Keep escalation dict in sync (shared reference — AlertEscalationService watches this)
             _escalation_alerts[alert.alert_id] = alert_dict
-        except Exception as e:
-            logger.debug("Suppressed error", exc_info=True)  # was: pass
+        except Exception:
+            logger.debug("Suppressed error", exc_info=True)
         # Persist to world_alerts
         try:
             assert SessionLocal is not None
@@ -1027,8 +1030,8 @@ async def publish_alert(
                         )
                     )
                 await session.commit()
-        except Exception as e:
-            logger.debug("Suppressed error", exc_info=True)  # was: pass
+        except Exception:
+            logger.debug("Suppressed error", exc_info=True)
         if websocket_manager:
             await websocket_manager.broadcast_to_org(
                 json.dumps({"type": "alert", "data": am.model_dump()}),
@@ -1278,8 +1281,8 @@ def _raw_obs_to_c2(data: Dict[str, Any]) -> Optional["C2Observation"]:
     raw_evt = data.get("event_type", "")
     if not raw_evt:
         # Infer from adapter telemetry fields
-        battery = data.get("metadata", {}).get("battery_remaining",
-                  data.get("metadata", {}).get("battery_pct"))
+        meta = data.get("metadata", {})
+        battery = meta.get("battery_remaining") or meta.get("battery_pct")
         if battery is not None:
             battery = float(battery)
             if battery <= 15:
@@ -1344,8 +1347,8 @@ async def _handle_observation(topic: str, data: Dict[str, Any]):
                 single_priority, actions = _c2_priority.score_observation(c2_obs)
                 node_result = _c2_priority.score_node_observations(entity_id, recent)
                 composite_priority = node_result.get("composite_priority", single_priority)
-                promotion_reason   = node_result.get("promotion_reason")
-                composite_score    = node_result.get("composite_score", c2_obs.score)
+                promotion_reason = node_result.get("promotion_reason")
+                composite_score = node_result.get("composite_score", c2_obs.score)
 
                 # Chain detection — predict cascading events
                 predictions = _c2_chains.predict(recent)
@@ -1355,22 +1358,22 @@ async def _handle_observation(topic: str, data: Dict[str, Any]):
 
                 # Build enriched observation record for WorldStore / WebSocket
                 enriched = {
-                    "event_type":          c2_obs.event_type.value,
-                    "confidence":          c2_obs.confidence,
-                    "lat":  data.get("lat") or (data.get("position") or {}).get("lat"),
-                    "lon":  data.get("lon") or (data.get("position") or {}).get("lon"),
-                    "ts":   data.get("ts_iso", datetime.now(timezone.utc).isoformat()),
-                    "source":              c2_obs.source.value,
-                    "priority":            composite_priority.value,
-                    "score":               composite_score,
-                    "promotion_reason":    promotion_reason,
-                    "actions":             [a.value for a in actions],
-                    "predicted_events":    [
+                    "event_type": c2_obs.event_type.value,
+                    "confidence": c2_obs.confidence,
+                    "lat": data.get("lat") or (data.get("position") or {}).get("lat"),
+                    "lon": data.get("lon") or (data.get("position") or {}).get("lon"),
+                    "ts": data.get("ts_iso", datetime.now(timezone.utc).isoformat()),
+                    "source": c2_obs.source.value,
+                    "priority": composite_priority.value,
+                    "score": composite_score,
+                    "promotion_reason": promotion_reason,
+                    "actions": [a.value for a in actions],
+                    "predicted_events": [
                         {"event": p.event, "minutes": p.minutes_from_now,
                          "confidence": p.confidence}
                         for p in predictions[:3]
                     ],
-                    "evidence_clusters":   [c.to_dict() for c in clusters[:2]],
+                    "evidence_clusters": [c.to_dict() for c in clusters[:2]],
                 }
 
                 # ── 3. Write back into WorldStore entity ──────────────────
@@ -1381,7 +1384,7 @@ async def _handle_observation(topic: str, data: Dict[str, Any]):
                         existing.append(enriched)
                         entity["_observations"] = existing[-20:]
                         entity["_composite_priority"] = composite_priority.value
-                        entity["_composite_score"]    = composite_score
+                        entity["_composite_score"] = composite_score
                         if predictions:
                             entity["_predicted_events"] = [
                                 {"event": p.event, "minutes": p.minutes_from_now}
@@ -1393,7 +1396,6 @@ async def _handle_observation(topic: str, data: Dict[str, Any]):
 
                 # ── 4. Broadcast high-priority events to WebSocket ─────────
                 if websocket_manager:
-                    from packages.c2_intel.models import ObservationPriority
                     is_high = composite_priority in (
                         ObservationPriority.CRITICAL, ObservationPriority.HIGH
                     )
@@ -1555,8 +1557,8 @@ async def _handle_plainview_leak(topic: str, data: Dict[str, Any]):
                         )
                     )
                 await session.commit()
-        except Exception as e:
-            logger.debug("Suppressed error", exc_info=True)  # was: pass
+        except Exception:
+            logger.debug("Suppressed error", exc_info=True)
         if websocket_manager:
             await websocket_manager.broadcast_to_org(
                 json.dumps({"type": "alert", "data": am.model_dump()}),

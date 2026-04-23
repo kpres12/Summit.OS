@@ -104,6 +104,7 @@ def _s3_buffer_record(record: dict) -> None:
             batch.append(_s3_buffer.popleft())
         asyncio.create_task(_flush_to_s3(batch))
 
+
 # ---------------------------------------------------------------------------
 # DDL — table + indexes (idempotent)
 # ---------------------------------------------------------------------------
