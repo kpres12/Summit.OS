@@ -32,7 +32,7 @@ def test_api_version_header_present(api_base: str):
     client = ApiClient(api_base)
     try:
         r = client.get("/health")
-        assert "x-summit-api-version" in {k.lower() for k in r.headers}, (
+        assert "x-heli-api-version" in {k.lower() for k in r.headers}, (
             "X-Heli-API-Version header missing from response"
         )
     finally:
