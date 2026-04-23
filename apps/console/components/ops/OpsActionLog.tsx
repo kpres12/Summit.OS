@@ -15,6 +15,7 @@ const ACTION_COLOR: Record<ActionEntry['action'], string> = {
   MISSION_CREATE:  'var(--accent)',
   GEOFENCE_CREATE: 'var(--warning)',
   GEOFENCE_DELETE: 'var(--critical)',
+  ENGAGE:          'var(--critical)',
 };
 
 const STATUS_COLOR: Record<ActionEntry['status'], string> = {
