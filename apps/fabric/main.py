@@ -44,6 +44,30 @@ try:
 except Exception:
     WORLD_STORE_AVAILABLE = False
 
+# c2_intel — live observation processing pipeline
+try:
+    from packages.c2_intel.models import C2Observation, C2EventType, SensorSource, ObservationPriority
+    from packages.c2_intel.priority import C2PriorityMatrix
+    from packages.c2_intel.chains import get_chain_detector
+    from packages.c2_intel.dedup import ObservationDeduplicator
+    from packages.c2_intel.evidence import C2EvidenceAggregator
+
+    _c2_priority   = C2PriorityMatrix()
+    _c2_chains     = get_chain_detector()
+    _c2_dedup      = ObservationDeduplicator(window_seconds=30.0)
+    _c2_evidence   = C2EvidenceAggregator()
+
+    # Rolling window of recent observations per entity for evidence clustering
+    # entity_id → deque of C2Observation (last 20)
+    from collections import defaultdict, deque as _deque
+    _c2_obs_window: dict = defaultdict(lambda: _deque(maxlen=20))
+
+    C2_INTEL_AVAILABLE = True
+except Exception as _c2_err:
+    C2_INTEL_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logging.getLogger(__name__).warning("c2_intel unavailable: %s", _c2_err)
+
 # Mesh peer
 try:
     from packages.mesh.peer import MeshPeer
@@ -1243,19 +1267,185 @@ async def coverage_union():
 
 
 # Handlers
+def _raw_obs_to_c2(data: Dict[str, Any]) -> Optional["C2Observation"]:
+    """
+    Convert a raw adapter observation dict to a C2Observation.
+    Returns None if the event_type is unrecognised or missing.
+    """
+    if not C2_INTEL_AVAILABLE:
+        return None
+
+    raw_evt = data.get("event_type", "")
+    if not raw_evt:
+        # Infer from adapter telemetry fields
+        battery = data.get("metadata", {}).get("battery_remaining",
+                  data.get("metadata", {}).get("battery_pct"))
+        if battery is not None:
+            battery = float(battery)
+            if battery <= 15:
+                raw_evt = "battery_critical"
+            elif battery <= 25:
+                raw_evt = "battery_low"
+        if not raw_evt:
+            return None
+
+    try:
+        evt = C2EventType(raw_evt.lower())
+    except ValueError:
+        return None  # not a recognised C2 event type
+
+    raw_src = data.get("adapter_type", data.get("source", "unknown"))
+    try:
+        src = SensorSource(raw_src.lower())
+    except ValueError:
+        src = SensorSource.UNKNOWN
+
+    entity_id = data.get("entity_id", "unknown")
+
+    return C2Observation(
+        event_type=evt,
+        node_id=entity_id,
+        title=data.get("callsign", entity_id),
+        description=data.get("classification"),
+        source=src,
+        confidence=float(data.get("confidence", 0.5)),
+        score=int(data.get("score", 50)),
+    )
+
+
 async def _handle_observation(topic: str, data: Dict[str, Any]):
     try:
-        # Forward to Redis Stream for consumers
+        entity_id = data.get("entity_id", "")
+
+        # ── 1. Forward raw observation to Redis Stream ─────────────────────
         if redis_client and redis_client.redis:
-            stream_data = {
+            await redis_client.redis.xadd("observations_stream", {
                 "topic": topic,
                 "payload": json.dumps(data),
                 "ts": datetime.now(timezone.utc).isoformat(),
-            }
-            await redis_client.redis.xadd("observations_stream", stream_data)
-            logger.info("Forwarded observation to stream", topic=topic)
+            })
+
+        # ── 2. Run through c2_intel pipeline ──────────────────────────────
+        if C2_INTEL_AVAILABLE and entity_id:
+            c2_obs = _raw_obs_to_c2(data)
+            if c2_obs:
+                # Deduplication — drop redundant observations from multi-source sensors
+                deduped = _c2_dedup.deduplicate([c2_obs])
+                if not deduped:
+                    return  # duplicate — stop processing
+
+                c2_obs = deduped[0]
+
+                # Accumulate per-entity observation window
+                _c2_obs_window[entity_id].append(c2_obs)
+                recent = list(_c2_obs_window[entity_id])
+
+                # Priority scoring (single + composite)
+                single_priority, actions = _c2_priority.score_observation(c2_obs)
+                node_result = _c2_priority.score_node_observations(entity_id, recent)
+                composite_priority = node_result.get("composite_priority", single_priority)
+                promotion_reason   = node_result.get("promotion_reason")
+                composite_score    = node_result.get("composite_score", c2_obs.score)
+
+                # Chain detection — predict cascading events
+                predictions = _c2_chains.predict(recent)
+
+                # Evidence clustering — roll up observations into compound insights
+                clusters = _c2_evidence.aggregate(recent, entity_id=entity_id)
+
+                # Build enriched observation record for WorldStore / WebSocket
+                enriched = {
+                    "event_type":          c2_obs.event_type.value,
+                    "confidence":          c2_obs.confidence,
+                    "lat":  data.get("lat") or (data.get("position") or {}).get("lat"),
+                    "lon":  data.get("lon") or (data.get("position") or {}).get("lon"),
+                    "ts":   data.get("ts_iso", datetime.now(timezone.utc).isoformat()),
+                    "source":              c2_obs.source.value,
+                    "priority":            composite_priority.value,
+                    "score":               composite_score,
+                    "promotion_reason":    promotion_reason,
+                    "actions":             [a.value for a in actions],
+                    "predicted_events":    [
+                        {"event": p.event, "minutes": p.minutes_from_now,
+                         "confidence": p.confidence}
+                        for p in predictions[:3]
+                    ],
+                    "evidence_clusters":   [c.to_dict() for c in clusters[:2]],
+                }
+
+                # ── 3. Write back into WorldStore entity ──────────────────
+                if WORLD_STORE_AVAILABLE and world_store:
+                    try:
+                        entity = world_store.get(entity_id) or {}
+                        existing = list(entity.get("_observations", []))
+                        existing.append(enriched)
+                        entity["_observations"] = existing[-20:]
+                        entity["_composite_priority"] = composite_priority.value
+                        entity["_composite_score"]    = composite_score
+                        if predictions:
+                            entity["_predicted_events"] = [
+                                {"event": p.event, "minutes": p.minutes_from_now}
+                                for p in predictions[:3]
+                            ]
+                        world_store.upsert(entity, source="c2_intel")
+                    except Exception as ws_err:
+                        logger.debug("WorldStore c2_intel update skipped: %s", ws_err)
+
+                # ── 4. Broadcast high-priority events to WebSocket ─────────
+                if websocket_manager:
+                    from packages.c2_intel.models import ObservationPriority
+                    is_high = composite_priority in (
+                        ObservationPriority.CRITICAL, ObservationPriority.HIGH
+                    )
+                    if is_high or c2_obs.event_type.value == "entity_detected":
+                        await websocket_manager.broadcast(json.dumps({
+                            "type": "c2_event",
+                            "data": {
+                                "entity_id":        entity_id,
+                                "event_type":       c2_obs.event_type.value,
+                                "priority":         composite_priority.value,
+                                "score":            composite_score,
+                                "promotion_reason": promotion_reason,
+                                "predicted_events": enriched["predicted_events"],
+                                "evidence_clusters": enriched["evidence_clusters"],
+                                "actions":          enriched["actions"],
+                            },
+                        }))
+
+                # ── 5. Log CRITICAL compound promotions ───────────────────
+                if promotion_reason:
+                    logger.warning(
+                        "c2_intel COMPOUND PROMOTION [%s] → %s: %s",
+                        entity_id, composite_priority.value, promotion_reason,
+                    )
+
+        # Fallback: propagate any raw event_type even without full c2_intel
+        elif entity_id and WORLD_STORE_AVAILABLE and world_store:
+            raw_evt = data.get("event_type", "")
+            if raw_evt:
+                try:
+                    entity = world_store.get(entity_id) or {}
+                    existing = list(entity.get("_observations", []))
+                    existing.append({
+                        "event_type": raw_evt,
+                        "confidence": data.get("confidence", 0.5),
+                        "lat": data.get("lat") or (data.get("position") or {}).get("lat"),
+                        "lon": data.get("lon") or (data.get("position") or {}).get("lon"),
+                        "ts":  data.get("ts_iso", datetime.now(timezone.utc).isoformat()),
+                        "source": data.get("adapter_type", "unknown"),
+                    })
+                    entity["_observations"] = existing[-20:]
+                    world_store.upsert(entity, source="raw")
+                except Exception:
+                    pass
+
+            if raw_evt == "entity_detected" and websocket_manager:
+                await websocket_manager.broadcast(json.dumps({
+                    "type": "entity_detected", "data": data,
+                }))
+
     except Exception as e:
-        logger.error(f"Failed to handle observation: {e}")
+        logger.error("Failed to handle observation: %s", e)
 
 
 async def _handle_mission(topic: str, data: Dict[str, Any]):
@@ -1814,6 +2004,139 @@ async def replay_timeline(mission_id: str):
 @app.get("/v1/missions/{mission_id}/replay/snapshot")
 async def replay_snapshot(mission_id: str, ts: str = "", index: int = 0):
     return {"mission_id": mission_id, "ts": ts, "entities": []}
+
+
+# ── Mission Orchestrator (NL → devices execute) ───────────────────────────────
+
+from .mission_orchestrator import launch_mission, stop_mission, get_mission_status, list_active_missions
+
+
+async def _orchestrator_world_store_fn():
+    """Pull current entities from WorldStore for the orchestrator."""
+    if WORLD_STORE_AVAILABLE and world_store:
+        try:
+            entities = await world_store.get_all()
+            return [e if isinstance(e, dict) else e.__dict__ for e in entities]
+        except Exception:
+            pass
+    return []
+
+
+async def _orchestrator_dispatch_fn(entity_id: str, command: dict):
+    """Route orchestrator commands to the right adapter."""
+    cmd_type = command.get("type", "")
+    if websocket_manager:
+        await websocket_manager.broadcast(json.dumps({
+            "type": "command_sent",
+            "data": {"entity_id": entity_id, "command": cmd_type, "payload": command},
+        }))
+    # MAVLink assets
+    if entity_id.startswith("mavlink-"):
+        try:
+            from adapters.mavlink_adapter import MAVLinkAdapter
+            adapter = MAVLinkAdapter()
+            await adapter.send_command(entity_id, command)
+            return
+        except Exception as e:
+            logger.warning("MAVLink dispatch failed for %s: %s", entity_id, e)
+
+    # DJI assets — route via DJI Cloud API MQTT broker
+    if entity_id.startswith("dji-"):
+        try:
+            if mqtt_client:
+                import uuid as _uuid
+                sn = entity_id.replace("dji-", "")
+                topic = f"thing/product/{sn}/services"
+                await mqtt_client.publish(topic, json.dumps({
+                    **command,
+                    "bid": str(_uuid.uuid4()),
+                    "tid": str(_uuid.uuid4()),
+                }))
+                return
+        except Exception as e:
+            logger.warning("DJI dispatch failed for %s: %s", entity_id, e)
+
+    # ONVIF cameras — route via MQTT (adapter instances own the connection)
+    if entity_id.startswith("onvif-") or cmd_type.startswith("PTZ"):
+        try:
+            if mqtt_client:
+                await mqtt_client.publish(
+                    f"heli/commands/{entity_id}",
+                    json.dumps({"entity_id": entity_id, "command": command}),
+                )
+        except Exception as e:
+            logger.warning("ONVIF dispatch failed for %s: %s", entity_id, e)
+
+
+async def _orchestrator_broadcast_fn(event: dict):
+    if websocket_manager:
+        await websocket_manager.broadcast(json.dumps(event))
+
+
+@app.post("/v1/missions/execute")
+async def execute_mission(payload: Dict[str, Any]):
+    """
+    Parse a natural-language mission and immediately begin autonomous execution.
+
+    Body:
+      {
+        "text": "Find the missing hiker in grid sector 7",
+        "area": [{"lat": 37.1, "lon": -122.0}, ...],   // search polygon
+        "altitude_m": 50                                 // optional, default 50
+      }
+
+    Returns mission_id. Poll GET /v1/missions/active/{mission_id} for status.
+    """
+    text = payload.get("text", "")
+    area = payload.get("area", [])
+    if not text:
+        raise HTTPException(status_code=400, detail="text is required")
+    if not area or len(area) < 2:
+        raise HTTPException(status_code=400, detail="area must have at least 2 points")
+
+    # Parse natural language → structured mission
+    nlp_result = await parse_mission_nlp({"text": text})
+    if payload.get("altitude_m"):
+        nlp_result["altitude_m"] = payload["altitude_m"]
+
+    mission_id = await launch_mission(
+        nlp_result=nlp_result,
+        area=area,
+        world_store_fn=_orchestrator_world_store_fn,
+        dispatch_fn=_orchestrator_dispatch_fn,
+        broadcast_fn=_orchestrator_broadcast_fn,
+    )
+    return {
+        "mission_id": mission_id,
+        "status": "executing",
+        "interpretation": nlp_result.get("interpretation", text),
+        "pattern": nlp_result.get("pattern", "grid"),
+        "mission_type": nlp_result.get("mission_type", "SURVEY"),
+    }
+
+
+@app.delete("/v1/missions/active/{mission_id}")
+async def abort_mission(mission_id: str):
+    """Abort an active autonomous mission."""
+    stopped = await stop_mission(mission_id)
+    if not stopped:
+        raise HTTPException(status_code=404, detail=f"No active mission: {mission_id}")
+    return {"ok": True, "mission_id": mission_id, "status": "aborted"}
+
+
+@app.get("/v1/missions/active")
+async def list_active():
+    """List all currently executing missions."""
+    return list_active_missions()
+
+
+@app.get("/v1/missions/active/{mission_id}")
+async def mission_status(mission_id: str):
+    """Get real-time status of an executing mission."""
+    status = get_mission_status(mission_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"No active mission: {mission_id}")
+    return status
 
 
 # ── Tasks ─────────────────────────────────────────────────────────────────────

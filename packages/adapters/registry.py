@@ -108,7 +108,12 @@ BUILT_IN_ADAPTERS: list[dict] = [
     {
         "type": "spot",
         "name": "Boston Dynamics Spot",
-        "description": "Spot robot dog via bosdyn-client SDK — state, battery, faults",
+        "description": "Spot robot dog via bosdyn-client SDK — state, battery, faults, person detection",
+    },
+    {
+        "type": "dji",
+        "name": "DJI Enterprise Drones",
+        "description": "DJI Matrice/M30/Mavic 3E via DJI Cloud API (MQTT) — Pilot 2 compatible",
     },
     {
         "type": "ur_robot",
@@ -428,6 +433,7 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         # Ground robots & industrial
         ("adapters.ros2_adapter",     "ROS2Adapter"),
         ("adapters.spot_adapter",     "SpotAdapter"),
+        ("adapters.dji_adapter",      "DJIAdapter"),
         ("adapters.ur_adapter",       "URAdapter"),
         # Heavy vehicles & construction
         ("adapters.j1939_adapter",    "J1939Adapter"),

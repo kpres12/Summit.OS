@@ -13,6 +13,7 @@ folium==0.15.1
 redis==5.0.1
 aioredis==2.0.1
 paho-mqtt==1.6.1
+asyncio-mqtt>=0.16.2
 grpcio==1.59.3
 grpcio-tools==1.59.3
 protobuf==4.25.1
