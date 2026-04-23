@@ -397,6 +397,8 @@ class C2EntityGraph:
     # ------------------------------------------------------------------
 
     def _add_edge(self, node_a: str, node_b: str, edge_type: str, weight: float = 1.0, **attrs):
+        if not NX_AVAILABLE or self._G is None:
+            return
         if self._G.has_edge(node_a, node_b):
             self._G[node_a][node_b]["weight"] = self._G[node_a][node_b].get("weight", 1.0) + weight
         else:

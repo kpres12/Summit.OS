@@ -22,17 +22,28 @@ class C2EventType(str, Enum):
     COMMS_RESTORED = "comms_restored"
     COMMS_DENIED = "comms_denied"
 
+    # Link state (physical/RF layer — distinct from logical comms)
+    LINK_DEGRADED = "link_degraded"
+    LINK_LOST = "link_lost"
+
     # Asset state
     ASSET_ONLINE = "asset_online"
     ASSET_OFFLINE = "asset_offline"
     ASSET_DEGRADED = "asset_degraded"
     BATTERY_CRITICAL = "battery_critical"
-    BATTERY_WARNING = "battery_warning"
+    BATTERY_LOW = "battery_low"          # 15-30% — pre-critical window
+    BATTERY_WARNING = "battery_warning"  # alias kept for backward compat
     RESOURCE_DEPLETED = "resource_depleted"
+
+    # Sensor state
+    SENSOR_LOSS = "sensor_loss"
+    SENSOR_RESTORED = "sensor_restored"
 
     # Authority / mission
     AUTHORITY_DELEGATED = "authority_delegated"
     AUTHORITY_REVOKED = "authority_revoked"
+    HANDOFF_INITIATED = "handoff_initiated"
+    HANDOFF_COMPLETE = "handoff_complete"
     MISSION_ASSIGNED = "mission_assigned"
     MISSION_STARTED = "mission_started"
     MISSION_COMPLETED = "mission_completed"
@@ -41,12 +52,23 @@ class C2EventType(str, Enum):
     TASK_APPROVED = "task_approved"
     TASK_FAILED = "task_failed"
 
+    # Engagement state
+    ENGAGEMENT_AUTHORIZED = "engagement_authorized"
+    ENGAGEMENT_DENIED = "engagement_denied"
+    ENGAGEMENT_COMPLETE = "engagement_complete"
+
     # Situational awareness
     ENTITY_DETECTED = "entity_detected"
     ENTITY_LOST = "entity_lost"
     ENTITY_REACQUIRED = "entity_reacquired"
     THREAT_IDENTIFIED = "threat_identified"
+    THREAT_NEUTRALIZED = "threat_neutralized"
     GEOFENCE_BREACH = "geofence_breach"
+    GEOFENCE_CLEARED = "geofence_cleared"
+
+    # Environment
+    WEATHER_ALERT = "weather_alert"
+    AIRSPACE_CONFLICT = "airspace_conflict"
 
     # Node health
     NODE_DEGRADED = "node_degraded"
@@ -54,6 +76,9 @@ class C2EventType(str, Enum):
     NODE_RECOVERED = "node_recovered"
     NODE_JOINED_MESH = "node_joined_mesh"
     NODE_LEFT_MESH = "node_left_mesh"
+
+    # Mesh / peer
+    PEER_OBSERVATION = "peer_observation"
 
 
 class ObservationPriority(str, Enum):
