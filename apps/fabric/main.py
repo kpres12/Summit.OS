@@ -2008,7 +2008,7 @@ async def replay_snapshot(mission_id: str, ts: str = "", index: int = 0):
 
 # ── Mission Orchestrator (NL → devices execute) ───────────────────────────────
 
-from .mission_orchestrator import launch_mission, stop_mission, get_mission_status, list_active_missions
+from mission_orchestrator import launch_mission, stop_mission, get_mission_status, list_active_missions
 
 
 async def _orchestrator_world_store_fn():
