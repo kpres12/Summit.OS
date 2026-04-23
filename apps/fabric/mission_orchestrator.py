@@ -40,24 +40,47 @@ logger = logging.getLogger("heli.orchestrator")
 # ---------------------------------------------------------------------------
 
 ASSET_CAPABILITIES: Dict[str, List[str]] = {
-    "mavlink":  ["fly", "goto", "search", "survey", "rtb", "camera"],
-    "dji":      ["fly", "goto", "search", "survey", "rtb", "camera"],
-    "spot":     ["walk", "search", "inspect", "camera"],
-    "onvif":    ["camera", "ptz", "observe"],
-    "ros2":     ["navigate", "search", "manipulate"],
-    "ais":      ["observe"],
-    "opensky":  ["observe"],
+    "mavlink":   ["fly", "goto", "search", "survey", "rtb", "camera"],
+    "dji":       ["fly", "goto", "search", "survey", "rtb", "camera"],
+    "spot":      ["walk", "search", "inspect", "camera"],
+    "onvif":     ["camera", "ptz", "observe"],
+    "thermal":   ["camera", "observe", "detect_thermal"],
+    "ros2":      ["navigate", "search", "manipulate"],
+    "ais":       ["observe"],
+    "opensky":   ["observe"],
+    "atak":      ["observe", "navigate", "coordinate"],
+    "meshtastic": ["observe", "coordinate"],
+    "nmea2000":  ["observe", "navigate"],
+    "aisstream": ["observe"],
+    "kraken":    ["observe", "underwater_survey"],
 }
 
 # BT mission type → required capability
 MISSION_CAPABILITY: Dict[str, str] = {
-    "SURVEY":    "goto",
-    "RECON":     "search",
-    "PATROL":    "goto",
-    "SAR":       "search",
-    "ESCORT":    "navigate",
-    "INTERCEPT": "goto",
-    "OBSERVE":   "observe",
+    # Core mission types
+    "SURVEY":          "goto",
+    "RECON":           "search",
+    "PATROL":          "goto",
+    "SAR":             "search",
+    "ESCORT":          "navigate",
+    "INTERCEPT":       "goto",
+    "OBSERVE":         "observe",
+    "MONITOR":         "observe",
+    # Infrastructure inspection
+    "INSPECT":         "camera",
+    # Military / government
+    "HADR":            "search",
+    "ACE":             "goto",
+    "FORCE_PROTECT":   "observe",
+    "CASEVAC_ESCORT":  "navigate",
+    # Maritime
+    "MARITIME_SAR":    "search",
+    # Conservation / wildlife
+    "ANTI_POACH":      "search",
+    # Agriculture
+    "PRECISION_AG":    "camera",
+    # Oil & gas
+    "PIPELINE_PATROL": "goto",
 }
 
 
@@ -121,16 +144,78 @@ def _spiral_waypoints(center: Dict, alt_m: float, rings: int = 4, points_per_rin
     return waypoints
 
 
+def _orbit_waypoints(center: Dict, alt_m: float, radius_m: float = 100.0, points: int = 12) -> List[Dict]:
+    """Fixed orbit / racetrack around a point."""
+    waypoints = []
+    for i in range(points):
+        angle = 2 * math.pi * i / points
+        dlat = (radius_m * math.cos(angle)) / 111_320.0
+        dlon = (radius_m * math.sin(angle)) / (111_320.0 * math.cos(math.radians(center["lat"])))
+        waypoints.append({"lat": center["lat"] + dlat, "lon": center["lon"] + dlon,
+                          "alt": alt_m, "radius_m": 10.0})
+    return waypoints
+
+
+def _expanding_square_waypoints(center: Dict, alt_m: float, legs: int = 5) -> List[Dict]:
+    """Maritime expanding square search pattern from datum."""
+    waypoints = []
+    step_m = 100.0
+    lat, lon = center["lat"], center["lon"]
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # N E S W
+    length = step_m
+    for leg in range(legs * 2):
+        d = directions[leg % 4]
+        dlat = (length * d[0]) / 111_320.0
+        dlon = (length * d[1]) / (111_320.0 * math.cos(math.radians(lat)))
+        lat += dlat
+        lon += dlon
+        waypoints.append({"lat": lat, "lon": lon, "alt": alt_m, "radius_m": 15.0})
+        if leg % 2 == 1:
+            length += step_m
+    return waypoints
+
+
+def _parallel_track_waypoints(area: List[Dict], alt_m: float, track_spacing_m: float = 200.0) -> List[Dict]:
+    """Parallel track pattern for systematic maritime/aerial search."""
+    if not area:
+        return []
+    lats = [p["lat"] for p in area]
+    lons = [p["lon"] for p in area]
+    min_lat, max_lat = min(lats), max(lats)
+    min_lon, max_lon = min(lons), max(lons)
+    lat_step = track_spacing_m / 111_320.0
+    rows = max(2, int((max_lat - min_lat) / lat_step) + 1)
+    waypoints = []
+    for r in range(rows):
+        lat = min_lat + r * lat_step
+        if r % 2 == 0:
+            waypoints.append({"lat": lat, "lon": min_lon, "alt": alt_m, "radius_m": 20.0})
+            waypoints.append({"lat": lat, "lon": max_lon, "alt": alt_m, "radius_m": 20.0})
+        else:
+            waypoints.append({"lat": lat, "lon": max_lon, "alt": alt_m, "radius_m": 20.0})
+            waypoints.append({"lat": lat, "lon": min_lon, "alt": alt_m, "radius_m": 20.0})
+    return waypoints
+
+
 def _generate_waypoints(pattern: str, area: List[Dict], alt_m: float) -> List[Dict]:
-    if pattern in ("grid", "lawnmower"):
+    pattern_lower = pattern.lower()
+    center = {
+        "lat": sum(p["lat"] for p in area) / max(len(area), 1),
+        "lon": sum(p["lon"] for p in area) / max(len(area), 1),
+    } if area else {"lat": 0.0, "lon": 0.0}
+
+    if pattern_lower in ("grid", "lawnmower"):
         return _grid_waypoints(area, alt_m)
-    if pattern == "spiral":
-        center = {
-            "lat": sum(p["lat"] for p in area) / len(area),
-            "lon": sum(p["lon"] for p in area) / len(area),
-        }
-        return _spiral_waypoints(center, alt_m)
-    # orbit / default → simple grid
+    if pattern_lower in ("spiral", "expanding_square"):
+        return _expanding_square_waypoints(center, alt_m)
+    if pattern_lower == "orbit":
+        return _orbit_waypoints(center, alt_m)
+    if pattern_lower == "parallel_track":
+        return _parallel_track_waypoints(area, alt_m)
+    if pattern_lower == "direct":
+        # Single waypoint at area centroid — used for intercept / direct nav
+        return [{"lat": center["lat"], "lon": center["lon"], "alt": alt_m, "radius_m": 20.0}]
+    # default lawnmower
     return _grid_waypoints(area, alt_m)
 
 
@@ -142,22 +227,61 @@ def _generate_waypoints(pattern: str, area: List[Dict], alt_m: float) -> List[Di
 _intent_clf = None
 _intent_loaded = False
 
-_MISSION_TYPES = ["SAR", "SURVEY", "PATROL", "RECON", "MONITOR", "ESCORT"]
+_MISSION_TYPES = [
+    "SAR", "SURVEY", "PATROL", "RECON", "MONITOR", "ESCORT",
+    "INSPECT", "HADR", "ACE", "FORCE_PROTECT", "CASEVAC_ESCORT",
+    "MARITIME_SAR", "ANTI_POACH", "PRECISION_AG", "PIPELINE_PATROL",
+]
 
 # Keyword fallback — fast path when classifier isn't loaded
 _KEYWORD_MAP: Dict[str, str] = {
+    # SAR
     "find": "SAR", "search": "SAR", "rescue": "SAR", "missing": "SAR",
     "locate": "SAR", "survivor": "SAR", "hiker": "SAR", "sar": "SAR",
+    # SURVEY
     "survey": "SURVEY", "map": "SURVEY", "assess": "SURVEY", "damage": "SURVEY",
     "document": "SURVEY", "photograph": "SURVEY", "imagery": "SURVEY",
+    # PATROL
     "patrol": "PATROL", "perimeter": "PATROL", "security": "PATROL",
     "border": "PATROL", "sweep": "PATROL", "guard": "PATROL",
+    # RECON
     "recon": "RECON", "reconnaissance": "RECON", "scout": "RECON",
     "intel": "RECON", "observe": "RECON", "eyes": "RECON",
+    # MONITOR
     "monitor": "MONITOR", "watch": "MONITOR", "track": "MONITOR",
-    "observe": "MONITOR", "continuous": "MONITOR",
+    "continuous": "MONITOR",
+    # ESCORT
     "escort": "ESCORT", "convoy": "ESCORT", "accompany": "ESCORT",
     "overwatch": "ESCORT", "protect": "ESCORT",
+    # INSPECT (utilities / infrastructure)
+    "inspect": "INSPECT", "inspection": "INSPECT", "infrastructure": "INSPECT",
+    "powerline": "INSPECT", "power line": "INSPECT", "bridge": "INSPECT",
+    "pipeline inspection": "INSPECT", "corrosion": "INSPECT", "sag": "INSPECT",
+    # HADR
+    "hadr": "HADR", "humanitarian": "HADR", "disaster": "HADR",
+    "flood": "HADR", "earthquake": "HADR", "relief": "HADR",
+    # ACE (Agile Combat Employment)
+    "ace": "ACE", "dispersal": "ACE", "forward base": "ACE",
+    # FORCE_PROTECT
+    "force protection": "FORCE_PROTECT", "fob": "FORCE_PROTECT",
+    "base security": "FORCE_PROTECT", "perimeter defense": "FORCE_PROTECT",
+    # CASEVAC_ESCORT
+    "casevac": "CASEVAC_ESCORT", "medevac": "CASEVAC_ESCORT",
+    "casualty": "CASEVAC_ESCORT", "9-line": "CASEVAC_ESCORT",
+    # MARITIME_SAR
+    "maritime": "MARITIME_SAR", "vessel": "MARITIME_SAR", "boat": "MARITIME_SAR",
+    "coast": "MARITIME_SAR", "offshore": "MARITIME_SAR", "port": "MARITIME_SAR",
+    # ANTI_POACH
+    "poaching": "ANTI_POACH", "poacher": "ANTI_POACH", "anti-poach": "ANTI_POACH",
+    "wildlife patrol": "ANTI_POACH", "snare": "ANTI_POACH", "reserve": "ANTI_POACH",
+    # PRECISION_AG
+    "crop": "PRECISION_AG", "ndvi": "PRECISION_AG", "agriculture": "PRECISION_AG",
+    "precision ag": "PRECISION_AG", "spray": "PRECISION_AG", "field": "PRECISION_AG",
+    "farm": "PRECISION_AG", "livestock": "PRECISION_AG",
+    # PIPELINE_PATROL
+    "pipeline": "PIPELINE_PATROL", "row": "PIPELINE_PATROL", "flare": "PIPELINE_PATROL",
+    "compressor": "PIPELINE_PATROL", "wellpad": "PIPELINE_PATROL",
+    "oil": "PIPELINE_PATROL", "gas": "PIPELINE_PATROL",
 }
 
 _SEARCH_PATTERN_KEYWORDS: Dict[str, str] = {

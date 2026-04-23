@@ -97,7 +97,12 @@ BUILT_IN_ADAPTERS: list[dict] = [
     {
         "type": "atak",
         "name": "CoT/ATAK",
-        "description": "Bidirectional Cursor on Target — first responder interoperability",
+        "description": "Bidirectional Cursor on Target — ATAK/WinTAK/TAK Server interoperability",
+    },
+    {
+        "type": "thermal",
+        "name": "Thermal Camera",
+        "description": "FLIR/thermal camera — person, vehicle, fire detection via heat signature",
     },
     # ── Ground robots & industrial ──────────────────────────────────────────
     {
@@ -429,7 +434,8 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("adapters.mqtt_relay_adapter", "MQTTRelayAdapter"),
         ("adapters.weather_adapter",  "WeatherAdapter"),
         ("adapters.cap_adapter",      "CAPAdapter"),
-        ("atak.adapter",              "ATAKAdapter"),
+        ("adapters.atak_adapter",     "ATAKAdapter"),
+        ("adapters.thermal_adapter",  "ThermalAdapter"),
         # Ground robots & industrial
         ("adapters.ros2_adapter",     "ROS2Adapter"),
         ("adapters.spot_adapter",     "SpotAdapter"),
