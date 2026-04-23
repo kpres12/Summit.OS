@@ -114,7 +114,7 @@
       "description": "The Heli.OS operator console (Next.js app)",
       "enabled": true,
       "publicClient": false,
-      "secret": "REDACTED",
+      "secret": "${KEYCLOAK_CONSOLE_SECRET}",
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
@@ -357,13 +357,7 @@
       "lastName": "Operator",
       "enabled": true,
       "emailVerified": true,
-      "credentials": [
-        {
-          "type": "password",
-          "value": "REDACTED",
-          "temporary": false
-        }
-      ],
+      "credentials": [],
       "realmRoles": ["OPERATOR"],
       "clientRoles": {}
     }

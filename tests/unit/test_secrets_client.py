@@ -110,7 +110,7 @@ class TestSecretClientVaultMock:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "data": {"data": {"POSTGRES_PASSWORD": "db_pass_123"}}
+            "data": {"data": {"POSTGRES_PASSWORD": "mock-vault-value"}}
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -123,7 +123,7 @@ class TestSecretClientVaultMock:
 
             result = await client.get("POSTGRES_PASSWORD")
 
-        assert result == "db_pass_123"
+        assert result == "mock-vault-value"
 
     @pytest.mark.asyncio
     async def test_vault_404_falls_back_to_env(self, monkeypatch):
