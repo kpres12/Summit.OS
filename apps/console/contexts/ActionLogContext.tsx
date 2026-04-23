@@ -7,6 +7,7 @@ export type ActionType =
   | 'HALT'
   | 'RTB'
   | 'CAMERA'
+  | 'ENGAGE'
   | 'ALERT_ACK'
   | 'ALERT_DISMISS'
   | 'MISSION_CREATE'
