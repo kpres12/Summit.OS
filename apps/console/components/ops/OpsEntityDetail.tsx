@@ -100,6 +100,31 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
     });
   };
 
+  const handleEngagement = () => {
+    const spd = entity.speed_mps != null ? `${entity.speed_mps.toFixed(1)} m/s` : 'unknown speed';
+    const pos = entity.position ? `${entity.position.lat.toFixed(4)}, ${entity.position.lon.toFixed(4)}` : 'unknown position';
+    setPendingAction({
+      title: 'TARGET VALIDATED — CONFIRM ENGAGEMENT?',
+      message: `${displayName} flagged as threat at ${pos}, ${spd}. Confirming will dispatch intercept asset immediately. This action is logged and irreversible.`,
+      confirmLabel: 'CONFIRM ENGAGEMENT',
+      danger: true,
+      execute: async () => {
+        setDispatched(true);
+        const logId = logAction({ action: 'ENGAGE', target: displayName, status: 'pending' });
+        try {
+          await dispatchTask({ asset_id: entity.entity_id, action: 'ENGAGE', risk_level: 'HIGH' });
+          updateAction(logId, 'success');
+          addToast({ message: `ENGAGEMENT confirmed — ${displayName}`, severity: 'critical' });
+        } catch {
+          updateAction(logId, 'failed');
+          addToast({ message: `ENGAGEMENT failed — ${displayName}`, severity: 'critical' });
+        }
+        onDispatch?.(entity);
+        setTimeout(() => onClose(), 600);
+      },
+    });
+  };
+
   return (
     <>
     {pendingAction && (
@@ -161,12 +186,31 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         </button>
       </div>
 
-      {/* ASSIGN — primary action */}
+      {/* Primary action */}
       <div
         className="flex-none px-4 py-3"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        {controllable ? (
+        {entity.entity_type === 'alert' ? (
+          <button
+            onClick={handleEngagement}
+            disabled={dispatched}
+            aria-label={dispatched ? `Engagement confirmed on ${displayName}` : `Confirm engagement on ${displayName}`}
+            className="w-full py-3 text-sm font-bold tracking-[0.2em] transition-all"
+            style={{
+              fontFamily: 'var(--font-ibm-plex-mono), monospace',
+              color: '#fff',
+              background: dispatched
+                ? 'color-mix(in srgb, var(--critical) 50%, black)'
+                : 'color-mix(in srgb, var(--critical) 85%, black)',
+              border: '1px solid var(--critical)',
+              cursor: dispatched ? 'default' : 'pointer',
+              letterSpacing: '0.2em',
+            }}
+          >
+            {dispatched ? 'ENGAGED' : 'CONFIRM ENGAGEMENT'}
+          </button>
+        ) : controllable ? (
           <button
             onClick={handleDispatch}
             disabled={dispatched}
@@ -304,6 +348,60 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         />
         {entity.source_sensors && entity.source_sensors.length > 0 && (
           <DataRow label="SENSORS" value={entity.source_sensors.join(', ')} />
+        )}
+
+        {/* Live Video Feed */}
+        {entity.properties?.hls_url && (
+          <>
+            <SectionHeader title="LIVE FEED" />
+            <div
+              className="mb-2"
+              style={{
+                border: '1px solid var(--accent-30)',
+                background: '#000',
+                position: 'relative',
+              }}
+            >
+              <video
+                src={entity.properties.hls_url as string}
+                autoPlay
+                muted
+                playsInline
+                controls
+                style={{ width: '100%', maxHeight: 160, display: 'block' }}
+                onError={() => {}}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  left: 6,
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  fontSize: 8,
+                  color: 'var(--critical)',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                ● LIVE
+              </div>
+              <a
+                href={entity.properties.hls_url as string}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  position: 'absolute',
+                  top: 4,
+                  right: 6,
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  fontSize: 8,
+                  color: 'var(--accent)',
+                  textDecoration: 'none',
+                }}
+              >
+                ↗ POP OUT
+              </a>
+            </div>
+          </>
         )}
 
         {/* Brain Reasoning */}

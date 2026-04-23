@@ -431,6 +431,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(heartbeat_watcher())
         asyncio.create_task(_ttl_gc_task())
         asyncio.create_task(_opensky_poll_loop())
+        asyncio.create_task(_mavlink_sim_loop())
 
         # Alert escalation service (uses live shared dict, updated as alerts arrive)
         try:
@@ -1944,36 +1945,61 @@ async def create_agent(payload: Dict[str, Any]):
     _agents_store[agent_id] = agent
 
     async def _run_agent():
-        groq_key = os.getenv("GROQ_API_KEY")
-        if not groq_key:
-            _agents_store[agent_id]["status"] = "COMPLETED"
-            _agents_store[agent_id]["result"] = "AI brain offline (no GROQ_API_KEY configured)."
-            return
         import httpx as _httpx
+
+        async def _broadcast_result(result: str):
+            _agents_store[agent_id]["status"] = "COMPLETED"
+            _agents_store[agent_id]["result"] = result
+            if websocket_manager:
+                await websocket_manager.broadcast(json.dumps({
+                    "type": "agent_result",
+                    "data": {"agent_id": agent_id, "result": result, "objective": objective}
+                }))
+
+        # ── Try Groq first ────────────────────────────────────────────────────
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
+            try:
+                async with _httpx.AsyncClient(timeout=30.0) as c:
+                    r = await c.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                        json={"model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                              "messages": [
+                                  {"role": "system", "content": _GROQ_SYSTEM_PROMPT},
+                                  {"role": "user", "content": objective},
+                              ],
+                              "temperature": 0.7, "max_tokens": 500},
+                    )
+                    r.raise_for_status()
+                    result = r.json()["choices"][0]["message"]["content"].strip()
+                    await _broadcast_result(result)
+                    return
+            except Exception as e:
+                logger.warning("Groq agent failed, falling back to Ollama: %s", e)
+
+        # ── Ollama fallback (local LLM) ───────────────────────────────────────
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
+        ollama_model = os.getenv("OLLAMA_MODEL", "llama3")
         try:
-            async with _httpx.AsyncClient(timeout=30.0) as c:
+            async with _httpx.AsyncClient(timeout=60.0) as c:
                 r = await c.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
-                    json={"model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                    f"{ollama_url}/api/chat",
+                    json={"model": ollama_model, "stream": False,
                           "messages": [
                               {"role": "system", "content": _GROQ_SYSTEM_PROMPT},
                               {"role": "user", "content": objective},
-                          ],
-                          "temperature": 0.7, "max_tokens": 500},
+                          ]},
                 )
                 r.raise_for_status()
-                result = r.json()["choices"][0]["message"]["content"].strip()
-                _agents_store[agent_id]["status"] = "COMPLETED"
-                _agents_store[agent_id]["result"] = result
-                if websocket_manager:
-                    await websocket_manager.broadcast(json.dumps({
-                        "type": "agent_result",
-                        "data": {"agent_id": agent_id, "result": result, "objective": objective}
-                    }))
+                result = r.json()["message"]["content"].strip()
+                await _broadcast_result(f"[Ollama/{ollama_model}] {result}")
+                return
         except Exception as e:
-            _agents_store[agent_id]["status"] = "FAILED"
-            _agents_store[agent_id]["result"] = f"Error: {e}"
+            logger.warning("Ollama agent failed: %s", e)
+
+        _agents_store[agent_id]["status"] = "FAILED"
+        _agents_store[agent_id]["result"] = "AI brain offline — no Groq API key and Ollama unreachable."
 
     asyncio.create_task(_run_agent())
     return {"ok": True, "agent_id": agent_id}
@@ -2099,6 +2125,97 @@ async def _opensky_poll_loop():
                 logger.error("OpenSky poll error: %s", e)
 
             await asyncio.sleep(poll_interval)
+
+
+# ── MAVLink simulated vehicle loop ───────────────────────────────────────────
+
+async def _mavlink_sim_loop():
+    """Broadcast simulated drone entities for demo/dev. Disable with MAVLINK_SIM_DISABLED=true."""
+    import math as _math
+    import time as _time
+
+    if os.getenv("MAVLINK_SIM_DISABLED", "false").lower() == "true":
+        logger.info("MAVLink simulation disabled")
+        return
+
+    logger.info("MAVLink simulation started — 2 simulated drones")
+
+    _vehicles = [
+        {"id": "HELI-SIM-01", "clat": 34.052235, "clon": -118.243683,
+         "r": 0.020, "spd": 0.15, "alt": 150.0, "vel": 12.0, "batt": 85.0, "drain": 0.002},
+        {"id": "HELI-SIM-02", "clat": 34.068920, "clon": -118.445100,
+         "r": 0.015, "spd": 0.10, "alt": 120.0, "vel": 9.0, "batt": 62.0, "drain": 0.0015},
+    ]
+    angles = [0.0, 1.5]
+    tick = 5.0
+
+    while True:
+        try:
+            now = _time.time()
+            batch = []
+            for i, v in enumerate(_vehicles):
+                angles[i] = (angles[i] + v["spd"] * tick) % (2 * _math.pi)
+                lat = v["clat"] + v["r"] * _math.sin(angles[i])
+                lon = v["clon"] + v["r"] * _math.cos(angles[i])
+                hdg = (_math.degrees(angles[i] + _math.pi / 2)) % 360
+                v["batt"] = max(0.0, v["batt"] - v["drain"] * tick)
+                state = "critical" if v["batt"] < 10 else ("warning" if v["batt"] < 20 else "active")
+                batch.append({
+                    "entity_id": f"mavlink-{v['id'].lower()}",
+                    "entity_type": state,
+                    "domain": "aerial",
+                    "classification": "drone",
+                    "callsign": v["id"],
+                    "position": {"lat": lat, "lon": lon, "alt": v["alt"], "heading_deg": hdg},
+                    "speed_mps": v["vel"],
+                    "confidence": 1.0,
+                    "last_seen": now,
+                    "source_sensors": ["mavlink-sim"],
+                    "battery_pct": v["batt"],
+                    "properties": {"controllable": True, "vehicle_type": "quadcopter", "sim": True},
+                })
+            if batch and websocket_manager:
+                await websocket_manager.broadcast(
+                    json.dumps({"type": "entity_batch", "data": batch})
+                )
+        except Exception as e:
+            logger.error("MAVLink sim error: %s", e)
+        await asyncio.sleep(tick)
+
+
+# ── Dispatch command endpoint ─────────────────────────────────────────────────
+
+@app.post("/v1/dispatch/{entity_id}")
+async def dispatch_entity_command(entity_id: str, payload: Dict[str, Any]):
+    """Send a command to an entity (MAVLink adapter or broadcast)."""
+    command = str(payload.get("command", "dispatch")).upper()
+    waypoints = payload.get("waypoints")
+    result_detail = "command queued"
+
+    # Try to route via MAVLink adapter if entity is a MAVLink vehicle
+    if entity_id.startswith("mavlink-"):
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
+            from adapters.mavlink.adapter import MAVLinkAdapter
+            adapter = MAVLinkAdapter()
+            vehicle_id = entity_id.replace("mavlink-", "").upper()
+            if command == "HALT":
+                await adapter.send_command(vehicle_id, {"action": "HALT"})
+            elif command in ("RTB", "RTL"):
+                await adapter.send_command(vehicle_id, {"action": "RTL"})
+            elif command == "GOTO" and waypoints:
+                await adapter.send_command(vehicle_id, {"action": "GOTO", "waypoints": waypoints})
+            result_detail = "command sent to MAVLink adapter"
+        except Exception as _mav_err:
+            logger.warning("MAVLink dispatch unavailable: %s", _mav_err)
+
+    if websocket_manager:
+        await websocket_manager.broadcast(json.dumps({
+            "type": "command_sent",
+            "data": {"entity_id": entity_id, "command": command, "ts": _now_iso()}
+        }))
+    return {"ok": True, "entity_id": entity_id, "command": command, "detail": result_detail}
 
 
 # ── Next.js reverse proxy (single-service Docker deployment) ─────────────────
