@@ -351,58 +351,62 @@ export default function OpsEntityDetail({ entity, onClose, onDispatch, onLiveFee
         )}
 
         {/* Live Video Feed */}
-        {Boolean(entity.properties?.hls_url) && (
-          <>
-            <SectionHeader title="LIVE FEED" />
-            <div
-              className="mb-2"
-              style={{
-                border: '1px solid var(--accent-30)',
-                background: '#000',
-                position: 'relative',
-              }}
-            >
-              <video
-                src={entity.properties.hls_url as string}
-                autoPlay
-                muted
-                playsInline
-                controls
-                style={{ width: '100%', maxHeight: 160, display: 'block' }}
-                onError={() => {}}
-              />
+        {(() => {
+          const hlsUrl = entity.properties?.hls_url as string | undefined;
+          if (!hlsUrl) return null;
+          return (
+            <>
+              <SectionHeader title="LIVE FEED" />
               <div
+                className="mb-2"
                 style={{
-                  position: 'absolute',
-                  top: 4,
-                  left: 6,
-                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  fontSize: 8,
-                  color: 'var(--critical)',
-                  letterSpacing: '0.1em',
+                  border: '1px solid var(--accent-30)',
+                  background: '#000',
+                  position: 'relative',
                 }}
               >
-                ● LIVE
+                <video
+                  src={hlsUrl}
+                  autoPlay
+                  muted
+                  playsInline
+                  controls
+                  style={{ width: '100%', maxHeight: 160, display: 'block' }}
+                  onError={() => {}}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    left: 6,
+                    fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                    fontSize: 8,
+                    color: 'var(--critical)',
+                    letterSpacing: '0.1em',
+                  }}
+                >
+                  ● LIVE
+                </div>
+                <a
+                  href={hlsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 6,
+                    fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                    fontSize: 8,
+                    color: 'var(--accent)',
+                    textDecoration: 'none',
+                  }}
+                >
+                  ↗ POP OUT
+                </a>
               </div>
-              <a
-                href={entity.properties.hls_url as string}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 6,
-                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
-                  fontSize: 8,
-                  color: 'var(--accent)',
-                  textDecoration: 'none',
-                }}
-              >
-                ↗ POP OUT
-              </a>
-            </div>
-          </>
-        )}
+            </>
+          );
+        })()}
 
         {/* Brain Reasoning */}
         <SectionHeader title="BRAIN REASONING" />
