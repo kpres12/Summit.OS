@@ -7,11 +7,11 @@ services:
     dockerfilePath: ./Dockerfile
     envVars:
       - key: POSTGRES_URL
-        value: "POSTGRES_URL_REDACTED"
+        sync: false
       - key: FABRIC_JWT_SECRET
-        value: "FABRIC_JWT_SECRET_REDACTED"
+        sync: false
       - key: SESSION_SECRET
-        value: "SESSION_SECRET_REDACTED"
+        sync: false
       - key: OPENSKY_ENABLED
         value: "true"
       - key: OPENSKY_CLIENT_ID
