@@ -13,11 +13,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-sim-redis-dev}
+    command: redis-server --appendonly yes
     volumes:
       - sim_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-sim-redis-dev}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,7 +30,7 @@ services:
     environment:
       POSTGRES_DB: heli_os
       POSTGRES_USER: summit
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sim-pg-dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-simpassword}
     volumes:
       - sim_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -61,7 +61,7 @@ services:
     image: ${FABRIC_IMAGE:-ghcr.io/branca-ai/heli-os/fabric:latest}
     restart: unless-stopped
     environment:
-      FABRIC_REDIS_URL: redis://:${REDIS_PASSWORD:-sim-redis-dev}@redis:6379
+      FABRIC_REDIS_URL: redis://redis:6379
       FABRIC_MQTT_BROKER: mqtt
       FABRIC_MQTT_PORT: "1883"
       FABRIC_JWT_SECRET: ${FABRIC_JWT_SECRET:-sim-dev-secret-not-for-prod}
@@ -84,8 +84,8 @@ services:
     image: ${API_GATEWAY_IMAGE:-ghcr.io/branca-ai/heli-os/api-gateway:latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD:-sim-pg-dev}@postgres:5432/heli_os
-      REDIS_URL: redis://:${REDIS_PASSWORD:-sim-redis-dev}@redis:6379
+      DATABASE_URL: postgresql+asyncpg://summit:${POSTGRES_PASSWORD:-simpassword}@postgres:5432/heli_os
+      REDIS_URL: redis://redis:6379
       FABRIC_WS_URL: ws://fabric:8001/ws
       FABRIC_HTTP_URL: http://fabric:8001
       SECRET_KEY: ${SECRET_KEY:-sim-dev-secret-not-for-prod}
