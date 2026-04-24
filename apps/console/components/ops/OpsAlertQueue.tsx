@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { fetchAlerts, connectWebSocket, acknowledgeAlert, AlertAPI } from '@/lib/api';
 import PanelHeader from '@/components/ui/PanelHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
-import { ageFromISO, isoToUTCShort, severityColor } from '@/lib/format';
+import { isoToUTCShort, severityColor } from '@/lib/format';
 import OpsDecisionTimer from '@/components/ops/OpsDecisionTimer';
 import { useActionLog } from '@/contexts/ActionLogContext';
 

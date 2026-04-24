@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import { useInvestigation } from '@/hooks/useInvestigation';
 import { useMissionDraw } from '@/hooks/useMissionDraw';

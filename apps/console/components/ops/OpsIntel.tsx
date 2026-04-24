@@ -75,7 +75,7 @@ const SAT_TYPE_COLOR: Record<string, string> = {
 const JAM_COLOR = (intensity: number) =>
   intensity > 0.8 ? 'var(--critical)' : intensity > 0.5 ? 'var(--warning)' : 'var(--text-dim)';
 
-const VESSEL_ICON: Record<string, string> = {
+const _VESSEL_ICON: Record<string, string> = {
   tanker: '⛽', cargo: '📦', container: '🔲',
 };
 
