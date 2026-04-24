@@ -32,7 +32,7 @@ function utcString(d: Date): string {
 }
 
 export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChange, assetCount, alertCount, linkQuality }: OpsTopBarProps) {
-  const { connected, lastUpdate, meshStatus } = useEntityStream();
+  const { connected, connectionState, lastUpdate, meshStatus } = useEntityStream();
   const { user, logout }          = useAuth();
   const [now, setNow]             = useState<Date>(new Date());
   const [menuOpen, setMenuOpen]   = useState(false);
@@ -70,9 +70,15 @@ export default function OpsTopBar({ onSwitchRole, missionName, onMissionNameChan
 
   const meshOk = !meshStatus?.partitioned && (meshStatus?.peers_dead ?? 0) === 0;
   const connOk = connected && meshOk && dataFreshOk;
-  const connVariant: 'accent' | 'warning' | 'critical' = !connected ? 'critical' : !dataFreshOk ? 'warning' : 'accent';
-  const connLabel = !connected ? 'OFFLINE' : dataFreshOk ? 'LIVE' : dataFreshLabel;
-  const connTitle = `Fabric: ${connected ? 'ok' : 'down'} | Mesh: ${meshStatus ? `${meshStatus.peers_alive} alive, ${meshStatus.peers_dead} dead` : 'no data'} | Data: ${dataStaleSecs === null ? 'none' : `${dataStaleSecs}s ago`}`;
+  const connVariant: 'accent' | 'warning' | 'critical' =
+    connectionState === 'connected' ? (dataFreshOk ? 'accent' : 'warning')
+    : connectionState === 'reconnecting' ? 'warning'
+    : 'critical';
+  const connLabel =
+    connectionState === 'offline'      ? 'OFFLINE'
+    : connectionState === 'reconnecting' ? 'RECONNECTING'
+    : dataFreshOk ? 'LIVE' : dataFreshLabel;
+  const connTitle = `Fabric: ${connectionState} | Mesh: ${meshStatus ? `${meshStatus.peers_alive} alive, ${meshStatus.peers_dead} dead` : 'no data'} | Data: ${dataStaleSecs === null ? 'none' : `${dataStaleSecs}s ago`}`;
 
   return (
     <>

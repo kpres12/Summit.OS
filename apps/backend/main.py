@@ -15,6 +15,7 @@ Usage:
 """
 
 import asyncio
+import collections
 import json
 import math
 import os
@@ -221,23 +222,48 @@ def _build_entity_update(tmpl: dict) -> dict:
 # WebSocket connection manager
 # ──────────────────────────────────────────────────────────────────────────────
 
+_REPLAY_WINDOW_S = 60      # replay buffer covers last 60 seconds
+_REPLAY_MAX_MSGS = 120     # cap at 120 frames (2 min at 1Hz)
+
 class ConnectionManager:
     def __init__(self):
         self._clients: list[WebSocket] = []
+        # Ring buffer of (sent_at_unix, message_dict) for reconnect replay
+        self._replay: collections.deque[tuple[float, dict]] = collections.deque(
+            maxlen=_REPLAY_MAX_MSGS
+        )
 
-    async def connect(self, ws: WebSocket) -> None:
-        await ws.accept()
+    def _push_replay(self, message: dict) -> None:
+        self._replay.append((time.time(), message))
+
+    def _replay_since(self, since_ts: float) -> list[dict]:
+        cutoff = time.time() - _REPLAY_WINDOW_S
+        since  = max(since_ts / 1000.0, cutoff)  # client sends ms epoch
+        return [msg for ts, msg in self._replay if ts >= since]
+
+    async def connect(self, ws: WebSocket, since_ms: Optional[float] = None) -> None:
         self._clients.append(ws)
+        # Replay missed frames so reconnecting clients catch up instantly
+        if since_ms:
+            for msg in self._replay_since(since_ms):
+                try:
+                    await ws.send_text(json.dumps(msg))
+                except Exception:
+                    break
 
     def disconnect(self, ws: WebSocket) -> None:
         if ws in self._clients:
             self._clients.remove(ws)
 
     async def broadcast(self, message: dict) -> None:
+        self._push_replay(message)
+        if not self._clients:
+            return
+        payload = json.dumps(message)
         dead = []
-        for ws in self._clients:
+        for ws in list(self._clients):
             try:
-                await ws.send_text(json.dumps(message))
+                await ws.send_text(payload)
             except Exception:
                 dead.append(ws)
         for ws in dead:
@@ -333,9 +359,24 @@ app.add_middleware(
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
-    await manager.connect(ws)
+    # Wait for the first message to learn if client wants replay
+    # We accept first, then receive subscribe to get `since`
+    await ws.accept()
+    since_ms: Optional[float] = None
     try:
-        # Send current entity state immediately on connect
+        first_raw = await asyncio.wait_for(ws.receive_text(), timeout=3.0)
+        first_msg = json.loads(first_raw)
+        if first_msg.get("type") == "subscribe":
+            since_ms = first_msg.get("since")
+    except (asyncio.TimeoutError, Exception):
+        pass
+
+    # Register and optionally replay missed frames
+    await manager.connect(ws, since_ms=since_ms)
+
+    # Add to client list (already done in connect via ws.accept)
+    # Send current entity snapshot (fills any gap not in replay buffer)
+    try:
         batch = [_build_entity_update(t) for t in ENTITY_TEMPLATES]
         await ws.send_text(json.dumps({"type": "entity_batch", "data": batch}))
 
@@ -347,7 +388,6 @@ async def websocket_endpoint(ws: WebSocket):
                 if msg.get("type") == "ping":
                     await ws.send_text(json.dumps({"type": "pong"}))
             except asyncio.TimeoutError:
-                # Send keepalive
                 await ws.send_text(json.dumps({"type": "pong"}))
     except WebSocketDisconnect:
         pass

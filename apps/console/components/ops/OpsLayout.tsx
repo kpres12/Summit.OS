@@ -37,7 +37,7 @@ interface OpsLayoutProps {
 }
 
 export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
-  const { entityList, connected } = useEntityStream();
+  const { entityList, connected, connectionState, reconnectCount } = useEntityStream();
   const { addToast } = useToast();
   const prevConnected = useRef<boolean | null>(null);
 
