@@ -68,10 +68,35 @@ const BACKOFF_MAX_MS    = 30_000;
 const PING_INTERVAL_MS  = 30_000;
 const OFFLINE_AFTER_MS  = 15_000; // no reconnect for 15s → show "offline"
 
+// ── Offline-first entity cache ─────────────────────────────
+
+const CACHE_KEY = 'heli_entity_cache_v1';
+
+function loadEntityCache(): Map<string, EntityData> {
+  if (typeof window === 'undefined') return new Map();
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return new Map();
+    const arr = JSON.parse(raw) as EntityData[];
+    return new Map(arr.map(e => [e.entity_id, e]));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveEntityCache(entities: Map<string, EntityData>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(entities.values())));
+  } catch {
+    // storage quota exceeded — skip
+  }
+}
+
 // ── Hook ───────────────────────────────────────────────────
 
 export function useEntityStream() {
-  const [entities,        setEntities]        = useState<Map<string, EntityData>>(new Map());
+  const [entities,        setEntities]        = useState<Map<string, EntityData>>(() => loadEntityCache());
   const [tracks,          setTracks]          = useState<Map<string, TrackData>>(new Map());
   const [meshStatus,      setMeshStatus]      = useState<MeshStatus | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('reconnecting');
@@ -93,7 +118,12 @@ export function useEntityStream() {
       switch (msg.type) {
         case 'entity_update': {
           const entity = msg.data as EntityData;
-          setEntities(prev => { const n = new Map(prev); n.set(entity.entity_id, entity); return n; });
+          setEntities(prev => {
+            const n = new Map(prev);
+            n.set(entity.entity_id, entity);
+            saveEntityCache(n);
+            return n;
+          });
           setLastUpdate(Date.now());
           lastUpdateRef.current = Date.now();
           break;
@@ -103,6 +133,7 @@ export function useEntityStream() {
           setEntities(prev => {
             const n = new Map(prev);
             for (const e of batch) n.set(e.entity_id, e);
+            saveEntityCache(n);
             return n;
           });
           setLastUpdate(Date.now());

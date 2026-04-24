@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package heli;
+
+// ── Shared types ──────────────────────────────────────────────────────────
+
+message Position {
+  double lat         = 1;
+  double lon         = 2;
+  double alt_m       = 3;
+  double heading_deg = 4;
+}
+
+message Velocity {
+  double north_mps = 1;
+  double east_mps  = 2;
+  double down_mps  = 3;
+}
+
+// ── Entity ────────────────────────────────────────────────────────────────
+
+message Entity {
+  string   entity_id       = 1;
+  string   entity_type     = 2;   // active | alert | neutral | unknown
+  string   domain          = 3;   // aerial | ground | maritime | fixed | sensor
+  string   classification  = 4;
+  Position position        = 5;
+  double   speed_mps       = 6;
+  double   confidence      = 7;
+  double   last_seen_unix  = 8;   // Unix seconds
+  repeated string source_sensors = 9;
+  string   track_state     = 10;  // tentative | confirmed | coasting
+  string   callsign        = 11;
+  double   battery_pct     = 12;
+  string   mission_id      = 13;
+}
+
+// ── Track ─────────────────────────────────────────────────────────────────
+
+message Track {
+  string   track_id             = 1;
+  string   state                = 2;   // tentative | confirmed | coasting
+  Position position             = 3;
+  Velocity velocity             = 4;
+  double   uncertainty_m        = 5;
+  double   confidence           = 6;
+  string   class_label          = 7;
+  repeated string contributing_sensors = 8;
+  double   first_seen_unix      = 9;
+  double   last_seen_unix       = 10;
+  int32    hits                 = 11;
+  int32    misses               = 12;
+}
+
+// ── Batch messages ────────────────────────────────────────────────────────
+
+message EntityBatch {
+  repeated Entity entities  = 1;
+  double   server_ts_unix   = 2;   // Unix seconds when batch was emitted
+  string   instance_id      = 3;   // backend instance that produced this batch
+}
+
+message EntityRemoved {
+  string entity_id   = 1;
+  double ts_unix     = 2;
+}
+
+// ── Alert ─────────────────────────────────────────────────────────────────
+
+message Alert {
+  string alert_id    = 1;
+  string severity    = 2;   // LOW | MEDIUM | HIGH | CRITICAL
+  string description = 3;
+  string source      = 4;   // entity_id that triggered
+  double ts_unix     = 5;
+  bool   acknowledged = 6;
+}
+
+// ── Stream messages ───────────────────────────────────────────────────────
+
+message StreamMessage {
+  oneof payload {
+    EntityBatch   entity_batch   = 1;
+    EntityRemoved entity_removed = 2;
+    Alert         alert          = 3;
+    Track         track          = 4;
+    Pong          pong           = 5;
+  }
+}
+
+message Pong {
+  double server_ts_unix = 1;
+}
+
+// ── RPC requests ──────────────────────────────────────────────────────────
+
+message SubscribeRequest {
+  repeated string channels  = 1;   // entities | tracks | alerts | mesh
+  double   since_unix       = 2;   // replay from this timestamp (0 = no replay)
+  string   client_id        = 3;   // optional, for diagnostics
+}
+
+message PingRequest {
+  double client_ts_unix = 1;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────
+
+service EntityStreamService {
+  // Bidirectional stream: client subscribes, server pushes batches
+  rpc StreamEntities(SubscribeRequest) returns (stream StreamMessage);
+
+  // Unary health check
+  rpc Ping(PingRequest) returns (Pong);
+}

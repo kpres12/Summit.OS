@@ -222,28 +222,77 @@ def _build_entity_update(tmpl: dict) -> dict:
 # WebSocket connection manager
 # ──────────────────────────────────────────────────────────────────────────────
 
-_REPLAY_WINDOW_S = 60      # replay buffer covers last 60 seconds
-_REPLAY_MAX_MSGS = 120     # cap at 120 frames (2 min at 1Hz)
+_REPLAY_WINDOW_S  = 60    # replay buffer covers last 60 seconds
+_REPLAY_MAX_MSGS  = 120   # cap at 120 frames (2 min at 1Hz)
+_REDIS_CHANNEL    = "heli:entities"
+_INSTANCE_ID      = uuid.uuid4().hex[:8]  # unique per process for dedup
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+
 
 class ConnectionManager:
+    """
+    WebSocket broadcast manager with:
+      - Redis pub/sub for horizontal scaling (multiple backend instances)
+      - In-memory replay buffer for reconnecting clients
+      - Graceful single-node fallback when Redis is unavailable
+    """
+
     def __init__(self):
         self._clients: list[WebSocket] = []
-        # Ring buffer of (sent_at_unix, message_dict) for reconnect replay
+        self._grpc_queues: set[asyncio.Queue] = set()
         self._replay: collections.deque[tuple[float, dict]] = collections.deque(
             maxlen=_REPLAY_MAX_MSGS
         )
+        self._redis: Optional[Any] = None
+        self._redis_sub_task: Optional[asyncio.Task] = None
+
+    # ── Redis setup ────────────────────────────────────────────────────────
+
+    async def setup_redis(self) -> None:
+        try:
+            import redis.asyncio as aioredis
+            r = aioredis.from_url(REDIS_URL, decode_responses=True)
+            await r.ping()
+            self._redis = r
+            self._redis_sub_task = asyncio.create_task(self._redis_subscriber())
+            print(f"  Redis pub/sub      →  {REDIS_URL} (instance {_INSTANCE_ID})")
+        except Exception as e:
+            print(f"  Redis unavailable ({e}) — single-node broadcast mode")
+            self._redis = None
+
+    async def _redis_subscriber(self) -> None:
+        """Listen for entity batches published by other backend instances."""
+        import redis.asyncio as aioredis
+        r = aioredis.from_url(REDIS_URL, decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe(_REDIS_CHANNEL)
+        async for msg in pubsub.listen():
+            if msg["type"] != "message":
+                continue
+            try:
+                data = json.loads(msg["data"])
+                # Skip messages we published ourselves (avoid echo loop)
+                if data.get("_instance_id") == _INSTANCE_ID:
+                    continue
+                await self._broadcast_local(msg["data"])
+            except Exception:
+                pass
+
+    # ── Replay buffer ──────────────────────────────────────────────────────
 
     def _push_replay(self, message: dict) -> None:
         self._replay.append((time.time(), message))
 
     def _replay_since(self, since_ts: float) -> list[dict]:
         cutoff = time.time() - _REPLAY_WINDOW_S
-        since  = max(since_ts / 1000.0, cutoff)  # client sends ms epoch
+        since  = max(since_ts / 1000.0, cutoff)
         return [msg for ts, msg in self._replay if ts >= since]
+
+    # ── Client lifecycle ───────────────────────────────────────────────────
 
     async def connect(self, ws: WebSocket, since_ms: Optional[float] = None) -> None:
         self._clients.append(ws)
-        # Replay missed frames so reconnecting clients catch up instantly
         if since_ms:
             for msg in self._replay_since(since_ms):
                 try:
@@ -255,11 +304,32 @@ class ConnectionManager:
         if ws in self._clients:
             self._clients.remove(ws)
 
+    # ── Broadcast ──────────────────────────────────────────────────────────
+
     async def broadcast(self, message: dict) -> None:
+        message["_instance_id"] = _INSTANCE_ID
         self._push_replay(message)
+        payload = json.dumps(message)
+        if self._redis:
+            try:
+                await self._redis.publish(_REDIS_CHANNEL, payload)
+                return  # subscriber loop delivers to local clients
+            except Exception:
+                pass  # Redis down — fall through to direct broadcast
+        await self._broadcast_local(payload)
+
+    async def _broadcast_local(self, payload: str) -> None:
+        # Push to gRPC subscriber queues
+        if self._grpc_queues:
+            msg = json.loads(payload)
+            for q in list(self._grpc_queues):
+                try:
+                    q.put_nowait(msg)
+                except asyncio.QueueFull:
+                    pass
+
         if not self._clients:
             return
-        payload = json.dumps(message)
         dead = []
         for ws in list(self._clients):
             try:
@@ -331,15 +401,86 @@ async def entity_broadcast_loop() -> None:
 # App lifespan
 # ──────────────────────────────────────────────────────────────────────────────
 
+GRPC_PORT = int(os.getenv("GRPC_PORT", "50051"))
+
+
+async def _serve_grpc() -> None:
+    """Run the gRPC EntityStreamService alongside FastAPI."""
+    try:
+        import grpc
+        from packages.proto import entities_pb2, entities_pb2_grpc
+
+        class EntityStreamServicer(entities_pb2_grpc.EntityStreamServiceServicer):
+            async def StreamEntities(self, request, context):
+                q: asyncio.Queue[dict] = asyncio.Queue(maxsize=256)
+
+                async def _feed(msg: dict) -> None:
+                    try:
+                        q.put_nowait(msg)
+                    except asyncio.QueueFull:
+                        pass
+
+                # Register as a queue-based subscriber
+                manager._grpc_queues.add(q)
+                try:
+                    while True:
+                        msg = await asyncio.wait_for(q.get(), timeout=35.0)
+                        if msg.get("type") == "entity_batch":
+                            batch = entities_pb2.EntityBatch(
+                                server_ts_unix=time.time(),
+                                instance_id=_INSTANCE_ID,
+                            )
+                            for e in msg.get("data", []):
+                                pos = e.get("position", {})
+                                ent = entities_pb2.Entity(
+                                    entity_id=e.get("entity_id", ""),
+                                    entity_type=e.get("entity_type", ""),
+                                    domain=e.get("domain", ""),
+                                    classification=e.get("classification", ""),
+                                    speed_mps=e.get("speed_mps", 0.0),
+                                    confidence=e.get("confidence", 0.0),
+                                    last_seen_unix=e.get("last_seen", 0.0),
+                                    callsign=e.get("callsign", ""),
+                                    battery_pct=e.get("battery_pct", 0.0),
+                                    position=entities_pb2.Position(
+                                        lat=pos.get("lat", 0.0),
+                                        lon=pos.get("lon", 0.0),
+                                        alt_m=pos.get("alt", 0.0),
+                                        heading_deg=pos.get("heading_deg", 0.0),
+                                    ),
+                                )
+                                batch.entities.append(ent)
+                            yield entities_pb2.StreamMessage(entity_batch=batch)
+                except (asyncio.TimeoutError, Exception):
+                    pass
+                finally:
+                    manager._grpc_queues.discard(q)
+
+            async def Ping(self, request, context):
+                return entities_pb2.Pong(server_ts_unix=time.time())
+
+        server = grpc.aio.server()
+        entities_pb2_grpc.add_EntityStreamServiceServicer_to_server(EntityStreamServicer(), server)
+        server.add_insecure_port(f"[::]:{GRPC_PORT}")
+        await server.start()
+        print(f"  gRPC stream        →  grpc://localhost:{GRPC_PORT}")
+        await server.wait_for_termination()
+    except Exception as e:
+        print(f"  gRPC unavailable ({e}) — WebSocket-only mode")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    task = asyncio.create_task(entity_broadcast_loop())
+    await manager.setup_redis()
+    task      = asyncio.create_task(entity_broadcast_loop())
+    grpc_task = asyncio.create_task(_serve_grpc())
     print(f"\n  Heli.OS Backend  →  http://localhost:{PORT}")
     print(f"  WebSocket stream   →  ws://localhost:{PORT}/ws")
     print(f"  REST API           →  http://localhost:{PORT}/v1/\n")
     yield
     task.cancel()
+    grpc_task.cancel()
 
 
 app = FastAPI(title="Heli.OS Backend", lifespan=lifespan)
