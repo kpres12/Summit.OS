@@ -9,13 +9,16 @@ Each module provides:
   - Asset capability requirements for domain operations
 
 Available domains:
-  - maritime:     Port security, vessel ops, maritime SAR
-  - military:     HADR, ACE, force protection, CASEVAC escort
-  - utilities:    Power line, pipeline, bridge inspection
-  - agriculture:  Crop monitoring, precision ag, livestock
-  - oilgas:       Pipeline patrol, flare monitoring, spill detection
-  - construction: Site monitoring, safety compliance, progress tracking
-  - wildlife:     Anti-poaching, species tracking, habitat monitoring
+  - maritime:      Port security, vessel ops, maritime SAR
+  - military:      HADR, ACE, force protection, CASEVAC escort
+  - utilities:     Power line, pipeline, bridge inspection
+  - agriculture:   Crop monitoring, precision ag, livestock
+  - oilgas:        Pipeline patrol, flare monitoring, spill detection
+  - construction:  Site monitoring, safety compliance, progress tracking
+  - wildlife:      Anti-poaching, species tracking, habitat monitoring
+  - flood:         Inundation mapping, flood SAR, levee monitoring
+  - traffic:       Evacuation corridors, incident detection, route assessment
+  - forestry:      Deforestation monitoring, illegal logging, fire risk patrol
 """
 
 from .maritime import assess_maritime_situation, plan_maritime_mission
@@ -25,20 +28,19 @@ from .agriculture import assess_agriculture_situation, plan_agriculture_mission
 from .oilgas import assess_oilgas_situation, plan_oilgas_mission
 from .construction import assess_construction_situation, plan_construction_mission
 from .wildlife import assess_wildlife_situation, plan_wildlife_mission
+from .flood import assess_flood_situation, plan_flood_mission
+from .traffic import assess_traffic_situation, plan_traffic_mission
+from .forestry import assess_forestry_situation, plan_forestry_mission
 
 __all__ = [
-    "assess_maritime_situation",
-    "plan_maritime_mission",
-    "assess_military_situation",
-    "plan_military_mission",
-    "assess_utilities_situation",
-    "plan_utilities_mission",
-    "assess_agriculture_situation",
-    "plan_agriculture_mission",
-    "assess_oilgas_situation",
-    "plan_oilgas_mission",
-    "assess_construction_situation",
-    "plan_construction_mission",
-    "assess_wildlife_situation",
-    "plan_wildlife_mission",
+    "assess_maritime_situation",    "plan_maritime_mission",
+    "assess_military_situation",    "plan_military_mission",
+    "assess_utilities_situation",   "plan_utilities_mission",
+    "assess_agriculture_situation", "plan_agriculture_mission",
+    "assess_oilgas_situation",      "plan_oilgas_mission",
+    "assess_construction_situation","plan_construction_mission",
+    "assess_wildlife_situation",    "plan_wildlife_mission",
+    "assess_flood_situation",       "plan_flood_mission",
+    "assess_traffic_situation",     "plan_traffic_mission",
+    "assess_forestry_situation",    "plan_forestry_mission",
 ]

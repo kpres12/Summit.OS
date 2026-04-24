@@ -1,0 +1,25 @@
+{
+  "trained_at": "2026-04-24T03:42:42.619857+00:00",
+  "model": "MultiOutputClassifier(GradientBoostingClassifier)",
+  "n_estimators": 150,
+  "n_samples": 500,
+  "n_features": 12,
+  "defect_classes": [
+    "crack",
+    "spalling",
+    "efflorescence",
+    "exposed_rebar",
+    "corrosion",
+    "delamination"
+  ],
+  "context_types": [
+    "bridge",
+    "pipeline",
+    "tank",
+    "steel_beam",
+    "concrete_deck"
+  ],
+  "metrics": {
+    "corrosion_f1_cv": 0.85
+  }
+}

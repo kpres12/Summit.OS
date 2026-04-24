@@ -1,0 +1,17 @@
+{
+  "trained_at": "2026-04-24T03:42:45.017539+00:00",
+  "model": "GradientBoostingRegressor",
+  "n_estimators": 200,
+  "n_samples": 500,
+  "n_features": 10,
+  "scenario_types": [
+    "disaster",
+    "event",
+    "street",
+    "evacuation",
+    "sar"
+  ],
+  "metrics": {
+    "mae_cv_persons": 4088.4
+  }
+}

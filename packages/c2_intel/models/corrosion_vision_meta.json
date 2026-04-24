@@ -1,0 +1,21 @@
+{
+  "trained_at": "2026-04-24T04:01:45.954545+00:00",
+  "model": "ResNet-18",
+  "backbone": "imagenet1k_v1",
+  "task": "multi-label",
+  "img_size": 224,
+  "classes": [
+    "crack",
+    "spalling",
+    "efflorescence",
+    "exposed_rebar",
+    "corrosion",
+    "delamination"
+  ],
+  "n_epochs": 12,
+  "n_samples": 600,
+  "data_source": "synthetic",
+  "metrics": {
+    "f1_macro_val": 0.9103
+  }
+}

@@ -179,7 +179,10 @@ coverage/
 # Documentation build
 docs/_build/
 
-# Downloaded model weights and test images
+# Trained model binaries (reproduce with make train-all)
 *.pt
+*.joblib
 bus.jpg
 *.mmdb
+# Training data downloads
+packages/training/data/

@@ -46,6 +46,17 @@ _COPY_RULES: list[tuple[str, str]] = [
     ("corrosion_classifier_meta.json",    "."),
     ("crowd_estimator.joblib",            "."),
     ("crowd_estimator_meta.json",         "."),
+    ("flood_classifier.joblib",           "."),
+    ("flood_classifier_meta.json",        "."),
+    ("deforestation_classifier.joblib",   "."),
+    ("deforestation_classifier_meta.json","."),
+    # Deep learning models (.pt files)
+    ("wildfire_lstm.pt",                  "."),
+    ("wildfire_lstm_meta.json",           "."),
+    ("damage_vision_classifier.pt",       "."),
+    ("damage_vision_meta.json",           "."),
+    ("corrosion_vision_classifier.pt",    "."),
+    ("corrosion_vision_meta.json",        "."),
 ]
 
 _DETECT_GLOB = "heli-detect-v1.pt"

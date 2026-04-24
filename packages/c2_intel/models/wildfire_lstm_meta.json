@@ -1,0 +1,26 @@
+{
+  "trained_at": "2026-04-24T04:01:01.937886+00:00",
+  "model": "LSTM",
+  "seq_len": 12,
+  "n_features": 9,
+  "hidden_dim": 128,
+  "n_layers": 2,
+  "n_epochs": 20,
+  "n_samples": 6000,
+  "data_source": "synthetic",
+  "features": [
+    "frp_mw",
+    "active_pixels",
+    "wind_speed_ms",
+    "wind_dir_sin",
+    "wind_dir_cos",
+    "rh_pct",
+    "temp_c",
+    "ndvi",
+    "slope_deg"
+  ],
+  "target": "frp_next_mw (normalized)",
+  "metrics": {
+    "mae_val_normalized": 0.01987
+  }
+}

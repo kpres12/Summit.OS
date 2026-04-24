@@ -9,7 +9,7 @@ all: download-all train-all export
 
 # ── Downloads ───────────────────────────────────────────────────────────────
 
-download-all: download-detection download-anomaly download-battery download-timing download-intent download-damage download-corrosion download-crowd
+download-all: download-detection download-anomaly download-battery download-timing download-intent download-damage download-corrosion download-crowd download-flood download-deforestation
 
 download-detection:
 	python datasets/visdrone.py  --output $(DATA_DIR)/visdrone
@@ -37,9 +37,15 @@ download-corrosion:
 download-crowd:
 	python -c "from datasets.crowd import download; download()"
 
+download-flood:
+	python -c "from datasets.floodnet import download; download()"
+
+download-deforestation:
+	python -c "from datasets.deforestation import download; download()"
+
 # ── Training ────────────────────────────────────────────────────────────────
 
-train-all: train-detection train-anomaly train-battery train-timing train-intent train-damage train-corrosion train-crowd
+train-all: train-detection train-anomaly train-battery train-timing train-intent train-damage train-corrosion train-crowd train-flood train-deforestation train-wildfire-lstm train-damage-vision train-corrosion-vision
 
 train-detection:
 	python train_detection.py \
@@ -79,6 +85,21 @@ train-corrosion:
 train-crowd:
 	python train_crowd.py
 
+train-flood:
+	python train_flood.py
+
+train-deforestation:
+	python train_deforestation.py
+
+train-wildfire-lstm:
+	python train_wildfire_lstm.py
+
+train-damage-vision:
+	python train_damage_vision.py
+
+train-corrosion-vision:
+	python train_corrosion_vision.py
+
 # ── Export ──────────────────────────────────────────────────────────────────
 
 export:
@@ -112,3 +133,8 @@ help:
 	@echo "  make train-damage        Building damage classifier (xBD)"
 	@echo "  make train-corrosion     Structural defect classifier (CODEBRIM)"
 	@echo "  make train-crowd         Crowd density estimator (ShanghaiTech)"
+	@echo "  make train-flood         Flood extent classifier (Sen1Floods11/SAR)"
+	@echo "  make train-deforestation Deforestation cause classifier (GFW/PRODES)"
+	@echo "  make train-wildfire-lstm Wildfire spread LSTM (FIRMS time series)"
+	@echo "  make train-damage-vision Building damage CNN — EfficientNet-B0"
+	@echo "  make train-corrosion-vision Defect CNN — ResNet-18 multi-label"

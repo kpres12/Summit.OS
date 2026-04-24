@@ -1,0 +1,18 @@
+{
+  "trained_at": "2026-04-24T04:01:59.907645+00:00",
+  "model": "EfficientNet-B0",
+  "backbone": "imagenet1k_v1",
+  "img_size": 224,
+  "classes": [
+    "no-damage",
+    "minor-damage",
+    "major-damage",
+    "destroyed"
+  ],
+  "n_epochs": 8,
+  "n_samples": 800,
+  "data_source": "synthetic",
+  "metrics": {
+    "f1_macro_val": 1.0
+  }
+}

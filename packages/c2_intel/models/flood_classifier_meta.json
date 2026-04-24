@@ -1,0 +1,25 @@
+{
+  "trained_at": "2026-04-24T04:00:50.136722+00:00",
+  "model": "GradientBoostingClassifier",
+  "n_estimators": 200,
+  "n_samples": 480,
+  "n_features": 8,
+  "features": [
+    "sar_vv_mean",
+    "sar_vh_mean",
+    "sar_vv_std",
+    "ndwi",
+    "ndvi",
+    "blue_mean",
+    "slope_deg",
+    "dem_m"
+  ],
+  "classes": [
+    "not_flooded",
+    "flooded"
+  ],
+  "metrics": {
+    "f1_cv": 0.9653,
+    "f1_cv_std": 0.0174
+  }
+}

@@ -55,6 +55,8 @@ from .battery import BatteryPredictor, get_battery_predictor
 from .damage_predictor import DamagePredictor, get_damage_predictor
 from .corrosion_predictor import CorrosionPredictor, get_corrosion_predictor
 from .crowd_predictor import CrowdPredictor, get_crowd_predictor
+from .flood_predictor import FloodPredictor, get_flood_predictor
+from .wildfire_predictor import WildfirePredictor, get_wildfire_predictor
 
 __all__ = [
     # Models
@@ -94,4 +96,6 @@ __all__ = [
     "DamagePredictor", "get_damage_predictor",
     "CorrosionPredictor", "get_corrosion_predictor",
     "CrowdPredictor", "get_crowd_predictor",
+    "FloodPredictor", "get_flood_predictor",
+    "WildfirePredictor", "get_wildfire_predictor",
 ]
