@@ -39,6 +39,13 @@ _COPY_RULES: list[tuple[str, str]] = [
     ("intent_classifier.joblib",          "."),
     ("intent_vectorizer.joblib",          "."),
     ("intent_classifier_meta.json",       "."),
+    # Tabular domain models (train_damage/corrosion/crowd output directly to MODELS_DIR)
+    ("damage_classifier.joblib",          "."),
+    ("damage_classifier_meta.json",       "."),
+    ("corrosion_classifier.joblib",       "."),
+    ("corrosion_classifier_meta.json",    "."),
+    ("crowd_estimator.joblib",            "."),
+    ("crowd_estimator_meta.json",         "."),
 ]
 
 _DETECT_GLOB = "heli-detect-v1.pt"

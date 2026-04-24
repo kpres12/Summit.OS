@@ -51,6 +51,10 @@ from .ontology import (
 )
 from .evidence import C2EvidenceAggregator, C2EvidenceCluster, ObservationEvidence
 from .embeddings import C2EmbeddingService, get_embedding_service
+from .battery import BatteryPredictor, get_battery_predictor
+from .damage_predictor import DamagePredictor, get_damage_predictor
+from .corrosion_predictor import CorrosionPredictor, get_corrosion_predictor
+from .crowd_predictor import CrowdPredictor, get_crowd_predictor
 
 __all__ = [
     # Models
@@ -85,4 +89,9 @@ __all__ = [
     "C2EvidenceAggregator", "C2EvidenceCluster", "ObservationEvidence",
     # Embeddings
     "C2EmbeddingService", "get_embedding_service",
+    # Domain predictors
+    "BatteryPredictor", "get_battery_predictor",
+    "DamagePredictor", "get_damage_predictor",
+    "CorrosionPredictor", "get_corrosion_predictor",
+    "CrowdPredictor", "get_crowd_predictor",
 ]

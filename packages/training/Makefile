@@ -9,7 +9,7 @@ all: download-all train-all export
 
 # ── Downloads ───────────────────────────────────────────────────────────────
 
-download-all: download-detection download-anomaly download-battery download-timing download-intent
+download-all: download-detection download-anomaly download-battery download-timing download-intent download-damage download-corrosion download-crowd
 
 download-detection:
 	python datasets/visdrone.py  --output $(DATA_DIR)/visdrone
@@ -28,9 +28,18 @@ download-timing:
 download-intent:
 	python datasets/intent.py    --output $(DATA_DIR)/intent
 
+download-damage:
+	python -c "from datasets.xbd import download; download()"
+
+download-corrosion:
+	python -c "from datasets.corrosion import download; download()"
+
+download-crowd:
+	python -c "from datasets.crowd import download; download()"
+
 # ── Training ────────────────────────────────────────────────────────────────
 
-train-all: train-detection train-anomaly train-battery train-timing train-intent
+train-all: train-detection train-anomaly train-battery train-timing train-intent train-damage train-corrosion train-crowd
 
 train-detection:
 	python train_detection.py \
@@ -60,6 +69,15 @@ train-intent:
 	python train_intent.py \
 	  --data    $(DATA_DIR)/intent \
 	  --output  $(MODELS_DIR)
+
+train-damage:
+	python train_damage.py
+
+train-corrosion:
+	python train_corrosion.py
+
+train-crowd:
+	python train_crowd.py
 
 # ── Export ──────────────────────────────────────────────────────────────────
 
@@ -91,3 +109,6 @@ help:
 	@echo "  make train-battery       Battery degradation predictor (NASA)"
 	@echo "  make train-timing        Action timing predictor (OpenSky)"
 	@echo "  make train-intent        Mission intent classifier (FEMA/NIMS)"
+	@echo "  make train-damage        Building damage classifier (xBD)"
+	@echo "  make train-corrosion     Structural defect classifier (CODEBRIM)"
+	@echo "  make train-crowd         Crowd density estimator (ShanghaiTech)"

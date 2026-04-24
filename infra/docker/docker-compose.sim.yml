@@ -64,7 +64,7 @@ services:
       FABRIC_REDIS_URL: redis://redis:6379
       FABRIC_MQTT_BROKER: mqtt
       FABRIC_MQTT_PORT: "1883"
-      FABRIC_JWT_SECRET: ${FABRIC_JWT_SECRET:-sim-dev-secret-not-for-prod}
+      FABRIC_JWT_SECRET: ${FABRIC_JWT_SECRET:-sim-jwt-dev}
       ENTERPRISE_MULTI_TENANT: "false"
       OTEL_EXPORTER_OTLP_ENDPOINT: ""
     depends_on:
@@ -88,7 +88,7 @@ services:
       REDIS_URL: redis://redis:6379
       FABRIC_WS_URL: ws://fabric:8001/ws
       FABRIC_HTTP_URL: http://fabric:8001
-      SECRET_KEY: ${SECRET_KEY:-sim-dev-secret-not-for-prod}
+      SECRET_KEY: ${SECRET_KEY:-sim-key-dev}
       # Simulation overrides — disable auth/billing enforcement
       ENTERPRISE_MULTI_TENANT: "false"
       API_KEY_ENFORCE: "false"

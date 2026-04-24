@@ -1830,3 +1830,138 @@ async def get_feature_flags(domain: str | None = None):
         if domain:
             minimal["domain"] = domain
         return minimal
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Report generation endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _reporting():
+    import sys
+    import os
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if os.path.join(repo_root, "packages") not in sys.path:
+        sys.path.insert(0, os.path.join(repo_root, "packages"))
+    from reporting import generate_salute, generate_spot, generate_9line, generate_sitrep, generate_inspection_report
+    return generate_salute, generate_spot, generate_9line, generate_sitrep, generate_inspection_report
+
+
+def _get_entity(entity_id: str) -> dict:
+    """Pull entity from fabric WorldStore, or return a minimal stub."""
+    import httpx as _httpx
+    try:
+        r = _httpx.get(f"{FABRIC_URL}/api/v1/entities/{entity_id}", timeout=3.0)
+        if r.status_code == 200:
+            return r.json()
+    except Exception:
+        pass
+    return {"entity_id": entity_id, "entity_type": "UNKNOWN", "classification": "UNKNOWN",
+            "metadata": {}, "position": None, "velocity": None, "callsign": entity_id}
+
+
+@app.post("/v1/reports/salute")
+@_rate_limit("30/minute")
+async def report_salute(
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
+):
+    gen_salute, _, _, _, _ = _reporting()
+    entity_id = payload.get("entity_id", "")
+    entity = _get_entity(entity_id) if entity_id else {}
+    callsign = payload.get("observer_callsign", "HELI-1")
+    additional = payload.get("additional_info", "")
+    return gen_salute(entity, observer_callsign=callsign, additional_info=additional)
+
+
+@app.post("/v1/reports/spot")
+@_rate_limit("30/minute")
+async def report_spot(
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
+):
+    _, gen_spot, _, _, _ = _reporting()
+    entity_id = payload.get("entity_id", "")
+    entity = _get_entity(entity_id) if entity_id else {}
+    callsign = payload.get("observer_callsign", "HELI-1")
+    return gen_spot(entity, observer_callsign=callsign)
+
+
+@app.post("/v1/reports/nineline")
+@_rate_limit("30/minute")
+async def report_nineline(
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
+):
+    _, _, gen_9line, _, _ = _reporting()
+    entity_id = payload.get("entity_id", "")
+    entity = _get_entity(entity_id) if entity_id else {}
+    pos = (entity.get("position") or {})
+    location = {
+        "lat": pos.get("lat"), "lon": pos.get("lon"), "alt_m": pos.get("alt_m"),
+    }
+    count = int(payload.get("patient_count", 1))
+    prec = payload.get("precedence", "U")
+    patients = [{"precedence": prec, "ambulatory": False, "status": "M"}] * count
+    return gen_9line(
+        location=location,
+        patients=patients,
+        observer_callsign=payload.get("observer_callsign", "HELI-1"),
+        security=payload.get("security", "N"),
+        additional_info=payload.get("additional_info", ""),
+    )
+
+
+@app.post("/v1/reports/sitrep")
+@_rate_limit("10/minute")
+async def report_sitrep(
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
+):
+    _, _, _, gen_sitrep, _ = _reporting()
+    # Pull world state from fabric
+    entities, alerts, missions = [], [], []
+    try:
+        import httpx as _httpx
+        async with _httpx.AsyncClient(timeout=5.0) as client:
+            ws = await client.get(f"{FABRIC_URL}/api/v1/cop")
+            if ws.status_code == 200:
+                data = ws.json()
+                entities = list(data.get("entities", {}).values())
+                alerts = data.get("alerts", [])
+                missions = data.get("missions", [])
+    except Exception:
+        pass
+    return gen_sitrep(
+        entities=entities,
+        alerts=alerts,
+        missions=missions,
+        observer_callsign=payload.get("observer_callsign", "HELI-1"),
+        operational_area=payload.get("operational_area", "AO ALPHA"),
+        domain=payload.get("domain", "general"),
+    )
+
+
+@app.post("/v1/reports/inspection")
+@_rate_limit("20/minute")
+async def report_inspection(
+    payload: dict,
+    _claims: dict | None = Depends(verify_bearer),
+    _role: object = Depends(_require_role("OPERATOR")),
+):
+    _, _, _, _, gen_inspection = _reporting()
+    entity_id = payload.get("entity_id", "")
+    entity = _get_entity(entity_id) if entity_id else {}
+    meta = entity.get("metadata", {})
+    findings = meta.get("findings", payload.get("findings", []))
+    return gen_inspection(
+        asset_id=payload.get("asset_id", entity_id or "UNKNOWN"),
+        asset_type=payload.get("asset_type", "POWER_LINE"),
+        findings=findings,
+        inspector_callsign=payload.get("observer_callsign", "HELI-INSPECT"),
+        flight_params=payload.get("flight_params", {}),
+    )

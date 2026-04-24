@@ -11,18 +11,44 @@ import {
   type AssetAPI,
 } from '@/lib/api';
 
-const MISSION_TYPES = ['SURVEY', 'MONITOR', 'SEARCH', 'PERIMETER', 'ORBIT', 'DELIVER', 'INSPECT'];
-const PATTERNS = ['grid', 'spiral', 'expanding_square', 'orbit', 'perimeter'];
+const MISSION_TYPES = [
+  'SURVEY', 'MONITOR', 'SEARCH', 'PERIMETER', 'ORBIT', 'DELIVER', 'INSPECT',
+  'PATROL', 'RECON', 'ESCORT',
+  // Military / government
+  'HADR', 'FORCE_PROTECT', 'CASEVAC_ESCORT', 'ACE',
+  // Domain-specific
+  'MARITIME_SAR', 'ANTI_POACH', 'PRECISION_AG', 'PIPELINE_PATROL',
+];
+
+const MISSION_TYPE_LABELS: Record<string, string> = {
+  SURVEY: 'SURVEY', MONITOR: 'MONITOR', SEARCH: 'SEARCH', PERIMETER: 'PERIMETER',
+  ORBIT: 'ORBIT', DELIVER: 'DELIVER', INSPECT: 'INSPECT', PATROL: 'PATROL',
+  RECON: 'RECON', ESCORT: 'ESCORT',
+  HADR: 'HADR', FORCE_PROTECT: 'FORCE PROTECT', CASEVAC_ESCORT: 'CASEVAC ESCORT', ACE: 'ACE',
+  MARITIME_SAR: 'MARITIME SAR', ANTI_POACH: 'ANTI-POACH', PRECISION_AG: 'PRECISION AG',
+  PIPELINE_PATROL: 'PIPELINE PATROL',
+};
+
+const MISSION_TYPE_DOMAIN: Record<string, string> = {
+  HADR: 'military', FORCE_PROTECT: 'military', CASEVAC_ESCORT: 'military', ACE: 'military',
+  MARITIME_SAR: 'maritime', ANTI_POACH: 'wildlife',
+  PRECISION_AG: 'agriculture', PIPELINE_PATROL: 'oilgas',
+  INSPECT: 'utilities',
+};
+
+const PATTERNS = ['lawnmower', 'grid', 'expanding_square', 'orbit', 'parallel_track', 'direct', 'spiral', 'perimeter'];
 const PATTERN_LABELS: Record<string, string> = {
-  grid: 'GRID',
-  spiral: 'SPIRAL',
-  expanding_square: 'EXPANDING SQ',
-  orbit: 'ORBIT',
-  perimeter: 'PERIMETER',
+  lawnmower: 'LAWNMOWER', grid: 'GRID', spiral: 'SPIRAL',
+  expanding_square: 'EXPANDING SQ', orbit: 'ORBIT',
+  parallel_track: 'PARALLEL TRACK', direct: 'DIRECT', perimeter: 'PERIMETER',
 };
 const PATTERN_DEFAULTS: Record<string, string> = {
-  SURVEY: 'grid', MONITOR: 'orbit', SEARCH: 'expanding_square',
-  PERIMETER: 'perimeter', ORBIT: 'orbit', DELIVER: 'grid', INSPECT: 'grid',
+  SURVEY: 'lawnmower', MONITOR: 'orbit', SEARCH: 'expanding_square',
+  PERIMETER: 'perimeter', ORBIT: 'orbit', DELIVER: 'direct', INSPECT: 'lawnmower',
+  PATROL: 'lawnmower', RECON: 'lawnmower', ESCORT: 'direct',
+  HADR: 'lawnmower', FORCE_PROTECT: 'orbit', CASEVAC_ESCORT: 'direct', ACE: 'direct',
+  MARITIME_SAR: 'expanding_square', ANTI_POACH: 'expanding_square',
+  PRECISION_AG: 'lawnmower', PIPELINE_PATROL: 'lawnmower',
 };
 
 interface OpsMissionBuilderProps {
@@ -257,13 +283,21 @@ export default function OpsMissionBuilder({
           <div className="grid grid-cols-2 gap-2 mb-2">
             <div>
               <FieldLabel>MISSION TYPE</FieldLabel>
-              <SelectField value={missionType} options={MISSION_TYPES} onChange={handleMissionTypeChange} />
+              <SelectField value={missionType} options={MISSION_TYPES} optionLabels={MISSION_TYPE_LABELS} onChange={handleMissionTypeChange} />
             </div>
             <div>
               <FieldLabel>PATTERN</FieldLabel>
               <SelectField value={pattern} options={PATTERNS} optionLabels={PATTERN_LABELS} onChange={setPattern} />
             </div>
           </div>
+          {MISSION_TYPE_DOMAIN[missionType] && (
+            <div className="mb-2 px-2 py-1"
+              style={{ background: 'rgba(79,195,247,0.04)', border: '1px solid rgba(79,195,247,0.15)' }}>
+              <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'rgba(79,195,247,0.6)' }}>
+                DOMAIN: {MISSION_TYPE_DOMAIN[missionType].toUpperCase()}
+              </span>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2">
             <div>

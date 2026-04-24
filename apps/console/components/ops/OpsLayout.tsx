@@ -25,11 +25,12 @@ import OpsIntel from './OpsIntel';
 import OpsActionLog from './OpsActionLog';
 import OpsActiveTasksPanel from './OpsActiveTasksPanel';
 import OpsMissionTimeline from './OpsMissionTimeline';
+import OpsReportPanel from './OpsReportPanel';
 import ToastContainer from '@/components/ui/ToastContainer';
 import SessionExpiryBanner from '@/components/auth/SessionExpiryBanner';
 import { fetchTasks, TaskAPI } from '@/lib/api';
 
-type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log' | 'tasks';
+type PanelId = 'alerts' | 'entities' | 'missions' | 'layers' | 'hardware' | 'system' | 'mission-builder' | 'intel' | 'log' | 'tasks' | 'reports';
 
 interface OpsLayoutProps {
   onSwitchRole: () => void;
@@ -165,6 +166,12 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
       );
       case 'intel': return <OpsIntel />;
       case 'log':   return <OpsActionLog />;
+      case 'reports': return (
+        <OpsReportPanel
+          selectedEntityId={investigation.selectedEntity?.entity_id ?? null}
+          onClose={() => setActivePanel(null)}
+        />
+      );
       case 'tasks': return (
         <OpsActiveTasksPanel
           onFlyTo={(lat, lon) => investigation.investigateAlert({ alert_id: '', severity: '', description: '', source: '', ts_iso: '', _lat: lat, _lon: lon } as never)}
