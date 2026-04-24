@@ -31,6 +31,10 @@ from .wildlife import assess_wildlife_situation, plan_wildlife_mission
 from .flood import assess_flood_situation, plan_flood_mission
 from .traffic import assess_traffic_situation, plan_traffic_mission
 from .forestry import assess_forestry_situation, plan_forestry_mission
+from .mining import assess_mining_situation, plan_mining_mission
+from .ports import assess_ports_situation, plan_ports_mission
+from .urban_sar import assess_urban_sar_situation, plan_urban_sar_mission
+from .pipeline import assess_pipeline_situation, plan_pipeline_mission
 
 __all__ = [
     "assess_maritime_situation",    "plan_maritime_mission",
@@ -43,4 +47,8 @@ __all__ = [
     "assess_flood_situation",       "plan_flood_mission",
     "assess_traffic_situation",     "plan_traffic_mission",
     "assess_forestry_situation",    "plan_forestry_mission",
+    "assess_mining_situation",      "plan_mining_mission",
+    "assess_ports_situation",       "plan_ports_mission",
+    "assess_urban_sar_situation",   "plan_urban_sar_mission",
+    "assess_pipeline_situation",    "plan_pipeline_mission",
 ]

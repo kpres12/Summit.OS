@@ -33,6 +33,47 @@ META_PATH  = MODELS_DIR / "corrosion_vision_meta.json"
 DEFECT_CLASSES = ["crack", "spalling", "efflorescence", "exposed_rebar", "corrosion", "delamination"]
 IMG_SIZE = 224
 
+_CODEBRIM_MAP = {
+    "Crack": "crack",
+    "Spallation": "spalling",
+    "Efflorescence": "efflorescence",
+    "ExposedBars": "exposed_rebar",
+    "CorrosionStain": "corrosion",
+}
+
+
+class CodebrimDataset:
+    """Lazy-loading CODEBRIM dataset. Must be at module level to be picklable."""
+    def __init__(self, split_dir: Path, transform):
+        from PIL import Image as _PILImage
+        self._pil = _PILImage
+        self.transform = transform
+        img_dir = split_dir / "Images"
+        lbl_dir = split_dir / "Labels"
+        self.samples = []
+        for lbl_path in sorted(lbl_dir.glob("*.txt")):
+            img_path = img_dir / (lbl_path.stem + ".jpg")
+            if not img_path.exists():
+                img_path = img_dir / (lbl_path.stem + ".png")
+            if img_path.exists():
+                self.samples.append((img_path, lbl_path))
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, i):
+        import torch
+        img_path, lbl_path = self.samples[i]
+        img = self._pil.open(img_path).convert("RGB")
+        img = self.transform(img)
+        raw_classes = lbl_path.read_text().strip().splitlines()
+        lbl = torch.zeros(len(DEFECT_CLASSES))
+        for cls in raw_classes:
+            mapped = _CODEBRIM_MAP.get(cls.strip())
+            if mapped and mapped in DEFECT_CLASSES:
+                lbl[DEFECT_CLASSES.index(mapped)] = 1.0
+        return img, lbl
+
 
 def _synthetic_dataset(n: int = 600):
     """
@@ -102,53 +143,45 @@ def train(epochs: int = 15, batch_size: int = 16, device_str: str = "auto") -> N
         device = torch.device(device_str)
     logger.info("[CorrosionVision] Device: %s", device)
 
-    # Use real crack images if available (arunrk7/surface-crack-detection on Kaggle)
-    crack_dir = Path(__file__).parent / "data" / "crack"
+    from torchvision import transforms
+
+    tf_train = transforms.Compose([
+        transforms.RandomResizedCrop(IMG_SIZE, scale=(0.8, 1.0)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.1),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+    tf_val = transforms.Compose([
+        transforms.Resize((IMG_SIZE, IMG_SIZE)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+
+    codebrim_dir = Path(__file__).parent / "data" / "codebrim" / "multirotulo"
     source = "synthetic"
-    if (crack_dir / "Positive").exists() and (crack_dir / "Negative").exists():
+
+    if (codebrim_dir / "train").exists():
         try:
-            from torchvision import transforms
-            from torchvision.datasets import ImageFolder
-            from torch.utils.data import Dataset as TorchDataset
-
-            tf = transforms.Compose([
-                transforms.RandomResizedCrop(IMG_SIZE, scale=(0.8, 1.0)),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-            ])
-            # Lazy-loading wrapper: avoids stacking 40k images (24 GB) in RAM.
-            # ImageFolder sorts alphabetically: Negative=0, Positive=1
-            class CrackMultiLabel(TorchDataset):
-                def __init__(self, folder_dataset):
-                    self.base = folder_dataset
-                    self.crack_idx = DEFECT_CLASSES.index("crack")
-                    self.n_classes = len(DEFECT_CLASSES)
-                def __len__(self):
-                    return len(self.base)
-                def __getitem__(self, i):
-                    img, class_idx = self.base[i]
-                    lbl = torch.zeros(self.n_classes)
-                    if class_idx == 1:  # Positive = crack
-                        lbl[self.crack_idx] = 1.0
-                    return img, lbl
-
-            base = ImageFolder(str(crack_dir), transform=tf)
-            dataset = CrackMultiLabel(base)
-            logger.info("[CorrosionVision] Real crack dataset: %d images", len(dataset))
-            source = "kaggle_real_crack"
+            train_ds = CodebrimDataset(codebrim_dir / "train", tf_train)
+            val_ds   = CodebrimDataset(codebrim_dir / "valid", tf_val)
+            logger.info("[CorrosionVision] CODEBRIM: %d train / %d val images",
+                        len(train_ds), len(val_ds))
+            source = "codebrim_real"
         except Exception as e:
-            logger.warning("[CorrosionVision] Real image load failed: %s — using synthetic", e)
-            X, y = _synthetic_dataset(n=600)
-            dataset = TensorDataset(X, y)
+            logger.warning("[CorrosionVision] CODEBRIM load failed: %s — using synthetic", e)
+            train_ds = val_ds = None
     else:
+        train_ds = val_ds = None
+
+    if train_ds is None:
         X, y = _synthetic_dataset(n=600)
         dataset = TensorDataset(X, y)
+        n_val = max(1, int(len(dataset) * 0.2))
+        train_ds, val_ds = random_split(dataset, [len(dataset) - n_val, n_val],
+                                        generator=torch.Generator().manual_seed(42))
 
-    n_val = max(1, int(len(dataset) * 0.2))
-    train_ds, val_ds = random_split(dataset, [len(dataset) - n_val, n_val],
-                                    generator=torch.Generator().manual_seed(42))
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=0)
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=0)
 
     # ResNet-18 with multi-label head
@@ -223,7 +256,7 @@ def train(epochs: int = 15, batch_size: int = 16, device_str: str = "auto") -> N
         "img_size": IMG_SIZE,
         "classes": DEFECT_CLASSES,
         "n_epochs": epochs,
-        "n_samples": len(dataset),
+        "n_samples": len(train_ds) + len(val_ds),
         "data_source": source,
         "metrics": {"f1_macro_val": round(best_f1, 4)},
     }

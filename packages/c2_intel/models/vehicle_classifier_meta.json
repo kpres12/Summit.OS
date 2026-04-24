@@ -1,0 +1,31 @@
+{
+  "trained_at": "2026-04-24T12:29:26.033157+00:00",
+  "model": "GradientBoostingClassifier",
+  "n_estimators": 200,
+  "n_samples": 1200,
+  "n_features": 12,
+  "features": [
+    "speed_mps",
+    "heading_change_rate",
+    "formation_spacing_m",
+    "time_of_day_h",
+    "area_type",
+    "convoy_member",
+    "stop_frequency",
+    "route_deviation",
+    "size_class",
+    "thermal_signature",
+    "acoustic_level",
+    "payload_indicator"
+  ],
+  "classes": [
+    "civilian_passenger",
+    "civilian_commercial",
+    "emergency_services",
+    "military_logistics"
+  ],
+  "metrics": {
+    "f1_macro_cv": 1.0,
+    "f1_macro_cv_std": 0.0
+  }
+}

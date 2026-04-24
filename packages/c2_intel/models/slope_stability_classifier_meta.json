@@ -1,0 +1,28 @@
+{
+  "trained_at": "2026-04-24T12:29:38.720803+00:00",
+  "model": "GradientBoostingClassifier",
+  "n_estimators": 200,
+  "n_samples": 900,
+  "n_features": 10,
+  "features": [
+    "displacement_mm_day",
+    "displacement_accel",
+    "crack_width_mm",
+    "pore_pressure_kpa",
+    "rainfall_mm_24h",
+    "slope_angle_deg",
+    "material_type",
+    "saturation_pct",
+    "vibration_ppv",
+    "historical_movement_mm"
+  ],
+  "classes": [
+    "stable",
+    "watch",
+    "critical"
+  ],
+  "metrics": {
+    "f1_macro_cv": 1.0,
+    "f1_macro_cv_std": 0.0
+  }
+}

@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-04-24T04:01:45.954545+00:00",
+  "trained_at": "2026-04-24T06:35:07.487768+00:00",
   "model": "ResNet-18",
   "backbone": "imagenet1k_v1",
   "task": "multi-label",
@@ -12,10 +12,10 @@
     "corrosion",
     "delamination"
   ],
-  "n_epochs": 12,
-  "n_samples": 600,
-  "data_source": "synthetic",
+  "n_epochs": 15,
+  "n_samples": 5040,
+  "data_source": "codebrim_real",
   "metrics": {
-    "f1_macro_val": 0.9103
+    "f1_macro_val": 0.634
   }
 }

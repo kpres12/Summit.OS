@@ -45,7 +45,7 @@ download-deforestation:
 
 # ── Training ────────────────────────────────────────────────────────────────
 
-train-all: train-detection train-anomaly train-battery train-timing train-intent train-damage train-corrosion train-crowd train-flood train-deforestation train-wildfire-lstm train-damage-vision train-corrosion-vision
+train-all: train-detection train-anomaly train-battery train-timing train-intent train-damage train-corrosion train-crowd train-flood train-deforestation train-wildfire-lstm train-damage-vision train-corrosion-vision train-vehicle train-counter-uas train-pipeline train-slope
 
 train-detection:
 	python train_detection.py \

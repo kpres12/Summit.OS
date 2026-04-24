@@ -1,0 +1,28 @@
+{
+  "trained_at": "2026-04-24T12:29:33.991090+00:00",
+  "model": "GradientBoostingClassifier",
+  "n_estimators": 200,
+  "n_samples": 900,
+  "n_features": 10,
+  "features": [
+    "pressure_bar",
+    "pressure_delta_pct",
+    "flow_rate_m3h",
+    "flow_delta_pct",
+    "temp_delta_c",
+    "acoustic_db",
+    "cp_mv",
+    "wall_loss_pct",
+    "time_since_pig_days",
+    "segment_age_years"
+  ],
+  "classes": [
+    "normal",
+    "anomaly_operational",
+    "leak_suspected"
+  ],
+  "metrics": {
+    "f1_macro_cv": 1.0,
+    "f1_macro_cv_std": 0.0
+  }
+}

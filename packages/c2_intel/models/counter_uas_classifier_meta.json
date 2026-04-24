@@ -1,0 +1,27 @@
+{
+  "trained_at": "2026-04-24T12:29:29.231068+00:00",
+  "model": "GradientBoostingClassifier",
+  "n_estimators": 200,
+  "n_samples": 800,
+  "n_features": 10,
+  "features": [
+    "altitude_m",
+    "speed_mps",
+    "rcs_dbsm",
+    "rf_power_dbm",
+    "flight_pattern",
+    "distance_to_asset_m",
+    "time_active_min",
+    "operator_id_confirmed",
+    "geofence_compliant",
+    "payload_detected"
+  ],
+  "classes": [
+    "authorized",
+    "rogue_threat"
+  ],
+  "metrics": {
+    "f1_cv": 1.0,
+    "f1_cv_std": 0.0
+  }
+}

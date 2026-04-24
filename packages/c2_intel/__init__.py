@@ -57,6 +57,10 @@ from .corrosion_predictor import CorrosionPredictor, get_corrosion_predictor
 from .crowd_predictor import CrowdPredictor, get_crowd_predictor
 from .flood_predictor import FloodPredictor, get_flood_predictor
 from .wildfire_predictor import WildfirePredictor, get_wildfire_predictor
+from .vehicle_predictor import VehiclePredictor, get_vehicle_predictor
+from .counter_uas_predictor import CounterUASPredictor, get_counter_uas_predictor
+from .pipeline_predictor import PipelinePredictor, get_pipeline_predictor
+from .slope_predictor import SlopePredictor, get_slope_predictor
 
 __all__ = [
     # Models
@@ -98,4 +102,8 @@ __all__ = [
     "CrowdPredictor", "get_crowd_predictor",
     "FloodPredictor", "get_flood_predictor",
     "WildfirePredictor", "get_wildfire_predictor",
+    "VehiclePredictor", "get_vehicle_predictor",
+    "CounterUASPredictor", "get_counter_uas_predictor",
+    "PipelinePredictor", "get_pipeline_predictor",
+    "SlopePredictor", "get_slope_predictor",
 ]
