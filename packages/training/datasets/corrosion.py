@@ -31,8 +31,12 @@ logger = logging.getLogger(__name__)
 
 OUT_DIR = Path(__file__).parent.parent / "data" / "corrosion"
 
-# CODEBRIM on Zenodo (CC BY 4.0)
+# CODEBRIM on Zenodo (CC BY 4.0) — URL often 404, Kaggle is more reliable
 CODEBRIM_URL = "https://zenodo.org/record/2620293/files/CODEBRIM_benchmark_datasets.zip"
+
+# Kaggle alternatives (real crack/defect imagery)
+CRACK_DIR   = Path(__file__).parent.parent / "data" / "crack"    # arunrk7/surface-crack-detection
+SDNET_DIR   = Path(__file__).parent.parent / "data" / "sdnet"    # aniruddhsharma/structural-defects-network
 
 DEFECT_CLASSES = {
     "crack": 0,
@@ -75,12 +79,60 @@ def download(out_dir: Path = OUT_DIR) -> Path:
     return out_dir
 
 
+def _load_from_kaggle_crack() -> list[dict]:
+    """
+    Load from arunrk7/surface-crack-detection (40k images: Positive=crack, Negative=no crack)
+    and SDNET2018 (56k images: Decks/Walls/Pavements with D/U prefix for cracked/uncracked).
+    Maps crack presence → crack defect class; no-crack → empty defect list.
+    """
+    samples = []
+
+    # Surface crack detection (binary: Positive/Negative folders)
+    for label_dir, has_crack in [(CRACK_DIR / "Positive", True), (CRACK_DIR / "Negative", False)]:
+        if not label_dir.exists():
+            continue
+        for img in list(label_dir.glob("*.jpg"))[:5000]:  # cap at 5k per class
+            defects = ["crack"] if has_crack else []
+            samples.append({
+                "image_path": str(img),
+                "defect_classes": defects,
+                "defect_indices": [DEFECT_CLASSES["crack"]] if has_crack else [],
+                "severity": len(defects) / 6.0,
+                "context": "concrete_surface",
+                "split": "train",
+                "source": "kaggle_surface_crack",
+            })
+
+    # SDNET2018 (D=cracked, U=uncracked prefix on filenames)
+    for context_dir in (SDNET_DIR.iterdir() if SDNET_DIR.exists() else []):
+        for img in list(context_dir.rglob("*.jpg"))[:2000]:
+            has_crack = img.name.startswith("D")
+            defects = ["crack"] if has_crack else []
+            samples.append({
+                "image_path": str(img),
+                "defect_classes": defects,
+                "defect_indices": [DEFECT_CLASSES["crack"]] if has_crack else [],
+                "severity": 1/6.0 if has_crack else 0.0,
+                "context": context_dir.name.lower(),
+                "split": "train",
+                "source": "kaggle_sdnet2018",
+            })
+
+    if samples:
+        logger.info("[Corrosion] Loaded %d real crack samples from Kaggle datasets", len(samples))
+    return samples
+
+
 def load_as_training_samples(data_dir: Path) -> list[dict]:
     """
     Load corrosion/defect samples as classification training data.
 
     Returns:
         List of {image_path, defect_classes (multi-label), severity, split}
+
+    Note: real Kaggle crack images (image-path-only records) are used by the
+    CNN trainer (train_corrosion_vision.py), NOT here. This tabular pipeline
+    needs feature vectors (rgb_rust_ratio, thermal_delta_c, etc.).
     """
     annot_file = data_dir / "codebrim_annotations.json"
     if not annot_file.exists():

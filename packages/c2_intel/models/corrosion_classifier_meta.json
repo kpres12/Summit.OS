@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-04-24T03:42:42.619857+00:00",
+  "trained_at": "2026-04-24T05:25:36.028195+00:00",
   "model": "MultiOutputClassifier(GradientBoostingClassifier)",
   "n_estimators": 150,
   "n_samples": 500,

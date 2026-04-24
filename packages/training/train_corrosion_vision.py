@@ -102,9 +102,48 @@ def train(epochs: int = 15, batch_size: int = 16, device_str: str = "auto") -> N
         device = torch.device(device_str)
     logger.info("[CorrosionVision] Device: %s", device)
 
-    X, y = _synthetic_dataset(n=600)
-    dataset = TensorDataset(X, y)
+    # Use real crack images if available (arunrk7/surface-crack-detection on Kaggle)
+    crack_dir = Path(__file__).parent / "data" / "crack"
     source = "synthetic"
+    if (crack_dir / "Positive").exists() and (crack_dir / "Negative").exists():
+        try:
+            from torchvision import transforms
+            from torchvision.datasets import ImageFolder
+            from torch.utils.data import Dataset as TorchDataset
+
+            tf = transforms.Compose([
+                transforms.RandomResizedCrop(IMG_SIZE, scale=(0.8, 1.0)),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+            ])
+            # Lazy-loading wrapper: avoids stacking 40k images (24 GB) in RAM.
+            # ImageFolder sorts alphabetically: Negative=0, Positive=1
+            class CrackMultiLabel(TorchDataset):
+                def __init__(self, folder_dataset):
+                    self.base = folder_dataset
+                    self.crack_idx = DEFECT_CLASSES.index("crack")
+                    self.n_classes = len(DEFECT_CLASSES)
+                def __len__(self):
+                    return len(self.base)
+                def __getitem__(self, i):
+                    img, class_idx = self.base[i]
+                    lbl = torch.zeros(self.n_classes)
+                    if class_idx == 1:  # Positive = crack
+                        lbl[self.crack_idx] = 1.0
+                    return img, lbl
+
+            base = ImageFolder(str(crack_dir), transform=tf)
+            dataset = CrackMultiLabel(base)
+            logger.info("[CorrosionVision] Real crack dataset: %d images", len(dataset))
+            source = "kaggle_real_crack"
+        except Exception as e:
+            logger.warning("[CorrosionVision] Real image load failed: %s — using synthetic", e)
+            X, y = _synthetic_dataset(n=600)
+            dataset = TensorDataset(X, y)
+    else:
+        X, y = _synthetic_dataset(n=600)
+        dataset = TensorDataset(X, y)
 
     n_val = max(1, int(len(dataset) * 0.2))
     train_ds, val_ds = random_split(dataset, [len(dataset) - n_val, n_val],

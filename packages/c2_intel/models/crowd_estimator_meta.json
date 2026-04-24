@@ -1,8 +1,8 @@
 {
-  "trained_at": "2026-04-24T03:42:45.017539+00:00",
+  "trained_at": "2026-04-24T05:25:41.823536+00:00",
   "model": "GradientBoostingRegressor",
   "n_estimators": 200,
-  "n_samples": 500,
+  "n_samples": 2396,
   "n_features": 10,
   "scenario_types": [
     "disaster",
@@ -12,6 +12,6 @@
     "sar"
   ],
   "metrics": {
-    "mae_cv_persons": 4088.4
+    "mae_cv_persons": 6.3
   }
 }

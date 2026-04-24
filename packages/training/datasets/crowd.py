@@ -29,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 OUT_DIR = Path(__file__).parent.parent / "data" / "crowd"
 
-# ShanghaiTech Part B (smaller, reliable mirror)
+# Kaggle mirror (use: kaggle datasets download -d tthien/shanghaitech)
+KAGGLE_REF = "tthien/shanghaitech"
+KAGGLE_OUT = Path(__file__).parent.parent / "data" / "crowd_shanghaitech"
+
+# ShanghaiTech Part B (original mirror — often unavailable)
 SHANGHAITECH_B_URL = (
     "https://github.com/desenzhou/ShanghaiTechDataset/releases/download/v1.0/"
     "ShanghaiTech.zip"
@@ -39,13 +43,37 @@ SHANGHAITECH_B_URL = (
 def download(out_dir: Path = OUT_DIR) -> Path:
     """Download crowd counting dataset annotations."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    mat_dir = out_dir / "ground_truth"
 
+    # Check if Kaggle download already present (preferred real data path)
+    if any(KAGGLE_OUT.rglob("*.mat")):
+        logger.info("[Crowd] ShanghaiTech (Kaggle) already present at %s", KAGGLE_OUT)
+        return KAGGLE_OUT
+
+    mat_dir = out_dir / "ground_truth"
     if mat_dir.exists() and any(mat_dir.rglob("*.mat")):
         logger.info("[Crowd] Ground truth already present at %s", mat_dir)
         return mat_dir
 
-    logger.info("[Crowd] Downloading ShanghaiTech crowd dataset...")
+    # Try Kaggle API if token available
+    import os
+    if os.getenv("KAGGLE_API_TOKEN") or os.getenv("KAGGLE_KEY"):
+        try:
+            import subprocess
+            KAGGLE_OUT.mkdir(parents=True, exist_ok=True)
+            result = subprocess.run(
+                ["kaggle", "datasets", "download", "-d", KAGGLE_REF,
+                 "--path", str(KAGGLE_OUT), "--unzip"],
+                capture_output=True, text=True, timeout=600,
+                env={**os.environ},
+            )
+            if result.returncode == 0 and any(KAGGLE_OUT.rglob("*.mat")):
+                logger.info("[Crowd] ShanghaiTech downloaded via Kaggle → %s", KAGGLE_OUT)
+                return KAGGLE_OUT
+        except Exception as e:
+            logger.warning("[Crowd] Kaggle download failed: %s", e)
+
+    # Fallback: direct URL
+    logger.info("[Crowd] Downloading ShanghaiTech crowd dataset (direct)...")
     try:
         import zipfile
         zip_path = out_dir / "shanghaitech.zip"
@@ -58,6 +86,7 @@ def download(out_dir: Path = OUT_DIR) -> Path:
             zf.extractall(out_dir)
         zip_path.unlink(missing_ok=True)
         logger.info("[Crowd] ShanghaiTech downloaded → %s", out_dir)
+        return out_dir
     except Exception as e:
         logger.warning("[Crowd] Download failed: %s — generating synthetic", e)
         _generate_synthetic(out_dir)
@@ -65,7 +94,11 @@ def download(out_dir: Path = OUT_DIR) -> Path:
     return out_dir
 
 
-def load_as_training_samples(data_dir: Path) -> list[dict]:
+def load_as_training_samples(data_dir: Path = None) -> list[dict]:
+    # Prefer Kaggle path if present
+    if data_dir is None or not Path(data_dir).exists():
+        if any(KAGGLE_OUT.rglob("*.mat")):
+            data_dir = KAGGLE_OUT
     """
     Convert crowd ground truth to density map training samples.
 
@@ -82,13 +115,22 @@ def load_as_training_samples(data_dir: Path) -> list[dict]:
             for mf in mat_files:
                 try:
                     mat = sio.loadmat(str(mf))
-                    # ShanghaiTech: mat['image_info'][0,0][0,0][0] = annotations
-                    ann = mat.get("image_info", mat.get("annPoints"))
-                    if ann is not None:
-                        if hasattr(ann, "shape"):
-                            count = int(ann.shape[0]) if ann.ndim == 2 else 0
-                        else:
-                            count = 0
+                    count = 0
+
+                    # ShanghaiTech Part A/B: image_info[0,0][0,0][0] = Nx2 annotation points
+                    if "image_info" in mat:
+                        try:
+                            ann_pts = mat["image_info"][0, 0][0, 0][0]
+                            count = int(ann_pts.shape[0])
+                        except Exception:
+                            pass
+
+                    # ShanghaiTech older format: annPoints directly
+                    elif "annPoints" in mat:
+                        ann_pts = mat["annPoints"]
+                        count = int(ann_pts.shape[0]) if ann_pts.ndim == 2 else 0
+
+                    if count > 0:
                         samples.append({
                             "image_id": mf.stem,
                             "count": count,

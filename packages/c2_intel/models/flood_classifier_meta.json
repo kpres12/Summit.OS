@@ -1,8 +1,8 @@
 {
-  "trained_at": "2026-04-24T04:00:50.136722+00:00",
+  "trained_at": "2026-04-24T05:42:05.537781+00:00",
   "model": "GradientBoostingClassifier",
   "n_estimators": 200,
-  "n_samples": 480,
+  "n_samples": 741,
   "n_features": 8,
   "features": [
     "sar_vv_mean",
@@ -19,7 +19,7 @@
     "flooded"
   ],
   "metrics": {
-    "f1_cv": 0.9653,
-    "f1_cv_std": 0.0174
+    "f1_cv": 0.9717,
+    "f1_cv_std": 0.0131
   }
 }
