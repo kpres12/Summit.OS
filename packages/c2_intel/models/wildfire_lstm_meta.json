@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-04-24T04:01:01.937886+00:00",
+  "trained_at": "2026-04-24T04:50:49.371761+00:00",
   "model": "LSTM",
   "seq_len": 12,
   "n_features": 9,
@@ -21,6 +21,6 @@
   ],
   "target": "frp_next_mw (normalized)",
   "metrics": {
-    "mae_val_normalized": 0.01987
+    "mae_val_normalized": 0.01963
   }
 }

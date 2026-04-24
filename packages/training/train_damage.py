@@ -75,18 +75,30 @@ def _augment_with_sensor_proxies(samples: list[dict]) -> list[dict]:
 
 
 def _load_xbd_samples() -> tuple[np.ndarray, np.ndarray]:
-    """Load xBD + synthetic samples and extract tabular features."""
+    """Load xBD + USGS real events + synthetic samples and extract tabular features."""
     from datasets.xbd import download, load_as_training_samples
+    from datasets.usgs_earthquakes import download as usgs_download, load_as_training_samples as usgs_load
 
+    # xBD (synthetic fallback — label-only, need sensor augmentation)
     labels_dir = download(skip_images=True)
     samples = load_as_training_samples(labels_dir)
-
     if not samples:
         logger.warning("[DamageModel] No xBD samples — using synthetic")
         samples = _synthetic_samples(n=2000)
     else:
-        # Enrich xBD label-only records with damage-class-correlated sensor proxies
         samples = _augment_with_sensor_proxies(samples)
+
+    # USGS real earthquake events (actual ground truth with alert levels)
+    try:
+        usgs_dir = usgs_download()
+        usgs_samples = usgs_load(usgs_dir)
+        if usgs_samples:
+            # USGS samples already have sensor proxies derived from magnitude
+            logger.info("[DamageModel] Blending %d real USGS events with %d xBD samples",
+                        len(usgs_samples), len(samples))
+            samples = samples + usgs_samples
+    except Exception as e:
+        logger.warning("[DamageModel] USGS data unavailable: %s", e)
 
     X, y = [], []
     for s in samples:

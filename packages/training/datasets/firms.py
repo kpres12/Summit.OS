@@ -30,7 +30,12 @@ OUT_DIR = Path(__file__).parent.parent / "data" / "firms"
 # VIIRS SNPP — 375m resolution, best for active fire
 FIRMS_URL = "https://firms.modaps.eosdis.nasa.gov/api/area/csv/{api_key}/VIIRS_SNPP_NRT/{bbox}/1"
 
-# Fallback: static sample dataset (NASA public archive, no API key needed)
+# Public CSV endpoints — no API key required (MODIS 7-day global, updated daily)
+FIRMS_MODIS_URL = (
+    "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/"
+    "MODIS_C6_1_Global_7d.csv"
+)
+# VIIRS NOAA-20 (higher resolution, but zip)
 FIRMS_ARCHIVE_URL = (
     "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/"
     "J1_VIIRS_C2_Global_7d.zip"
@@ -71,8 +76,20 @@ def download(
         except Exception as e:
             logger.warning("[FIRMS] API download failed: %s — trying archive", e)
 
-    # Fallback: download 7-day global CSV from public archive (no key needed)
-    logger.info("[FIRMS] Downloading 7-day global archive (no API key)...")
+    # Primary fallback: MODIS 7-day global CSV (no key, no zip)
+    logger.info("[FIRMS] Downloading MODIS 7-day global CSV (no API key required)...")
+    try:
+        resp = requests.get(FIRMS_MODIS_URL, timeout=60,
+                            headers={"User-Agent": "Heli.OS/1.0"})
+        resp.raise_for_status()
+        out_path.write_text(resp.text)
+        rows = resp.text.count("\n") - 1
+        logger.info("[FIRMS] MODIS CSV downloaded: %d fire detections → %s", rows, out_path)
+        return out_path
+    except Exception as e:
+        logger.warning("[FIRMS] MODIS download failed: %s — trying VIIRS archive", e)
+
+    # Secondary fallback: VIIRS zip
     import zipfile
     zip_path = out_dir / "J1_VIIRS_7d.zip"
     try:
@@ -84,10 +101,9 @@ def download(
         with zipfile.ZipFile(zip_path) as zf:
             csv_name = next(n for n in zf.namelist() if n.endswith(".csv"))
             zf.extract(csv_name, out_dir)
-            extracted = out_dir / csv_name
-            extracted.rename(out_path)
+            (out_dir / csv_name).rename(out_path)
         zip_path.unlink(missing_ok=True)
-        logger.info("[FIRMS] Archive downloaded → %s", out_path)
+        logger.info("[FIRMS] VIIRS archive downloaded → %s", out_path)
     except Exception as e:
         logger.warning("[FIRMS] Archive download failed: %s — generating synthetic", e)
         _generate_synthetic(out_path)

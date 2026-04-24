@@ -1,8 +1,8 @@
 {
-  "trained_at": "2026-04-24T04:01:41.545344+00:00",
+  "trained_at": "2026-04-24T04:50:22.562717+00:00",
   "model": "GradientBoostingClassifier",
   "n_estimators": 200,
-  "n_samples": 1000,
+  "n_samples": 3000,
   "n_features": 14,
   "disaster_types": [
     "hurricane",
@@ -21,7 +21,7 @@
     "destroyed"
   ],
   "metrics": {
-    "f1_macro_cv": 0.9458,
-    "f1_macro_cv_std": 0.0177
+    "f1_macro_cv": 0.8959,
+    "f1_macro_cv_std": 0.0797
   }
 }
