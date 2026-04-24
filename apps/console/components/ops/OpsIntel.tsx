@@ -5,6 +5,8 @@ import PanelHeader from '@/components/ui/PanelHeader';
 import SectionHeader from '@/components/ui/SectionHeader';
 import { apiFetch } from '@/lib/api';
 import { publishOsint } from '@/lib/osintBus';
+import { useEntityStream } from '@/hooks/useEntityStream';
+import type { IntelEvent } from '@/app/api/intel/events/route';
 
 // ─── OSINT / Web Search types ─────────────────────────────────────────────────
 
@@ -79,12 +81,37 @@ const _VESSEL_ICON: Record<string, string> = {
   tanker: '⛽', cargo: '📦', container: '🔲',
 };
 
+const EVENT_TYPE_LABEL: Record<IntelEvent['type'], string> = {
+  earthquake: 'EQ',  flood: 'FL', cyclone: 'TC',
+  volcano: 'VO', fire: 'WF', drought: 'DR',
+};
+const EVENT_SEVERITY_COLOR: Record<IntelEvent['severity'], string> = {
+  RED: 'var(--critical)', ORANGE: 'var(--warning)', GREEN: 'var(--accent)',
+};
+
+// Synthetic RF signal profile per sensor entity classification
+function rfProfile(classification: string): { freq: string; bw: string; waveform: string } {
+  const c = classification.toLowerCase();
+  if (c.includes('radar'))   return { freq: '9.3–9.5 GHz', bw: '1.0 MHz', waveform: 'LFM chirp' };
+  if (c.includes('rf'))      return { freq: '0.5–3.0 GHz', bw: '500 kHz', waveform: 'CW / burst' };
+  if (c.includes('ads-b') || c.includes('adsb'))
+                             return { freq: '1090 MHz',    bw: '1.0 MHz', waveform: 'PPM squitter' };
+  if (c.includes('ais'))     return { freq: '161–162 MHz', bw: '25 kHz',  waveform: 'GMSK TDMA' };
+  if (c.includes('lidar'))   return { freq: '905 nm (IR)',  bw: '—',      waveform: 'ToF pulsed' };
+  return                            { freq: '2.4 GHz ISM', bw: '20 MHz',  waveform: 'FHSS' };
+}
+
 export default function OpsIntel() {
+  const { entityList } = useEntityStream();
+  const sensorEntities = entityList.filter(e => e.domain === 'sensor');
+
   const [satellites, setSatellites] = useState<SatelliteData[]>([]);
   const [jamZones, setJamZones] = useState<JamZone[]>([]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [noFlyZones, setNoFlyZones] = useState<NoFlyZone[]>([]);
-  const [activeTab, setActiveTab] = useState<'sat' | 'jam' | 'mar' | 'nfz' | 'web'>('sat');
+  const [events, setEvents] = useState<IntelEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'sat' | 'jam' | 'mar' | 'nfz' | 'web' | 'sigint' | 'events'>('sat');
 
   // ── Web / OSINT state ──────────────────────────────────────────────────────
   const [webQuery, setWebQuery] = useState('');
@@ -114,11 +141,32 @@ export default function OpsIntel() {
     }
   }, []);
 
+  const fetchEvents = useCallback(async () => {
+    setEventsLoading(true);
+    try {
+      const res = await fetch('/api/intel/events');
+      if (res.ok) {
+        const data = await res.json() as { events: IntelEvent[] };
+        setEvents(data.events ?? []);
+      }
+    } catch {
+      // non-fatal
+    } finally {
+      setEventsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAll();
     const interval = setInterval(fetchAll, 15000);
     return () => clearInterval(interval);
   }, [fetchAll]);
+
+  useEffect(() => {
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 5 * 60 * 1000); // 5-min cadence
+    return () => clearInterval(interval);
+  }, [fetchEvents]);
 
   const runWebSearch = useCallback(async (q: string) => {
     const query = q.trim();
@@ -154,11 +202,13 @@ export default function OpsIntel() {
   }, []);
 
   const tabs = [
-    { id: 'sat' as const, label: 'SAT', count: satellites.length },
-    { id: 'jam' as const, label: 'GPS', count: jamZones.filter(z => z.intensity > 0.5).length },
-    { id: 'mar' as const, label: 'MAR', count: vessels.length },
-    { id: 'nfz' as const, label: 'NFZ', count: noFlyZones.filter(z => z.active).length },
-    { id: 'web' as const, label: 'WEB', count: webResults?.results.length ?? 0 },
+    { id: 'sat'    as const, label: 'SAT',    count: satellites.length },
+    { id: 'jam'    as const, label: 'GPS',    count: jamZones.filter(z => z.intensity > 0.5).length },
+    { id: 'mar'    as const, label: 'MAR',    count: vessels.length },
+    { id: 'nfz'    as const, label: 'NFZ',    count: noFlyZones.filter(z => z.active).length },
+    { id: 'sigint' as const, label: 'RF',     count: sensorEntities.length },
+    { id: 'events' as const, label: 'EVT',    count: events.filter(e => e.severity !== 'GREEN').length },
+    { id: 'web'    as const, label: 'WEB',    count: webResults?.results.length ?? 0 },
   ];
 
   return (
@@ -332,6 +382,121 @@ export default function OpsIntel() {
             ))}
           </>
         )}
+        {/* SIGINT — RF sensor profiles */}
+        {activeTab === 'sigint' && (
+          <>
+            <SectionHeader title="RF / SIGINT SENSORS" />
+            <div className="px-3 pb-2 text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              Active sensor nodes reporting to fusion engine. Frequency / waveform derived from classification.
+            </div>
+            {sensorEntities.length === 0 && (
+              <div className="flex items-center justify-center h-16">
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
+                  NO SENSOR ENTITIES IN STREAM
+                </span>
+              </div>
+            )}
+            {sensorEntities.map(e => {
+              const rf = rfProfile(e.classification);
+              const snr = Math.round(60 + (e.confidence ?? 0.9) * 30);
+              const status = e.track_state === 'confirmed' ? 'ACTIVE' : e.track_state === 'coasting' ? 'COAST' : 'INIT';
+              return (
+                <div key={e.entity_id} className="px-3 py-2.5 flex flex-col gap-1.5"
+                  style={{ borderBottom: '1px solid var(--accent-5)' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold"
+                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)' }}>
+                      {e.callsign ?? e.entity_id}
+                    </span>
+                    <span className="text-[9px] px-1"
+                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                        color: status === 'ACTIVE' ? 'var(--accent)' : 'var(--warning)',
+                        border: '1px solid var(--accent-15)' }}>
+                      {status}
+                    </span>
+                  </div>
+                  <div className="text-[9px]"
+                    style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}>
+                    {e.classification}
+                  </div>
+                  <div className="grid gap-x-3 gap-y-0.5 text-[9px]"
+                    style={{ gridTemplateColumns: '1fr 1fr', fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                    <span>FREQ  <span style={{ color: 'var(--accent)' }}>{rf.freq}</span></span>
+                    <span>BW    <span style={{ color: 'var(--accent)' }}>{rf.bw}</span></span>
+                    <span>MODE  <span style={{ color: 'var(--accent)' }}>{rf.waveform}</span></span>
+                    <span>SNR   <span style={{ color: 'var(--accent)' }}>{snr} dB</span></span>
+                    <span>LAT   <span style={{ color: 'var(--text-dim)' }}>{e.position.lat.toFixed(4)}°</span></span>
+                    <span>LON   <span style={{ color: 'var(--text-dim)' }}>{e.position.lon.toFixed(4)}°</span></span>
+                  </div>
+                  {/* SNR bar */}
+                  <div style={{ height: 3, background: 'var(--accent-5)', marginTop: 2 }}>
+                    <div style={{ width: `${Math.min(100, snr)}%`, height: '100%',
+                      background: snr > 80 ? 'var(--accent)' : snr > 60 ? 'var(--warning)' : 'var(--critical)' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* EVENTS — GDACS + USGS real-world feed */}
+        {activeTab === 'events' && (
+          <>
+            <SectionHeader title="GLOBAL EVENTS FEED" />
+            <div className="px-3 pb-2 text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              Live disaster alerts — GDACS + USGS. Updates every 5 min. Click row to copy coordinates.
+            </div>
+            {eventsLoading && events.length === 0 && (
+              <div className="flex items-center justify-center h-16">
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
+                  FETCHING GDACS + USGS...
+                </span>
+              </div>
+            )}
+            {events.map(ev => (
+              <div key={ev.id}
+                className="px-3 py-2.5 flex flex-col gap-0.5 cursor-pointer"
+                style={{ borderBottom: '1px solid var(--accent-5)',
+                  borderLeft: `3px solid ${EVENT_SEVERITY_COLOR[ev.severity]}` }}
+                onClick={() => navigator.clipboard?.writeText(`${ev.lat},${ev.lon}`).catch(() => {})}
+                title="Click to copy coordinates">
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] px-1 font-bold"
+                    style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                      color: EVENT_SEVERITY_COLOR[ev.severity],
+                      border: `1px solid color-mix(in srgb, ${EVENT_SEVERITY_COLOR[ev.severity]} 30%, transparent)` }}>
+                    {EVENT_TYPE_LABEL[ev.type]}
+                  </span>
+                  <span className="text-[9px] px-1"
+                    style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)',
+                      border: '1px solid var(--accent-10)' }}>
+                    {ev.source}
+                  </span>
+                  <span className="text-[9px] ml-auto"
+                    style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                    {new Date(ev.ts_iso).toUTCString().slice(5, 22)}
+                  </span>
+                </div>
+                <span className="text-[10px] leading-snug"
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}>
+                  {ev.title}
+                </span>
+                <span className="text-[9px]"
+                  style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                  {ev.lat.toFixed(2)}°, {ev.lon.toFixed(2)}° · {ev.country}
+                </span>
+              </div>
+            ))}
+            {!eventsLoading && events.length === 0 && (
+              <div className="flex items-center justify-center h-16">
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
+                  NO EVENTS — CHECK NETWORK
+                </span>
+              </div>
+            )}
+          </>
+        )}
+
         {/* Web / OSINT */}
         {activeTab === 'web' && (
           <>

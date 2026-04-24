@@ -219,6 +219,231 @@ def _build_entity_update(tmpl: dict) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Multi-sensor track fusion (nearest-neighbour + Kalman update)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Synthetic sensor models — each reports a domain subset with Gaussian position noise
+_SENSOR_MODELS = [
+    {"id": "RADAR-A",  "noise_m": 25.0,  "domains": {"aerial", "ground"}},
+    {"id": "RADAR-B",  "noise_m": 38.0,  "domains": {"aerial"}},
+    {"id": "RF-SENSE", "noise_m": 85.0,  "domains": {"aerial", "ground", "maritime"}},
+    {"id": "ADS-B",    "noise_m": 8.0,   "domains": {"aerial"}},
+    {"id": "OPTIC-1",  "noise_m": 12.0,  "domains": {"ground", "aerial"}},
+    {"id": "AIS",      "noise_m": 20.0,  "domains": {"maritime"}},
+]
+
+_GATE_M = 600.0          # max association distance (metres)
+_COASTING_MISSES = 3     # misses before track → coasting
+_DROP_MISSES     = 6     # misses before track dropped
+
+
+def _latlon_dist_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    dlat = (lat2 - lat1) * 111_000
+    dlon = (lon2 - lon1) * 111_000 * math.cos(math.radians((lat1 + lat2) / 2))
+    return math.sqrt(dlat ** 2 + dlon ** 2)
+
+
+class KalmanTrack:
+    """Constant-velocity Kalman filter for a single fused track."""
+
+    def __init__(self, track_id: str, lat: float, lon: float,
+                 noise_m: float, sensors: list[str], class_label: str):
+        self.track_id   = track_id
+        self.state      = "tentative"
+        self.lat        = lat
+        self.lon        = lon
+        self.vn         = 0.0     # m/s north
+        self.ve         = 0.0     # m/s east
+        self.p          = noise_m * 2  # position uncertainty (m)
+        self.q          = 5.0          # process noise (m/tick)
+        self.class_label = class_label
+        self.contributing_sensors: list[str] = list(sensors)
+        self.first_seen = time.time()
+        self.last_seen  = time.time()
+        self.hits   = 1
+        self.misses = 0
+
+    def predict(self) -> None:
+        dt = TICK_INTERVAL
+        self.lat += self.vn * dt / 111_000
+        cos_lat = math.cos(math.radians(self.lat)) or 1e-6
+        self.lon += self.ve * dt / (111_000 * cos_lat)
+        self.p = min(self.p + self.q, 800.0)
+
+    def update(self, obs_lat: float, obs_lon: float,
+               noise_m: float, sensors: list[str], class_label: str) -> None:
+        prev_lat, prev_lon = self.lat, self.lon
+        K = self.p / (self.p + noise_m)
+        self.lat += K * (obs_lat - self.lat)
+        self.lon += K * (obs_lon - self.lon)
+        self.p   = (1 - K) * self.p
+
+        # Smooth velocity estimate
+        dt = time.time() - self.last_seen
+        if dt > 0.1:
+            cos_lat = math.cos(math.radians(self.lat)) or 1e-6
+            vn_meas = (self.lat - prev_lat) * 111_000 / dt
+            ve_meas = (self.lon - prev_lon) * 111_000 * cos_lat / dt
+            alpha = 0.25
+            self.vn = alpha * vn_meas + (1 - alpha) * self.vn
+            self.ve = alpha * ve_meas + (1 - alpha) * self.ve
+
+        for s in sensors:
+            if s not in self.contributing_sensors:
+                self.contributing_sensors.append(s)
+        self.class_label = class_label
+        self.last_seen   = time.time()
+        self.hits  += 1
+        self.misses = 0
+        if self.hits >= 3:
+            self.state = "confirmed"
+
+    def miss(self) -> None:
+        self.misses += 1
+        if self.misses >= _COASTING_MISSES:
+            self.state = "coasting"
+
+    @property
+    def speed_mps(self) -> float:
+        return math.sqrt(self.vn ** 2 + self.ve ** 2)
+
+    @property
+    def heading_deg(self) -> float:
+        return math.degrees(math.atan2(self.ve, self.vn)) % 360
+
+    def to_dict(self) -> dict:
+        return {
+            "track_id":             self.track_id,
+            "state":                self.state,
+            "position": {
+                "lat":         round(self.lat, 6),
+                "lon":         round(self.lon, 6),
+                "alt_m":       0,
+                "heading_deg": round(self.heading_deg, 1),
+            },
+            "velocity": {
+                "north_mps": round(self.vn, 2),
+                "east_mps":  round(self.ve, 2),
+                "down_mps":  0.0,
+            },
+            "uncertainty_m":        round(self.p, 1),
+            "confidence":           round(min(0.99, 0.5 + self.hits * 0.05), 2),
+            "class_label":          self.class_label,
+            "contributing_sensors": self.contributing_sensors,
+            "first_seen_unix":      self.first_seen,
+            "last_seen_unix":       self.last_seen,
+            "hits":                 self.hits,
+            "misses":               self.misses,
+        }
+
+
+class TrackFusion:
+    """
+    Multi-sensor nearest-neighbour track fusion.
+
+    Each tick:
+      1. Predict all tracks forward (constant velocity).
+      2. For every entity, synthesise noisy observations from eligible sensors.
+      3. Associate observations to nearest track within gate; initiate new tracks
+         for unmatched observations.
+      4. Mark unmatched tracks as missed; drop tracks that coast too long.
+    """
+
+    def __init__(self) -> None:
+        self._tracks: dict[str, KalmanTrack] = {}
+        self._entity_to_track: dict[str, str] = {}
+        self._seq = 0
+
+    def _new_id(self) -> str:
+        self._seq += 1
+        return f"TRK-{self._seq:04d}"
+
+    def _synthesise_obs(self, entity: dict) -> tuple[float, float, float, list[str]]:
+        """Return (lat, lon, avg_noise_m, sensor_ids) from eligible sensors."""
+        domain  = entity.get("domain", "aerial")
+        pos     = entity.get("position", {})
+        lat0    = pos.get("lat", 0.0)
+        lon0    = pos.get("lon", 0.0)
+        eligible = [s for s in _SENSOR_MODELS if domain in s["domains"]]
+        if not eligible:
+            eligible = _SENSOR_MODELS[:1]
+
+        # Use 1–2 sensors; fixed-position sensors get only 1
+        count = 1 if entity.get("speed_mps", 1) == 0 else min(2, len(eligible))
+        chosen = eligible[:count]
+
+        lats, lons = [], []
+        for s in chosen:
+            n = s["noise_m"] / 111_000
+            lats.append(lat0 + random.gauss(0, n))
+            lons.append(lon0 + random.gauss(0, n))
+
+        return (
+            sum(lats) / len(lats),
+            sum(lons) / len(lons),
+            sum(s["noise_m"] for s in chosen) / len(chosen),
+            [s["id"] for s in chosen],
+        )
+
+    def update(self, entities: list[dict]) -> list[dict]:
+        # Step 1 — predict
+        for track in self._tracks.values():
+            track.predict()
+
+        associated_tids: set[str] = set()
+
+        # Step 2/3 — associate observations
+        for entity in entities:
+            eid   = entity["entity_id"]
+            obs_lat, obs_lon, noise_m, sensors = self._synthesise_obs(entity)
+            label = entity.get("classification", "unknown")
+
+            # Try existing track for this entity first
+            tid = self._entity_to_track.get(eid)
+            if tid and tid in self._tracks:
+                t = self._tracks[tid]
+                if _latlon_dist_m(t.lat, t.lon, obs_lat, obs_lon) < max(t.p * 3, _GATE_M):
+                    t.update(obs_lat, obs_lon, noise_m, sensors, label)
+                    associated_tids.add(tid)
+                    continue
+
+            # Find nearest unassociated track
+            best_tid, best_d = None, float("inf")
+            for t_id, t in self._tracks.items():
+                if t_id in associated_tids:
+                    continue
+                d = _latlon_dist_m(t.lat, t.lon, obs_lat, obs_lon)
+                gate = max(t.p * 3, _GATE_M)
+                if d < gate and d < best_d:
+                    best_tid, best_d = t_id, d
+
+            if best_tid:
+                self._tracks[best_tid].update(obs_lat, obs_lon, noise_m, sensors, label)
+                self._entity_to_track[eid] = best_tid
+                associated_tids.add(best_tid)
+            else:
+                # Initiate
+                new_tid = self._new_id()
+                self._tracks[new_tid] = KalmanTrack(
+                    new_tid, obs_lat, obs_lon, noise_m, sensors, label
+                )
+                self._entity_to_track[eid] = new_tid
+                associated_tids.add(new_tid)
+
+        # Step 4 — mark misses / drop dead tracks
+        for tid in list(self._tracks):
+            if tid not in associated_tids:
+                self._tracks[tid].miss()
+                if self._tracks[tid].misses > _DROP_MISSES:
+                    del self._tracks[tid]
+
+        return [t.to_dict() for t in self._tracks.values()]
+
+
+track_fusion = TrackFusion()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # WebSocket connection manager
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -379,9 +604,14 @@ async def entity_broadcast_loop() -> None:
                 """, (e["entity_id"], e["entity_id"]))
             conn.commit()
 
+        # Run track fusion — produces one track per entity with Kalman uncertainty
+        tracks = track_fusion.update(batch)
+
         # Broadcast if anyone is connected
         if manager.count > 0:
             await manager.broadcast({"type": "entity_batch", "data": batch})
+            for track in tracks:
+                await manager.broadcast({"type": "track_update", "data": track})
 
         # Periodically generate a random alert
         if tick % 45 == 0:

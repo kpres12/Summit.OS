@@ -104,6 +104,7 @@ export function useEntityStream() {
   const [reconnectCount,  setReconnectCount]  = useState<number>(0);
 
   const wsRef              = useRef<WebSocket | null>(null);
+  const channelRef         = useRef<BroadcastChannel | null>(null);
   const backoffRef         = useRef<number>(BACKOFF_BASE_MS);
   const reconnectTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -130,14 +131,17 @@ export function useEntityStream() {
         }
         case 'entity_batch': {
           const batch = msg.data as EntityData[];
+          const ts = Date.now();
           setEntities(prev => {
             const n = new Map(prev);
             for (const e of batch) n.set(e.entity_id, e);
             saveEntityCache(n);
             return n;
           });
-          setLastUpdate(Date.now());
-          lastUpdateRef.current = Date.now();
+          setLastUpdate(ts);
+          lastUpdateRef.current = ts;
+          // Share with other open tabs so they show live data without their own WS
+          channelRef.current?.postMessage({ type: 'tab_sync', batch, ts });
           break;
         }
         case 'track_update': {
@@ -168,6 +172,27 @@ export function useEntityStream() {
 
   useEffect(() => {
     mountedRef.current = true;
+
+    // Tab-sync via BroadcastChannel: receive entity batches from a connected sibling tab
+    if (typeof BroadcastChannel !== 'undefined') {
+      const ch = new BroadcastChannel('heli_entity_sync');
+      channelRef.current = ch;
+      ch.onmessage = (ev: MessageEvent) => {
+        if (!mountedRef.current) return;
+        const { type, batch, ts } = ev.data as { type: string; batch: EntityData[]; ts: number };
+        if (type !== 'tab_sync' || !Array.isArray(batch)) return;
+        // Only apply if this tab has no live data or sibling is fresher
+        if (ts > lastUpdateRef.current) {
+          setEntities(prev => {
+            const n = new Map(prev);
+            for (const e of batch) n.set(e.entity_id, e);
+            return n;
+          });
+          setLastUpdate(ts);
+          lastUpdateRef.current = ts;
+        }
+      };
+    }
 
     const clearTimers = () => {
       if (reconnectTimerRef.current)  clearTimeout(reconnectTimerRef.current);
@@ -241,6 +266,7 @@ export function useEntityStream() {
       mountedRef.current = false;
       clearTimers();
       wsRef.current?.close();
+      channelRef.current?.close();
     };
   }, [handleMessage]);
 
