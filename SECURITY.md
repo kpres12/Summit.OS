@@ -12,8 +12,8 @@
 **Do not open a public GitHub issue for security vulnerabilities.**
 
 Report security issues via:
-1. **GitHub Security Advisories (preferred):** [Security → Advisories → New draft](https://github.com/BigMT-Ai/Heli.OS/security/advisories/new)
-2. **Email:** kyle@branca.ai
+1. **GitHub Security Advisories (preferred):** [Security → Advisories → New draft](https://github.com/Branca-ai/Heli.OS/security/advisories/new)
+2. **Email:** security@branca.ai (or kyle@branca.ai)
 
 Please include:
 - A description of the vulnerability and its potential impact

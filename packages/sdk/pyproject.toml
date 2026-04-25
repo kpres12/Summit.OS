@@ -7,7 +7,7 @@ name = "summit-sdk"
 version = "1.0.0"
 description = "Heli.OS Adapter SDK — build physical world adapters for the Heli.OS platform"
 readme = "README.md"
-license = { text = "AGPL-3.0-or-later" }
+license = { text = "Proprietary — Branca.ai Inc." }
 requires-python = ">=3.11"
 dependencies = [
     "paho-mqtt>=1.6.0",

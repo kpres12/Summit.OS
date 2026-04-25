@@ -1,31 +1,40 @@
-GNU AFFERO GENERAL PUBLIC LICENSE
-Version 3, 19 November 2007
+PROPRIETARY SOFTWARE LICENSE
 
-Copyright (C) 2025 BigMT.ai / Summit.OS Contributors
+Heli.OS — Autonomous Coordination Platform
+Copyright (c) 2026 Branca.ai Inc. All rights reserved.
 
-Summit.OS is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option)
-any later version.
+This software and associated documentation files (the "Software") are the
+confidential and proprietary information of Branca.ai Inc. ("Branca.ai").
 
-Summit.OS is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+NO LICENSE GRANTED. Possession of this Software does not grant any license,
+express or implied, to use, copy, modify, distribute, sublicense, sell,
+display, perform, prepare derivative works of, or otherwise exploit the
+Software, in whole or in part, except as expressly authorized in writing
+by Branca.ai under a separate written agreement signed by an authorized
+officer of Branca.ai.
 
-You should have received a copy of the GNU Affero General Public License along
-with this program. If not, see <https://www.gnu.org/licenses/agpl-3.0.html>.
+Unauthorized access, use, copying, modification, distribution, reverse
+engineering, decompilation, disassembly, or any other exploitation of the
+Software is strictly prohibited and may violate applicable copyright,
+trade secret, and other laws of the United States and other jurisdictions.
 
----
+CONFIDENTIALITY. The Software contains trade secrets and other
+confidential information of Branca.ai. Recipient agrees to maintain the
+confidentiality of the Software and to use it solely for the purposes
+expressly authorized in writing by Branca.ai.
 
-ADDITIONAL TERMS — COMMERCIAL USE
+NO WARRANTY. THE SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
 
-If you wish to use Summit.OS in a proprietary product or service where the AGPL
-source-sharing requirement is not compatible with your business model, a
-commercial license is available. See COMMERCIAL_LICENSE.md or contact:
+LIMITATION OF LIABILITY. IN NO EVENT SHALL BRANCA.AI BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-  prestkyle@gmail.com
+EXPORT CONTROLS. The Software may be subject to United States export
+control laws, including the U.S. Export Administration Regulations (EAR)
+and the International Traffic in Arms Regulations (ITAR). Recipient is
+responsible for compliance with all applicable export control laws.
 
----
-
-The full text of the GNU Affero General Public License v3 is available at:
-https://www.gnu.org/licenses/agpl-3.0.txt
+For licensing inquiries, contact: licensing@branca.ai

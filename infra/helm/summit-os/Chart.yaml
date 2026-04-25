@@ -1,6 +1,6 @@
 apiVersion: v2
 name: heli-os
-description: Heli.OS — open source autonomous coordination platform for civilian emergency response, search & rescue, and commercial UAV fleets.
+description: Heli.OS — autonomous coordination platform for civilian and federal/DoD operations. Sensor fusion, world model, ML inference, mission tasking, human-in-the-loop engagement authorization. A Branca.ai product.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

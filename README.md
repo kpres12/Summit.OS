@@ -1,477 +1,219 @@
 # Heli.OS
 
-> **Open source autonomous coordination for the physical world.**
-> The operational platform for wildfire response, search & rescue, disaster coordination, and commercial UAV fleets.
+**Autonomous coordination platform for the physical world.**
+Sensor fusion → world model → inference → tasking → human-in-the-loop.
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
-[![Next.js 15](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
-[![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](infra/docker/docker-compose.yml)
+A [Branca.ai](https://branca.ai) product. Civilian and federal/DoD use cases.
+Proprietary software — see [LICENSE](LICENSE).
 
 ---
 
 ## What it does
 
-At **14:33 on a Tuesday**, a camera on a ridge detects smoke. Here's what Heli.OS does in the next 90 seconds — with no human touching a keyboard:
+Heli.OS is the coordination layer that sits between physical sensors / robots / vehicles and the operator. It ingests live signals from 30+ sensor and protocol types, fuses them into a unified world model, runs domain-specific inference (16 trained ML models — wildfire risk, marine SAR demand, aircraft anomaly, drought severity, storm severity, aftershock probability, heat-wave forecasting, structural damage, counter-UAS, more), and surfaces ranked decisions to a human operator who authorizes execution.
 
-1. **Fusion** receives the detection (`smoke, confidence 0.91, lat 34.12, lon -118.34`)
-2. **Intelligence** scores it CRITICAL, dispatches the nearest available UAV to SURVEY — automatically, using a trained ML model, no LLM required
-3. **Tasking** creates a mission, adjusts altitude for terrain, sends waypoints to the drone over MQTT
-4. **Fabric** raises an alert, starts escalating if no operator acknowledges within your configured timeout
-5. **Console** shows the operator a live map with the smoke location, the drone en route, and a live HLS video feed the moment the drone arrives
+The same core platform serves civilian disaster response, search-and-rescue, infrastructure monitoring, and commercial UAV fleets — and federal Combat Readiness Deployment, Agile Combat Employment, force protection, counter-UAS, CASEVAC, and battle damage assessment workflows. The architecture is domain-agnostic; the ontology and decision-support layers adapt by context.
 
-The operator's job: watch, verify, decide whether to dispatch ground resources. The software handles everything before that decision.
+### Example flow — wildfire smoke detection
 
----
+At 14:33 on a Tuesday, a ridge camera detects smoke. In the next 90 seconds, with no human at the keyboard:
 
-## Why Heli.OS
+1. **Fusion** ingests `smoke, confidence 0.91, lat 34.12, lon -118.34`.
+2. **Intelligence** runs the trained `fire_danger_classifier` (F1 0.98 on real FIRMS+OpenMeteo data), scores the cell CRITICAL, and dispatches the nearest UAV to SURVEY using ML, no LLM required.
+3. **Tasking** creates a mission, terrain-corrects altitude, sends MAVLink waypoints over MQTT.
+4. **Fabric** raises an alert in the OPS console; escalation kicks in if no operator acknowledges within the configured timeout.
+5. **Console** shows the operator a live map with the smoke location, the drone en route, and a live HLS feed the moment the drone is on station.
 
-The coordination software that does this well — Anduril's LatticeOS, Shield AI's platform — is closed-source, defense-export-controlled, and costs millions per year. It is not available to a county fire department, a maritime SAR team, an NGO running conservation drones, or a startup building inspection UAVs.
+The operator's job: watch, verify, decide. The software handles everything before that decision.
 
-Heli.OS is the open-source alternative. Same architecture. Built for the civilian world.
+### Example flow — counter-UAS engagement (federal)
 
-|  | Heli.OS | LatticeOS / Defense platforms |
-|---|---|---|
-| License | AGPL v3 | Proprietary |
-| Access | Anyone | Defense contractors |
-| Cost | Free to self-host | $M/year |
-| Export restrictions | None | ITAR/EAR controlled |
-| Use cases | Civilian emergency response, commercial ops | Military |
-| AI | Trained on your data, self-improving | Black box |
+A radar plus RF cue produces a track over a protected asset:
+
+1. **Track formation** — sensor fusion confirms a rotary UAS with `confidence 0.92`.
+2. **PID** — `counter_uas_classifier` (trained) returns `is_rogue: True, prob: 0.94`. ISR asset confirms visual.
+3. **ROE check** — `engagement_authorization` gate evaluates current ROE; collateral estimate `low`; proportionality passes.
+4. **Deconfliction** — `deconfliction/deconfliction_engine.py` confirms blue-force clear, airspace clear.
+5. **Options ranked** — `weapon_target_ranker` surfaces ranked options (soft-kill, hard-kill, kinetic intercept) with PK, TOF, collateral, and blue-force margin.
+6. **Operator authorizes** — Mission Commander signs the AUTHORIZE decision; gate verifies role + signature, emits `ENGAGEMENT_AUTHORIZED` with a TTL.
+7. **Tasking** dispatches the authorized command via authorized C2.
+8. **BDA** — track loss confirms effect; `ENGAGEMENT_COMPLETE` emitted; full LoAC audit trail in the chained-HMAC audit log.
+
+There is no API path that emits `ENGAGEMENT_AUTHORIZED` without a human authorization step that passes all of the above checks. That invariant is load-bearing.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         Operator Console :3002                          │
-│  MapLibre live map · Alert queue · Mission feed · Live video · Replay   │
-└───────────────────────────┬─────────────────────────────────────────────┘
-                            │  REST + WebSocket
-┌───────────────────────────▼─────────────────────────────────────────────┐
-│                         API Gateway :8000                               │
-│              Routing · OIDC/RBAC · Rate limiting · Audit log            │
-└──────────┬──────────┬────────────────┬────────────┬─────────────────────┘
-           │          │                │            │
-    ┌──────▼──┐ ┌─────▼──────┐ ┌──────▼────┐ ┌────▼───────┐ ┌───────────┐
-    │  Fabric │ │   Fusion   │ │Intelligence│ │  Tasking   │ │ Inference │
-    │  :8001  │ │   :8002    │ │   :8003   │ │   :8004    │ │   :8006   │
-    │─────────│ │────────────│ │───────────│ │────────────│ │───────────│
-    │WorldSt. │ │Multi-sensor│ │Rule+ML    │ │State mach. │ │ONNX model │
-    │MQTT brdg│ │track fusion│ │auto-disp. │ │Asset assign│ │hot-swap   │
-    │WS stream│ │Kalman EKF  │ │Risk score │ │OPA policy  │ │YOLOv8n    │
-    │Mesh CRDT│ │Re-ID       │ │LLM brain* │ │Replay store│ │           │
-    └────┬────┘ └─────┬──────┘ └──────┬────┘ └────┬───────┘ └───────────┘
-         │            │               │            │
-    ┌────▼────────────▼───────────────▼────────────▼───────────────────────┐
-    │               Redis · PostgreSQL+PostGIS · MQTT (Mosquitto)          │
-    │               Prometheus · Grafana · Jaeger · OPA                    │
-    └───────────────────────────────────────────────────────────────────────┘
-
-    * Optional — system operates fully without it
+                  ┌────────────────── Operators ──────────────────┐
+                  │   OPS view  │  COMMAND view  │  DEV view       │
+                  │   Map / alerts / mission console               │
+                  └────────────────────────┬───────────────────────┘
+                                           │
+                  ┌────────────────────────▼───────────────────────┐
+                  │            Tasking & Mission Orchestrator      │
+                  │   schemas/missions.py · agent/mission_executor │
+                  └─┬────────────────┬─────────────────┬──────────┬┘
+                    │                │                 │          │
+   ┌────────────────▼─┐  ┌───────────▼─────────┐  ┌────▼────┐  ┌──▼───────────┐
+   │ Engagement Auth  │  │ Track-to-Weapon     │  │ Domain  │  │ Deconfliction│
+   │ Workflow Gate    │  │ Decision Support    │  │ Ontology│  │ + Swarm      │
+   │ (human-in-loop)  │  │ Ranker              │  │ (15 vt.)│  │ Planner      │
+   └──────────────────┘  └──────────┬──────────┘  └─────────┘  └──────────────┘
+                                    │
+                  ┌─────────────────▼──────────────────┐
+                  │    World Model + Sensor Fusion     │
+                  │    (HMAC-chained, signed sources)  │
+                  └────────────────┬───────────────────┘
+                                   │
+        ┌──────────────────────────▼──────────────────────────┐
+        │      ML Inference Layer (lazy-loaded predictors)    │
+        │      16 trained models — see /packages/c2_intel/    │
+        │      models/ for the full list and metadata         │
+        └──────────────────────────┬──────────────────────────┘
+                                   │
+   ┌───────────────────────────────▼────────────────────────────────┐
+   │  Adapter Layer (32 sensor + protocol adapters)                 │
+   │  ATAK · MAVLink · ROS2 · NMEA/2K · AIS/AISStream ·             │
+   │  J1939 · ISOBUS · Modbus · BACnet · Meshtastic · LoRaWAN ·     │
+   │  Starlink · OpenSky · dump1090 · ONVIF · RTSP · Thermal ·      │
+   │  Spot · UR · DJI · Tesla · Kraken · Sentinel Hub · Webhook ·   │
+   │  WebSocket · MQTT-Relay · Weather · CAP · Serial · Zigbee      │
+   └────────────────────────────────────────────────────────────────┘
 ```
+
+Three operator role views live in `apps/console/`:
+- **OPS** — full-screen map, alert queue, entity detail panel, dispatch
+- **COMMAND** — situation feed / map / resource status, handoff brief
+- **DEV** — entity explorer, adapter registry, message inspector, schema validator, inference dashboard
 
 ---
 
-## Key Capabilities
+## Trained ML models (real-data, calibrated)
 
-**Multi-sensor fusion** — Kalman EKF track fusion across camera, ADS-B, AIS, MAVLink, CoT/ATAK, and any custom sensor. M-of-N track confirmation. Cross-camera re-identification.
-
-**Autonomous mission dispatch** — When a detection arrives, a trained ML model (GradientBoosting, ONNX, <1ms inference) decides the mission type and dispatches immediately. Trained on 87,160 real-world labeled events (NASA FIRMS, NOAA Storm Events, GBIF) plus 20,936 synthetic examples covering edge-case mission types. No LLM required. Rules-based fallback always active.
-
-**Self-improving AI** — Retrain the mission planner on your own operator decisions with one command:
-```bash
-python packages/ml/train_mission_classifier.py --real-data postgresql://...
-```
-The more you use it, the better it gets at your specific deployment context.
-
-**Live video** — HLS streaming from any RTSP source (IP cameras, drone gimbal feeds). Sub-5-second latency. Playable in any browser.
-
-**Mission replay** — Every mission is recorded as a time-indexed snapshot stream. Operators can scrub back through any incident for debrief or training.
-
-**Terrain awareness** — SRTM DEM integration. All waypoints automatically adjusted to maintain true AGL altitude over real terrain.
-
-**Alert escalation** — Unacknowledged alerts auto-escalate via webhook + email. Configurable timeout per severity.
-
-**CoT/ATAK compatibility** — Bidirectional UDP bridge. Entities visible to any ATAK device on the network.
-
-**30-minute device integration** — One base class, two methods:
-```python
-class MyDrone(HeliAdapter):
-    async def get_telemetry(self): ...
-    async def handle_command(self, cmd): ...
-```
-
----
-
-> [!WARNING]
-> **Security defaults are open for local development.** Out of the box, authentication is disabled (`OIDC_ENFORCE=false`, `RBAC_ENFORCE=false`, `API_KEY_ENFORCE=false`) and PII field encryption is off. This is intentional for local dev — running `docker compose up` should just work without configuring an identity provider.
->
-> **Before connecting Heli.OS to any real network, real hardware, or real incident data**, read the [Production Hardening](#production-hardening) section below. The API Gateway will print a visible warning banner at startup until you set these values.
-
----
-
-## Quick Start
-
-**Prerequisites:** Docker Desktop (or Docker + Compose V2), 8 GB RAM, 10 GB disk.
-
-```bash
-# 1. Clone
-git clone https://github.com/BigMT-Ai/Heli.OS.git
-cd Heli.OS
-
-# 2. Configure (defaults work for local dev)
-cp .env.example .env
-
-# 3. Start
-cd infra/docker
-docker compose up
-```
-
-That's it. After ~60 seconds:
-
-| URL | What |
-|---|---|
-| http://localhost:3002 | Operator console |
-| http://localhost:8000/docs | API docs (Swagger) |
-| http://localhost:3001 | Grafana dashboards (admin / admin) |
-| http://localhost:16686 | Jaeger distributed traces |
-
-**Seed demo data (see the pipeline work immediately)**
-
-```bash
-pip install httpx redis
-python scripts/seed_demo.py
-```
-
-This registers five assets on the map, injects a smoke detection, a missing hiker, and a power line alert — the intelligence service scores them, auto-dispatches missions, and your console shows a live active incident within seconds.
-
-Add `--live` to keep assets moving and fire new detections every 30 seconds.
-
-**Optional: enable the LLM reasoning brain**
-
-If you have Ollama installed locally, or want to run it in Docker:
-```bash
-# With Docker (pulls llama3.1 on first start, ~4 GB)
-docker compose --profile llm up
-
-# Then pull the model (one time)
-docker compose --profile llm exec ollama ollama pull llama3.1
-```
-The system works fully without this. The LLM adds natural-language mission reasoning for complex multi-entity scenarios.
-
----
-
-## How the AI works
-
-Heli.OS ships with two trained ML models in `packages/ml/models/`:
-
-| Model | What it does | Size | Latency |
+| Model | Task | Real samples | Metric |
 |---|---|---|---|
-| `mission_classifier.onnx` | Maps (class, confidence, location) → mission type | ~200 KB | <1ms |
-| `risk_scorer.onnx` | Scores observation severity (LOW → CRITICAL) | ~150 KB | <1ms |
+| `fire_danger_classifier` | 5-class wildfire danger | FIRMS VIIRS + OpenMeteo | F1 0.982 |
+| `fire_intensity_regressor` | FRP regression | FIRMS VIIRS + OpenMeteo | — |
+| `compound_hazard_scorer` | Multi-hazard 0-100 risk | FIRMS + USGS + OpenMeteo, 1,600 samples | MAE 0.020 |
+| `aftershock_lstm` ⚡ | P(M3.0+ aftershock in 12h) | USGS ComCat, 54,411 events | AUC 0.81 |
+| `storm_severity_classifier` | NOAA 5-class severity | NOAA Storm Events 2022-2024, 215k rows | F1 0.843 |
+| `eonet_hazard_classifier` | NASA EONET multiclass | 5,000 events | F1 0.999 |
+| `lightning_ignition_classifier` | P(fire ignition / 25km / 72h) | NOAA + 1.08M FIRMS hotspots | AUC 0.667 |
+| `aircraft_anomaly_lstm` ⚡ | LSTM autoencoder anomaly score | OpenSky live, 5,601 aircraft | val MSE 0.003 |
+| `maritime_sar_classifier` | P(marine SAR-relevant event 100km/24h) | NDBC + NOAA marine, 30k buoy-hours | F1 0.899, AUC 0.891 |
+| `drought_severity_classifier` | USDM drought class | USDM 50-state + OpenMeteo, 5,250 weeks | F1 0.687 |
+| `heatwave_transformer` ⚡ | Multi-horizon extreme-heat (1d/3d/7d) | OpenMeteo, 30 cities × 2 yr | AUC 0.96 avg |
+| `damage_classifier` / `damage_vision` | Building damage 4-class | xBD (Maxar) | — |
+| `corrosion_classifier` / `corrosion_vision` | Infrastructure corrosion | CodeBrim | — |
+| `flood_classifier` / `flood_risk_regressor` | Flood inundation + risk | FloodNet + GDACS-derived | — |
+| `slope_stability_classifier` | Landslide risk | physics + GBIF | — |
+| `counter_uas_classifier` | Authorized vs rogue UAS | rule + synthetic + features | — |
+| `vehicle_classifier` / `crowd_estimator` / `deforestation_classifier` / `pipeline_anomaly_classifier` | Specialized | mixed real / synthetic | — |
+| `wildfire_lstm` | Sequence FRP regression | (synthetic — FIRMS public CSV span insufficient for daily seq) | MAE 0.017 |
 
-Training data breakdown:
-- **35,928** NASA FIRMS active fire detections (global, 7-day) — real-world
-- **49,869** NOAA Storm Events (tornadoes, floods, storm surge, 2018–2023) — real-world
-- **1,363** GBIF wildlife observations — real-world
-- **20,936** synthetic examples covering SEARCH, INSPECT, DELIVER, ORBIT — generated
+⚡ = deep learning model.
 
-**Supported mission types:**
-
-| Mission | Triggers | Asset |
-|---|---|---|
-| SURVEY | Fire, smoke, flood, earthquake damage, crop anomaly | UAV or fixed-wing |
-| MONITOR | Person, survivor, vessel, vehicle, wildlife | UAV (loiter) |
-| SEARCH | Missing person, distress signal, mayday, overdue vessel | UAV grid pattern |
-| PERIMETER | Hazmat spill, tornado, storm surge, intrusion, armed threat | UAV boundary |
-| ORBIT | Suspicious drone, vessel tracking, persistent ISR | UAV (continuous orbit) |
-| DELIVER | Aid drop, medical supply, cargo, resupply | UAV |
-| INSPECT | Pipeline, power line, bridge, solar farm, wind turbine | UAV (close pass) |
-
-**Retrain on your data:**
-```bash
-# Download fresh public data (NASA, NOAA, GBIF)
-python packages/ml/download_real_data.py --years 2020 2021 2022 2023
-
-# Blend with your operator-approved mission history
-python packages/ml/train_mission_classifier.py \
-  --real-csv packages/ml/data/real_combined.csv \
-  --real-data postgresql://heli:password@localhost:5432/heli_os
-
-# New .onnx files drop in place — no redeployment needed
-```
+All model metadata (`*_meta.json`) is committed alongside the binary in `packages/c2_intel/models/` — features, training samples, data sources, calibration percentiles, and feature importances.
 
 ---
 
-## Monorepo Structure
+## Capability summary
 
-```
-apps/
-  console/          # Next.js 15 operator UI — map, alerts, missions, video
-  fabric/           # WorldStore, MQTT bridge, mesh replication, WebSocket
-  fusion/           # Sensor fusion, Kalman tracking, re-identification, HLS
-  intelligence/     # ML dispatch, risk scoring, advisory, LLM brain (optional)
-  tasking/          # Mission lifecycle, assignment, terrain following, replay
-  inference/        # ONNX model serving — plug in any detection model
-  api-gateway/      # Routing, auth, rate limiting, audit
-
-packages/
-  ml/               # Training pipeline, data downloaders, trained models
-  entities/         # Core Entity schema — the universal data type
-  world/            # WorldStore — in-memory + Postgres + broadcast
-  mesh/             # CRDT replication across disconnected nodes
-  geo/              # DEM terrain, elevation profiles, line-of-sight
-  adapters/         # Adapter registry, built-in adapters (CoT/ATAK, MAVLink)
-  observability/    # OpenTelemetry tracing middleware
-  security/         # mTLS, RBAC, JWT, data classification
-
-infra/
-  docker/           # docker-compose.yml, Mosquitto, Prometheus, Grafana config
-  policy/           # OPA authorization policies
-  proxy/            # Nginx mTLS proxy configs
-```
+- **32 sensor / protocol adapters** — see `packages/adapters/`
+- **15 vertical domain modules** — wildfire, urban_sar, military, maritime, utilities, agriculture, oilgas, construction, wildlife, flood, traffic, forestry, ports, mining, pipeline
+- **16 trained ML models** with real-data calibration metadata
+- **Engagement authorization workflow** — human-in-the-loop state machine, single mandatory gate, signed decisions, role-checked, TTL-enforced (`packages/c2_intel/engagement_authorization.py`)
+- **Track-to-weapon decision support ranker** — surfaces ranked options to operator (`packages/c2_intel/weapon_target_ranker.py`)
+- **3D airspace deconfliction engine** — 0.5s tick, ~200-asset capacity (`packages/deconfliction/`)
+- **Hungarian + greedy task assignment** — `packages/swarm/swarm_planner.py`
+- **OPA-gated actuator commands** — Ed25519-signed policies, every physical command pre-checked
+- **Full security stack** — RBAC, classification labels, mTLS, sensor signing, anti-replay, world-model HMAC chaining, MFA
+- **Offline-resilient edge agent** — replay buffer, degraded-mode UI, autonomous waypoint execution
+- **PACE comms** — Meshtastic + LoRaWAN + Starlink + cellular fallback
+- **ATAK / CoT 2-way** — entity publish + waypoint dispatch (MIL-STD-2525 type codes)
+- **Sentinel Hub adapter** — on-demand Sentinel-1 SAR / Sentinel-2 optical / Landsat thermal / MODIS imagery + STAC catalog search + zonal statistics
 
 ---
 
-## Services at a glance
+## Engagement authorization invariant
 
-| Service | Port | |
-|---|---|---|
-| Operator Console | 3002 | MapLibre map, alert queue, mission feed, video overlay |
-| API Gateway | 8000 | `/docs` for full API reference |
-| Fabric | 8001 | WebSocket at `/ws/{org_id}` for live entity stream |
-| Fusion | 8002 | `/api/v1/tracks`, `/api/v1/video/hls`, `/api/v1/elevation` |
-| Intelligence | 8003 | `/agents`, `/advisories`, `/brain/status` |
-| Tasking | 8004 | `/api/v1/missions`, `/api/v1/missions/{id}/replay/timeline` |
-| Inference | 8006 | `/detect`, `/models` — swap ONNX models at runtime |
-| Grafana | 3001 | Pre-built dashboards for all services |
-| Jaeger | 16686 | Distributed traces across the full request path |
+The single hard line in the codebase: **no kinetic action is dispatched without a signed human authorization.**
+
+Implementation:
+- `EngagementAuthorizationGate.authorize()` is the only API surface that emits `ENGAGEMENT_AUTHORIZED`.
+- It requires: completed PID → ROE check → deconfliction check → ranked options surfaced → operator decision = `AUTHORIZE` → `selected_option` references a viable option → option remains ROE-compliant + deconflicted at decision time → operator role meets the engagement-class requirement → cryptographic signature on the decision payload verifies.
+- `AUTHORIZED` carries a TTL; expiry without `ENGAGEMENT_COMPLETE` auto-emits `ENGAGEMENT_DENIED` for audit.
+- Every state transition is recorded with timestamp + transition + payload, pushed to an HMAC-chained audit log.
+
+Decision support (target tracks, ranked weapon-target pairings, fire-control solutions presented as options, pattern-of-life, BDA) is in scope. Closed-loop autonomous engagement code that bypasses the human authorization step is out of scope.
 
 ---
 
-## Connecting hardware
+## Markets
 
-Heli.OS ships with built-in adapters for:
-- **DJI / MAVLink autopilots** — via `pymavlink` (set `TASKING_DIRECT_AUTOPILOT=true`)
-- **CoT/ATAK** — bidirectional UDP, multicast at 239.2.3.1:6969
-- **ONVIF cameras** — discovery + RTSP stream registration
-- **OpenSky Network** — live ADS-B aircraft (no account needed)
-- **AIS vessels** — maritime vessel positions (simulation mode; plug in AISHub credentials for live data)
-- **CelesTrak** — satellite orbital positions
+**Civilian** — wildfire response, search & rescue, flood / hurricane / tornado response, infrastructure inspection (pipeline, bridge, dam, power grid), commercial UAV fleets, port security, anti-poaching, agriculture monitoring, public health (heat / smoke / drought / air quality).
 
-Custom hardware: subclass `HeliAdapter` in `packages/adapters/`. See `examples/` for a complete template.
+**Federal / DoD** — Combat Readiness Deployment, Agile Combat Employment, force protection perimeter, base/FOB monitoring, counter-UAS, CASEVAC escort, BDA, mission rehearsal, deployable C2 readiness, ISR, HADR coordination, blue-force tracking, ATAK interop. Currently pursuing the **USAF CANVAS contract for Combat Readiness Deployments**.
 
 ---
 
-## Configuration
+## Standards & interoperability
 
-Copy `.env.example` to `.env`. Defaults work out of the box for local development.
-
-**Minimum for production (change these):**
-```bash
-POSTGRES_PASSWORD=<strong password>
-FABRIC_JWT_SECRET=<64 random hex chars>
-FIELD_ENCRYPTION_KEY=<openssl rand -base64 32>
-```
-
-**To enable AI brain (optional):**
-```bash
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1
-```
-
-**To enforce auth:**
-```bash
-OIDC_ENFORCE=true
-OIDC_ISSUER=https://your-keycloak/realms/heli
-API_KEY_ENFORCE=true
-RBAC_ENFORCE=true
-```
-
-See `.env.example` for the full reference.
+- **CoT / ATAK** — MIL-STD-2525B/D type codes, 2-way publish + waypoint
+- **MAVLink** — drone autopilot integration
+- **NMEA-0183, NMEA-2000** — maritime, NDBC buoys, vessel telemetry
+- **AIS** — vessel position + traffic
+- **J1939, ISOBUS** — heavy machinery / construction / agriculture CAN bus
+- **Modbus, BACnet** — industrial control + building automation
+- **OPA / Rego** — policy gating, Ed25519-signed
+- **STAC** — SpatioTemporal Asset Catalog (via Sentinel Hub adapter)
+- **Link 16 / VMF** — referenced in scope; gateway adapter not yet shipped
+- **9-line MEDEVAC, SALUTE, SITREP** — reporting templates in `packages/domains/military.py`
 
 ---
 
-## Development
+## Console
 
-```bash
-# Infrastructure only (Postgres, Redis, MQTT, Prometheus)
-docker compose -f infra/docker/docker-compose.yml up -d redis postgres mqtt prometheus grafana
+`apps/console/` — Next.js 14, three role views.
 
-# Individual services (from their app directory)
-cd apps/fabric && uvicorn main:app --reload --port 8001
-cd apps/console && npm run dev
+- Font: IBM Plex Mono (data/body) + Orbitron (headings/labels)
+- Color: `#00FF9C` green, `#FFB300` amber, `#FF3B3B` red, `#4FC3F7` blue, background `#080C0A`
+- WebSocket entity stream + REST alerts/missions/geofences
 
-# Run tests (per service — see CONTRIBUTING.md for why)
-python -m pytest apps/fabric/tests/
-python -m pytest apps/fusion/tests/
-python -m pytest apps/tasking/tests/
-python -m pytest apps/intelligence/tests/
-
-# Hot reload all Python services
-UVICORN_RELOAD=true docker compose -f infra/docker/docker-compose.yml up
-```
-
-**Database migrations:**
-
-```bash
-# Fresh install — enable PostGIS, then apply all migrations
-make db-setup
-make db-migrate
-
-# Check migration state
-make db-status
-
-# Roll back one revision
-make db-rollback
-```
-
-Migration files are in `apps/fabric/alembic/versions/`. Every schema change needs an Alembic migration — see [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow.
+The OPS view is built around the spec invariant: alert → INVESTIGATE button → entity selected → map flies to entity → entity detail slides in → DISPATCH — under 3 seconds operator time.
 
 ---
 
 ## Deployment
 
-**Self-hosted (recommended start):**
-```bash
-# Production — builds images, no volume mounts
-docker compose -f infra/docker/docker-compose.yml up --build -d
-```
-
-**Cloud:** Any Kubernetes cluster. A Helm chart is available at `infra/helm/heli-os/`:
-```bash
-helm install heli ./infra/helm/heli-os \
-  --set secrets.postgresPassword=$(openssl rand -hex 32) \
-  --set secrets.fabricJwtSecret=$(openssl rand -hex 32) \
-  --set secrets.fieldEncryptionKey=$(openssl rand -base64 32)
-```
-
-**Air-gapped / edge:** All ML inference runs locally. No external API calls required. Designed to operate on field hardware with no internet connection.
+- **Compose** — `infra/docker/docker-compose.yml`
+- **Helm** — `infra/helm/heli-os/`
+- **Render** — production deployment running; see internal docs
+- **mTLS profile** — `docker compose --profile mtls up` for high-security deployments
+- **SITL** — `infra/docker/docker-compose.sitl.yml` for software-in-the-loop testing
+- **Edge agent** — Dockerfile at `packages/agent/Dockerfile.agent`, deploys to disconnected/degraded environments
 
 ---
 
-## Production Hardening
+## Status
 
-> [!IMPORTANT]
-> The steps below are **required** before deploying Heli.OS to any environment where it handles real incident data or real hardware.
-
-### 1. Enable authentication
-
-```bash
-# In your .env
-OIDC_ENFORCE=true
-OIDC_ISSUER=https://your-keycloak/realms/heli
-OIDC_AUDIENCE=heli-api
-OIDC_JWKS_URL=https://your-keycloak/realms/heli/protocol/openid-connect/certs
-RBAC_ENFORCE=true
-API_KEY_ENFORCE=true
-```
-
-Keycloak is the recommended identity provider — `infra/docker/docker-compose.keycloak.yml` stands up a pre-configured instance. Any OIDC-compliant provider (Auth0, Okta, Authentik) works.
-
-### 2. Set strong secrets
-
-```bash
-POSTGRES_PASSWORD=$(openssl rand -hex 32)
-FABRIC_JWT_SECRET=$(openssl rand -hex 32)
-FIELD_ENCRYPTION_KEY=$(openssl rand -base64 32)
-GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 16)
-```
-
-### 3. Enable MQTT TLS
-
-The default Mosquitto config uses plaintext port 1883 — fine inside Docker's internal network, not fine if your MQTT broker is reachable externally. To enable TLS:
-
-```bash
-# Generate broker certs (writes to infra/docker/certs/)
-bash scripts/gen_mqtt_certs.sh
-
-# Then in infra/docker/mosquitto.conf:
-# Uncomment the TLS listener block and comment out the dev block
-# Update MQTT_PORT=8883 in your .env
-```
-
-The TLS configuration block is included (commented out) in `infra/docker/mosquitto.conf`.
-
-### 4. CORS origins
-
-Update `CORS_ORIGINS` to your actual console domain:
-
-```bash
-CORS_ORIGINS=https://console.yourdomain.com
-```
-
-### 5. Data retention
-
-Configure how long audit logs and mission replays are kept:
-
-```bash
-AUDIT_RETENTION_DAYS=90    # audit log entries (default: 90)
-```
-
-Mission replay snapshots are stored indefinitely by default. For long-running deployments, implement a periodic cleanup of old `mission_snapshots` rows in Postgres based on your operational and legal requirements. SAR and emergency response operators should consult their jurisdiction's incident record-keeping requirements before reducing retention.
-
-### 6. mTLS (optional, high-security deployments)
-
-Enable the Nginx mTLS proxy layer for service-to-service encryption:
-
-```bash
-docker compose --profile mtls up
-```
-
-Certificates go in `infra/proxy/certs/`. See `infra/proxy/nginx.conf` for the configuration.
+- 16 trained ML models, all with real-data metadata
+- 32 sensor/protocol adapters
+- 15 vertical domain modules
+- Engagement authorization workflow + decision support ranker shipped
+- OPS / COMMAND / DEV console views shipped
+- Offline edge agent + replay buffer shipped
+- Helm + Compose deployment paths
+- ML inference dashboard in DEV view
 
 ---
 
-## Editions
+## Contact
 
-| | Community | Enterprise |
-|---|---|---|
-| Core platform | ✓ Open source (AGPL v3) | ✓ On-premise |
-| ML models (base) | ✓ Included | ✓ Custom trained |
-| Observability stack | ✓ Self-host | ✓ Self-host or managed |
-| SLA | — | 99.9% + 4h response |
-| Auth (OIDC/RBAC) | ✓ Self-configure | ✓ SSO + MFA enforced |
-| Multi-org tenancy | ✓ org_id namespacing | ✓ Row-level isolation + admin UI |
-| Custom model training | DIY | ✓ On your operator data |
-| Hardware integration support | Community | ✓ Dedicated |
-| Compliance (SOC 2 / ISO 27001) | Controls built-in, self-certify | ✓ Audit support |
-| **Price** | **Free** | **Contact us** |
+Branca.ai Inc.
+Licensing & partnerships: [licensing@branca.ai](mailto:licensing@branca.ai)
+General: [https://branca.ai](https://branca.ai)
 
----
-
-## Roadmap
-
-- [x] Helm chart for Kubernetes deployment — available at `infra/helm/heli-os/`
-- [x] SITL testing environment — `docker compose -f infra/docker/docker-compose.sitl.yml up`
-- [x] Pre-built adapters: Skydio, Autel, Parrot — see `adapters/skydio/`, `adapters/autel/`, `adapters/parrot/`
-- [ ] USCG SAR data integration (SEARCH model improvement)
-- [ ] Behavior tree editor in the console (visual mission programming)
-- [ ] Hardware-in-the-loop (HITL) testing with real flight controllers
-- [ ] Reach RTK adapter (cm-precision GPS for precision landing)
-- [ ] Managed hosting via BigMT.ai (self-hosted is the supported path for v0.1.0)
-- [ ] Federated learning — improve shared base models without sharing raw data
-
----
-
-## Contributing
-
-Issues, PRs, and adapter contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-If you're a fire department, SAR team, or drone operator running Heli.OS in the field — we want to hear from you. Your operational data (anonymized) is what makes the ML models better for everyone.
-
----
-
-## Who built this
-
-Heli.OS is a [Branca.ai](https://branca.ai) project. Built for civilian operators, not defense contractors.
-
----
-
-## License
-
-[AGPL v3](LICENSE) — free to self-host, fork, and build on. If you deploy Heli.OS as a network service, the AGPL requires you to make your source available to users. For proprietary deployments where that's not workable, see [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md).
-
-The trained ML models in `packages/ml/models/` are custom-built and trained by BigMT.ai and released under the same license.
+This software is proprietary. See [LICENSE](LICENSE).
