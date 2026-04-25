@@ -54,7 +54,6 @@ import csv
 import gzip
 import io
 import logging
-import time
 from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
 

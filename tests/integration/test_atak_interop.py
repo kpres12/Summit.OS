@@ -29,7 +29,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import time
 from datetime import datetime, timezone
 
 import pytest
@@ -50,7 +49,8 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 async def adapter():
     """Spin up an ATAKAdapter pointed at the docker-compose TAK Server."""
-    import sys, pathlib
+    import sys
+    import pathlib
     sys.path.insert(0, str(pathlib.Path(__file__).parents[2] / "packages"))
     from adapters.atak_adapter import ATAKAdapter
     from adapters.base import AdapterConfig

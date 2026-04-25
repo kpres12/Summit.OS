@@ -28,7 +28,7 @@ def client():
 
 
 def test_escalation_service_importable():
-    from alert_escalation import AlertEscalationService, EscalationConfig
+    from alert_escalation import AlertEscalationService
 
     svc = AlertEscalationService({})
     assert svc is not None
@@ -66,7 +66,6 @@ def test_escalation_does_not_escalate_acknowledged():
 def test_escalation_escalates_stale_unacked():
     """Alert older than timeout and unacknowledged gets escalated."""
     import asyncio
-    import time
     from alert_escalation import AlertEscalationService, EscalationConfig
 
     cfg = EscalationConfig(

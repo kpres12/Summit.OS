@@ -43,7 +43,6 @@ import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
-import sys
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
@@ -798,7 +797,7 @@ def train(n_samples: int = 70000, output_dir: str = None, real_csv: str = None):
 
     cm = confusion_matrix(y_test, y_pred)
     print("Confusion matrix (rows=actual, cols=predicted):")
-    print(f"              pred_diff  pred_same")
+    print("              pred_diff  pred_same")
     print(f"  actual_diff  {cm[0, 0]:>8d}  {cm[0, 1]:>8d}")
     print(f"  actual_same  {cm[1, 0]:>8d}  {cm[1, 1]:>8d}")
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 # Shared sanitization — avoids duplicating injection pattern lists
 from prompt_guard import _safe_str, sanitize_text

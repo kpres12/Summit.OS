@@ -32,7 +32,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .store import get_store
-from .types import LinkInstance, ObjectInstance
+from .types import ObjectInstance
 
 logger = logging.getLogger("ontology.query")
 

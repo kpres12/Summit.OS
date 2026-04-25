@@ -14,7 +14,6 @@ License: NASA Open Data (public domain)
 from __future__ import annotations
 
 import argparse
-import io
 import logging
 import zipfile
 from pathlib import Path

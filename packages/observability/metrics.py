@@ -8,11 +8,9 @@ Includes counters, gauges, histograms, and a health aggregator.
 from __future__ import annotations
 
 import time
-import math
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-from collections import defaultdict
 
 logger = logging.getLogger("observability")
 

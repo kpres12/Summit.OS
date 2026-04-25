@@ -3,7 +3,7 @@ import math
 import os
 import re
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -131,7 +131,8 @@ def _parse_rules(text: str) -> NlpParseResponse:
 async def _parse_claude(text: str, api_key: str) -> Optional[NlpParseResponse]:
     """Use Claude API for NLP mission parsing. Returns None on any failure."""
     try:
-        import httpx, json as _json
+        import httpx
+        import json as _json
         system_prompt = (
             "You are a mission planning assistant for Heli.OS, an autonomous systems coordination platform.\n"
             "Parse the operator's natural-language mission description and return structured JSON.\n\n"
@@ -181,7 +182,8 @@ async def _parse_claude(text: str, api_key: str) -> Optional[NlpParseResponse]:
 async def _parse_ollama(text: str, base_url: str) -> Optional[NlpParseResponse]:
     """Attempt Ollama-backed NLP parsing. Returns None on any failure."""
     try:
-        import httpx, json as _json
+        import httpx
+        import json as _json
         prompt = (
             'Parse this mission command and return ONLY a JSON object — no extra text.\n\n'
             f'Command: "{text}"\n\n'

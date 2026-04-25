@@ -13,7 +13,6 @@ Dependencies
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import logging
 import xml.etree.ElementTree as ET
@@ -292,10 +291,11 @@ class CAPAdapter(BaseAdapter):
         now = datetime.now(timezone.utc)
 
         return {
-            "source_id": f"cap-{hashlib.sha1(identifier.encode()).hexdigest()[:12]}",
+            # SHA1 used to derive non-cryptographic stable IDs from CAP identifiers.
+            "source_id": f"cap-{hashlib.sha1(identifier.encode(), usedforsecurity=False).hexdigest()[:12]}",
             "adapter_id": self.config.adapter_id,
             "adapter_type": self.adapter_type,
-            "entity_id": f"cap-{hashlib.sha1(identifier.encode()).hexdigest()[:16]}",
+            "entity_id": f"cap-{hashlib.sha1(identifier.encode(), usedforsecurity=False).hexdigest()[:16]}",
             "callsign": headline or event or identifier,
             "position": (
                 {"lat": lat, "lon": lon, "alt_m": None}

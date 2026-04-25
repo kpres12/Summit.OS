@@ -25,7 +25,6 @@ from __future__ import annotations
 import logging
 import math
 import os
-import struct
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger("geo.dem")

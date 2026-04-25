@@ -37,7 +37,6 @@ from middleware.billing import (
     orgs_table,
     require_api_key,
     encrypt_field,
-    decrypt_field,
 )
 
 logger = logging.getLogger("api-gateway.billing_router")

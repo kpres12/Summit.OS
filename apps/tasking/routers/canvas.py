@@ -257,7 +257,6 @@ async def create_hierarchical_mission(req: HierarchicalMissionRequest, request: 
     created_at = datetime.now(timezone.utc)
 
     import json
-    from sqlalchemy import text as _text
     from tables import missions, mission_assignments
 
     async with state.SessionLocal() as session:

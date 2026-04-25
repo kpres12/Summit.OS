@@ -83,8 +83,6 @@ def _danger_label_int(s: dict) -> int:
 def train() -> None:
     from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
     from sklearn.model_selection import StratifiedKFold, cross_val_score, KFold
-    from sklearn.metrics import classification_report
-    from sklearn.preprocessing import LabelEncoder
     import joblib
 
     sys.path.insert(0, str(Path(__file__).parent))

@@ -16,7 +16,7 @@ import uuid
 import logging
 import heapq
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 from enum import Enum
 
 logger = logging.getLogger("grpc.task_service")

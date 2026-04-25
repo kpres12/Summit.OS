@@ -16,7 +16,6 @@ Endpoints:
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import io
 import logging
@@ -36,8 +35,6 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 from packages.ai.detection import (
     ObjectDetector,
-    DetectionResult,
-    Detection,
     create_detector,
     non_max_suppression,
 )
@@ -147,7 +144,8 @@ app = FastAPI(
 
 # ── OpenTelemetry tracing middleware ──────────────────────────────────────────
 try:
-    import sys as _sys_otel, os as _os_otel
+    import sys as _sys_otel
+    import os as _os_otel
 
     _otel_root = _os_otel.path.join(_os_otel.path.dirname(__file__), "../..")
     if _otel_root not in _sys_otel.path:

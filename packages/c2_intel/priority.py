@@ -19,7 +19,7 @@ This composite logic is the core of TA1 simulation:
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 from collections import defaultdict
 
 from .models import (

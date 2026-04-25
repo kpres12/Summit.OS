@@ -32,7 +32,6 @@ import os
 import sqlite3
 import time
 from contextlib import contextmanager
-from datetime import datetime, timezone
 from typing import Any, Generator, List, Optional
 
 logger = logging.getLogger("utm.cache")

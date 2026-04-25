@@ -20,13 +20,12 @@ Environment variables:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from prompt_guard import sanitize_text, _INJECTION_PATTERNS
+from prompt_guard import sanitize_text
 
 from context_builder import ContextBuilder
 from tools import TOOL_DEFINITIONS, ToolExecutor

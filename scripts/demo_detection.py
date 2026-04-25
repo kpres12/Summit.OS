@@ -15,7 +15,6 @@ import argparse
 import asyncio
 import base64
 import io
-import json
 import os
 import sys
 
@@ -49,7 +48,6 @@ def create_test_image() -> str:
         return base64.b64encode(buf.getvalue()).decode()
     except ImportError:
         # Minimal: 1x1 pixel JPEG
-        import struct
         pixel = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00'
         return base64.b64encode(pixel).decode()
 
@@ -57,7 +55,7 @@ def create_test_image() -> str:
 async def run(via_fusion: bool = False):
     image_b64 = create_test_image()
     print(f"\n{'='*60}")
-    print(f"  Heli.OS Detection Demo")
+    print("  Heli.OS Detection Demo")
     print(f"  Mode: {'fusion → inference → WorldStore' if via_fusion else 'direct inference'}")
     print(f"{'='*60}\n")
 

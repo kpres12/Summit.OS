@@ -33,9 +33,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import math
 import time
-from datetime import datetime, timedelta, timezone, date
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np

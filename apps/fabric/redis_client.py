@@ -1,14 +1,12 @@
 """Redis client for Heli.OS Data Fabric Service."""
 
-import asyncio
 import json
 import logging
-from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 import redis.asyncio as redis
 from redis.asyncio import Redis
 
-from models import TelemetryMessage, AlertMessage, MissionUpdate, SystemMetrics
+from models import TelemetryMessage, AlertMessage, MissionUpdate
 
 
 class RedisClient:

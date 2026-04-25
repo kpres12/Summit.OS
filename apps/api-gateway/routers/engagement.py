@@ -41,10 +41,8 @@ The full state-transition audit chain is written via the gate's audit_sink
 
 from __future__ import annotations
 
-import base64
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request, status

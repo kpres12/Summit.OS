@@ -17,8 +17,6 @@ from packages.ai.detection import (
     create_detector,
     YOLODetector,
     non_max_suppression,
-    BoundingBox,
-    Detection,
 )
 
 # Skip entire module if ultralytics is not installed

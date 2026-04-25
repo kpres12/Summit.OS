@@ -19,7 +19,8 @@ try:
     from packages.security.sensor_signing import verify_frame
 except ImportError:
     try:
-        import sys, pathlib
+        import sys
+        import pathlib
         _repo_root = pathlib.Path(__file__).resolve().parents[2]
         sys.path.insert(0, str(_repo_root))
         from packages.security.sensor_signing import verify_frame  # type: ignore

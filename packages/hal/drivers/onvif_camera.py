@@ -15,7 +15,7 @@ from __future__ import annotations
 import time
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Tuple
 
 logger = logging.getLogger("hal.onvif")
 

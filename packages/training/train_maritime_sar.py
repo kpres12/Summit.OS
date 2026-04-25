@@ -32,14 +32,13 @@ from __future__ import annotations
 
 import argparse
 import csv
-import io
 import json
 import logging
 import math
 import re
 import time
-from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np

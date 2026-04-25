@@ -444,7 +444,7 @@ def main() -> None:
         smoke_test_onnx(onnx_path, args.imgsz)
 
     print(
-        f"""
+        """
 ╔══════════════════════════════════════════════════════════╗
 ║  Heli.OS visual detector training complete             ║
 ║                                                          ║

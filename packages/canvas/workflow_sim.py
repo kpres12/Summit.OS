@@ -42,11 +42,10 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .authority_dsl import (
     CommanderIntent, CommsState, DecisionAuthority,
-    evaluate_authority, required_role,
+    evaluate_authority,
 )
 
 logger = logging.getLogger("canvas.workflow_sim")

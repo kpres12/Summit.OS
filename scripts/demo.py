@@ -14,9 +14,7 @@ Usage:
     python scripts/demo.py --bbox "32,-118,36,-114"   # LA area
 """
 import argparse
-import json
 import sys
-import time
 from datetime import datetime, timezone
 
 try:
@@ -36,7 +34,7 @@ def fetch_aircraft(bbox: str = "") -> list:
         parts = [float(x) for x in bbox.split(",")]
         params = {"lamin": parts[0], "lomin": parts[1], "lamax": parts[2], "lomax": parts[3]}
 
-    print(f"  Fetching live aircraft from OpenSky...", end="", flush=True)
+    print("  Fetching live aircraft from OpenSky...", end="", flush=True)
     try:
         with httpx.Client(timeout=15.0) as client:
             r = client.get(OPENSKY_URL, params=params)

@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -45,7 +44,7 @@ def train(epochs: int = 15, batch_size: int = 64, device_str: str = "auto") -> N
     logger.info("[eurosat-train] Device: %s", device)
 
     from datasets.eurosat import (   # type: ignore
-        ensure_downloaded, load_eurosat_rgb, CLASSES,
+        ensure_downloaded, load_eurosat_rgb,
     )
     ensure_downloaded("rgb")
     X, y, classes = load_eurosat_rgb()

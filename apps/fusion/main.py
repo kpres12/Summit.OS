@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("fusion")
 
 import base64
-import io
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Depends
@@ -141,7 +140,7 @@ async def lifespan(app: FastAPI):
                     "SELECT create_hypertable('observations','ts', if_not_exists => TRUE)"
                 )
             )
-        except Exception as e:
+        except Exception:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
     # Load JSON schema for generic Observation
@@ -504,7 +503,7 @@ def _on_mqtt_image(client, userdata, msg):
             np_arr = np.frombuffer(img_bytes, np.uint8)
             img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             _process_vision_image(img, data)
-    except Exception as e:
+    except Exception:
         logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
@@ -532,7 +531,7 @@ def _process_vision_image(img: np.ndarray, meta: Dict[str, Any]):
         # Persist detections as observations
         loop = asyncio.get_event_loop()
         loop.create_task(_persist_observations_from_detections(detections, meta))
-    except Exception as e:
+    except Exception:
         logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
@@ -573,7 +572,7 @@ async def _persist_observations_from_detections(
                 "ts": ts.isoformat(),
             }
             await redis_client.xadd("observations_stream", record)
-        except Exception as e:
+        except Exception:
             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
 
@@ -735,11 +734,11 @@ async def _redis_stream_consumer():
                                                         "ts": ts.isoformat(),
                                                     },
                                                 )
-                                            except Exception as e:
+                                            except Exception:
                                                 logger.debug(
                                                     "Suppressed error", exc_info=True
                                                 )  # was: pass
-                        except Exception as e:
+                        except Exception:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
                         # Check for duplicates
@@ -754,8 +753,10 @@ async def _redis_stream_consumer():
                                 "ts": ts.isoformat(),
                                 "source": source,
                             }
+                            # SHA1 used as non-cryptographic dedup hash, not for security.
                             sig = hashlib.sha1(
-                                json.dumps(sig_src, sort_keys=True).encode("utf-8")
+                                json.dumps(sig_src, sort_keys=True).encode("utf-8"),
+                                usedforsecurity=False,
                             ).hexdigest()
                             key = f"obs_seen:{sig}"
                             # setex 600s; if already exists, skip
@@ -768,12 +769,12 @@ async def _redis_stream_consumer():
                                     await redis_client.xack(
                                         "observations_stream", "fusion", msg_id
                                     )
-                                except Exception as e:
+                                except Exception:
                                     logger.debug(
                                         "Suppressed error", exc_info=True
                                     )  # was: pass
                                 continue
-                        except Exception as e:
+                        except Exception:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
                         # Persist
@@ -798,7 +799,7 @@ async def _redis_stream_consumer():
                             await redis_client.xack(
                                 "observations_stream", "fusion", msg_id
                             )
-                        except Exception as e:
+                        except Exception:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
 
                         # Trigger Sentinel simulation on confirmed smoke/ignition with location
@@ -912,7 +913,7 @@ async def _redis_stream_consumer():
                                     logger.debug(
                                         "Suppressed error", exc_info=True
                                     )  # was: pass
-                        except Exception as e:
+                        except Exception:
                             logger.debug("Suppressed error", exc_info=True)  # was: pass
                         continue
 

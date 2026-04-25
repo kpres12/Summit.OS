@@ -44,7 +44,7 @@ import logging
 import math
 import time
 from datetime import datetime, timezone
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator
 
 from .base import AdapterConfig, BaseAdapter
 

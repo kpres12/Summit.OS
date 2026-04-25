@@ -18,7 +18,7 @@ Usage:
 """
 
 from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .models import C2Observation, C2EventType
 

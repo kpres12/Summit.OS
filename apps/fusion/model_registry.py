@@ -5,7 +5,6 @@ Simple model registry helpers for Fusion.
 import logging
 import os
 import threading
-import time
 from typing import Callable, List
 
 from vision_inference import VisionInference

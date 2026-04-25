@@ -11,7 +11,6 @@ JSON (for API consumers and handoff briefs).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
 
 def generate_sitrep(

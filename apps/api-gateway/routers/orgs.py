@@ -21,11 +21,10 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("api-gateway.orgs")

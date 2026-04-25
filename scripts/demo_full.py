@@ -14,7 +14,6 @@ import asyncio
 import json
 import random
 import sys
-import time
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 
@@ -180,7 +179,7 @@ class DemoOrchestrator:
                     return False
         except Exception as e:
             print(f"❌ Cannot reach API Gateway: {e}")
-            print(f"   Make sure services are running: make dev")
+            print("   Make sure services are running: make dev")
             return False
     
     async def query_observations(self) -> List[Dict[str, Any]]:
@@ -286,7 +285,7 @@ class DemoOrchestrator:
                     json={"approved_by": approved_by}
                 )
                 if response.status_code == 200:
-                    print(f"✅ Task approved and dispatched")
+                    print("✅ Task approved and dispatched")
                     return True
                 else:
                     print(f"❌ Failed to approve task: {response.status_code}")
@@ -351,7 +350,7 @@ class DemoOrchestrator:
         print("🚀 HELI.OS COMPREHENSIVE DEMONSTRATION")
         print("="*80)
         print(f"\n📍 Region: {DEMO_REGION['name']}")
-        print(f"🎯 Scenario: Wildfire Detection and Response")
+        print("🎯 Scenario: Wildfire Detection and Response")
         print(f"🤖 Assets: {len(ASSETS)} deployed")
         print(f"📦 Scenarios: {len(SCENARIOS)} (escalating severity)")
         
@@ -384,7 +383,7 @@ class DemoOrchestrator:
             if self.publish_observation(observation):
                 print(f"   ✅ Published to MQTT topic: observations/{scenario['class']}")
             else:
-                print(f"   ❌ Failed to publish")
+                print("   ❌ Failed to publish")
             
             # Small delay between observations for realism
             await asyncio.sleep(1.5)

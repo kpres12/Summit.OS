@@ -24,7 +24,6 @@ from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils.class_weight import compute_sample_weight
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 from generate_data import generate_risk_samples, RISK_LABELS

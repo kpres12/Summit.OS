@@ -81,7 +81,6 @@ def _synthetic_dataset(n: int = 600):
     encoded as colour channel bias + texture pattern. Real CODEBRIM imagery should replace this.
     """
     import torch
-    from torch.utils.data import TensorDataset
 
     rng = np.random.default_rng(42)
     images, labels = [], []

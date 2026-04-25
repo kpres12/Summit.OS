@@ -101,7 +101,6 @@ def train(n_estimators: int = 200) -> None:
         learning_rate=0.1, subsample=0.8, random_state=42,
     )
 
-    from sklearn.metrics import mean_absolute_error
     scores = cross_val_score(model, X, y, cv=5, scoring="neg_mean_absolute_error")
     mae_cv = -scores.mean()
     logger.info("[Crowd] CV MAE: %.1f persons", mae_cv)

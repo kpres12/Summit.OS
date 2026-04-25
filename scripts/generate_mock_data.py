@@ -7,11 +7,10 @@ Simulates wildfire detection scenario with multiple assets.
 """
 
 import asyncio
-import json
 import random
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Any
+from typing import Dict, Any
 import requests
 import math
 

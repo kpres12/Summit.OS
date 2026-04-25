@@ -10,11 +10,10 @@ API routes are registered on the FastAPI app by calling `register_routes(app, st
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 from collections import deque
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from typing import Deque, Dict, List, Optional
 
 logger = logging.getLogger("summit.world.history")

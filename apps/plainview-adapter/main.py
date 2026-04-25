@@ -14,7 +14,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Optional
 
 import httpx
 import redis.asyncio as aioredis

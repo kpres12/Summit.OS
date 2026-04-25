@@ -8,9 +8,6 @@ Run: python -m pytest tests/integration/test_e2e_pipeline.py -v
 """
 import sys
 import os
-import math
-import time
-import asyncio
 import pytest
 
 # Add project root to path

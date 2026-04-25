@@ -37,7 +37,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Deque, Dict, List, Optional, Set
+from typing import Deque, Dict, List, Set
 
 logger = logging.getLogger("heli.fabric.mesh_sync")
 

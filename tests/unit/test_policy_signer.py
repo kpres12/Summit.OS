@@ -1,7 +1,6 @@
 """Unit tests for the OPA policy signing/verification system."""
 import os
 import sys
-import tempfile
 
 import pytest
 

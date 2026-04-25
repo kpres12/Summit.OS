@@ -15,9 +15,8 @@ from __future__ import annotations
 
 import time
 import logging
-import math
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger("ai.detection")

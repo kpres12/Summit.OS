@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from role_decomposer import RoleDecomposer, RoleManifest, classify_asset_domain
+from role_decomposer import RoleDecomposer, classify_asset_domain
 
 logger = logging.getLogger("tasking.intent_hierarchy")
 

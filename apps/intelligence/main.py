@@ -45,7 +45,6 @@ INTELLIGENCE_TEST_MODE = os.getenv("INTELLIGENCE_TEST_MODE", "false").lower() ==
 # Brain / agent registry (optional — only active when Ollama is available)
 try:
     from mission_agent import AgentRegistry
-    from brain import Brain
 
     _BRAIN_AVAILABLE = True
 except Exception as _brain_err:
@@ -118,7 +117,7 @@ async def lifespan(app: FastAPI):
                         "SELECT create_hypertable('advisories','ts', if_not_exists => TRUE)"
                     )
                 )
-            except Exception as e:
+            except Exception:
                 logger.debug("Suppressed error", exc_info=True)  # was: pass
 
     if not INTELLIGENCE_TEST_MODE:

@@ -1,7 +1,7 @@
 """Shared mutable state for the tasking service."""
 from typing import Optional, Dict, Any
 import paho.mqtt.client as mqtt
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy.orm import sessionmaker
 
 engine: Optional[AsyncEngine] = None

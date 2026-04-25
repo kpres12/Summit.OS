@@ -20,12 +20,12 @@ Instead of showing 5 separate "COMMS_DEGRADED" observations, roll them up into:
 This separates noise from intelligence in the Situation Feed.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from collections import defaultdict
 
-from .models import C2Observation, C2EventType
+from .models import C2Observation
 
 
 # Broad categories for grouping observations into evidence clusters

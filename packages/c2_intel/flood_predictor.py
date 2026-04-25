@@ -77,7 +77,6 @@ class FloodPredictor:
 
         if self._model is not None:
             try:
-                import numpy as np
                 X = [[float(f) for f in features]]
                 pred = int(self._model.predict(X)[0])
                 proba = self._model.predict_proba(X)[0]

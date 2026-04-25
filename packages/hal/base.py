@@ -12,12 +12,11 @@ The HAL registry provides runtime discovery and lifecycle management.
 
 from __future__ import annotations
 
-import time
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger("hal")
 

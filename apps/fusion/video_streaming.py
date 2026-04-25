@@ -9,13 +9,10 @@ import asyncio
 import cv2
 import numpy as np
 from typing import Dict, List, Any, Optional, Callable
-from datetime import datetime, timezone
 import logging
 import json
 import base64
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse
-import uvicorn
+from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 import threading
 import queue

@@ -19,8 +19,8 @@ import struct
 import hashlib
 import logging
 import os
-from dataclasses import dataclass, field
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Tuple
+from dataclasses import dataclass
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple
 from enum import IntEnum
 
 logger = logging.getLogger("mesh.transport")

@@ -45,7 +45,7 @@ Feature vector (15 floats, index-stable):
                          relief, medicine shortage, vaccine delivery, food aid
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Each group: (feature_index, keywords)
 _GROUPS: List[tuple] = [

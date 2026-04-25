@@ -11,15 +11,10 @@ Demonstrates the full intelligence fabric flow:
 """
 
 import asyncio
-import json
 import random
-import sys
 import time
 from datetime import datetime, timezone
-from typing import List, Dict, Any
 
-import httpx
-import paho.mqtt.client as mqtt
 
 # Configuration
 API_GATEWAY_URL = "http://localhost:8000"
@@ -393,8 +388,6 @@ class DemoMission:
 
 async def main():
     """Main entry point."""
-    import random
-    import math
     
     demo = DemoMission()
     await demo.run_demo()

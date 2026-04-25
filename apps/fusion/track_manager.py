@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 import time
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
 from apps.fusion.filters.kalman import EKFState, ExtendedKalmanFilter

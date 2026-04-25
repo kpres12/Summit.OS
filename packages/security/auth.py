@@ -20,7 +20,6 @@ import secrets
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
-from enum import Enum
 
 logger = logging.getLogger("security.auth")
 

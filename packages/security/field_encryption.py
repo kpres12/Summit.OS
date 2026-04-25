@@ -38,10 +38,19 @@ def _get_key() -> Optional[bytes]:
     raw = os.getenv("FIELD_ENCRYPTION_KEY", "")
     if not raw:
         if not _warned:
-            logger.warning(
-                "FIELD_ENCRYPTION_KEY not set — PII fields stored as plaintext. "
-                "Set FIELD_ENCRYPTION_KEY=<base64 32-byte key> in production."
-            )
+            if os.getenv("HELI_SECURITY_DEV_FAIL_OPEN") == "1":
+                logger.warning(
+                    "FIELD_ENCRYPTION_KEY not set + HELI_SECURITY_DEV_FAIL_OPEN=1 "
+                    "— PII fields stored as plaintext. NEVER ENABLE IN PRODUCTION."
+                )
+            else:
+                logger.error(
+                    "FIELD_ENCRYPTION_KEY not set — encrypt_field will RAISE "
+                    "FieldEncryptionUnavailable. Set "
+                    "FIELD_ENCRYPTION_KEY=<base64 32-byte key> for production "
+                    "(openssl rand -base64 32). For dev only, set "
+                    "HELI_SECURITY_DEV_FAIL_OPEN=1 to revert to plaintext fallback."
+                )
             _warned = True
         return None
 
@@ -57,16 +66,30 @@ def _get_key() -> Optional[bytes]:
         return None
 
 
+class FieldEncryptionUnavailable(RuntimeError):
+    """Raised when encryption is requested but FIELD_ENCRYPTION_KEY is not
+    configured and HELI_SECURITY_DEV_FAIL_OPEN is not set."""
+
+
 def encrypt_field(plaintext: str) -> str:
     """
     Encrypt a string field.
 
     Returns the encrypted value (versioned base64url string) ready for DB storage.
-    If no key is configured, returns plaintext unchanged.
+    Raises FieldEncryptionUnavailable when no key is configured (unless
+    HELI_SECURITY_DEV_FAIL_OPEN=1 is set, in which case plaintext is
+    returned with a warning — for development only).
     """
-    key = _get_key()
-    if key is None or not plaintext:
+    if not plaintext:
         return plaintext
+    key = _get_key()
+    if key is None:
+        if os.getenv("HELI_SECURITY_DEV_FAIL_OPEN") == "1":
+            return plaintext
+        raise FieldEncryptionUnavailable(
+            "FIELD_ENCRYPTION_KEY not set — refusing to silently store PII "
+            "as plaintext. Set FIELD_ENCRYPTION_KEY=<base64 32-byte key>, or "
+            "HELI_SECURITY_DEV_FAIL_OPEN=1 in dev only.")
 
     try:
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM

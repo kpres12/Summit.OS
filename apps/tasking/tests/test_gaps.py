@@ -165,7 +165,7 @@ def test_replay_max_snapshots_cap():
 
 def test_dem_provider_importable():
     """DEMProvider can be imported from packages.geo.dem."""
-    from packages.geo.dem import DEMProvider, get_provider
+    from packages.geo.dem import DEMProvider
 
     assert DEMProvider is not None
     provider = DEMProvider()

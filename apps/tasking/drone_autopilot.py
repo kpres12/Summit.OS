@@ -8,12 +8,9 @@ mission planning, and emergency procedures.
 import asyncio
 import time
 import logging
-from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime, timezone
+from typing import Dict, List, Any, Tuple
 from dataclasses import dataclass
 from enum import Enum
-import json
-import math
 
 # MAVLink imports (would need pymavlink package)
 try:

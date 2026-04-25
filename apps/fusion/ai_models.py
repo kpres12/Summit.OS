@@ -7,11 +7,10 @@ anomaly detection, and world model updates in the Heli.OS fusion service.
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.cluster import DBSCAN
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Tuple
 import logging
 from datetime import datetime, timezone
 
@@ -617,7 +616,7 @@ class SensorFusionEngine:
                 "status": "success",
             }
 
-            logger.info(f"Sensor fusion completed successfully")
+            logger.info("Sensor fusion completed successfully")
             return results
 
         except Exception as e:

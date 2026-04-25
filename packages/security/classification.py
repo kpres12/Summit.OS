@@ -19,7 +19,7 @@ from __future__ import annotations
 import time
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from enum import IntEnum
 
 logger = logging.getLogger("security.classification")

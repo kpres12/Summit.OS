@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import math
 import numpy as np
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, Optional
 from abc import ABC, abstractmethod
 
 

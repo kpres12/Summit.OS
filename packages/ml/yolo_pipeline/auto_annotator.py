@@ -12,9 +12,7 @@ Output format: standard YOLO .txt labels (class cx cy w h, normalized)
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("ml.auto_annotator")
 

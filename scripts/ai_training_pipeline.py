@@ -7,24 +7,12 @@ Includes data collection, model training, validation, and deployment to edge dev
 """
 
 import asyncio
-import json
 import logging
 import numpy as np
-import pandas as pd
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
-import onnx
-from onnx import helper, TensorProto
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
-import joblib
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Tuple, Optional, Any
-import os
+from datetime import datetime, timezone
+from typing import Dict, List, Any
 import sys
-import requests
 from pathlib import Path
 
 # Add project root to path

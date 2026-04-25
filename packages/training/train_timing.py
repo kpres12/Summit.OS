@@ -51,7 +51,6 @@ C2_CONTEXTS = [
 
 def _build_feature_matrix(df) -> np.ndarray:
     """Build feature matrix matching C2TimingPredictor._build_features."""
-    import pandas as pd
     rows = []
     for _, row in df.iterrows():
         evt = str(row["event_type"])

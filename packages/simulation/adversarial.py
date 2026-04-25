@@ -17,12 +17,11 @@ Fitness function: scenario complexity = failures_triggered / assets_count
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import logging
 import random
 import time
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 logger = logging.getLogger("simulation.adversarial")
 

@@ -23,7 +23,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Set, Tuple
 from collections import defaultdict
 
-from .models import C2Observation, SensorSource, ObservationPriority
+from .models import C2Observation, SensorSource
 
 
 # Sensor source quality ranking (higher = more authoritative)
@@ -117,7 +117,8 @@ def generate_observation_fingerprint(
     terms_str = "_".join(sorted(terms))
 
     fingerprint_data = f"{entity}|{evt_type}|{bucket}|{terms_str}"
-    return hashlib.md5(fingerprint_data.encode()).hexdigest()[:16]
+    # MD5 used as non-cryptographic event-dedup fingerprint, not for security.
+    return hashlib.md5(fingerprint_data.encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 def get_sensor_quality(source: SensorSource) -> int:

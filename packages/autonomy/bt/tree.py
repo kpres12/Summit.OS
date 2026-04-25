@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List
 
 from packages.autonomy.bt.nodes import (
     BTNode,

@@ -33,7 +33,6 @@ async def client():
     """Async test client with lifespan properly initialized."""
     # Manually run the gateway lifespan to init DB
     _main = _gw_mod._mod
-    from contextlib import asynccontextmanager
     async with _main.lifespan(app):
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:

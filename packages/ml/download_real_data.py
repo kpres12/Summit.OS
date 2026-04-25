@@ -27,12 +27,9 @@ import csv
 import io
 import json
 import os
-import sys
 import time
 import urllib.request
 import urllib.error
-import zipfile
-from datetime import datetime, timezone
 from typing import List, Dict, Optional
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -251,7 +248,7 @@ def download_noaa_storm_events(year: int = 2023, max_rows: int = 30000) -> List[
 
     # Try to find the right filename (NOAA updates the _c date suffix)
     # Try a few known suffixes
-    base = f"https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
+    base = "https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/"
     candidate_suffixes = ["20240620", "20240516", "20231116", "20240417"]
 
     data = None
@@ -277,7 +274,7 @@ def download_noaa_storm_events(year: int = 2023, max_rows: int = 30000) -> List[
                 data = _fetch(url, timeout=60)
 
     if not data:
-        print(f"  NOAA storm events unavailable offline — skipping")
+        print("  NOAA storm events unavailable offline — skipping")
         return []
 
     import gzip
@@ -581,7 +578,6 @@ def download_nasa_eonet(max_rows: int = 5000) -> List[Dict]:
     No auth required. Covers wildfires, volcanoes, floods, severe storms, landslides, etc.
     """
     print("Downloading NASA EONET natural events...")
-    import urllib.parse
 
     url = f"https://eonet.gsfc.nasa.gov/api/v3/events?status=closed&limit={min(max_rows, 2500)}&days=1825"
     data = _fetch(url, timeout=30)

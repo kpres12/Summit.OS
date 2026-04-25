@@ -7,15 +7,12 @@ mission execution, and data synchronization for FireWatch towers and FireFlies.
 
 import asyncio
 import sqlite3
-import json
 import time
 import logging
 import threading
 from typing import Dict, List, Any, Optional, Callable
-from datetime import datetime, timezone
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from enum import Enum
-import hashlib
 import gzip
 import pickle
 import os

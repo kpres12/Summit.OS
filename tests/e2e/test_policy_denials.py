@@ -1,4 +1,3 @@
-import os
 import pytest
 from .utils.api_client import ApiClient
 

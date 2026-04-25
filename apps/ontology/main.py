@@ -71,7 +71,6 @@ from packages.ontology import (
     get_sync,
     recent_audit,
 )
-from packages.ontology.store import get_store as _get_store
 from packages.ontology.types import LinkInstance, ObjectInstance
 
 logger = logging.getLogger("ontology.service")

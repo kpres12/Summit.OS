@@ -18,7 +18,7 @@ import uuid
 import logging
 import contextlib
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 from contextvars import ContextVar
 
 logger = logging.getLogger("observability.tracing")

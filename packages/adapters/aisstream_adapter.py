@@ -32,12 +32,11 @@ Register in adapters.json:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
 import time
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator
 
 try:
     import websockets

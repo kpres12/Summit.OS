@@ -1,7 +1,7 @@
 """Drone-specific schemas for tiered response system."""
 
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from enum import Enum
 

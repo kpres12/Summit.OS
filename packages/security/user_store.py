@@ -25,7 +25,6 @@ from __future__ import annotations
 import json
 import logging
 import secrets
-import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
@@ -40,7 +39,6 @@ from sqlalchemy import (
     Text,
     select,
     update,
-    delete,
     insert,
     func,
 )

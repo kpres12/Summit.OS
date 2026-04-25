@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 

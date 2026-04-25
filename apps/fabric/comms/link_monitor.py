@@ -11,7 +11,7 @@ import asyncio
 import logging
 import time
 import uuid
-from typing import Awaitable, Callable, Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List
 
 logger = logging.getLogger(__name__)
 

@@ -20,7 +20,6 @@ import json
 import logging
 import os
 import random
-import math
 from pathlib import Path
 
 import requests
@@ -55,7 +54,6 @@ def download(out_dir: Path = OUT_DIR) -> Path:
         return mat_dir
 
     # Try Kaggle API if token available
-    import os
     if os.getenv("KAGGLE_API_TOKEN") or os.getenv("KAGGLE_KEY"):
         try:
             import subprocess

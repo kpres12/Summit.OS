@@ -23,11 +23,11 @@ Domains covered (NOT just wildfire — Heli.OS is general-purpose):
 """
 
 import random
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 
-from features import extract, FEATURE_DIM
+from features import extract
 
 # ── Mission type taxonomy ─────────────────────────────────────────────────────
 #  0 SURVEY   — broad area coverage, mapping, situational awareness

@@ -9,8 +9,8 @@ replanning events, and performance metrics.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 logger = logging.getLogger("tasking.mission_summary")
 

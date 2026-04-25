@@ -2,7 +2,6 @@
 Tests for swarm_planner.py and sitrep.py.
 """
 
-import math
 import os
 import sys
 

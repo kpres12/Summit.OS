@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 
 from apps.fusion.filters.kalman import EKFState, ExtendedKalmanFilter

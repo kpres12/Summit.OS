@@ -13,10 +13,8 @@ Usage:
 """
 
 import asyncio
-import json
 import os
 import sys
-import time
 import uuid
 
 import httpx
@@ -59,7 +57,7 @@ async def run():
     }
 
     print(f"\n{'='*60}")
-    print(f"  Heli.OS Smoke Test")
+    print("  Heli.OS Smoke Test")
     print(f"  Gateway: {GATEWAY}")
     print(f"  Fabric:  {FABRIC}")
     print(f"{'='*60}\n")

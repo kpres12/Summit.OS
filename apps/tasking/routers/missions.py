@@ -3,7 +3,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 from fastapi import APIRouter, HTTPException, Request
 from sqlalchemy import text

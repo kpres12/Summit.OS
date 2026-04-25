@@ -35,7 +35,6 @@ entity_id_field : str   — which source field to use as entity_id (default "id"
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import datetime, timezone

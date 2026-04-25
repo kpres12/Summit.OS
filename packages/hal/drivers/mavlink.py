@@ -16,7 +16,7 @@ import time
 import logging
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 from enum import Enum
 
 logger = logging.getLogger("hal.mavlink")

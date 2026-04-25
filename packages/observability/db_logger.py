@@ -31,7 +31,6 @@ import json
 import logging
 import os
 import time
-import traceback
 import uuid
 from collections import deque
 from datetime import datetime, timezone

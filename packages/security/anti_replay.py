@@ -14,7 +14,7 @@ import asyncio
 import logging
 import time
 from collections import deque
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 

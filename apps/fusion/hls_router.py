@@ -22,10 +22,10 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse
 
 logger = logging.getLogger("fusion.hls")
 

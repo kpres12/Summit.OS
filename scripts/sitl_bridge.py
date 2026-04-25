@@ -14,9 +14,6 @@ Requirements:
     (dronekit-sitl + pymavlink installed in .venv)
 """
 import argparse
-import asyncio
-import json
-import math
 import sys
 import time
 

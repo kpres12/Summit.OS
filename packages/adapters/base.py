@@ -49,7 +49,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
 

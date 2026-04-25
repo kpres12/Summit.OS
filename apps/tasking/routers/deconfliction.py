@@ -7,7 +7,7 @@ import os
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 # Make packages importable when running inside apps/tasking

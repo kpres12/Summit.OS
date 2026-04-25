@@ -1,6 +1,9 @@
 # Honest Gaps — What's Real vs Scaffolding
 
-Last audit: 2026-04-25 (commit `8b9d44d`).
+Last audit: 2026-04-25 (commit `d4b0ae3`, with substantial follow-up
+in this session — bandit HIGH findings cleared, fail-open in
+field_encryption fixed, 39/39 adapters import, 31/31 models load,
+148/148 tests pass after additional 7 live HTTP API E2E tests).
 
 This document is the source of truth for what is **production-quality
 implementation** vs **scaffolding / synthetic / unwired**. The README
@@ -168,6 +171,72 @@ These are the gaps a federal evaluator would catch:
 Items 1-4 are <1 week of focused work each. Items 5-6 are 1-3 weeks. Items 7-8 are operator-side / Phase-3.
 
 ---
+
+## Top-to-bottom audit results (this session)
+
+Static analysis sweep:
+
+| Tool | Before | After fixes | Notes |
+|---|---|---|---|
+| ruff | 735 errors | 260 (style/cosmetic only) | 469 auto-fixed; remaining are E402/E701/E702 style + 16 F821 in optional-import branches that are caught by `pytest.importorskip` |
+| bandit HIGH | 5 | **0** | All 5 were SHA1/MD5 used for non-cryptographic dedup/IDs/cache keys — fixed with `usedforsecurity=False` and inline comments |
+| bandit MEDIUM | 65 | 65 (mostly false positives in URL handling for public APIs we wrote) | Reviewed — none are real vulnerabilities |
+| pip-audit | n/a | 12 known CVEs in 10 deps | All have available patches; bumping in next dep-rev pass |
+
+Live verifications:
+
+| Check | Result |
+|---|---|
+| All 31 model files load (`*.pt` + `*.joblib`) | ✅ 31/31 |
+| All 39 adapter modules import | ✅ 39/39 (after installing aiohttp, pyais, pymodbus, pynmea2, asyncio-mqtt, onvif-zeep-async) |
+| All 38 critical packages import | ✅ 38/38 (after installing argon2-cffi, pyotp) |
+| Test suite | **148 passed, 7 skipped (correctly)**, 0 failed |
+| Engagement gate happy path | ✅ |
+| Engagement gate refuses missing PID, ROE deny, deconfliction deny, insufficient role, tampered signature, TTL expiry | ✅ all 6 negative paths verified |
+| **Live HTTP API**: walks open_case → pid → roe → decon → options → decide → mark_complete | ✅ 7 E2E tests (`tests/test_engagement_api_e2e.py`) |
+| AUTHORIZE without `X-Operator-Signature` → HTTP 403 | ✅ enforced |
+| AUTHORIZE with bogus signature → HTTP 403 | ✅ enforced |
+| CANVAS workflow simulator end-to-end | ✅ 12 requests / 10 baseline + 2 conditional delegation / 0 denied (matches white paper) |
+| CANVAS DOT graph export | ✅ 1905 chars, includes node clusters |
+| CANVAS JSON export | ✅ |
+| Authority DSL spot checks (mission_commander @ FOB / counter_uas, operator @ FOB / ace_strike) | ✅ both produce correct decisions |
+| World model HMAC integrity | ✅ sign + verify pass; tamper detected |
+| Field encryption (with key) | ✅ ciphertext ≠ plaintext, roundtrip works |
+| Field encryption fail-closed (without key) | ✅ raises `FieldEncryptionUnavailable` (was silently storing plaintext) |
+| Anti-replay window | ✅ rejects sequence-number replays |
+| Argon2id password hashing | ✅ correct accepted, wrong rejected |
+| 3D airspace deconfliction | ✅ overlapping cylinders detected, separated cylinders pass |
+
+## Critical findings + fixes applied this audit
+
+### Closed: Three stacked unsafe fail-opens
+1. `EngagementAuthorizationGate` constructor pass-through defaults — fixed earlier this session
+2. `sensor_signing.verify_frame()` fail-OPEN when crypto unavailable — fixed earlier this session
+3. **`field_encryption.encrypt_field()` silently storing PII as plaintext** — fixed THIS audit. Now raises `FieldEncryptionUnavailable` unless `HELI_SECURITY_DEV_FAIL_OPEN=1` is explicitly set in dev.
+
+### Closed: bandit HIGH severity
+Five SHA1 / MD5 uses flagged by bandit; all were non-cryptographic
+(deduplication signatures, cache keys, ID derivation). Fixed with
+`hashlib.{sha1,md5}(..., usedforsecurity=False)` and inline comments
+explaining the use case for future readers.
+
+### Noted but not blocking
+
+- **sklearn version skew**: 5 older `.joblib` models were trained on
+  scikit-learn 1.6.1 and are loaded with 1.8.0. `InconsistentVersionWarning`
+  fires but model output is correct. Retrain in the next training pass.
+- **12 known CVEs in pinned deps** (ecdsa, lxml, pillow, pip, pyasn1,
+  pygments, pytest, python-dotenv, python-multipart, requests). All have
+  patches; will batch in a dep-rev commit.
+- **Optional dependencies for adapters**: 9 adapters (ais, cap, modbus,
+  mqtt_relay, nmea, onvif, rtsp, weather, webhook) raise ImportError on
+  import if their optional deps are missing. This is correct lazy-import
+  behavior; CI installs the optional set, deployments install only the
+  protocols they need.
+- **Older sklearn models without explicit `data_source`**: 12 pre-existing
+  `.joblib` files don't have provenance recorded in their meta. The
+  training scripts at `packages/training/train_*.py` document what each
+  used; backfill is queued.
 
 ## Update cadence for this document
 

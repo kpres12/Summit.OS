@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
 # WGS-84 constants
 _A = 6378137.0  # semi-major axis

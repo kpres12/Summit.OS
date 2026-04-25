@@ -1,7 +1,7 @@
 """Device schemas for Heli.OS."""
 
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from datetime import datetime
+from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 from enum import Enum
 

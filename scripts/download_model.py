@@ -26,7 +26,7 @@ def download():
         return
 
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    print(f"Downloading YOLOv8n ONNX model...")
+    print("Downloading YOLOv8n ONNX model...")
     print(f"  From: {MODEL_URL}")
     print(f"  To:   {dest}")
 

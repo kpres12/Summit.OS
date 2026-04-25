@@ -11,8 +11,8 @@ Extends the core Entity model with domain-specific attributes for:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict
 from enum import Enum
 
 

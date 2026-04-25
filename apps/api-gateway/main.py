@@ -389,7 +389,6 @@ except Exception as _otel_err:
 # so clients can detect breaking changes.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as _StarletteRequest
-from starlette.responses import Response as _StarletteResponse
 
 
 class _VersionHeaderMiddleware(BaseHTTPMiddleware):
@@ -893,7 +892,6 @@ async def verify_bearer(authorization: str | None = None) -> dict | None:
             jwk = _select_jwk(jwks, headers.get("kid"))
             if jwk is None:
                 raise HTTPException(status_code=401, detail="No matching JWK")
-            from jose.utils import base64url_decode
 
             try:
                 jwt.decode(

@@ -177,7 +177,7 @@ def test_reid_gallery_eviction():
     """Stale tracks are evicted after MAX_GALLERY_AGE_S."""
     import time
     import numpy as np
-    from reid import AppearanceReID, _GalleryEntry
+    from reid import AppearanceReID
 
     reid = AppearanceReID()
     reid.MAX_GALLERY_AGE_S = 0.01  # 10ms

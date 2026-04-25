@@ -23,7 +23,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import time
 import logging
 from typing import Any, Callable, Dict, List, Optional
@@ -129,7 +128,7 @@ class EntityCRDTMap:
 
         key = f"entity:{entity_id}"
         remote_reg = LWWRegister(
-            node_id=f"remote",
+            node_id="remote",
             value=entity_dict,
             timestamp=remote_ts,
         )

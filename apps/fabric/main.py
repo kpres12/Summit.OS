@@ -16,7 +16,7 @@ from typing import Dict, Any, Optional, List
 import structlog
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import json
 from datetime import datetime, timezone, timedelta
 
@@ -880,7 +880,7 @@ async def publish_telemetry(
                                 if p.startswith("OU="):
                                     org_id = p.split("=", 1)[1]
                                     break
-                    except Exception as e:
+                    except Exception:
                         logger.debug("Suppressed error", exc_info=True)  # was: pass
                 if GEO_AVAILABLE:
                     await session.execute(
@@ -996,7 +996,7 @@ async def publish_alert(
                                 if p.startswith("OU="):
                                     org_id = p.split("=", 1)[1]
                                     break
-                    except Exception as e:
+                    except Exception:
                         logger.debug("Suppressed error", exc_info=True)  # was: pass
                 if GEO_AVAILABLE:
                     await session.execute(

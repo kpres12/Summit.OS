@@ -21,7 +21,6 @@ Reference: ATP 4-02.2 (Medical Evacuation)
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
 
 # Precedence codes

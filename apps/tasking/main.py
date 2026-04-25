@@ -9,7 +9,7 @@ logger = logging.getLogger("tasking")
 logging.basicConfig(level=logging.INFO)
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse as _JSONResponse
 from fastapi.requests import Request as _FRequest
 import paho.mqtt.client as mqtt
@@ -25,9 +25,7 @@ from planning import _init_direct_autopilot
 # ── Optional feature detection ────────────────────────────────────────────────
 try:
     from apps.tasking.state_machine import (
-        MissionStateMachine,
         MissionStateMachineRegistry,
-        MissionState,
     )
     state.STATE_MACHINE_AVAILABLE = True
     state.mission_registry = MissionStateMachineRegistry()
@@ -35,32 +33,23 @@ except Exception:
     state.STATE_MACHINE_AVAILABLE = False
 
 try:
-    from apps.tasking.assignment_engine import AssignmentEngine, resolve_pattern
     state.ASSIGNMENT_ENGINE_AVAILABLE = True
 except Exception:
     state.ASSIGNMENT_ENGINE_AVAILABLE = False
 
 try:
-    from apps.tasking.coverage_patterns import (
-        grid_coverage_pattern,
-        spiral_coverage_pattern,
-        perimeter_patrol_pattern,
-        orbit_pattern,
-        expand_search_pattern,
-    )
     COVERAGE_PATTERNS_AVAILABLE = True
 except Exception:
     COVERAGE_PATTERNS_AVAILABLE = False
 
 try:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
-    from packages.world.store import WorldStore
     WORLD_STORE_AVAILABLE = True
 except Exception:
     WORLD_STORE_AVAILABLE = False
 
 try:
-    from prometheus_client import Counter, Gauge, CONTENT_TYPE_LATEST, generate_latest
+    from prometheus_client import Counter, Gauge
     state.PROM_AVAILABLE = True
     state.METRIC_MISSIONS_CREATED = Counter(
         "missions_created_total", "Number of missions created"
@@ -71,7 +60,6 @@ except Exception:
     state.PROM_AVAILABLE = False
 
 try:
-    from jose import jwt
     state.OIDC_AVAILABLE = True
 except Exception:
     state.OIDC_AVAILABLE = False

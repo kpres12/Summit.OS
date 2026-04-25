@@ -93,7 +93,6 @@ class WildfirePredictor:
         if self._model is not None:
             try:
                 import torch
-                import numpy as np
                 X = torch.tensor(features, dtype=torch.float32).unsqueeze(0)
                 with torch.no_grad():
                     pred_norm = float(self._model(X)[0])

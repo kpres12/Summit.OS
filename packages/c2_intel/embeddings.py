@@ -61,7 +61,11 @@ class C2EmbeddingService:
             logger.info("[C2Embeddings] GEMINI_API_KEY not set — embeddings disabled")
 
     def _cache_key(self, text: str) -> str:
-        return hashlib.md5(f"{self.model_name}:{text}".encode()).hexdigest()
+        # MD5 used as non-cryptographic cache key, not for security.
+        return hashlib.md5(
+            f"{self.model_name}:{text}".encode(),
+            usedforsecurity=False,
+        ).hexdigest()
 
     def _get_cached(self, text: str) -> Optional[List[float]]:
         return _cache.get(self._cache_key(text))

@@ -5,7 +5,6 @@ Or:  cd packages/c2_intel && python tests/test_e2e.py
 """
 
 import sys
-import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -13,24 +12,23 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from c2_intel.models import (
-    C2Observation, C2EventType, SensorSource, ObservationPriority, C2ActionType
+    C2Observation, C2EventType, SensorSource, ObservationPriority
 )
 from c2_intel.resolver import C2EntityResolver
-from c2_intel.graph import C2EntityGraph, NodeType, EdgeType, build_graph_from_world_store
-from c2_intel.priority import C2PriorityMatrix, CONDITION_BASE_PRIORITY
+from c2_intel.graph import C2EntityGraph, build_graph_from_world_store
+from c2_intel.priority import C2PriorityMatrix
 from c2_intel.dedup import ObservationDeduplicator, generate_observation_fingerprint
 from c2_intel.anomaly import get_anomaly_detector
 from c2_intel.timing import get_timing_predictor
 from c2_intel.relevance import get_relevance_model
 from c2_intel.learning import (
     ObservationFeedbackLearner, ObservationFeedback,
-    FeedbackType, DismissReason, LearningMetrics,
-    get_learner,
+    FeedbackType, LearningMetrics,
 )
-from c2_intel.chains import C2ChainDetector, get_chain_detector
+from c2_intel.chains import get_chain_detector
 from c2_intel.timing_engine import get_timing_engine
 from c2_intel.ontology import (
-    get_ontology, list_domains, WildfireOntology, MilitaryACEOntology
+    get_ontology, list_domains
 )
 from c2_intel.evidence import C2EvidenceAggregator
 from c2_intel.embeddings import get_embedding_service

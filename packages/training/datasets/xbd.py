@@ -16,8 +16,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import zipfile
 from pathlib import Path
 
 import requests
@@ -144,7 +142,6 @@ def load_as_training_samples(labels_dir: Path) -> list[dict]:
 def _generate_synthetic(labels_dir: Path) -> None:
     """Synthetic xBD-format labels for CI/testing without dataset download."""
     import random
-    import math
 
     random.seed(42)
     labels_dir.mkdir(parents=True, exist_ok=True)

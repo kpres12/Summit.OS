@@ -1,7 +1,6 @@
 """Unit tests for the Heli.OS Secret Client."""
 import importlib.util
 import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

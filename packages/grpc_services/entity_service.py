@@ -14,12 +14,11 @@ Works with or without generated protobuf stubs:
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 import uuid
 import logging
 from dataclasses import dataclass, field, asdict
-from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set
+from typing import Any, AsyncIterator, Dict, List, Optional
 from concurrent import futures
 
 logger = logging.getLogger("grpc.entity_service")

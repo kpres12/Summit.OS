@@ -27,8 +27,6 @@ Usage:
 import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
-import os
-import sys
 import warnings
 from pathlib import Path
 

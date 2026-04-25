@@ -33,7 +33,7 @@ import hashlib
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 logger = logging.getLogger("summit.policy.signer")
 
@@ -106,7 +106,6 @@ class PolicySigner:
             return None
 
         try:
-            from nacl.signing import SigningKey
             from nacl.encoding import HexEncoder
 
             content = Path(policy_path).read_bytes()
@@ -147,9 +146,6 @@ class PolicySigner:
             return True
 
         try:
-            from nacl.signing import VerifyKey
-            from nacl.encoding import HexEncoder
-            from nacl.exceptions import BadSignatureError
 
             content = Path(policy_path).read_bytes()
             digest = hashlib.sha256(content).digest()

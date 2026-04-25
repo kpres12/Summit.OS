@@ -25,7 +25,6 @@ import asyncio
 import json
 import time
 from datetime import datetime, timezone
-from typing import Dict, List, Any
 
 requests = pytest.importorskip("requests")
 mqtt = pytest.importorskip("paho.mqtt.client")

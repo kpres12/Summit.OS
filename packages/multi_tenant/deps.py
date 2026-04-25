@@ -12,7 +12,7 @@ Usage:
 
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import HTTPException, Request, status
 
 from .context import ENTERPRISE_MULTI_TENANT, extract_org_id
 

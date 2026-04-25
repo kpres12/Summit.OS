@@ -14,7 +14,6 @@ Output: YOLO v8 dataset directory with images/ labels/ data.yaml
 
 from __future__ import annotations
 
-import os
 import random
 import shutil
 from pathlib import Path

@@ -24,7 +24,6 @@ import logging
 import os
 import time
 from collections import defaultdict
-from pathlib import Path
 from typing import Optional
 
 import requests
@@ -50,7 +49,8 @@ CLUSTER_DEG = 0.5
 
 def _parse_viirs_rows(text: str) -> list[dict]:
     """Parse VIIRS CSV (bright_ti4, frp, confidence fields)."""
-    import csv, io
+    import csv
+    import io
     reader = csv.DictReader(io.StringIO(text))
     rows = []
     for row in reader:
@@ -94,7 +94,8 @@ def _download_firms_csv() -> list[dict]:
         resp = requests.get(FIRMS_MODIS_URL, timeout=60,
                             headers={"User-Agent": "HeliOS/1.0"})
         resp.raise_for_status()
-        import csv, io
+        import csv
+        import io
         reader = csv.DictReader(io.StringIO(resp.text))
         rows = []
         for row in reader:
@@ -307,7 +308,6 @@ def load_as_training_samples(
 
 def _synthetic_samples(rng) -> list[dict]:
     """Physics-informed synthetic fire-weather samples as hard fallback."""
-    import random
     samples = []
     fire_regions = [
         (37.5, -120.0, "california"),

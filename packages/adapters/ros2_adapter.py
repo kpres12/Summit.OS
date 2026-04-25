@@ -37,7 +37,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import AsyncIterator, Optional
+from typing import AsyncIterator
 
 from .base import AdapterConfig, BaseAdapter
 

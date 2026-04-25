@@ -8,9 +8,8 @@ messages are skipped (sequence deduplication, not CRDT).
 
 import asyncio
 import logging
-import time
 from collections import deque
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Awaitable, Callable, Dict, List
 
 from .priority_queue import PriorityQueue
 

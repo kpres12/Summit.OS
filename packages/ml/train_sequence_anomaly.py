@@ -39,7 +39,6 @@ import onnx_compat  # noqa: F401 — Python 3.14 compat patch
 import argparse
 import json
 import os
-import sys
 
 import numpy as np
 from sklearn.ensemble import IsolationForest

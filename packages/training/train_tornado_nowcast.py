@@ -39,7 +39,6 @@ import json
 import logging
 import math
 import re
-from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 

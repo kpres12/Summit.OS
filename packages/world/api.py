@@ -14,11 +14,9 @@ Usage in a FastAPI app:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field

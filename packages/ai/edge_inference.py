@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from packages.ai.detection import (
@@ -163,7 +162,6 @@ class ONNXDetector(ObjectDetector):
         if self._session is None:
             return DetectionResult(detections=[], model_name="onnx-unavailable")
 
-        import numpy as np
 
         start = time.time()
 

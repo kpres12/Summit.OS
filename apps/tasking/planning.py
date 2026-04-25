@@ -387,7 +387,7 @@ async def _plan_assignments(
         spacing = min_sep_m
 
     # Helper conversions around a latitude
-    from math import cos, radians, sin, cos as mcos, sin as msin
+    from math import cos, radians, cos as mcos, sin as msin
 
     def meters_to_deg_lat(m: float) -> float:
         return m / 111_111.0

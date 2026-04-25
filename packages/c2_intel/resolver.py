@@ -14,7 +14,7 @@ Algorithms unchanged from Mira. Dictionaries remapped to C2 domain.
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 import difflib
 

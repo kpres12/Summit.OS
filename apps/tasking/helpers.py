@@ -2,7 +2,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from fastapi import HTTPException, Request
 

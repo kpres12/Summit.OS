@@ -102,7 +102,6 @@ from security.mfa import (  # noqa: E402
     generate_qr_code_data_uri,
     verify_totp,
     generate_backup_codes,
-    hash_backup_code,
     begin_registration as _webauthn_begin_registration,
     complete_registration as _webauthn_complete_registration,
     begin_authentication as _webauthn_begin_authentication,

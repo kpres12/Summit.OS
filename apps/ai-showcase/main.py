@@ -5,17 +5,10 @@ Demonstrates the AI capabilities of Heli.OS with interactive examples
 of sensor fusion, risk assessment, and autonomous decision-making.
 """
 
-import asyncio
-import json
 import numpy as np
-import cv2
 from datetime import datetime, timezone
-from typing import Dict, List, Any
-import matplotlib.pyplot as plt
-import seaborn as sns
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import uvicorn
 
@@ -29,7 +22,6 @@ from fusion.ai_models import (
     MultimodalFusionNetwork,
     FireSpreadPredictor,
     AnomalyDetector,
-    EdgeInferenceEngine,
 )
 from intelligence.ai_reasoning import RiskAssessmentEngine, AdvisoryGenerator
 

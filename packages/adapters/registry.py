@@ -410,7 +410,8 @@ class AdapterRegistry:
 def _try_register_builtins(registry: AdapterRegistry) -> None:
     """Attempt to register built-in adapter classes into a registry."""
     try:
-        import sys, os
+        import sys
+        import os
 
         # adapters/ directory is at the repo root — add it if needed
         repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import timezone
+from typing import Any
 
 from .feedback import FeedbackEvent, FeedbackEventType, FeedbackStore
-from .asset_model import AssetCapabilityEstimate, AssetPerformanceModel
-from .alert_scorer import AlertQualityScorer, SourceReliabilityScore
+from .asset_model import AssetPerformanceModel
+from .alert_scorer import AlertQualityScorer
 from .mission_patterns import MissionPattern, MissionPatternLibrary
 
 logger = logging.getLogger("learning.engine")

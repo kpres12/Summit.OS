@@ -13,10 +13,8 @@ aerial detection pipeline.
 from __future__ import annotations
 
 import csv
-import io
 import logging
 import os
-import time
 from pathlib import Path
 from typing import Optional
 

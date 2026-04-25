@@ -27,7 +27,6 @@ import datetime
 import hashlib
 import logging
 import os
-import uuid
 from dataclasses import dataclass
 from typing import Optional
 
@@ -286,7 +285,6 @@ class DeviceCA:
 
         try:
             from cryptography import x509
-            from cryptography.hazmat.primitives import hashes
             from cryptography.hazmat.primitives.asymmetric import ec, rsa, padding
             from cryptography.x509.oid import NameOID
 

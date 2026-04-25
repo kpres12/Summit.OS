@@ -11,9 +11,7 @@ evidence. After enough missions, the model reflects reality — not the brochure
 
 from __future__ import annotations
 
-import json
 import logging
-import math
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -27,7 +25,6 @@ from sqlalchemy import (
     MetaData,
     String,
     Table,
-    Text,
     insert,
     select,
     update,

@@ -15,14 +15,11 @@ Designed for contested/degraded environments where:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import time
 import uuid
 import logging
-import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from enum import Enum
 
 from packages.mesh.crdt import CRDTStore, LWWRegister

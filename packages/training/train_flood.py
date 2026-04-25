@@ -88,7 +88,6 @@ def _build_features(s: dict, use_s1: bool, use_s2: bool) -> list[float]:
 def train(n_estimators: int = 300, prefer_real: bool = True) -> None:
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.model_selection import cross_val_score, StratifiedKFold
-    from sklearn.metrics import classification_report
     import joblib
 
     sys.path.insert(0, str(Path(__file__).parent))
