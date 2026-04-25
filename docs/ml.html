@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Summit.OS — AI Models</title>
+  <title>Heli.OS — AI Models</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
@@ -484,7 +484,7 @@
   <div class="page-hero">
     <p class="section-label">// intelligence layer</p>
     <h1>AI MODELS</h1>
-    <p>Summit.OS ships with eleven production-ready ONNX models <strong style="color:var(--amber)">custom-built and trained by BigMT.ai</strong> —
+    <p>Heli.OS ships with eleven production-ready ONNX models <strong style="color:var(--amber)">custom-built and trained by Branca.ai</strong> —
        domain-expert feature engineering, purpose-built training pipelines, and real-world public datasets blended with
        scenario-specific synthetic data. They run entirely on your hardware — no cloud, no API calls, no data leaves your network.</p>
   </div>
@@ -496,7 +496,7 @@
       <h3>ZERO DATA COLLECTION</h3>
       <p>
         If you download and run this repo, <strong>no data is sent anywhere</strong>.
-        Summit.OS has no telemetry, no analytics, no crash reporting, no ping-home behavior of any kind.
+        Heli.OS has no telemetry, no analytics, no crash reporting, no ping-home behavior of any kind.
         Your sensor feeds, entity tracks, operator decisions, and mission history <strong>never leave your deployment</strong>.
         <br><br>
         The only optional outbound network calls are the three external feeds listed in the
@@ -546,7 +546,7 @@
     <p class="section-label">// full model inventory</p>
     <h2>ALL 11 MODELS</h2>
     <p class="section-desc">
-      All eleven models were designed, trained, and exported by BigMT.ai — not fine-tuned from
+      All eleven models were designed, trained, and exported by Branca.ai — not fine-tuned from
       third-party checkpoints. Training scripts live in <code style="color:var(--amber)">packages/ml/</code>
       and are fully open. Every model ships as ONNX — no PyTorch, no GPU required at runtime.
     </p>
@@ -724,7 +724,7 @@
     <p class="section-label">// where the data came from</p>
     <h2>TRAINING DATA</h2>
     <p class="section-desc">
-      BigMT.ai built custom training pipelines and domain-expert synthetic data generators covering
+      Branca.ai built custom training pipelines and domain-expert synthetic data generators covering
       10+ operational domains — wildfire, search &amp; rescue, maritime, infrastructure, agriculture,
       hazmat, and more. Public real-world datasets were downloaded, preprocessed, and blended with
       scenario-specific synthetic samples to cover edge cases and low-frequency events. No proprietary
@@ -795,7 +795,7 @@
     <p class="section-label">// optional external network calls</p>
     <h2>EXTERNAL API CALLS</h2>
     <p class="section-desc">
-      Summit.OS makes <strong>no outbound calls</strong> by default.
+      Heli.OS makes <strong>no outbound calls</strong> by default.
       The following are opt-in integrations, all disabled unless you set the corresponding env var.
       None of these calls send your operational data — they only pull in public reference feeds.
     </p>
@@ -844,7 +844,7 @@
           <td><span class="svc">S3</span><br><span class="opt">OPTIONAL</span></td>
           <td>Audit log shipping for SOC2 compliance retention</td>
           <td class="cond"><code>AWS_AUDIT_BUCKET=</code> set</td>
-          <td class="cond">Append-only audit log entries (operator actions, auth events). Only your own bucket — Anthropic/BigMT never receives this data.</td>
+          <td class="cond">Append-only audit log entries (operator actions, auth events). Only your own bucket — Anthropic/Branca never receives this data.</td>
         </tr>
       </tbody>
     </table>
@@ -911,7 +911,7 @@
 
 <footer>
   <p>
-    &copy; 2025 BigMT.ai — Summit.OS &nbsp;·&nbsp;
+    &copy; 2025 Branca.ai — Heli.OS &nbsp;·&nbsp;
     <a href="index.html">Home</a> &nbsp;·&nbsp;
     <a href="mailto:prestkyle@gmail.com">prestkyle@gmail.com</a>
   </p>

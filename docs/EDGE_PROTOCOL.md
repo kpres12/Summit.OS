@@ -297,7 +297,7 @@ const ws = new WebSocket('wss://ws.heli-os.bigmt.ai/edge', {
 ```bash
 # Generate device certificate
 openssl req -new -x509 -key device.key -out device.crt -days 365 \
-  -subj "/CN=drone-001/O=BigMT/C=US"
+  -subj "/CN=drone-001/O=Branca/C=US"
 
 # Install certificate on device
 scp device.crt device.key root@drone-001:/etc/heli-os/certs/

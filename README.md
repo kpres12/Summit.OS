@@ -157,6 +157,20 @@ Decision support (target tracks, ranked weapon-target pairings, fire-control sol
 
 **Federal / DoD** — Combat Readiness Deployment, Agile Combat Employment, force protection perimeter, base/FOB monitoring, counter-UAS, CASEVAC escort, BDA, mission rehearsal, deployable C2 readiness, ISR, HADR coordination, blue-force tracking, ATAK interop. Currently pursuing the **USAF CANVAS contract for Combat Readiness Deployments**.
 
+### How we're positioned vs. Anduril Lattice / Shield AI / Palantir AIP
+
+|  | Heli.OS | Anduril Lattice / Shield AI Hivemind |
+|---|---|---|
+| Primary market | **Civilian + federal/DoD** (one platform, dual-use) | Defense-only |
+| Civilian deployment | First-class — county fire, maritime SAR, infrastructure operators | Not addressable |
+| Federal use cases | HADR, ACE, CRD, force protection, counter-UAS, CASEVAC, BDA — **decision support up to authorization, human-in-the-loop** | Same scope + classified weapons-tasking products |
+| Export posture | Commercial — civilian addressable globally; ITAR/EAR jurisdiction applies to specific federal SKUs only | ITAR/EAR controlled across the platform |
+| Architecture | Open ML pipeline (16 models with metadata), 32 documented adapters, OPA-gated actuation | Black-box model stack, vendor-locked sensors |
+| Engagement loop | Mandatory signed human authorization gate (`engagement_authorization.py`) | Vendor-specific |
+| Pricing model | Commercial license — sized to deployment, dual-use friendly | Enterprise defense contracts only |
+
+**The thesis:** civilian operators (fire chiefs, USCG, county SAR, port authorities, NGOs running conservation drones, infrastructure utilities) need the same coordination architecture the DoD has been buying from Anduril for $millions/year — and federal customers want a vendor whose platform is also field-proven on civilian disaster response. One stack, both customers.
+
 ---
 
 ## Standards & interoperability
