@@ -108,33 +108,84 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_R_KM * math.asin(math.sqrt(a))
 
 
-def _download_firms() -> list[dict]:
+FIRMS_API_BASE = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
+# CONUS bbox roughly (lon_min, lat_min, lon_max, lat_max)
+CONUS_BBOX    = "-125,24,-66,49"
+
+
+def _firms_key() -> str:
+    """Read FIRMS_MAP_KEY from .env or env var. Never log the value."""
+    import os
+    key = os.environ.get("FIRMS_MAP_KEY") or os.environ.get("FIRMS_API_KEY") or ""
+    if not key:
+        # Try project .env
+        env_path = Path(__file__).parent.parent.parent / ".env"
+        if env_path.exists():
+            for line in env_path.read_text().splitlines():
+                if line.startswith("FIRMS_MAP_KEY=") or line.startswith("FIRMS_API_KEY="):
+                    key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                    if key:
+                        break
+    return key
+
+
+def _download_firms_archive(start: str, days_per_chunk: int = 10,
+                            n_chunks: int = 1, source: str = "VIIRS_SNPP_SP",
+                            bbox: str = CONUS_BBOX) -> list[dict]:
+    """Download historical FIRMS hotspots over CONUS via the keyed API.
+
+    The API returns up to 10 days per call; we chain calls forward in time.
+    Result is cached per (source, start, days_per_chunk, n_chunks, bbox).
+    """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache = CACHE_DIR / "firms_modis_7d.json"
+    cache = CACHE_DIR / f"firms_{source}_{start}_d{days_per_chunk}x{n_chunks}.json"
     if cache.exists():
         try:
             data = json.loads(cache.read_text())
             if data:
-                logger.info("[Lightning] Cached FIRMS: %d hotspots", len(data))
+                logger.info("[Lightning] Cached FIRMS-archive: %d hotspots", len(data))
                 return data
         except Exception:
             pass
-    r = requests.get(FIRMS_MODIS_URL, timeout=60, headers={"User-Agent": "Heli.OS/1.0"})
-    r.raise_for_status()
-    reader = csv.DictReader(io.StringIO(r.text))
+
+    key = _firms_key()
+    if not key:
+        logger.error("[Lightning] FIRMS_MAP_KEY not set — cannot fetch archive")
+        return []
+
     rows: list[dict] = []
-    for row in reader:
+    cursor = datetime.strptime(start, "%Y-%m-%d").date()
+    for chunk in range(n_chunks):
+        url = f"{FIRMS_API_BASE}/{key}/{source}/{bbox}/{days_per_chunk}/{cursor}"
         try:
-            rows.append({
-                "lat": float(row["latitude"]),
-                "lon": float(row["longitude"]),
-                "acq_date": row.get("acq_date", ""),
-                "frp": float(row.get("frp", 0) or 0),
-            })
-        except (ValueError, KeyError):
-            continue
+            r = requests.get(url, timeout=120, headers={"User-Agent": "Heli.OS/1.0"})
+            r.raise_for_status()
+            text = r.text
+            reader = csv.DictReader(io.StringIO(text))
+            n_added = 0
+            for row in reader:
+                try:
+                    acq_time = row.get("acq_time", "0")
+                    # acq_time is HHMM like "1247" — convert to hour
+                    hh = int(acq_time[:2]) if len(acq_time) >= 2 else 0
+                    rows.append({
+                        "lat": float(row["latitude"]),
+                        "lon": float(row["longitude"]),
+                        "acq_date": row.get("acq_date", ""),
+                        "acq_hour": hh,
+                        "frp": float(row.get("frp", 0) or 0),
+                        "confidence": str(row.get("confidence", "")),
+                    })
+                    n_added += 1
+                except (ValueError, KeyError):
+                    continue
+            logger.info("[Lightning] FIRMS %s %s+%dd  -> %d hotspots (total %d)",
+                        source, cursor, days_per_chunk, n_added, len(rows))
+        except Exception as e:
+            logger.warning("[Lightning] FIRMS chunk %s failed: %s", cursor, e)
+        cursor = cursor + timedelta(days=days_per_chunk)
+
     cache.write_text(json.dumps(rows))
-    logger.info("[Lightning] Downloaded %d FIRMS hotspots", len(rows))
     return rows
 
 
@@ -193,7 +244,8 @@ def _fwi_proxy(temp: float, rh: float, wind: float, precip: float) -> float:
 def _build_dataset(years: list[int],
                    match_radius_km: float = 25.0,
                    match_window_h: int = 72,
-                   max_lightning: int = 3000) -> tuple[np.ndarray, np.ndarray, list[str]]:
+                   max_lightning: int = 3000,
+                   skip_weather: bool = False) -> tuple[np.ndarray, np.ndarray, list[str]]:
     """For each lightning strike row, label by FIRMS proximity in next 72 h."""
     storm_rows: list[dict] = []
     for y in years:
@@ -238,7 +290,20 @@ def _build_dataset(years: list[int],
         logger.info("[Lightning] Subsampled to %d events (%d w/ casualties + %d random)",
                     len(lightning), len(with_cas), n_take)
 
-    firms = _download_firms()
+    # Pull FIRMS archive covering the whole training year(s).
+    # FIRMS area API caps day_range to [1..5]; use 5-day chunks × 73 chunks/year.
+    firms: list[dict] = []
+    for y in years:
+        # VIIRS SNPP_SP: 375m, 2012-present. Best signal for ignition proximity.
+        firms.extend(_download_firms_archive(
+            start=f"{y}-01-01", days_per_chunk=5, n_chunks=73,
+            source="VIIRS_SNPP_SP", bbox=CONUS_BBOX))
+        # NOAA-20 SP doubles spatial coverage (different overpass)
+        firms.extend(_download_firms_archive(
+            start=f"{y}-01-01", days_per_chunk=5, n_chunks=73,
+            source="VIIRS_NOAA20_SP", bbox=CONUS_BBOX))
+    logger.info("[Lightning] Total FIRMS archive hotspots: %d", len(firms))
+
     # Index FIRMS by 1deg lat/lon cell for fast filtering
     firms_idx: dict[tuple[int, int], list[dict]] = defaultdict(list)
     for h in firms:
@@ -263,12 +328,15 @@ def _build_dataset(years: list[int],
     for s in lightning:
         n_processed += 1
         date_str = s["dt"].strftime("%Y-%m-%d")
-        wx = _fetch_weather(s["lat"], s["lon"], date_str)
-        if wx is None:
-            n_skipped_wx += 1
-            continue
-        # Be polite to Open-Meteo (10/sec is the soft cap for free tier)
-        time.sleep(0.06)
+        if skip_weather:
+            wx = {"temp_max": None, "rh_min": None, "wind_max": None,
+                  "vpd_max": None, "precip": None, "et0": None}
+        else:
+            wx = _fetch_weather(s["lat"], s["lon"], date_str)
+            if wx is None:
+                n_skipped_wx += 1
+                continue
+            time.sleep(0.06)
 
         # Label: any FIRMS hotspot within 25 km AND within +72h of strike?
         ymin, ymax = int(math.floor(s["lat"] - 1)), int(math.floor(s["lat"] + 1))
@@ -329,12 +397,13 @@ def _build_dataset(years: list[int],
     return X, y, feat_names
 
 
-def train(years: list[int], max_lightning: int = 3000) -> None:
+def train(years: list[int], max_lightning: int = 3000, skip_weather: bool = False) -> None:
     from sklearn.ensemble import GradientBoostingClassifier
     from sklearn.model_selection import cross_val_score
     import joblib
 
-    X, y, feat_names = _build_dataset(years=years, max_lightning=max_lightning)
+    X, y, feat_names = _build_dataset(years=years, max_lightning=max_lightning,
+                                       skip_weather=skip_weather)
     if len(X) < 100:
         raise RuntimeError(f"Only {len(X)} samples — too few to train.")
 
@@ -368,7 +437,9 @@ def train(years: list[int], max_lightning: int = 3000) -> None:
         "n_samples": int(len(X)),
         "n_features": int(X.shape[1]),
         "positive_rate": round(float(y.mean()), 4),
-        "data_sources": ["noaa_storm_events", "nasa_firms_modis_7d", "openmeteo_archive"],
+        "data_sources": ["noaa_storm_events_real",
+                         "nasa_firms_viirs_archive_real (SNPP_SP + NOAA20_SP)",
+                         "openmeteo_archive_real" if not skip_weather else "openmeteo_skipped"],
         "years": years,
         "metrics": {
             "f1_cv_weighted": round(float(f1.mean()), 4),
@@ -387,5 +458,8 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--years", nargs="+", type=int, default=[2024])
     p.add_argument("--max-lightning", type=int, default=2000)
+    p.add_argument("--skip-weather", action="store_true",
+                   help="Skip Open-Meteo weather fetch (use when rate-limited)")
     args = p.parse_args()
-    train(years=args.years, max_lightning=args.max_lightning)
+    train(years=args.years, max_lightning=args.max_lightning,
+          skip_weather=args.skip_weather)

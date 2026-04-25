@@ -1,0 +1,33 @@
+{
+  "trained_at": "2026-04-25T04:11:53.536651+00:00",
+  "model": "LSTM autoencoder",
+  "task": "Aircraft trajectory anomaly score (reconstruction error)",
+  "seq_len": 8,
+  "n_features": 8,
+  "hidden_dim": 64,
+  "n_layers": 1,
+  "n_epochs": 30,
+  "n_aircraft_sequences": 5601,
+  "n_snapshots_collected": 18,
+  "snapshot_interval_sec": 15,
+  "data_source": "opensky_realtime_real",
+  "features": [
+    "lat_norm",
+    "lon_norm",
+    "alt_norm",
+    "velocity_norm",
+    "vertical_rate_norm",
+    "track_sin",
+    "track_cos",
+    "on_ground"
+  ],
+  "metrics": {
+    "val_mse_best": 0.00309,
+    "anomaly_thresholds_mse": {
+      "p50": 0.00016,
+      "p95": 0.01719,
+      "p99": 0.05225
+    }
+  },
+  "usage": "Score new sequences with model.forward() then compute MSE; MSE > p99 \u2248 strong anomaly, p95-p99 \u2248 moderate."
+}

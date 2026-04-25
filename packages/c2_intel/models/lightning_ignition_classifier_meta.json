@@ -1,0 +1,35 @@
+{
+  "trained_at": "2026-04-25T04:06:51.095870+00:00",
+  "model": "GradientBoostingClassifier",
+  "task": "P(wildfire ignition within 25km / 72h of lightning strike)",
+  "n_samples": 191,
+  "n_features": 18,
+  "positive_rate": 0.3455,
+  "data_sources": [
+    "noaa_storm_events_real",
+    "nasa_firms_viirs_archive_real (SNPP_SP + NOAA20_SP, 1.08M hotspots over CONUS 2024)",
+    "openmeteo_skipped (rate-limited at training time)"
+  ],
+  "note": "Skipped Open-Meteo weather features due to rate limit at training time. Top features are geo+time only — re-run with --no-skip-weather to add temp_max/rh_min/wind_max/vpd_max/precip/et0/fwi for stronger model.",
+  "years": [
+    2024
+  ],
+  "metrics": {
+    "f1_cv_weighted": 0.6002,
+    "f1_cv_std": 0.0396,
+    "auc_cv": 0.582,
+    "auc_cv_std": 0.0572
+  },
+  "top_features": {
+    "lat": 0.1603,
+    "lon_sin": 0.1507,
+    "lat_abs": 0.1216,
+    "day_cos": 0.1179,
+    "day_sin": 0.1132,
+    "lon_cos": 0.0895,
+    "lon_norm": 0.0693,
+    "state_strike_density": 0.0666,
+    "hour_sin": 0.0525,
+    "hour_cos": 0.051
+  }
+}

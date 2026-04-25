@@ -142,38 +142,21 @@ def _list_ndbc_stations(limit: int) -> list[dict]:
 
     cache.write_text(json.dumps(stations))
     logger.info("[Maritime] Indexed %d NDBC ocean stations", len(stations))
-    return stations[:limit]
+
+    # NOAA storm events cover only US waters — filter to US coastal box, exclude
+    # drifting buoys (no historical archive), prioritize moored buoys.
+    def _us_score(s: dict) -> tuple[int, int]:
+        in_us_box = (-130 <= s["lon"] <= -65 and 18 <= s["lat"] <= 60)
+        is_moored = s["type"] in ("buoy", "fixed", "fixed buoy")
+        # Lower score sorts first
+        return (0 if in_us_box else 1, 0 if is_moored else 1)
+
+    us_first = sorted(stations, key=_us_score)
+    return us_first[:limit]
 
 
-def _fetch_ndbc_historical(station: str, year: int) -> list[dict]:
-    """Fetch a full year of standard meteorological data for a buoy.
-
-    Format: gzipped text file at /data/historical/stdmet/{station}h{year}.txt.gz
-    Same column layout as realtime data.
-    """
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache = CACHE_DIR / f"{station}_{year}.json"
-    if cache.exists():
-        try:
-            return json.loads(cache.read_text())
-        except Exception:
-            pass
-
-    try:
-        r = requests.get(NDBC_HIST, params={
-            "filename": f"{station}h{year}.txt.gz",
-            "dir": "data/historical/stdmet/",
-        }, timeout=60, headers={"User-Agent": "Heli.OS/1.0"})
-        r.raise_for_status()
-        text = r.text
-        # NDBC view_text_file.php returns the decompressed text directly when
-        # filename ends in .gz — but if station/year doesn't exist, returns HTML
-        if "<html" in text.lower() or "<body" in text.lower():
-            return []
-    except Exception as e:
-        logger.debug("[Maritime] %s/%d historical fetch failed: %s", station, year, e)
-        return []
-
+def _parse_ndbc_text(text: str, cache: Path | None = None) -> list[dict]:
+    """Parse NDBC stdmet text file (realtime or historical, same column format)."""
     lines = text.splitlines()
     if len(lines) < 3:
         return []
@@ -220,27 +203,38 @@ def _fetch_ndbc_historical(station: str, year: int) -> list[dict]:
             "dewp":  _f("DEWP"),
             "vis":   _f("VIS"),
         })
-    cache.write_text(json.dumps(rows))
+    if cache is not None:
+        cache.write_text(json.dumps(rows))
     return rows
 
 
-def _fetch_ndbc_realtime(station: str) -> list[dict]:
-    """Fetch last ~45 days of buoy data — kept for online inference but not training."""
+def _fetch_ndbc_historical(station: str, year: int) -> list[dict]:
+    """Fetch a full year of buoy stdmet data via the NDBC historical archive.
+
+    URL: /view_text_file.php?filename={station}h{year}.txt.gz&dir=data/historical/stdmet/
+    The endpoint returns the decompressed text (or HTML if file is missing).
+    """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache = CACHE_DIR / f"{station}_rt.json"
+    cache = CACHE_DIR / f"{station}_{year}.json"
     if cache.exists():
         try:
             return json.loads(cache.read_text())
         except Exception:
             pass
     try:
-        r = requests.get(f"{NDBC_BASE}/{station}.txt", timeout=30,
-                         headers={"User-Agent": "Heli.OS/1.0"})
+        r = requests.get(NDBC_HIST, params={
+            "filename": f"{station}h{year}.txt.gz",
+            "dir": "data/historical/stdmet/",
+        }, timeout=60, headers={"User-Agent": "Heli.OS/1.0"})
         r.raise_for_status()
         text = r.text
-    except Exception:
+        if "<html" in text.lower() or "<body" in text.lower():
+            cache.write_text("[]")
+            return []
+    except Exception as e:
+        logger.debug("[Maritime] %s/%d historical fetch failed: %s", station, year, e)
         return []
-    return _parse_ndbc_text(text, cache)
+    return _parse_ndbc_text(text, cache=cache)
 
 
 def _load_marine_events(years: list[int]) -> list[dict]:
@@ -279,8 +273,8 @@ def _build_dataset(max_buoys: int, match_radius_km: float = 100.0,
     if not stations:
         raise RuntimeError("No NDBC stations available.")
 
-    # Marine events from already-cached NOAA storms
-    events = _load_marine_events(years=[2024, 2025, 2026])
+    # Marine events from already-cached NOAA storms (2022-2024 published years)
+    events = _load_marine_events(years=[2022, 2023, 2024])
     # Index events by 1deg lat/lon cell for fast neighborhood lookup
     ev_idx: dict[tuple[int, int], list[dict]] = defaultdict(list)
     for e in events:
@@ -300,10 +294,16 @@ def _build_dataset(max_buoys: int, match_radius_km: float = 100.0,
 
     n_with_data = 0
     for st in stations:
-        rows = _fetch_ndbc_realtime(st["station"])
-        time.sleep(0.1)  # politeness
+        # Pull historical years 2022/2023/2024 to overlap NOAA storm event cache
+        rows: list[dict] = []
+        for yr in (2024, 2023, 2022):
+            chunk = _fetch_ndbc_historical(st["station"], yr)
+            time.sleep(0.05)
+            if chunk:
+                rows.extend(chunk)
         if not rows:
             continue
+        rows.sort(key=lambda r: r["ts"])
         n_with_data += 1
         cell_neighbors = []
         for dy in (-1, 0, 1):
