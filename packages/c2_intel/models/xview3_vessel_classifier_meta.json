@@ -1,0 +1,23 @@
+{
+  "trained_at": "2026-04-25T06:43:16.926840+00:00",
+  "model": "CNN (3-conv block + MLP head)",
+  "task": "xView3 SAR vessel multi-class (Sentinel-1 chip classifier)",
+  "classes": [
+    "non_vessel",
+    "small_vessel",
+    "medium_vessel",
+    "large_vessel",
+    "fishing_vessel",
+    "dark_vessel",
+    "dark_fishing_vessel"
+  ],
+  "n_classes": 7,
+  "n_channels": 2,
+  "crop": 64,
+  "n_samples": 4000,
+  "data_source": "synthetic_fallback",
+  "metrics": {
+    "val_acc_best": 0.8675
+  },
+  "note": "Real xView3 chips required for production performance; synthetic fallback exists only to test the pipeline. Download data from https://iuu.xview.us/dataset."
+}

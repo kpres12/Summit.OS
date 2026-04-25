@@ -1,0 +1,27 @@
+{
+  "trained_at": "2026-04-25T06:48:43.211890+00:00",
+  "model": "1D CNN (3-conv block + MLP head)",
+  "task": "RadioML modulation classification (11 classes)",
+  "edition": "2016",
+  "classes": [
+    "8PSK",
+    "AM-DSB",
+    "AM-SSB",
+    "BPSK",
+    "CPFSK",
+    "GFSK",
+    "PAM4",
+    "QAM16",
+    "QAM64",
+    "QPSK",
+    "WBFM"
+  ],
+  "n_classes": 11,
+  "n_samples": 3300,
+  "seq_len": 128,
+  "min_snr_db": 0,
+  "data_source": "synthetic_fallback (register at deepsig.ai/datasets for real)",
+  "metrics": {
+    "val_acc_best": 0.6652
+  }
+}
