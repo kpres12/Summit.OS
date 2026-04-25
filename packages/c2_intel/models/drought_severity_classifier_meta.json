@@ -1,0 +1,37 @@
+{
+  "trained_at": "2026-04-25T03:44:08.168513+00:00",
+  "model": "GradientBoostingClassifier",
+  "task": "USDM dominant drought class (state-week)",
+  "classes": [
+    "None",
+    "D0"
+  ],
+  "note": "Open-Meteo archive rate-limit (429) cut data fetch at 14 of 50 states; rare classes (D1-D4) had <5 samples and were dropped. Re-run with throttling or paid Open-Meteo tier to extend coverage.",
+  "n_samples": 1785,
+  "n_features": 19,
+  "data_sources": [
+    "usdm_unl_real",
+    "openmeteo_archive_real"
+  ],
+  "period": "2023-01-01 -> 2024-12-31",
+  "metrics": {
+    "f1_cv_weighted": 0.5568,
+    "f1_cv_std": 0.0729
+  },
+  "top_features": {
+    "precip_90d": 0.2503,
+    "precip_180d": 0.1103,
+    "lon_norm": 0.0862,
+    "vpd_max_mean_90d": 0.0622,
+    "precip_60d": 0.062,
+    "week_sin": 0.0441,
+    "temp_anom_30d": 0.0422,
+    "temp_mean_30d": 0.0394,
+    "week_cos": 0.0382,
+    "precip_30d": 0.0344
+  },
+  "class_distribution": {
+    "D0": 745,
+    "None": 1040
+  }
+}
