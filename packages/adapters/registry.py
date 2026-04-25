@@ -470,6 +470,14 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("adapters.kraken_adapter",   "KrakenAdapter"),
         # Earth observation imagery (Sentinel-1 SAR, Sentinel-2 optical, Landsat thermal, MODIS)
         ("adapters.sentinel_hub_adapter", "SentinelHubAdapter"),
+        # Free EU public Sentinel alternative — recommended over paid Sentinel Hub
+        ("adapters.copernicus_dataspace_adapter", "CopernicusDataSpaceAdapter"),
+        # GDELT 2.0 — global conflict / events feed (no auth, 15-min cadence)
+        ("adapters.gdelt_adapter", "GDELTAdapter"),
+        # Global Fishing Watch — vessel events, dark-vessel candidates
+        ("adapters.global_fishing_watch_adapter", "GlobalFishingWatchAdapter"),
+        # Space-Track.org — USSF orbital catalog (TLEs, decays)
+        ("adapters.space_track_adapter", "SpaceTrackAdapter"),
     ]
 
     for module_path, class_name in _builtins:
