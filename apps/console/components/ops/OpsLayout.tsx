@@ -238,6 +238,11 @@ export default function OpsLayout({ onSwitchRole }: OpsLayoutProps) {
             showMaritime={activeLayers.has('maritime')}
             showNoFlyZones={activeLayers.has('noflyzones')}
             showGrid={activeLayers.has('grid')}
+            showFires={activeLayers.has('fires')}
+            showGibsModis={activeLayers.has('gibs-modis')}
+            showGibsViirs={activeLayers.has('gibs-viirs')}
+            showGibsFires={activeLayers.has('gibs-fires')}
+            showGibsNightlights={activeLayers.has('gibs-nightlights')}
             taskRoutes={taskRoutes}
           />
           {/* Live video overlay */}

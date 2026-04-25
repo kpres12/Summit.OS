@@ -5,6 +5,7 @@ import MapGL, { Marker, NavigationControl, ScaleControl, MapRef, Source, Layer, 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEntityStream, EntityData } from '@/hooks/useEntityStream';
 import { apiFetch, createGeofence } from '@/lib/api';
+import type { FireHotspot } from '@/app/api/intel/fires/route';
 
 interface SatellitePos { entity_id: string; name: string; sat_type: string; position: { lat: number; lon: number; alt: number }; }
 interface JamZone { id: string; name: string; lat: number; lon: number; radius_km: number; intensity: number; }
@@ -60,6 +61,11 @@ interface OpsMapViewProps {
   showMaritime?: boolean;
   showNoFlyZones?: boolean;
   showGrid?: boolean;
+  showFires?: boolean;
+  showGibsModis?: boolean;
+  showGibsViirs?: boolean;
+  showGibsFires?: boolean;
+  showGibsNightlights?: boolean;
   taskRoutes?: RouteOverlay[];
 }
 
@@ -178,12 +184,37 @@ function buildGridGeoJSON(bounds: { minLon: number; maxLon: number; minLat: numb
   return { type: 'FeatureCollection', features };
 }
 
+// NASA GIBS WMTS → XYZ tile URLs (no API key required)
+// Layer name reference: https://nasa-gibs.github.io/gibs-api-docs/available-visualizations/
+const TODAY = new Date().toISOString().slice(0, 10);
+const GIBS_BASE = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
+
+const GIBS_SOURCES = {
+  'gibs-modis': {
+    tiles: [`${GIBS_BASE}/MODIS_Terra_CorrectedReflectance_TrueColor/default/${TODAY}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`],
+    attribution: 'NASA GIBS — MODIS Terra',
+  },
+  'gibs-viirs': {
+    tiles: [`${GIBS_BASE}/VIIRS_NOAA20_CorrectedReflectance_TrueColor/default/${TODAY}/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg`],
+    attribution: 'NASA GIBS — VIIRS NOAA-20',
+  },
+  'gibs-fires': {
+    tiles: [`${GIBS_BASE}/MODIS_Terra_Thermal_Anomalies_Day/default/${TODAY}/GoogleMapsCompatible_Level3/{z}/{y}/{x}.png`],
+    attribution: 'NASA GIBS — MODIS Terra Thermal Anomalies',
+  },
+  'gibs-nightlights': {
+    tiles: [`${GIBS_BASE}/VIIRS_Black_Marble_Nighttime_At_Sensor_Radiance/default/2023-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg`],
+    attribution: 'NASA GIBS — VIIRS Night Lights',
+  },
+} as const;
+
 export default function OpsMapView({
   onSelectEntity, flyToLocation, alertEntityIds, selectedEntityId,
   missionDrawMode, onMissionArea, missionWaypoints,
   geofenceDrawMode, onGeofenceDrawEnd,
   showSatellites, showGpsJam, showMaritime, showNoFlyZones,
-  showGrid, taskRoutes,
+  showGrid, showFires, showGibsModis, showGibsViirs, showGibsFires, showGibsNightlights,
+  taskRoutes,
 }: OpsMapViewProps) {
   const { entityList } = useEntityStream();
   const mapRef = useRef<MapRef>(null);
@@ -224,6 +255,7 @@ export default function OpsMapView({
   const [jamZones, setJamZones] = useState<JamZone[]>([]);
   const [vessels, setVessels] = useState<Vessel[]>([]);
   const [noFlyZones, setNoFlyZones] = useState<NoFlyZone[]>([]);
+  const [fireHotspots, setFireHotspots] = useState<FireHotspot[]>([]);
 
   // Selected entity trail (from API history)
   const [selectedTrailCoords, setSelectedTrailCoords] = useState<[number, number][]>([]);
@@ -353,6 +385,14 @@ export default function OpsMapView({
     const fn = () => apiFetch('/v1/noflyzones').then(r => r.json()).then(d => setNoFlyZones(d.zones || [])).catch(() => {});
     fn(); const t = setInterval(fn, 30000); return () => clearInterval(t);
   }, [showNoFlyZones]);
+
+  useEffect(() => {
+    if (!showFires) { setFireHotspots([]); return; }
+    const fn = () => fetch('/api/intel/fires').then(r => r.json())
+      .then((d: { hotspots?: FireHotspot[] }) => setFireHotspots(d.hotspots ?? []))
+      .catch(() => {});
+    fn(); const t = setInterval(fn, 10 * 60_000); return () => clearInterval(t);
+  }, [showFires]);
 
   // Fetch position trail for selected entity from API
   useEffect(() => {
@@ -569,6 +609,49 @@ export default function OpsMapView({
             }} />
           </Marker>
         ))}
+
+        {/* === NASA GIBS raster tile layers (free, no key) === */}
+        {(Object.keys(GIBS_SOURCES) as Array<keyof typeof GIBS_SOURCES>).map(key => {
+          const show = key === 'gibs-modis' ? showGibsModis
+            : key === 'gibs-viirs' ? showGibsViirs
+            : key === 'gibs-fires' ? showGibsFires
+            : showGibsNightlights;
+          if (!show) return null;
+          const src = GIBS_SOURCES[key];
+          return (
+            <Source key={key} id={key} type="raster" tiles={src.tiles as unknown as string[]}
+              tileSize={256} attribution={src.attribution}>
+              <Layer id={`${key}-layer`} type="raster"
+                paint={{ 'raster-opacity': key === 'gibs-fires' ? 0.85 : 0.75 }}
+              />
+            </Source>
+          );
+        })}
+
+        {/* === NASA FIRMS fire hotspots (VIIRS 375 m) === */}
+        {showFires && fireHotspots.length > 0 && (() => {
+          const features = fireHotspots.map(h => ({
+            type: 'Feature' as const,
+            geometry: { type: 'Point' as const, coordinates: [h.lon, h.lat] },
+            properties: { frp: h.frp, confidence: h.confidence },
+          }));
+          const geo = { type: 'FeatureCollection' as const, features };
+          return (
+            <Source id="firms-fires" type="geojson" data={geo}>
+              <Layer id="firms-fires-heat" type="heatmap"
+                paint={{
+                  'heatmap-weight':     ['interpolate', ['linear'], ['get', 'frp'], 0, 0, 500, 1],
+                  'heatmap-intensity':  ['interpolate', ['linear'], ['zoom'], 0, 1, 9, 3],
+                  'heatmap-color':      ['interpolate', ['linear'], ['heatmap-density'],
+                    0, 'rgba(255,180,0,0)', 0.2, 'rgba(255,140,0,0.5)',
+                    0.6, 'rgba(255,60,0,0.8)', 1, 'rgba(255,0,0,1)'],
+                  'heatmap-radius':     ['interpolate', ['linear'], ['zoom'], 0, 4, 9, 20],
+                  'heatmap-opacity':    0.85,
+                }}
+              />
+            </Source>
+          );
+        })()}
 
         {/* === Operational grid === */}
         {showGrid && gridBounds && (() => {
