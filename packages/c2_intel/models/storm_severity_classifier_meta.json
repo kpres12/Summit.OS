@@ -1,0 +1,44 @@
+{
+  "trained_at": "2026-04-25T03:10:03.534532+00:00",
+  "model": "GradientBoostingClassifier",
+  "task": "Storm severity (5-class)",
+  "classes": [
+    "none",
+    "minor",
+    "moderate",
+    "severe",
+    "catastrophic"
+  ],
+  "n_samples": 80000,
+  "n_features": 63,
+  "n_event_types": 54,
+  "years": [
+    2022,
+    2023,
+    2024
+  ],
+  "data_source": "noaa_storm_events_real",
+  "metrics": {
+    "f1_cv_weighted": 0.8428,
+    "f1_cv_weighted_std": 0.0005
+  },
+  "top_features": {
+    "lon_norm": 0.3268,
+    "lat": 0.1924,
+    "event_type::thunderstorm wind": 0.1826,
+    "magnitude": 0.159,
+    "duration_h": 0.0334,
+    "event_type::lightning": 0.0236,
+    "tor_scale": 0.0154,
+    "day_cos": 0.0128,
+    "day_sin": 0.0126,
+    "event_type::heavy rain": 0.0092
+  },
+  "class_distribution": {
+    "0": 56249,
+    "1": 20958,
+    "2": 1931,
+    "3": 710,
+    "4": 152
+  }
+}

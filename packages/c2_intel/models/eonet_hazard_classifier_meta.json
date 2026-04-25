@@ -1,0 +1,40 @@
+{
+  "trained_at": "2026-04-25T03:04:49.991296+00:00",
+  "model": "GradientBoostingClassifier",
+  "task": "EONET natural hazard category",
+  "categories": [
+    "Wildfires",
+    "Floods",
+    "Severe Storms",
+    "Volcanoes",
+    "Sea and Lake Ice"
+  ],
+  "n_classes": 5,
+  "n_samples": 5000,
+  "n_features": 43,
+  "data_source": "nasa_eonet_real",
+  "days_window": 730,
+  "metrics": {
+    "f1_cv_weighted": 0.999,
+    "f1_cv_weighted_std": 0.0007
+  },
+  "top_features": {
+    "kw::flood": 0.7831,
+    "kw::fire": 0.1577,
+    "n_geometry_points": 0.0428,
+    "kw::volcano": 0.0075,
+    "lat": 0.0039,
+    "title_len": 0.0033,
+    "kw::cyclone": 0.0008,
+    "lat_abs": 0.0006,
+    "kw::iceberg": 0.0002,
+    "lon": 0.0001
+  },
+  "class_distribution": {
+    "Wildfires": 4559,
+    "Floods": 345,
+    "Severe Storms": 66,
+    "Volcanoes": 20,
+    "Sea and Lake Ice": 10
+  }
+}

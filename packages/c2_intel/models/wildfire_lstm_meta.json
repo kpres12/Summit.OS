@@ -1,11 +1,11 @@
 {
-  "trained_at": "2026-04-24T04:50:49.371761+00:00",
+  "trained_at": "2026-04-25T02:58:44.816045+00:00",
   "model": "LSTM",
   "seq_len": 12,
   "n_features": 9,
   "hidden_dim": 128,
   "n_layers": 2,
-  "n_epochs": 20,
+  "n_epochs": 40,
   "n_samples": 6000,
   "data_source": "synthetic",
   "features": [
@@ -16,11 +16,11 @@
     "wind_dir_cos",
     "rh_pct",
     "temp_c",
-    "ndvi",
-    "slope_deg"
+    "vpd_fwi_proxy",
+    "fwi_norm"
   ],
   "target": "frp_next_mw (normalized)",
   "metrics": {
-    "mae_val_normalized": 0.01963
+    "mae_val_normalized": 0.01724
   }
 }

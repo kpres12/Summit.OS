@@ -163,7 +163,7 @@ def _real_sequences(seq_len: int = SEQ_LEN, max_clusters: int = 80) -> list[tupl
 
 
 def train(epochs: int = 30, seq_len: int = SEQ_LEN, batch_size: int = 64,
-          device_str: str = "auto") -> None:
+          device_str: str = "auto", max_clusters: int = 80) -> None:
     import torch
     import torch.nn as nn
     from torch.utils.data import DataLoader, TensorDataset
@@ -176,7 +176,7 @@ def train(epochs: int = 30, seq_len: int = SEQ_LEN, batch_size: int = 64,
     logger.info("[WildfireLSTM] Device: %s", device)
 
     # Try real FIRMS + Open-Meteo sequences first
-    real_seqs = _real_sequences(seq_len=seq_len, max_clusters=80)
+    real_seqs = _real_sequences(seq_len=seq_len, max_clusters=max_clusters)
     if real_seqs:
         logger.info("[WildfireLSTM] Using %d real sequences from FIRMS+Open-Meteo", len(real_seqs))
         real_X = [s[0] for s in real_seqs]
@@ -281,6 +281,8 @@ if __name__ == "__main__":
     p.add_argument("--seq-len",    type=int, default=SEQ_LEN)
     p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--device",     default="auto")
+    p.add_argument("--max-clusters", type=int, default=80,
+                   help="Max FIRMS clusters to download (more = more real sequences)")
     args = p.parse_args()
     train(epochs=args.epochs, seq_len=args.seq_len, batch_size=args.batch_size,
-          device_str=args.device)
+          device_str=args.device, max_clusters=args.max_clusters)

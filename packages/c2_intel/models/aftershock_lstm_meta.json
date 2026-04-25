@@ -1,0 +1,27 @@
+{
+  "trained_at": "2026-04-25T03:02:51.557010+00:00",
+  "model": "LSTM (binary classifier)",
+  "task": "Probability of M3.0+ aftershock in next 12h",
+  "seq_len_hours": 48,
+  "horizon_hours": 12,
+  "trigger_magnitude": 3.0,
+  "grid_deg": 1.0,
+  "n_features": 6,
+  "hidden_dim": 64,
+  "n_layers": 1,
+  "n_epochs": 20,
+  "n_samples": 30000,
+  "n_real_events": 54411,
+  "data_source": "usgs_comcat_real",
+  "features": [
+    "event_count_norm",
+    "max_mag_norm",
+    "mean_depth_norm",
+    "log_energy_norm",
+    "hours_since_largest_norm",
+    "cum_count_norm"
+  ],
+  "metrics": {
+    "val_auc": 0.814
+  }
+}
