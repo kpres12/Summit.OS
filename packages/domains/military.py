@@ -1,21 +1,30 @@
 """
 Military Domain Logic
 
+Heli.OS provides C4ISR coordination, sensor fusion, world model, mission
+planning, and operator decision support for federal and DoD use cases.
+
 Covers: Humanitarian Assistance / Disaster Response (HADR), Agile Combat
-Employment (ACE), force protection perimeter, CASEVAC escort coordination,
-base/FOB perimeter monitoring, logistics convoy tracking, counter-UAS,
-Battle Damage Assessment, CBRN proximity, pattern of life, personnel
-recovery (CSAR), communications relay, logistics/resupply, and IED/mine
-area marking.
+Employment (ACE), Combat Readiness Deployment, force protection perimeter,
+CASEVAC escort coordination, base/FOB perimeter monitoring, logistics
+convoy tracking, counter-UAS detection and tracking, Battle Damage
+Assessment, CBRN proximity, pattern of life, personnel recovery (CSAR),
+communications relay, logistics/resupply, IED/mine area marking, mission
+rehearsal, and deployable C2 readiness.
 
-IMPORTANT: Heli.OS is a coordination and situational awareness platform.
-This module handles tracking, tasking, and reporting ONLY — absolutely no
-weapons targeting, fire control, targeting solutions, or lethal engagement
-logic of any kind. Military use = coordination, ISR, HADR, CASEVAC, and
-force protection tracking only.
+SCOPE OF AUTHORITY (load-bearing — do not weaken without CEO sign-off):
+The platform is human-in-the-loop / human-on-the-loop for any kinetic
+action. Heli.OS may surface engagement decision support — sensor-fused
+tracks, target identification confidence, ROE checks, deconfliction
+windows — but lethal engagement authority remains with authorized human
+operators in compliance with the Law of Armed Conflict and applicable
+DoD AI Ethical Principles. The platform does not autonomously execute
+lethal action and does not compute fire-control / weapons-targeting
+solutions; those functions are out of scope and live in dedicated mission
+systems integrated alongside Heli.OS, not within it.
 
-Primary standards: CoT/ATAK (MIL-STD-2525B type codes), SALUTE reports,
-9-line MEDEVAC, SITREP.
+Primary standards: CoT/ATAK (MIL-STD-2525B/D type codes), SALUTE reports,
+9-line MEDEVAC, SITREP, Link 16 / VMF where applicable.
 """
 
 from __future__ import annotations
