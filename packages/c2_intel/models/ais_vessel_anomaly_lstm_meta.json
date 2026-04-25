@@ -1,0 +1,22 @@
+{
+  "trained_at": "2026-04-25T20:03:27.446015+00:00",
+  "model": "LSTM autoencoder",
+  "task": "Vessel trajectory anomaly score (reconstruction MSE)",
+  "seq_len": 8,
+  "n_features": 6,
+  "n_vessels": 10626,
+  "data_source": "marinecadastre_ais_real",
+  "year_month": "2024-06",
+  "days": [
+    15
+  ],
+  "metrics": {
+    "val_mse_best": 0.00997,
+    "anomaly_thresholds_mse": {
+      "p50": 0.00025,
+      "p95": 0.0643,
+      "p99": 0.10393
+    }
+  },
+  "usage": "Score new trajectories with model.forward() then compute MSE; MSE > p99 \u2248 strong anomaly (likely AIS gap, distress, or illicit pattern)."
+}
