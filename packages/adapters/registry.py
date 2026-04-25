@@ -482,6 +482,8 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("adapters.aws_open_data_adapter", "AWSOpenDataAdapter"),
         # Microsoft Planetary Computer — STAC catalog + SAS-signed assets
         ("adapters.planetary_computer_adapter", "PlanetaryComputerAdapter"),
+        # Link 16 / VMF tactical data link gateway (scaffold — needs hardware)
+        ("adapters.link16_vmf_adapter", "Link16VMFAdapter"),
     ]
 
     for module_path, class_name in _builtins:

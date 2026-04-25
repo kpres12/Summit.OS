@@ -1,0 +1,58 @@
+# Heli.OS — TAK Server Interop Test Stack
+#
+# Stands up a TAK Server alongside Heli.OS so we can validate the
+# atak_adapter.py against a real TAK Server (not a mock). Use:
+#
+#   docker compose -f infra/docker/docker-compose.tak.yml up
+#
+# Then run the e2e test:
+#
+#   pytest tests/integration/test_atak_interop.py
+#
+# TAK Server image: https://tak.gov / https://github.com/TAK-Product-Center
+# We use the community taky reference (Python TAK Server) for CI; a
+# production deployment would use the official Java TAK Server with
+# proper certificates.
+
+services:
+  tak-server:
+    image: defcontracting/taky:latest
+    container_name: heli-tak-server
+    ports:
+      - "8087:8087"     # CoT TCP (clear)
+      - "8089:8089"     # CoT TCP+SSL
+      - "8443:8443"     # CoT HTTPS API
+      - "8089:8089/udp" # CoT UDP
+    environment:
+      TAK_HOSTNAME:    heli-tak-server
+      TAK_DOMAIN:      heli.local
+      TAK_CA_NAME:     "Heli.OS Test CA"
+    volumes:
+      - tak_data:/data
+      - tak_certs:/certs
+    networks:
+      - heli-tak
+
+  heli-atak-test-client:
+    build:
+      context: ../../
+      dockerfile: packages/agent/Dockerfile.agent
+    container_name: heli-atak-test-client
+    environment:
+      ATAK_SERVER_HOST:  tak-server
+      ATAK_SERVER_PORT:  "8087"
+      ATAK_USE_TLS:      "false"
+      ATAK_CALLSIGN:     HELI-TEST-01
+    depends_on:
+      - tak-server
+    networks:
+      - heli-tak
+    command: ["python", "-m", "tests.integration.test_atak_interop_runner"]
+
+volumes:
+  tak_data:
+  tak_certs:
+
+networks:
+  heli-tak:
+    driver: bridge
