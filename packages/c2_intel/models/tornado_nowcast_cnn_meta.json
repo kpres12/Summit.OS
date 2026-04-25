@@ -1,0 +1,26 @@
+{
+  "trained_at": "2026-04-25T17:31:54.822606+00:00",
+  "model": "2D CNN (4 conv + MLP head)",
+  "task": "P(tornado/severe-weather signature within next 20m)",
+  "n_samples": 4000,
+  "input_shape": [
+    1,
+    360,
+    256
+  ],
+  "horizon_minutes": 20,
+  "stations_used": [
+    "KOUN",
+    "KFWS",
+    "KTLX",
+    "KICT"
+  ],
+  "years": [
+    2023,
+    2024
+  ],
+  "data_source": "synthetic_fallback (install pyart + run with stations to use real)",
+  "metrics": {
+    "val_acc_best": 1.0
+  }
+}
