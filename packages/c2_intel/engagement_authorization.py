@@ -226,22 +226,66 @@ class EngagementAuthorizationError(RuntimeError):
 class EngagementAuthorizationGate:
     """The single mandatory gate between confirmed-threat and any kinetic
     tasking dispatch. There is intentionally no API path that emits
-    ENGAGEMENT_AUTHORIZED without going through this object's authorize()."""
+    ENGAGEMENT_AUTHORIZED without going through this object's authorize().
+
+    Dependencies are REQUIRED — there are no pass-through defaults. If you
+    cannot supply a real validator + audit sink, you should not be running
+    this gate. (Test-only construction can use the helper
+    `EngagementAuthorizationGate.for_testing(...)` which fails closed and
+    documents the test exemption.)
+    """
 
     def __init__(
         self,
         emit_event: Callable[[C2EventType, Dict[str, Any]], None],
-        verify_operator_signature: Optional[Callable[[bytes, Dict[str, Any]], bool]] = None,
-        operator_has_role: Optional[Callable[[str, str], bool]] = None,
-        audit_sink: Optional[Callable[[Dict[str, Any]], None]] = None,
+        verify_operator_signature: Callable[[bytes, Dict[str, Any]], bool],
+        operator_has_role: Callable[[str, str], bool],
+        audit_sink: Callable[[Dict[str, Any]], None],
         default_ttl_seconds: int = 60,
     ) -> None:
+        for name, fn in (
+            ("emit_event", emit_event),
+            ("verify_operator_signature", verify_operator_signature),
+            ("operator_has_role", operator_has_role),
+            ("audit_sink", audit_sink),
+        ):
+            if fn is None or not callable(fn):
+                raise ValueError(
+                    f"EngagementAuthorizationGate requires a callable {name}. "
+                    "Pass-through defaults were removed for safety. See "
+                    "EngagementAuthorizationGate.for_testing() if you "
+                    "explicitly need a permissive instance for unit tests."
+                )
         self._emit_event   = emit_event
-        self._verify_sig   = verify_operator_signature or (lambda *_: True)
-        self._has_role     = operator_has_role         or (lambda *_: True)
-        self._audit_sink   = audit_sink                or (lambda _: None)
+        self._verify_sig   = verify_operator_signature
+        self._has_role     = operator_has_role
+        self._audit_sink   = audit_sink
         self._default_ttl  = default_ttl_seconds
         self._cases: Dict[str, EngagementCase] = {}
+
+    @classmethod
+    def for_testing(cls, emit_event: Optional[Callable] = None,
+                    *, allow_role: bool = True,
+                    allow_signature: bool = True,
+                    capture_audit: Optional[List[Dict[str, Any]]] = None,
+                    default_ttl_seconds: int = 60
+                    ) -> "EngagementAuthorizationGate":
+        """Test-only constructor with explicit permissive validators.
+
+        This bypass is documented and named — call sites are easy to grep
+        for. Production code MUST use the real constructor with wired
+        dependencies. The test helper is intentionally verbose to avoid
+        accidental production use.
+        """
+        emit = emit_event or (lambda et, payload: None)
+        captured = capture_audit if capture_audit is not None else []
+        return cls(
+            emit_event=emit,
+            verify_operator_signature=lambda sig, payload: bool(allow_signature),
+            operator_has_role=lambda op, role: bool(allow_role),
+            audit_sink=lambda entry: captured.append(entry),
+            default_ttl_seconds=default_ttl_seconds,
+        )
 
     # --- transitions ------------------------------------------------------
 

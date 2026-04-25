@@ -37,12 +37,34 @@ try:
 
     _CRYPTO_AVAILABLE = True
 except ImportError:  # pragma: no cover
-    logger.warning(
-        "sensor_signing: 'cryptography' library not installed. "
-        "Running in STUB mode — sign() returns '' and verify() returns True (fail-open). "
-        "Install cryptography for production use."
-    )
     _CRYPTO_AVAILABLE = False
+
+# In production, the cryptography library MUST be installed. We deliberately
+# fail closed: missing crypto = no signing, no verification (rather than
+# silent fail-open that lets unsigned frames through). This was previously a
+# fail-open bug that allowed engagement-authorization defaults to be bypassed.
+# To explicitly opt-in to development pass-through, set:
+#   HELI_SECURITY_DEV_FAIL_OPEN=1
+# Never set this in production. Audit logs record the dev-mode flag.
+_DEV_FAIL_OPEN = os.environ.get("HELI_SECURITY_DEV_FAIL_OPEN") == "1"
+if not _CRYPTO_AVAILABLE and not _DEV_FAIL_OPEN:
+    logger.error(
+        "sensor_signing: 'cryptography' library not installed and "
+        "HELI_SECURITY_DEV_FAIL_OPEN is not set. sign() and verify() will "
+        "raise. Install cryptography (pip install cryptography) for production "
+        "use. To skip in dev only, set HELI_SECURITY_DEV_FAIL_OPEN=1."
+    )
+elif not _CRYPTO_AVAILABLE and _DEV_FAIL_OPEN:
+    logger.warning(
+        "sensor_signing: cryptography NOT installed but "
+        "HELI_SECURITY_DEV_FAIL_OPEN=1. Signatures will be empty and "
+        "verification fail-open. NEVER ENABLE IN PRODUCTION."
+    )
+
+
+class SensorSigningUnavailable(RuntimeError):
+    """Raised when crypto operations are attempted but the cryptography
+    library is not installed and dev fail-open is not enabled."""
 
 
 def _keys_dir(keys_dir: str = None) -> Path:
@@ -63,11 +85,18 @@ def generate_keypair(
     """
     Generate an Ed25519 keypair for *sensor_id*.  Saves raw seed (.key) and
     raw public key (.pub) to *keys_dir*.  Returns (private_seed_bytes, pubkey_bytes).
-    If the cryptography library is unavailable returns (b"", b"").
+
+    Raises SensorSigningUnavailable if the cryptography library is not
+    installed (unless HELI_SECURITY_DEV_FAIL_OPEN=1, in which case returns
+    empty bytes — for dev only).
     """
     if not _CRYPTO_AVAILABLE:
-        logger.warning("generate_keypair: stub mode — returning empty key bytes")
-        return (b"", b"")
+        if _DEV_FAIL_OPEN:
+            logger.warning("generate_keypair: dev fail-open mode — returning empty bytes")
+            return (b"", b"")
+        raise SensorSigningUnavailable(
+            "generate_keypair requires cryptography library. "
+            "Install it: pip install cryptography")
 
     d = _keys_dir(keys_dir)
     priv_path = d / f"{sensor_id}.key"
@@ -114,10 +143,16 @@ def sign_frame(sensor_id: str, payload: bytes, keys_dir: str = None) -> str:
     """
     Sign *payload* with the sensor's private key.
     Returns a base64url-encoded signature string.
-    Returns "" in stub mode (cryptography not installed).
+
+    Raises SensorSigningUnavailable if cryptography is not installed and
+    HELI_SECURITY_DEV_FAIL_OPEN is not set.
     """
     if not _CRYPTO_AVAILABLE:
-        return ""
+        if _DEV_FAIL_OPEN:
+            return ""
+        raise SensorSigningUnavailable(
+            "sign_frame requires cryptography library. "
+            "Install it: pip install cryptography")
 
     private_key = load_private_key(sensor_id, keys_dir)
     sig_bytes = private_key.sign(payload)
@@ -130,10 +165,16 @@ def verify_frame(
     """
     Verify *signature* over *payload* using the sensor's public key.
     Returns False on any error (bad signature, missing key file, malformed data).
-    Returns True in stub mode (fail-open for dev).
+
+    Fails CLOSED: returns False when cryptography is not installed (rather
+    than the previous fail-OPEN True). Set HELI_SECURITY_DEV_FAIL_OPEN=1
+    to revert to fail-open in dev environments only.
     """
     if not _CRYPTO_AVAILABLE:
-        return True
+        if _DEV_FAIL_OPEN:
+            return True
+        # Fail closed in production
+        return False
 
     try:
         public_key = load_public_key(sensor_id, keys_dir)

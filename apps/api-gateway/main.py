@@ -519,6 +519,33 @@ try:
 except Exception as exc:
     logger.warning("Org router load failed: %s", exc)
 
+# ── Engagement Authorization router (CANVAS / DoDD 3000.09 surface) ───────────
+# This is the SINGLE production HTTP surface for kinetic-action authorization.
+# Routes mutate state through EngagementAuthorizationGate only — no backdoor.
+try:
+    from routers.engagement import router as engagement_router, set_gate as _set_engagement_gate
+    from packages.c2_intel.engagement_wiring import build_production_gate
+    from packages.security.rbac import RBACEngine
+
+    _rbac = RBACEngine()
+    # Wire MQTT publish if available, else log-only event emission
+    def _emit_engagement_event(event_type, payload):
+        logger.info("[engagement-event] %s %s", event_type.value, payload)
+
+    _engagement_gate = build_production_gate(
+        rbac_engine=_rbac,
+        emit_event=_emit_engagement_event,
+    )
+    _set_engagement_gate(_engagement_gate)
+    app.include_router(engagement_router)
+    # Expose the RBAC engine + gate so other startup code / endpoints can
+    # register operators and assign roles.
+    app.state.rbac = _rbac
+    app.state.engagement_gate = _engagement_gate
+    logger.info("Engagement authorization router + production gate loaded")
+except Exception as exc:
+    logger.warning("Engagement router load failed: %s", exc)
+
 # CORS for local dev (console at 3000)
 try:
     from fastapi.middleware.cors import CORSMiddleware
