@@ -3,24 +3,25 @@ FIRMS + OpenMeteo fire-weather fusion dataset
 
 Joins NASA FIRMS active fire hotspot data with historical weather
 from OpenMeteo at each hotspot cluster location. Creates multi-feature
-training samples for the wildfire LSTM and fire intensity classifiers.
+training samples for the wildfire LSTM and fire danger classifier.
 
-All sources are free / public domain:
-  - NASA FIRMS VIIRS/MODIS: public domain
-  - OpenMeteo historical weather API: CC BY 4.0
+Sources:
+  - NASA FIRMS VIIRS SNPP + NOAA-20 (375 m, NRT): via FIRMS_MAP_KEY env var
+    Key: https://firms.modaps.eosdis.nasa.gov/api/area/  (free, 5000 tx/10 min)
+  - NASA FIRMS MODIS public CSV: no-key fallback (7-day global, 1 km)
+  - OpenMeteo historical weather API: CC BY 4.0 (no key needed)
 
 Features per cluster:
   - fire: frp_total, frp_max, hotspot_count, confidence_score
   - weather: temperature, humidity, wind_speed, wind_gust, precipitation_3d,
              vapour_pressure_deficit, soil_moisture_top, dewpoint
   - derived: fire_weather_index (FWI proxy), fire_danger_class
-
-No API key required.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -30,6 +31,12 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+FIRMS_KEY = os.environ.get("FIRMS_MAP_KEY", "")
+
+# Key-based VIIRS NRT API (375 m, 5-day max) — preferred when key available
+FIRMS_API_BASE = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
+
+# Public MODIS 7-day global CSV — no key needed, 1 km resolution
 FIRMS_MODIS_URL = (
     "https://firms.modaps.eosdis.nasa.gov/data/active_fire/modis-c6.1/csv/"
     "MODIS_C6_1_Global_7d.csv"
@@ -41,8 +48,48 @@ OPENMETEO_HISTORICAL = "https://archive-api.open-meteo.com/v1/archive"
 CLUSTER_DEG = 0.5
 
 
+def _parse_viirs_rows(text: str) -> list[dict]:
+    """Parse VIIRS CSV (bright_ti4, frp, confidence fields)."""
+    import csv, io
+    reader = csv.DictReader(io.StringIO(text))
+    rows = []
+    for row in reader:
+        try:
+            rows.append({
+                "lat":        float(row["latitude"]),
+                "lon":        float(row["longitude"]),
+                "frp":        float(row.get("frp", 0) or 0),
+                "brightness": float(row.get("bright_ti4", 300) or 300),
+                "confidence": str(row.get("confidence", "nominal")).lower(),
+                "acq_date":   str(row.get("acq_date", "")),
+                "daynight":   str(row.get("daynight", "D")),
+                "instrument": "VIIRS",
+            })
+        except (ValueError, KeyError):
+            continue
+    return rows
+
+
+def _download_firms_viirs(days: int = 5) -> list[dict]:
+    """Download VIIRS SNPP + NOAA-20 NRT data via keyed API (375 m)."""
+    if not FIRMS_KEY:
+        return []
+    rows: list[dict] = []
+    for source in ("VIIRS_SNPP_NRT", "VIIRS_NOAA20_NRT"):
+        url = f"{FIRMS_API_BASE}/{FIRMS_KEY}/{source}/world/{days}"
+        try:
+            resp = requests.get(url, timeout=90, headers={"User-Agent": "HeliOS/1.0"})
+            resp.raise_for_status()
+            batch = _parse_viirs_rows(resp.text)
+            logger.info("[FIRMS-W] %s: %d detections", source, len(batch))
+            rows.extend(batch)
+        except Exception as e:
+            logger.warning("[FIRMS-W] %s download failed: %s", source, e)
+    return rows
+
+
 def _download_firms_csv() -> list[dict]:
-    """Download MODIS 7-day global fire CSV — no key needed."""
+    """Download MODIS 7-day global fire CSV — no key needed (1 km fallback)."""
     try:
         resp = requests.get(FIRMS_MODIS_URL, timeout=60,
                             headers={"User-Agent": "HeliOS/1.0"})
@@ -172,7 +219,11 @@ def load_as_training_samples(
     import random
     rng = random.Random(42)
 
-    rows = _download_firms_csv()
+    # Prefer 375m VIIRS via key; fall back to 1km MODIS public CSV
+    rows = _download_firms_viirs(days=5) if FIRMS_KEY else []
+    if not rows:
+        logger.info("[FIRMS-W] No VIIRS key data — falling back to public MODIS CSV")
+        rows = _download_firms_csv()
     if not rows:
         logger.warning("[FIRMS-W] No FIRMS data — generating synthetic fire-weather samples")
         return _synthetic_samples(rng)
@@ -246,7 +297,7 @@ def load_as_training_samples(
             "fire_danger_class":  _danger_class(fwi),
             # Labels
             "frp_class": "extreme" if frp_max > 500 else "high" if frp_max > 100 else "medium" if frp_max > 20 else "low",
-            "source":    "firms_openmeteo_real" if weather_hits > 0 else "firms_synthetic_weather",
+            "source":    f"firms_viirs{'_openmeteo' if weather_hits > 0 else ''}" if FIRMS_KEY else "firms_modis_openmeteo",
         }
         samples.append(sample)
 
