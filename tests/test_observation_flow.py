@@ -1,15 +1,30 @@
 """
 Integration test for end-to-end observation flow:
 MQTT → Fabric → Redis Stream → Fusion → Postgres → API Gateway
+
+Requires a live MQTT broker, Redis, Postgres, and API Gateway. Skipped
+unless HELI_RUN_INTEGRATION=1 is set.
+
+  docker compose up
+  HELI_RUN_INTEGRATION=1 pytest tests/test_observation_flow.py
 """
 import json
+import os
 import time
 import pytest
-import paho.mqtt.client as mqtt
-import httpx
-from datetime import datetime, timezone
 
-pytestmark = pytest.mark.integration
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        os.environ.get("HELI_RUN_INTEGRATION") != "1",
+        reason="Requires live MQTT/Redis/Postgres/API stack. "
+               "Set HELI_RUN_INTEGRATION=1 with the stack up to enable.",
+    ),
+]
+
+mqtt = pytest.importorskip("paho.mqtt.client")
+httpx = pytest.importorskip("httpx")
+from datetime import datetime, timezone
 
 
 def test_observation_end_to_end():
