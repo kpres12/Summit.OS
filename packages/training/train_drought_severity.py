@@ -141,8 +141,9 @@ def _dominant_class(row: dict) -> int:
 
 
 def _fetch_state_weather(state: str, lat: float, lon: float,
-                         start: date, end: date) -> dict | None:
-    """Fetch full-period daily weather for a state centroid (one big request)."""
+                         start: date, end: date,
+                         max_retries: int = 5) -> dict | None:
+    """Fetch full-period daily weather for a state centroid with 429 backoff."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache = CACHE_DIR / f"wx_{state}_{start}_{end}.json"
     if cache.exists():
@@ -150,30 +151,41 @@ def _fetch_state_weather(state: str, lat: float, lon: float,
             return json.loads(cache.read_text())
         except Exception:
             pass
-    try:
-        r = requests.get(OPENMETEO_HIST, params={
-            "latitude": lat, "longitude": lon,
-            "start_date": str(start), "end_date": str(end),
-            "daily": ",".join([
-                "precipitation_sum",
-                "temperature_2m_mean",
-                "temperature_2m_max",
-                "wind_speed_10m_max",
-                "vapour_pressure_deficit_max",
-                "et0_fao_evapotranspiration",
-                "relative_humidity_2m_min",
-            ]),
-            "timezone": "UTC",
-        }, timeout=120)
-        r.raise_for_status()
-        data = r.json().get("daily") or {}
-        if not data.get("time"):
-            return None
-        cache.write_text(json.dumps(data))
-        return data
-    except Exception as e:
-        logger.warning("[Drought] OpenMeteo fetch failed for %s: %s", state, e)
-        return None
+
+    backoff = 10.0
+    for attempt in range(max_retries):
+        try:
+            r = requests.get(OPENMETEO_HIST, params={
+                "latitude": lat, "longitude": lon,
+                "start_date": str(start), "end_date": str(end),
+                "daily": ",".join([
+                    "precipitation_sum",
+                    "temperature_2m_mean",
+                    "temperature_2m_max",
+                    "wind_speed_10m_max",
+                    "vapour_pressure_deficit_max",
+                    "et0_fao_evapotranspiration",
+                    "relative_humidity_2m_min",
+                ]),
+                "timezone": "UTC",
+            }, timeout=120)
+            if r.status_code == 429:
+                logger.warning("[Drought] %s 429 — backing off %.0fs", state, backoff)
+                time.sleep(backoff)
+                backoff *= 2
+                continue
+            r.raise_for_status()
+            data = r.json().get("daily") or {}
+            if not data.get("time"):
+                return None
+            cache.write_text(json.dumps(data))
+            return data
+        except Exception as e:
+            logger.warning("[Drought] OpenMeteo fetch failed for %s (try %d): %s",
+                           state, attempt + 1, e)
+            time.sleep(backoff)
+            backoff *= 2
+    return None
 
 
 def _aggregate_window(daily: dict, end_idx: int, window_days: int) -> dict:

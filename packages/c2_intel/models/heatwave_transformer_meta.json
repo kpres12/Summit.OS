@@ -1,0 +1,36 @@
+{
+  "trained_at": "2026-04-25T06:02:28.867617+00:00",
+  "model": "Transformer encoder",
+  "task": "Multi-horizon extreme-heat probability (1d/3d/7d)",
+  "seq_len_days": 14,
+  "n_features": 7,
+  "d_model": 64,
+  "n_heads": 4,
+  "n_layers": 2,
+  "horizons_days": [
+    1,
+    3,
+    7
+  ],
+  "n_epochs": 30,
+  "n_samples": 20619,
+  "n_cities": 30,
+  "data_source": "openmeteo_archive_real",
+  "period": "2023-01-01 -> 2024-12-31",
+  "features": [
+    "t_max_norm",
+    "t_min_norm",
+    "apparent_t_max_norm",
+    "rh_min_norm",
+    "wind_max_norm",
+    "vpd_max_norm",
+    "heat_index_norm"
+  ],
+  "extreme_heat_definition": "city-specific p95 of daily t_max over training period",
+  "metrics": {
+    "auc_val_1d": 0.9656,
+    "auc_val_3d": 0.9567,
+    "auc_val_7d": 0.952,
+    "auc_val_avg_best": 0.9581
+  }
+}
