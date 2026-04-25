@@ -1,0 +1,50 @@
+{
+  "trained_at": "2026-04-25T02:08:12.270337+00:00",
+  "model": "GradientBoostingClassifier",
+  "task": "fire_danger_class",
+  "classes": [
+    "low",
+    "moderate",
+    "high",
+    "very_high",
+    "extreme"
+  ],
+  "n_samples": 400,
+  "n_real": 400,
+  "n_features": 12,
+  "features": [
+    "temp_max",
+    "rh_max",
+    "wind_max",
+    "wind_gust",
+    "vpd_max",
+    "et0",
+    "precip",
+    "hotspot_count",
+    "confidence_score",
+    "daynight_day_frac",
+    "fire_weather_index",
+    "lat_abs"
+  ],
+  "data_sources": [
+    "firms_viirs_openmeteo"
+  ],
+  "metrics": {
+    "f1_cv_weighted": 0.9816,
+    "f1_cv_weighted_std": 0.001
+  },
+  "feature_importances": {
+    "fire_weather_index": 0.9942,
+    "rh_max": 0.0016,
+    "vpd_max": 0.0014,
+    "et0": 0.0011,
+    "lat_abs": 0.0006,
+    "hotspot_count": 0.0006,
+    "temp_max": 0.0005,
+    "wind_max": 0.0,
+    "wind_gust": 0.0,
+    "daynight_day_frac": 0.0,
+    "precip": 0.0,
+    "confidence_score": 0.0
+  }
+}

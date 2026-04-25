@@ -1,0 +1,86 @@
+{
+  "trained_at": "2026-04-25T02:27:45.656511+00:00",
+  "model": "GradientBoostingRegressor \u00d7 4",
+  "n_samples": 1600,
+  "n_real": 900,
+  "n_features": 17,
+  "features": [
+    "temp_max",
+    "rh_max",
+    "wind_max",
+    "vpd_max",
+    "precip",
+    "et0",
+    "fire_weather_index",
+    "log1p_frp",
+    "hotspot_count_norm",
+    "eq_magnitude",
+    "eq_depth_km",
+    "eq_sig_norm",
+    "lat_abs",
+    "lon_sin",
+    "lon_cos",
+    "day_sin",
+    "day_cos"
+  ],
+  "data_sources": [
+    "synthetic",
+    "firms_viirs_openmeteo"
+  ],
+  "sample_counts": {
+    "fire_viirs": 400,
+    "seismic_usgs": 500,
+    "flood_synth": 300,
+    "baseline": 400
+  },
+  "models": {
+    "fire_risk_regressor": "fire_risk_regressor.joblib",
+    "flood_risk_regressor": "flood_risk_regressor.joblib",
+    "seismic_risk_regressor": "seismic_risk_regressor.joblib",
+    "compound_hazard_scorer": "compound_hazard_scorer.joblib (output \u00d7100 = 0\u2013100 score)"
+  },
+  "metrics": {
+    "fire_risk": {
+      "mae_cv": 0.0013,
+      "top5": {
+        "log1p_frp": 0.4543,
+        "fire_weather_index": 0.2936,
+        "hotspot_count_norm": 0.2518,
+        "vpd_max": 0.0002,
+        "rh_max": 0.0001
+      }
+    },
+    "flood_risk": {
+      "mae_cv": 0.0097,
+      "top5": {
+        "precip": 0.9072,
+        "rh_max": 0.0768,
+        "fire_weather_index": 0.0151,
+        "et0": 0.0002,
+        "day_sin": 0.0001
+      }
+    },
+    "seismic_risk": {
+      "mae_cv": 0.0013,
+      "top5": {
+        "eq_sig_norm": 0.5028,
+        "eq_depth_km": 0.3097,
+        "eq_magnitude": 0.1874,
+        "vpd_max": 0.0001,
+        "et0": 0.0
+      }
+    },
+    "compound": {
+      "mae_cv": 0.0202,
+      "top5": {
+        "precip": 0.3946,
+        "vpd_max": 0.185,
+        "day_sin": 0.109,
+        "fire_weather_index": 0.1042,
+        "rh_max": 0.0552
+      }
+    }
+  },
+  "compound_formula": "max(fire_score, flood_score, seismic_score) \u00d7 100",
+  "usage": "import joblib, numpy as np; m = joblib.load('compound_hazard_scorer.joblib'); score = float(np.clip(m.predict([features])[0] * 100, 0, 100))"
+}

@@ -1,0 +1,43 @@
+{
+  "trained_at": "2026-04-25T02:08:12.270442+00:00",
+  "model": "GradientBoostingRegressor",
+  "task": "log1p_frp_max_mw",
+  "n_samples": 400,
+  "n_real": 400,
+  "n_features": 12,
+  "features": [
+    "temp_max",
+    "rh_max",
+    "wind_max",
+    "wind_gust",
+    "vpd_max",
+    "et0",
+    "precip",
+    "hotspot_count",
+    "confidence_score",
+    "daynight_day_frac",
+    "fire_weather_index",
+    "lat_abs"
+  ],
+  "data_sources": [
+    "firms_viirs_openmeteo"
+  ],
+  "metrics": {
+    "mae_cv_log1p_frp": 0.5918
+  },
+  "feature_importances": {
+    "hotspot_count": 0.178,
+    "lat_abs": 0.1109,
+    "et0": 0.102,
+    "daynight_day_frac": 0.0977,
+    "wind_gust": 0.0906,
+    "vpd_max": 0.0866,
+    "temp_max": 0.0831,
+    "wind_max": 0.0755,
+    "fire_weather_index": 0.0619,
+    "rh_max": 0.0575,
+    "precip": 0.0561,
+    "confidence_score": 0.0
+  },
+  "note": "Predict with np.expm1(model.predict(X)) to recover FRP in MW"
+}
