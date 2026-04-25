@@ -1,0 +1,30 @@
+{
+  "trained_at": "2026-04-25T04:30:59.036898+00:00",
+  "model": "GradientBoostingClassifier",
+  "task": "P(marine SAR-relevant event within 100km/24h of buoy reading)",
+  "n_samples": 30000,
+  "n_features": 22,
+  "positive_rate": 0.0166,
+  "data_sources": [
+    "noaa_ndbc_historical_real (annual stdmet archives, 2022-2024)",
+    "noaa_storm_events_real_marine_subset (8,346 marine events 2022-2024)"
+  ],
+  "n_buoys_in_training": 4,
+  "note": "max_samples=30000 cap hit after 4 US-coastal buoys. Raise cap and add more buoys for broader spatial coverage. AUC=0.89 confirms real signal beyond class imbalance.",
+  "metrics": {
+    "f1_cv_weighted": 0.8992,
+    "auc_cv": 0.891
+  },
+  "top_features": {
+    "day_cos": 0.2257,
+    "gst": 0.1752,
+    "day_sin": 0.0952,
+    "dewp_dep": 0.0889,
+    "wdir_cos": 0.0887,
+    "wtmp": 0.0872,
+    "atmp": 0.08,
+    "atmp_minus_wtmp": 0.0583,
+    "lat_abs": 0.034,
+    "wspd": 0.0181
+  }
+}
