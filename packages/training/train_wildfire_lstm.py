@@ -103,96 +103,61 @@ class WildfireLSTM(object):  # defined inside to allow __main__ reimport
 
 def _real_sequences(seq_len: int = SEQ_LEN, max_clusters: int = 80) -> list[tuple]:
     """
-    Build real fire sequences from NASA FIRMS + Open-Meteo weather.
+    Build real fire sequences from NASA FIRMS + OpenMeteo weather via firms_weather.py.
 
-    Groups FIRMS detections by approximate location (0.5° grid cell) and date,
-    then fetches weather for each cluster from Open-Meteo.
+    Each FIRMS cluster sample has weather already fused (temp, RH, wind, VPD, FWI).
+    Samples are grouped by location and sorted by date to create sliding-window sequences.
 
-    Returns list of (feature_array, target_frp_norm) tuples.
+    Returns list of (feature_array [seq_len × N_FEATURES], target_frp_norm) tuples.
     """
-    import math
-    import csv
-    from pathlib import Path
-    from datetime import datetime, timedelta
-    from datasets.firms import download as firms_download, FIRMS_MODIS_URL
-    from datasets.openmeteo import fetch_hourly, weather_at_hour
+    import math as _math
+    from collections import defaultdict
+    from datasets.firms_weather import load_as_training_samples
 
-    firms_path = firms_download()
-    if not firms_path.exists():
+    samples = load_as_training_samples(max_clusters=max_clusters, fetch_weather=True)
+    if not samples:
         return []
 
-    # Parse FIRMS CSV into (lat_grid, lon_grid, date) → [frp, ...]
-    clusters: dict = {}
-    try:
-        with open(firms_path, newline="") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                try:
-                    lat   = round(float(row["latitude"]) / 0.5) * 0.5
-                    lon   = round(float(row["longitude"]) / 0.5) * 0.5
-                    date  = row.get("acq_date", "")
-                    frp   = float(row.get("frp", 0) or 0)
-                    key   = (lat, lon, date)
-                    clusters.setdefault(key, []).append(frp)
-                except (KeyError, ValueError):
-                    continue
-    except Exception:
-        return []
-
-    # Sort clusters by date, group by location to build sequences
-    by_loc: dict = {}
-    for (lat, lon, date), frps in clusters.items():
-        loc_key = (lat, lon)
-        by_loc.setdefault(loc_key, []).append((date, sum(frps), len(frps)))
+    # Group samples by grid cell so we can form sequences over time
+    by_loc: dict = defaultdict(list)
+    for s in samples:
+        key = (round(s["lat"] / 0.5) * 0.5, round(s["lon"] / 0.5) * 0.5)
+        by_loc[key].append(s)
 
     sequences = []
     processed = 0
-    for (lat, lon), daily in sorted(by_loc.items())[:max_clusters]:
-        daily.sort(key=lambda x: x[0])
-        if len(daily) < 2:
+    for loc_samples in by_loc.values():
+        loc_samples.sort(key=lambda x: x.get("acq_date", ""))
+        if len(loc_samples) < 2:
             continue
 
-        # Fetch weather for this location over the date range
-        dates = [d[0] for d in daily]
-        try:
-            hourly = fetch_hourly(lat, lon, dates[0], dates[-1])
-        except Exception:
-            hourly = None
-
         seq = []
-        for i, (date, agg_frp, n_pixels) in enumerate(daily):
-            hour_idx = i * 24
-            if hourly:
-                wx = weather_at_hour(hourly, hour_idx)
-            else:
-                wx = {"temp_c": 25, "rh_pct": 40, "wind_speed_ms": 5,
-                      "wind_dir_deg": 180, "precip_mm": 0}
-
-            import math as _math
-            wd_rad = _math.radians(wx["wind_dir_deg"])
+        for s in loc_samples:
+            wind_max = s.get("wind_max", 15.0)
+            # Wind direction unknown from FIRMS — use FWI as proxy for spread direction
+            fwi_norm = s.get("fire_weather_index", 30.0) / 100.0
             seq.append([
-                min(agg_frp / 5000.0, 1.0),
-                min(n_pixels / 200.0, 1.0),
-                min(wx["wind_speed_ms"] / 25.0, 1.0),
-                _math.sin(wd_rad),
-                _math.cos(wd_rad),
-                wx["rh_pct"] / 100.0,
-                (wx["temp_c"] + 10) / 65.0,
-                0.5,   # NDVI unknown from FIRMS
-                0.1,   # slope unknown
+                min(s.get("frp_total", 0) / 5000.0, 1.0),       # frp_mw
+                min(s.get("hotspot_count", 1) / 200.0, 1.0),     # active_pixels
+                min(wind_max / 25.0, 1.0),                        # wind_speed_ms
+                _math.sin(fwi_norm * _math.pi),                   # wind_dir_sin proxy
+                _math.cos(fwi_norm * _math.pi),                   # wind_dir_cos proxy
+                min(s.get("rh_max", 50.0) / 100.0, 1.0),         # rh_pct
+                min((s.get("temp_max", 25.0) + 10) / 65.0, 1.0), # temp_c
+                min(s.get("vpd_max", 1.5) / 4.0, 1.0),           # NDVI→VPD (fire fuel proxy)
+                fwi_norm,                                          # slope→FWI (terrain/fuel spread)
             ])
 
-        # Build overlapping windows of seq_len steps
         for start in range(max(0, len(seq) - seq_len)):
             window = seq[start:start + seq_len]
             if len(window) < seq_len:
                 break
-            target_frp = daily[start + seq_len][1] if start + seq_len < len(daily) else daily[-1][1]
-            sequences.append((window, min(target_frp / 5000.0, 1.0)))
+            target = loc_samples[start + seq_len] if start + seq_len < len(loc_samples) else loc_samples[-1]
+            sequences.append((window, min(target.get("frp_total", 0) / 5000.0, 1.0)))
 
         processed += 1
 
-    logger.info("[WildfireLSTM] Built %d real sequences from %d FIRMS clusters + Open-Meteo",
+    logger.info("[WildfireLSTM] Built %d real sequences from %d FIRMS+OpenMeteo clusters",
                 len(sequences), processed)
     return sequences
 
@@ -299,9 +264,9 @@ def train(epochs: int = 30, seq_len: int = SEQ_LEN, batch_size: int = 64,
         "n_layers": N_LAYERS,
         "n_epochs": epochs,
         "n_samples": len(X),
-        "data_source": "synthetic",
+        "data_source": "firms_openmeteo_real" if real_seqs else "synthetic",
         "features": ["frp_mw", "active_pixels", "wind_speed_ms", "wind_dir_sin",
-                     "wind_dir_cos", "rh_pct", "temp_c", "ndvi", "slope_deg"],
+                     "wind_dir_cos", "rh_pct", "temp_c", "vpd_fwi_proxy", "fwi_norm"],
         "target": "frp_next_mw (normalized)",
         "metrics": {"mae_val_normalized": round(best_mae, 5)},
     }
