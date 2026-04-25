@@ -478,6 +478,10 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("adapters.global_fishing_watch_adapter", "GlobalFishingWatchAdapter"),
         # Space-Track.org — USSF orbital catalog (TLEs, decays)
         ("adapters.space_track_adapter", "SpaceTrackAdapter"),
+        # Anonymous AWS Open Data buckets (NOAA, NASA, USGS, etc.)
+        ("adapters.aws_open_data_adapter", "AWSOpenDataAdapter"),
+        # Microsoft Planetary Computer — STAC catalog + SAS-signed assets
+        ("adapters.planetary_computer_adapter", "PlanetaryComputerAdapter"),
     ]
 
     for module_path, class_name in _builtins:
