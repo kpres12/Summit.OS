@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 import { publishOsint } from '@/lib/osintBus';
 import { useEntityStream } from '@/hooks/useEntityStream';
 import type { IntelEvent } from '@/app/api/intel/events/route';
+import type { ImageryScene, ImageryResponse } from '@/app/api/intel/imagery/route';
 
 // ─── OSINT / Web Search types ─────────────────────────────────────────────────
 
@@ -111,7 +112,9 @@ export default function OpsIntel() {
   const [noFlyZones, setNoFlyZones] = useState<NoFlyZone[]>([]);
   const [events, setEvents] = useState<IntelEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'sat' | 'jam' | 'mar' | 'nfz' | 'web' | 'sigint' | 'events'>('sat');
+  const [imagery, setImagery] = useState<ImageryResponse | null>(null);
+  const [imageryLoading, setImageryLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'sat' | 'jam' | 'mar' | 'nfz' | 'web' | 'sigint' | 'events' | 'img'>('sat');
 
   // ── Web / OSINT state ──────────────────────────────────────────────────────
   const [webQuery, setWebQuery] = useState('');
@@ -201,6 +204,27 @@ export default function OpsIntel() {
     }
   }, []);
 
+  const fetchImagery = useCallback(async () => {
+    // Default AOR: ±1° around San Francisco (matches simulated entities)
+    setImageryLoading(true);
+    try {
+      const res = await fetch('/api/intel/imagery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bbox: [-123.5, 36.8, -121.4, 38.9], days: 30 }),
+      });
+      if (res.ok) setImagery(await res.json() as ImageryResponse);
+    } catch {
+      // non-fatal
+    } finally {
+      setImageryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'img' && !imagery && !imageryLoading) fetchImagery();
+  }, [activeTab, imagery, imageryLoading, fetchImagery]);
+
   const tabs = [
     { id: 'sat'    as const, label: 'SAT',    count: satellites.length },
     { id: 'jam'    as const, label: 'GPS',    count: jamZones.filter(z => z.intensity > 0.5).length },
@@ -208,6 +232,7 @@ export default function OpsIntel() {
     { id: 'nfz'    as const, label: 'NFZ',    count: noFlyZones.filter(z => z.active).length },
     { id: 'sigint' as const, label: 'RF',     count: sensorEntities.length },
     { id: 'events' as const, label: 'EVT',    count: events.filter(e => e.severity !== 'GREEN').length },
+    { id: 'img'    as const, label: 'IMG',    count: imagery?.scenes.length ?? 0 },
     { id: 'web'    as const, label: 'WEB',    count: webResults?.results.length ?? 0 },
   ];
 
@@ -492,6 +517,114 @@ export default function OpsIntel() {
                 <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
                   NO EVENTS — CHECK NETWORK
                 </span>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Imagery — Sentinel-2 (free) + BlackSky (paid via UP42) */}
+        {activeTab === 'img' && (
+          <>
+            <SectionHeader title="SATELLITE IMAGERY" />
+            <div className="px-3 pb-2 text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              Sentinel-2 (10 m, free) · BlackSky (35 cm, requires UP42 key). Past 30 days, &lt;40% cloud cover.
+            </div>
+
+            {/* Provider badges */}
+            <div className="flex gap-2 px-3 pb-3">
+              <span className="text-[9px] px-1.5 py-0.5" style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: 'var(--accent)',
+                border: '1px solid var(--accent-20)',
+                background: 'var(--accent-5)',
+              }}>S2 LIVE</span>
+              <span className="text-[9px] px-1.5 py-0.5" style={{
+                fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                color: imagery?.providers.blacksky ? 'var(--accent)' : 'var(--text-muted)',
+                border: `1px solid ${imagery?.providers.blacksky ? 'var(--accent-20)' : 'var(--border)'}`,
+                background: imagery?.providers.blacksky ? 'var(--accent-5)' : 'transparent',
+              }}>{imagery?.providers.blacksky ? 'BLACKSKY LIVE' : 'BLACKSKY — SET UP42_API_KEY'}</span>
+            </div>
+
+            {imageryLoading && (
+              <div className="flex items-center justify-center h-16">
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
+                  QUERYING ELEMENT84 STAC...
+                </span>
+              </div>
+            )}
+
+            {!imageryLoading && imagery?.scenes.length === 0 && (
+              <div className="flex items-center justify-center h-16">
+                <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)', fontSize: 10 }}>
+                  NO SCENES IN WINDOW
+                </span>
+              </div>
+            )}
+
+            {imagery?.scenes.map(scene => (
+              <div key={scene.id} className="px-3 py-2.5 flex gap-3"
+                style={{ borderBottom: '1px solid var(--accent-5)' }}>
+                {/* Thumbnail */}
+                <div style={{ flexShrink: 0, width: 52, height: 52, background: 'var(--accent-5)',
+                  border: '1px solid var(--accent-10)', overflow: 'hidden' }}>
+                  {scene.thumbnail_url
+                    ? <img src={scene.thumbnail_url} alt="scene" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', fontSize: 8, color: 'var(--text-muted)' }}>NO IMG</span>
+                      </div>
+                  }
+                </div>
+
+                {/* Metadata */}
+                <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] px-1" style={{
+                      fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                      color: scene.provider === 'blacksky' ? 'var(--warning)' : '#4FC3F7',
+                      border: `1px solid ${scene.provider === 'blacksky' ? 'color-mix(in srgb, var(--warning) 30%, transparent)' : 'rgba(79,195,247,0.25)'}`,
+                    }}>
+                      {scene.provider === 'blacksky' ? 'BLACKSKY' : 'S2'}
+                    </span>
+                    <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)' }}>
+                      {scene.resolution_m < 1 ? `${(scene.resolution_m * 100).toFixed(0)} cm` : `${scene.resolution_m} m`}
+                    </span>
+                    <span className="text-[9px] ml-auto" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                      ☁ {scene.cloud_pct}%
+                    </span>
+                  </div>
+                  <span className="text-[9px]" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-dim)' }}>
+                    {new Date(scene.acquired_iso).toUTCString().slice(5, 22)}
+                  </span>
+                  <span className="text-[9px] truncate" style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--text-muted)' }}>
+                    {scene.bbox[0].toFixed(1)}°W {scene.bbox[1].toFixed(1)}°S → {scene.bbox[2].toFixed(1)}°E {scene.bbox[3].toFixed(1)}°N
+                  </span>
+                  {scene.preview_url && (
+                    <a href={scene.preview_url} target="_blank" rel="noreferrer"
+                      className="text-[9px] self-start"
+                      style={{ fontFamily: 'var(--font-ibm-plex-mono), monospace', color: 'var(--accent)', textDecoration: 'none' }}
+                      onClick={e => e.stopPropagation()}>
+                      [ VIEW FULL ]
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Re-fetch button */}
+            {!imageryLoading && (
+              <div className="px-3 pt-2 pb-3">
+                <button onClick={fetchImagery} className="text-[9px] tracking-widest" style={{
+                  fontFamily: 'var(--font-ibm-plex-mono), monospace',
+                  color: 'var(--text-muted)',
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  padding: '3px 8px',
+                  cursor: 'pointer',
+                  width: '100%',
+                }}>
+                  REFRESH IMAGERY
+                </button>
               </div>
             )}
           </>
