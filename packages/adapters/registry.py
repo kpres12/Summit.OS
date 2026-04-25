@@ -468,6 +468,8 @@ def _try_register_builtins(registry: AdapterRegistry) -> None:
         ("adapters.aisstream_adapter", "AISStreamAdapter"),
         # Kraken Robotics underwater systems
         ("adapters.kraken_adapter",   "KrakenAdapter"),
+        # Earth observation imagery (Sentinel-1 SAR, Sentinel-2 optical, Landsat thermal, MODIS)
+        ("adapters.sentinel_hub_adapter", "SentinelHubAdapter"),
     ]
 
     for module_path, class_name in _builtins:
