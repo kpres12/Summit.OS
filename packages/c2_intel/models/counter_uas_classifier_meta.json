@@ -23,5 +23,7 @@
   "metrics": {
     "f1_cv": 1.0,
     "f1_cv_std": 0.0
-  }
+  },
+  "data_source": "synthetic",
+  "data_provenance": "Procedurally generated counter-UAS sensor scenarios (rule-derived labels: authorized vs rogue UAS)"
 }

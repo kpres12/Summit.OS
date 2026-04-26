@@ -15,9 +15,13 @@ spec:
       labels:
         app: inference
     spec:
+      securityContext:
+        {{- include "summit-os.podSecurityContext" . | nindent 8 }}
       containers:
         - name: inference
           image: {{ .Values.global.image.registry }}{{ .Values.inference.image }}
+          securityContext:
+            {{- include "summit-os.containerSecurityContext" . | nindent 12 }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.inference.port }}

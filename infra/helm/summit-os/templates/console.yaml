@@ -15,9 +15,13 @@ spec:
       labels:
         app: console
     spec:
+      securityContext:
+        {{- include "summit-os.podSecurityContext" . | nindent 8 }}
       containers:
         - name: console
           image: {{ .Values.global.image.registry }}{{ .Values.console.image }}
+          securityContext:
+            {{- include "summit-os.containerSecurityContext" . | nindent 12 }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.console.port }}

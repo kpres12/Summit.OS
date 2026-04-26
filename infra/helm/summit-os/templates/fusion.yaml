@@ -15,9 +15,13 @@ spec:
       labels:
         app: fusion
     spec:
+      securityContext:
+        {{- include "summit-os.podSecurityContext" . | nindent 8 }}
       containers:
         - name: fusion
           image: {{ .Values.global.image.registry }}{{ .Values.fusion.image }}
+          securityContext:
+            {{- include "summit-os.containerSecurityContext" . | nindent 12 }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.fusion.port }}

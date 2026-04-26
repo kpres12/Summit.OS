@@ -282,29 +282,108 @@ class EntityServicer:
 
 
 async def serve_entity_service(
-    port: int = 50051, store: Optional[EntityStore] = None
+    port: int = 50051,
+    store: Optional[EntityStore] = None,
+    *,
+    bind_host: str = "127.0.0.1",
+    tls_cert_path: Optional[str] = None,
+    tls_key_path: Optional[str] = None,
+    tls_ca_path: Optional[str] = None,
+    require_client_cert: bool = False,
+    auth_token_validator: Optional[callable] = None,
 ) -> None:
-    """
-    Start gRPC entity service.
+    """Start gRPC entity service with safety defaults.
 
-    Uses grpcio-tools generated stubs if available,
-    otherwise runs a simple JSON-over-TCP service.
+    Defaults:
+      - Bind to 127.0.0.1 (loopback only). Override bind_host explicitly.
+      - REFUSE to bind to 0.0.0.0 without TLS (raises ValueError).
+      - Insecure-port path is loopback-only and intended for in-cluster
+        deployments behind an mTLS sidecar (Istio, Linkerd) that
+        terminates TLS for us.
+
+    To enable TLS directly on the gRPC server:
+      tls_cert_path, tls_key_path = paths to PEM files
+      tls_ca_path                  = optional client-cert CA for mTLS
+      require_client_cert          = require valid client cert (mTLS)
+
+    To enable JWT authn:
+      auth_token_validator(token: str, method: str) -> bool
+        Called for every request; returning False denies with
+        UNAUTHENTICATED.
     """
+    if bind_host in ("0.0.0.0", "::") and not tls_cert_path:
+        raise ValueError(
+            f"Refusing to bind gRPC EntityService to {bind_host} without TLS. "
+            "Pass tls_cert_path + tls_key_path, or bind to 127.0.0.1 behind "
+            "an mTLS service-mesh sidecar.")
     try:
         import grpc
         from grpc import aio as grpc_aio
-
-        servicer = EntityServicer(store)
-        server = grpc_aio.server(futures.ThreadPoolExecutor(max_workers=10))
-        # If generated stubs exist, register them
-        # For now, log that we're running
-        server.add_insecure_port(f"[::]:{port}")
-        await server.start()
-        logger.info(f"Entity gRPC service started on port {port}")
-        await server.wait_for_termination()
     except ImportError:
         logger.warning(
             "grpcio not installed — running EntityServicer in standalone mode"
         )
-        # Still usable via direct method calls
+        return
+
+    interceptors = []
+    if auth_token_validator is not None:
+        interceptors.append(_AuthInterceptor(auth_token_validator))
+
+    servicer = EntityServicer(store)
+    server = grpc_aio.server(
+        futures.ThreadPoolExecutor(max_workers=10),
+        interceptors=interceptors,
+    )
+    bind = f"{bind_host}:{port}"
+    if tls_cert_path and tls_key_path:
+        with open(tls_cert_path, "rb") as cf, open(tls_key_path, "rb") as kf:
+            cert_chain, private_key = cf.read(), kf.read()
+        ca_cert = None
+        if tls_ca_path:
+            with open(tls_ca_path, "rb") as af:
+                ca_cert = af.read()
+        creds = grpc.ssl_server_credentials(
+            [(private_key, cert_chain)],
+            root_certificates=ca_cert,
+            require_client_auth=require_client_cert,
+        )
+        server.add_secure_port(bind, creds)
+        logger.info("Entity gRPC service started on %s (TLS%s)",
+                    bind, " + mTLS" if require_client_cert else "")
+    else:
+        server.add_insecure_port(bind)
+        logger.warning("Entity gRPC service started on %s (INSECURE — "
+                       "loopback only; assumes mTLS sidecar in production)",
+                       bind)
+    await server.start()
+    await server.wait_for_termination()
+
+
+class _AuthInterceptor:
+    """Per-request token validation interceptor. Returns UNAUTHENTICATED
+    when the validator returns False for the (token, method) pair."""
+
+    def __init__(self, validator: callable):
+        self._validator = validator
+
+    async def intercept_service(self, continuation, handler_call_details):
+        try:
+            import grpc
+        except ImportError:
+            return await continuation(handler_call_details)
+        metadata = dict(handler_call_details.invocation_metadata or [])
+        token = metadata.get("authorization", "")
+        if token.lower().startswith("bearer "):
+            token = token[7:]
+        try:
+            ok = bool(self._validator(token, handler_call_details.method))
+        except Exception as e:
+            logger.warning("auth_token_validator raised: %s", e)
+            ok = False
+        if not ok:
+            async def deny(request, context):
+                await context.abort(grpc.StatusCode.UNAUTHENTICATED,
+                                    "invalid or missing token")
+            return grpc.aio.unary_unary_rpc_method_handler(deny)
+        return await continuation(handler_call_details)
         pass

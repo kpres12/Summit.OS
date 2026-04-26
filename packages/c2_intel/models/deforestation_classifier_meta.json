@@ -14,5 +14,7 @@
   "metrics": {
     "f1_macro_cv": 0.7375,
     "f1_macro_cv_std": 0.0144
-  }
+  },
+  "data_source": "synthetic_plus_gbif",
+  "data_provenance": "Synthetic deforestation scenarios augmented with GBIF wildlife observation patterns"
 }

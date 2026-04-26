@@ -21,5 +21,7 @@
   "metrics": {
     "f1_cv": 0.9717,
     "f1_cv_std": 0.0131
-  }
+  },
+  "data_source": "sentinel1_real_plus_synthetic",
+  "data_provenance": "Sentinel-1 SAR backscatter (real when available) + Hurricane Harvey real flood imagery + physics-informed synthetic SAR proxies"
 }

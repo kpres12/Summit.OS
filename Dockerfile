@@ -42,4 +42,10 @@ COPY --from=frontend-builder /console/public ./apps/console-server/public/
 COPY docker-start.sh ./
 RUN chmod +x docker-start.sh
 
+
+# ── Non-root runtime user (for K8s runAsNonRoot enforcement) ──
+RUN groupadd --system --gid 65534 heli || true \
+ && useradd  --system --uid 65534 --gid 65534 --no-create-home heli || true \
+ && chown -R heli:heli /app
+USER heli:heli
 CMD ["./docker-start.sh"]

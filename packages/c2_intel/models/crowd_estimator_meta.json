@@ -13,5 +13,7 @@
   ],
   "metrics": {
     "mae_cv_persons": 6.3
-  }
+  },
+  "data_source": "shanghaitech_real",
+  "data_provenance": "ShanghaiTech crowd counting dataset (real, 342MB on disk in packages/training/data/crowd_shanghaitech/) + scenario augmentation"
 }

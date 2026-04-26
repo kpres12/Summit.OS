@@ -21,5 +21,7 @@
   ],
   "metrics": {
     "corrosion_f1_cv": 0.85
-  }
+  },
+  "data_source": "codebrim_real",
+  "data_provenance": "CodeBrim concrete defect classification dataset (real, 1.3GB on disk in packages/training/data/codebrim/) + synthetic augmentation"
 }

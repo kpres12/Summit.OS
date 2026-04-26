@@ -23,5 +23,7 @@
   "metrics": {
     "f1_macro_cv": 0.8959,
     "f1_macro_cv_std": 0.0797
-  }
+  },
+  "data_source": "xbd_real_plus_synthetic",
+  "data_provenance": "xBD Maxar building damage dataset (real labels) + USGS earthquake catalog (real) + synthetic-fallback training rows when imagery is absent"
 }

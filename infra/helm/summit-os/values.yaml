@@ -7,6 +7,18 @@ global:
     POSTGRES_URL: postgresql://heli:summit@postgres:5432/summit
     MQTT_BROKER: mqtt://mqtt:1883
 
+# ── Security defaults (applied to every deployment) ──────────
+security:
+  # Pod-level
+  runAsUser: 65534           # nobody
+  runAsGroup: 65534
+  fsGroup: 65534
+  # Container-level
+  readOnlyRootFilesystem: true
+  # For services that legitimately need to write to the rootfs, override
+  # security.readOnlyRootFilesystem: false in their per-service block, OR
+  # mount an emptyDir for /tmp / cache directories.
+
 # ── Secrets (CHANGE_ME before deploying) ────────────────────
 secrets:
   postgresPassword: "CHANGE_ME"

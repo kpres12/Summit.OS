@@ -27,5 +27,7 @@
   "metrics": {
     "f1_macro_cv": 1.0,
     "f1_macro_cv_std": 0.0
-  }
+  },
+  "data_source": "synthetic",
+  "data_provenance": "Purely synthetic dataset with physics-grounded feature distributions per vehicle class"
 }

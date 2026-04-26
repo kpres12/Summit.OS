@@ -24,5 +24,7 @@
   "metrics": {
     "f1_macro_cv": 1.0,
     "f1_macro_cv_std": 0.0
-  }
+  },
+  "data_source": "synthetic_physics_grounded",
+  "data_provenance": "Physics-grounded synthetic slope-displacement / pore-pressure / rainfall scenarios"
 }

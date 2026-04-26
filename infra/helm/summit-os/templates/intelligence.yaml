@@ -15,9 +15,13 @@ spec:
       labels:
         app: intelligence
     spec:
+      securityContext:
+        {{- include "summit-os.podSecurityContext" . | nindent 8 }}
       containers:
         - name: intelligence
           image: {{ .Values.global.image.registry }}{{ .Values.intelligence.image }}
+          securityContext:
+            {{- include "summit-os.containerSecurityContext" . | nindent 12 }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.intelligence.port }}

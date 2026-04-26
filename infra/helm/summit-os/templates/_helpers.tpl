@@ -58,3 +58,37 @@ Chart label helper.
 {{- define "summit-os.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
+
+{{/*
+Pod-level security context — applied to every deployment in this chart.
+Hardened defaults:
+  runAsNonRoot:          containers must run as non-root user
+  runAsUser:             65534 (nobody) by default; override per-svc if needed
+  fsGroup:               65534
+  seccompProfile:        RuntimeDefault — apply default kernel-syscall filter
+*/}}
+{{- define "summit-os.podSecurityContext" -}}
+runAsNonRoot: true
+runAsUser: {{ .Values.security.runAsUser | default 65534 }}
+runAsGroup: {{ .Values.security.runAsGroup | default 65534 }}
+fsGroup: {{ .Values.security.fsGroup | default 65534 }}
+seccompProfile:
+  type: RuntimeDefault
+{{- end }}
+
+{{/*
+Container-level security context — applied to every container.
+  allowPrivilegeEscalation: false (prevents setuid/setgid escalation)
+  readOnlyRootFilesystem:   true by default (use volume mounts for writes)
+  capabilities.drop:        ALL — minimum-privilege Linux caps
+  readOnlyRootFilesystem and runAsNonRoot are required by Pod Security Admission
+  "restricted" level (the strictest PSA profile).
+*/}}
+{{- define "summit-os.containerSecurityContext" -}}
+allowPrivilegeEscalation: false
+readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem | default true }}
+runAsNonRoot: true
+capabilities:
+  drop:
+    - ALL
+{{- end }}

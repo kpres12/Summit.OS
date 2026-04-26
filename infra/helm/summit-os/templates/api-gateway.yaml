@@ -15,9 +15,13 @@ spec:
       labels:
         app: api-gateway
     spec:
+      securityContext:
+        {{- include "summit-os.podSecurityContext" . | nindent 8 }}
       containers:
         - name: api-gateway
           image: {{ .Values.global.image.registry }}{{ .Values.apiGateway.image }}
+          securityContext:
+            {{- include "summit-os.containerSecurityContext" . | nindent 12 }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.apiGateway.port }}
