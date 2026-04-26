@@ -1,13 +1,8 @@
-import CopyPlugin from 'copy-webpack-plugin';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const cesiumSource = path.join(__dirname, 'node_modules', 'cesium', 'Build', 'Cesium');
-
 // Security headers applied to every response. Tightened for production
 // since Heli.OS is a closed proprietary SaaS — no third-party embeds
 // expected outside of CesiumJS workers (which are same-origin).
+// Cesium static assets (Workers/ThirdParty/Assets/Widgets) are copied to
+// public/cesium/ via the "prebuild" npm script — no webpack needed.
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
@@ -47,6 +42,7 @@ const nextConfig = {
   devIndicators: false,
   images: { unoptimized: true },
   poweredByHeader: false,
+  turbopack: {},
   env: {
     CESIUM_BASE_URL: '/cesium',
   },
@@ -57,21 +53,6 @@ const nextConfig = {
         headers: securityHeaders,
       },
     ];
-  },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.plugins.push(
-        new CopyPlugin({
-          patterns: [
-            { from: path.join(cesiumSource, 'Workers'), to: path.join(__dirname, 'public', 'cesium', 'Workers') },
-            { from: path.join(cesiumSource, 'ThirdParty'), to: path.join(__dirname, 'public', 'cesium', 'ThirdParty') },
-            { from: path.join(cesiumSource, 'Assets'), to: path.join(__dirname, 'public', 'cesium', 'Assets') },
-            { from: path.join(cesiumSource, 'Widgets'), to: path.join(__dirname, 'public', 'cesium', 'Widgets') },
-          ],
-        })
-      );
-    }
-    return config;
   },
 };
 

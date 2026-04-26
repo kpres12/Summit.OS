@@ -14,6 +14,7 @@ describe('apiFetch', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('returns response on 200', async () => {

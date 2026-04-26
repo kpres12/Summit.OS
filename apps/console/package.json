@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "mkdir -p public/cesium && cp -r node_modules/cesium/Build/Cesium/Workers public/cesium/Workers && cp -r node_modules/cesium/Build/Cesium/ThirdParty public/cesium/ThirdParty && cp -r node_modules/cesium/Build/Cesium/Assets public/cesium/Assets && cp -r node_modules/cesium/Build/Cesium/Widgets public/cesium/Widgets",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.4.0",
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.2",
@@ -34,7 +36,6 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.3.0",
     "@vitest/ui": "^4.1.5",
-    "copy-webpack-plugin": "^14.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
     "jsdom": "^24.0.0",

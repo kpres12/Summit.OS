@@ -1,9 +1,10 @@
 {
-  "trained_at": "2026-04-24T05:42:05.537781+00:00",
+  "trained_at": "2026-04-26T01:47:54.024922+00:00",
   "model": "GradientBoostingClassifier",
-  "n_estimators": 200,
-  "n_samples": 741,
-  "n_features": 8,
+  "n_estimators": 300,
+  "n_samples": 120,
+  "n_real_samples": 0,
+  "n_features": 11,
   "features": [
     "sar_vv_mean",
     "sar_vh_mean",
@@ -12,16 +13,34 @@
     "ndvi",
     "blue_mean",
     "slope_deg",
-    "dem_m"
+    "dem_m",
+    "sar_vv_p10",
+    "sar_vv_p90",
+    "pol_ratio"
   ],
+  "use_s1_features": true,
   "classes": [
     "not_flooded",
     "flooded"
   ],
+  "data_sources": [
+    "physics_synthetic"
+  ],
   "metrics": {
-    "f1_cv": 0.9717,
-    "f1_cv_std": 0.0131
+    "f1_cv": 0.9833,
+    "f1_cv_std": 0.0205
   },
-  "data_source": "sentinel1_real_plus_synthetic",
-  "data_provenance": "Sentinel-1 SAR backscatter (real when available) + Hurricane Harvey real flood imagery + physics-informed synthetic SAR proxies"
+  "feature_importances": {
+    "blue_mean": 0.7245,
+    "sar_vv_mean": 0.1919,
+    "sar_vv_p90": 0.083,
+    "sar_vv_p10": 0.0004,
+    "sar_vv_std": 0.0002,
+    "dem_m": 0.0,
+    "pol_ratio": 0.0,
+    "ndwi": 0.0,
+    "sar_vh_mean": 0.0,
+    "slope_deg": 0.0,
+    "ndvi": 0.0
+  }
 }

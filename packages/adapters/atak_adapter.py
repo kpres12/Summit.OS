@@ -397,14 +397,14 @@ class ATAKAdapter(BaseAdapter):
             await self.publish_entity(entity)
             return {"status": "published", "uid": f"HELI-{entity.get('entity_id', '')}"}
 
-        if cmd == "PUBLISH_WAYPOINT":
+        if cmd in ("PUBLISH_WAYPOINT", "WAYPOINT"):
             wp = {
-                "entity_id":    params.get("id", "wp-001"),
-                "callsign":     params.get("name", "WP"),
+                "entity_id":    params.get("entity_id") or params.get("id", "wp-001"),
+                "callsign":     params.get("callsign") or params.get("name", "WP"),
                 "adapter_type": "waypoint",
                 "position": {
-                    "lat": params.get("lat", 0),
-                    "lon": params.get("lon", 0),
+                    "lat":   params.get("lat", 0),
+                    "lon":   params.get("lon", 0),
                     "alt_m": params.get("alt_m", 0),
                 },
             }

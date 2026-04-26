@@ -32,6 +32,7 @@ import os
 from datetime import datetime, timezone
 
 import pytest
+import pytest_asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def adapter():
     """Spin up an ATAKAdapter pointed at the docker-compose TAK Server."""
     import sys
