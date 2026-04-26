@@ -36,7 +36,7 @@ class LWWRegister:
 
     def set(self, value: Any, t: float | None = None):
         """Set value with current timestamp."""
-        t = t or time.time()
+        t = t if t is not None else time.time()
         if t >= self.timestamp:
             self.value = value
             self.timestamp = t

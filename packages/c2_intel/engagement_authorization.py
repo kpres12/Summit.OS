@@ -368,6 +368,7 @@ class EngagementAuthorizationGate:
             return case
         case.options = viable
         case.state = EngagementState.PENDING_AUTHORIZATION
+        case.auth_ttl = datetime.now(timezone.utc) + timedelta(seconds=self._default_ttl)
         self._record(case, "OPTIONS_SURFACED", {
             "n_options": len(viable),
             "option_ids": [o.option_id for o in viable],
@@ -393,6 +394,7 @@ class EngagementAuthorizationGate:
         if decision.decision == OperatorDecision.HOLD:
             case.state = EngagementState.HELD
             case.decision = decision
+            case.auth_ttl = datetime.now(timezone.utc) + timedelta(seconds=self._default_ttl)
             self._record(case, "HELD", {
                 "operator_id": decision.operator_id,
                 "rationale": decision.rationale,
@@ -402,6 +404,7 @@ class EngagementAuthorizationGate:
         if decision.decision == OperatorDecision.REQUEST_HIGHER:
             case.state = EngagementState.HELD
             case.decision = decision
+            case.auth_ttl = datetime.now(timezone.utc) + timedelta(seconds=self._default_ttl)
             self._record(case, "REQUEST_HIGHER", {
                 "operator_id": decision.operator_id,
             })
@@ -482,12 +485,30 @@ class EngagementAuthorizationGate:
         return case
 
     def expire_stale(self, now: Optional[datetime] = None) -> List[str]:
-        """Sweep AUTHORIZED cases past their TTL and auto-DENY for audit."""
+        """Sweep PENDING_AUTHORIZATION, AUTHORIZED, and HELD cases past TTL.
+
+        PENDING_AUTHORIZATION: expire when operator doesn't respond within TTL.
+        AUTHORIZED cases: expire when auth_ttl is exceeded without COMPLETE.
+        HELD cases: expire when hold timeout is exceeded without resumption.
+        """
         now = now or datetime.now(timezone.utc)
         expired: List[str] = []
+        _expirable = (
+            EngagementState.PENDING_AUTHORIZATION,
+            EngagementState.AUTHORIZED,
+            EngagementState.HELD,
+        )
+        _reason = {
+            EngagementState.PENDING_AUTHORIZATION:
+                "Operator did not respond within TTL — case expired",
+            EngagementState.AUTHORIZED:
+                "Authorization TTL expired without ENGAGEMENT_COMPLETE",
+            EngagementState.HELD:
+                "HELD case TTL expired — operator did not resume or deny",
+        }
         for case in list(self._cases.values()):
-            if case.state == EngagementState.AUTHORIZED and case.auth_ttl and now > case.auth_ttl:
-                self._deny(case, reason="Authorization TTL expired without ENGAGEMENT_COMPLETE")
+            if case.state in _expirable and case.auth_ttl and now > case.auth_ttl:
+                self._deny(case, reason=_reason[case.state])
                 case.state = EngagementState.EXPIRED
                 expired.append(case.case_id)
         return expired
