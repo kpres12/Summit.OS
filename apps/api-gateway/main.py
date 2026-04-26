@@ -1888,6 +1888,7 @@ def _get_entity(entity_id: str) -> dict:
 @app.post("/v1/reports/salute")
 @_rate_limit("30/minute")
 async def report_salute(
+    request: Request,
     payload: dict,
     _claims: dict | None = Depends(verify_bearer),
     _role: object = Depends(_require_role("OPERATOR")),
@@ -1903,6 +1904,7 @@ async def report_salute(
 @app.post("/v1/reports/spot")
 @_rate_limit("30/minute")
 async def report_spot(
+    request: Request,
     payload: dict,
     _claims: dict | None = Depends(verify_bearer),
     _role: object = Depends(_require_role("OPERATOR")),
@@ -1917,6 +1919,7 @@ async def report_spot(
 @app.post("/v1/reports/nineline")
 @_rate_limit("30/minute")
 async def report_nineline(
+    request: Request,
     payload: dict,
     _claims: dict | None = Depends(verify_bearer),
     _role: object = Depends(_require_role("OPERATOR")),
@@ -1943,6 +1946,7 @@ async def report_nineline(
 @app.post("/v1/reports/sitrep")
 @_rate_limit("10/minute")
 async def report_sitrep(
+    request: Request,
     payload: dict,
     _claims: dict | None = Depends(verify_bearer),
     _role: object = Depends(_require_role("OPERATOR")),
@@ -1974,6 +1978,7 @@ async def report_sitrep(
 @app.post("/v1/reports/inspection")
 @_rate_limit("20/minute")
 async def report_inspection(
+    request: Request,
     payload: dict,
     _claims: dict | None = Depends(verify_bearer),
     _role: object = Depends(_require_role("OPERATOR")),
