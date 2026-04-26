@@ -15,8 +15,7 @@ EXPOSE 8000
 
 
 # ── Non-root runtime user (for K8s runAsNonRoot enforcement) ──
-RUN groupadd --system --gid 65534 heli || true \
- && useradd  --system --uid 65534 --gid 65534 --no-create-home heli || true \
- && chown -R heli:heli /app
-USER heli:heli
+# UID/GID 65534 = nobody:nogroup on slim images — use numeric IDs directly
+RUN chown -R 65534:65534 /app
+USER 65534:65534
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
