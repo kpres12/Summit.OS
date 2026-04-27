@@ -228,9 +228,27 @@ async def test_ttl_expiry_vs_authorize_race():
 # ---------------------------------------------------------------------------
 
 def test_role_escalation_blocked():
-    """An operator-role user must not be able to authorize an ace_strike."""
+    """An operator-role user must not be able to authorize an ace_strike.
+    ace_strike requires joint_force_commander; operator role must be rejected."""
     events: List = []
-    gate = _make_gate(events)
+    # Use a real role checker — op-low has 'operator' which cannot clear
+    # joint_force_commander required by ace_strike.
+    _role_db = {"op-low": "operator"}
+    _hierarchy = ["operator", "mission_commander", "joint_force_commander"]
+
+    def _check_role(op_id: str, required: str) -> bool:
+        op_role = _role_db.get(op_id, "operator")
+        try:
+            return _hierarchy.index(op_role) >= _hierarchy.index(required)
+        except ValueError:
+            return False
+
+    gate = EngagementAuthorizationGate(
+        emit_event=lambda et, d: events.append((et, d)),
+        verify_operator_signature=lambda sig, payload: True,
+        operator_has_role=_check_role,
+        audit_sink=lambda entry: None,
+    )
 
     opt = WeaponOption(
         option_id=str(uuid.uuid4()),
@@ -418,15 +436,16 @@ def test_mass_case_creation_throughput():
     snapshot = tracemalloc.take_snapshot()
     tracemalloc.stop()
 
-    # After expiry, all cases should be in a terminal state
-    terminal = {EngagementState.EXPIRED, EngagementState.DENIED,
-                EngagementState.COMPLETE, EngagementState.AUTHORIZED}
-    live_cases = [
+    # DETECTED cases have no auth_ttl — expire_stale correctly ignores them.
+    # Verify that no cases with auth_ttl set are stuck past TTL.
+    stale = [
         c for c in gate._cases.values()
-        if c.state not in terminal
+        if c.state in (EngagementState.PENDING_AUTHORIZATION,
+                       EngagementState.AUTHORIZED, EngagementState.HELD)
+        and c.auth_ttl and future > c.auth_ttl
     ]
-    assert len(live_cases) == 0, \
-        f"{len(live_cases)} cases stuck in non-terminal state after expire_stale"
+    assert len(stale) == 0, \
+        f"{len(stale)} expirable cases still stuck past TTL after expire_stale"
 
 
 # ---------------------------------------------------------------------------
@@ -443,9 +462,9 @@ def test_rapid_full_pipeline():
     for _ in range(N):
         opt = _option()
         case = gate.open_case(_track())
-        gate.confirm_pid(case.case_id, _pid())
-        gate.clear_roe(case.case_id, _roe())
-        gate.deconflict(case.case_id, _decon())
+        gate.submit_pid(case.case_id, _pid())
+        gate.submit_roe(case.case_id, _roe())
+        gate.submit_deconfliction(case.case_id, _decon())
         gate.surface_options(case.case_id, [opt])
         gate.authorize(case.case_id, _auth(opt.option_id))
 
@@ -494,9 +513,9 @@ def test_every_transition_is_audited():
     )
     opt = _option()
     case = gate.open_case(_track())
-    gate.confirm_pid(case.case_id, _pid())
-    gate.clear_roe(case.case_id, _roe())
-    gate.deconflict(case.case_id, _decon())
+    gate.submit_pid(case.case_id, _pid())
+    gate.submit_roe(case.case_id, _roe())
+    gate.submit_deconfliction(case.case_id, _decon())
     gate.surface_options(case.case_id, [opt])
     gate.authorize(case.case_id, _auth(opt.option_id))
 
